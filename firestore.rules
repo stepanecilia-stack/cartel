@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------------
+    // Cartel Boxing — пример правил для локальной отладки.
+    //
+    // Сейчас: любой авторизованный пользователь может ЧИТАТЬ и ОБНОВЛЯТЬ любого ученика.
+    // Это нужно, чтобы работали: выдача short_id, присоединение по коду, запрос coach_ids.
+    //
+    // Для продакшена сузьте allow read / allow update (например только coachId + coach_ids,
+    // отдельная коллекция для поиска по short_id, Cloud Functions и т.д.).
+    // ---------------------------------------------------------------------------
+
+    match /students/{studentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.coachId == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.coachId == request.auth.uid;
+    }
+
+    match /coaches/{coachId} {
+      allow read, write: if request.auth != null && request.auth.uid == coachId;
+    }
+
+    match /accessCodes/{codeId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Публичная страница прогресса /share/:token — только обезличенный payload (без ID ученика в URL).
+    // ВАЖНО: после правок опубликуйте файл в Firebase Console → Firestore → Rules → «Опубликовать»,
+    // иначе клиент получит Missing or insufficient permissions.
+    match /public_student_shares/{token} {
+      // Чтение одного документа по точному токену (как в приложении). Список всей коллекции запрещён.
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+  }
+}

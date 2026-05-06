@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Техническая подготовленность | Cartel Academy</title>
+  <link rel="stylesheet" href="style.css">
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<!-- ✅ ОБЩИЙ МОДУЛЬ -->
+<script src="js/firebase-init.js"></script>
+<script src="js/calculations.js"></script>
+    
+    <style>
+        body {
+            background-color: #f8f8f8;
+            color: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            color: #1a1a2e;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .back-button:hover {
+            background: #f8f8f8;
+            border-color: #667eea;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 32px;
+            color: #ffffff;
+        }
+
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .overall-score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 32px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            color: #ffffff;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .overall-score-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .overall-score-value {
+            font-size: 72px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .overall-score-description {
+            margin-top: 16px;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .atom-card {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+        }
+
+        .atom-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .atom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .atom-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 0;
+            flex: 1;
+        }
+
+        .atom-number {
+            background: #f0f4ff;
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .level-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .level-option {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            background: #ffffff;
+            position: relative;
+        }
+
+        .level-option:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .level-option.active {
+            border-width: 3px;
+            font-weight: 600;
+        }
+
+        .level-option.level-0 { border-color: #4A4A4A; }
+        .level-option.level-0.active { background: #4A4A4A; color: #ffffff; }
+
+        .level-option.level-1 { border-color: #E74C3C; }
+        .level-option.level-1.active { background: #E74C3C; color: #ffffff; }
+
+        .level-option.level-2 { border-color: #E67E22; }
+        .level-option.level-2.active { background: #E67E22; color: #ffffff; }
+
+        .level-option.level-3 { border-color: #F1C40F; }
+        .level-option.level-3.active { background: #F1C40F; color: #1a1a2e; }
+
+        .level-option.level-4 { border-color: #27AE60; }
+        .level-option.level-4.active { background: #27AE60; color: #ffffff; }
+
+        .level-emoji {
+            font-size: 20px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .level-name {
+            font-size: 13px;
+            display: block;
+        }
+
+        .level-info-icon {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 18px;
+            height: 18px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: help;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .level-option:hover .level-info-icon {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .level-option.active .level-info-icon {
+            background: rgba(255, 255, 255, 0.3);
+            color: inherit;
+        }
+
+        .level-tooltip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a2e;
+            color: #ffffff;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            width: 280px;
+            max-width: 90vw;
+            display: none;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .level-tooltip.show {
+            display: block;
+            animation: tooltipFadeIn 0.2s ease-out;
+        }
+
+        @keyframes tooltipFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .level-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1a1a2e;
+        }
+
+        .level-tooltip h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .level-tooltip p {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .level-tooltip p:last-child {
+            margin-bottom: 0;
+        }
+
+        .level-tooltip ul {
+            margin: 8px 0 0 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .level-tooltip li {
+            margin-bottom: 6px;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .level-tooltip li::before {
+            content: attr(data-icon);
+            position: absolute;
+            left: 0;
+            font-size: 16px;
+        }
+
+        .comment-field {
+            margin-bottom: 20px;
+        }
+
+        .comment-field label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a2e;
+        }
+
+        .comment-field textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            box-sizing: border-box;
+        }
+
+        .comment-field textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .atom-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .atom-btn {
+            padding: 10px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #ffffff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .atom-btn:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        .atom-btn-video {
+            background: #e74c3c;
+            color: #ffffff;
+            border-color: #e74c3c;
+        }
+
+        .atom-btn-video:hover {
+            background: #c0392b;
+            border-color: #c0392b;
+        }
+
+        .collapsible-content {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+
+        .collapsible-content.show {
+            display: block;
+        }
+
+        .collapsible-content h4 {
+            margin: 0 0 8px 0;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .collapsible-content p {
+            margin: 0;
+            color: #1a1a2e;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .collapsible-section {
+            margin-bottom: 12px;
+        }
+
+        .collapsible-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .save-all-btn {
+            position: sticky;
+            bottom: 20px;
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            margin-top: 32px;
+        }
+
+        .save-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            color: #2e7d32;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .level-selector {
+                gap: 8px;
+            }
+            
+            .level-option {
+                min-width: 80px;
+                padding: 10px;
+            }
+            
+            .level-emoji {
+                font-size: 16px;
+            }
+            
+            .level-name {
+                font-size: 11px;
+            }
+            
+            .overall-score-value {
+                font-size: 56px;
+            }
+
+            .level-tooltip {
+                width: 260px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="javascript:history.back()" class="back-button">← Назад к профилю</a>
+
+        <div class="header">
+            <h1 id="athlete-name">Техническая подготовленность</h1>
+            <p id="athlete-meta">Оценка технических навыков</p>
+        </div>
+
+        <div id="success-msg" class="success-message">
+            ✅ Данные успешно сохранены!
+        </div>
+
+        <div id="main-content" class="loading">
+            Загрузка данных из Google Sheets...
+        </div>
+    </div>
+
+    <script>
+const TECHNICAL_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSznwbE_UU03tW5O2ps783zQ_V6lXjGnx7IdqYCTfF7XRN6ioJ7EQ4kclNSyrok2Yu2CGXr4M4qGzcs/pub?gid=320989263&single=true&output=csv';
+
+let currentAthlete = null;
+let technicalAtoms = [];
+let athleteTechnicalData = {};
+
+const LEVELS = [
+    { 
+        value: 0, 
+        name: 'Не изучен', 
+        emoji: '⚫', 
+        color: '#4A4A4A', 
+        ksr: 0,
+        description: 'Атом ещё не разбирался на тренировке. Ученик не знаком с этим элементом.'
+    },
+    { 
+        value: 1, 
+        name: 'Знание', 
+        emoji: '🔴', 
+        color: '#E74C3C', 
+        ksr: 0.25,
+        description: `Ученик сформировал три образа элемента:`,
+        details: [
+            { icon: '🧠', text: 'Логический образ — понимает механику, может объяснить словами' },
+            { icon: '👁️', text: 'Зрительный образ — видит как выглядит правильное выполнение, замечает ошибку' },
+            { icon: '🤲', text: 'Кинестезический образ — чувствует движение телом, может воспроизвести медленно' }
+        ]
+    },
+    { 
+        value: 2, 
+        name: 'Двигательное умение', 
+        emoji: '🟠', 
+        color: '#E67E22', 
+        ksr: 0.5,
+        description: 'Выполняет элемент самостоятельно, но нестабильно. Требует концентрации — в стрессе или усталости ломается.'
+    },
+    { 
+        value: 3, 
+        name: 'Двигательный навык', 
+        emoji: '🟡', 
+        color: '#F1C40F', 
+        ksr: 0.75,
+        description: 'Выполняет стабильно и без лишних усилий. Элемент воспроизводится в спарринге, но ещё требует внимания.'
+    },
+    { 
+        value: 4, 
+        name: 'Автоматизированный навык', 
+        emoji: '🟢', 
+        color: '#27AE60', 
+        ksr: 1.0,
+        description: 'Элемент вшит в тело. Выполняется автоматически в любых условиях — усталость, стресс, давление соперника не влияют.'
+    }
+];
+
+async function loadTechnicalAtoms() {
+    try {
+        console.log('🔄 Загрузка технических атомов из Google Sheets...');
+        const response = await fetch(TECHNICAL_SHEET_URL);
+        const csvText = await response.text();
+        
+        const rows = csvText.split('\n').map(row => {
+            return row.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+        });
+        
+        console.log(`📊 Загружено строк: ${rows.length}`);
+        
+        const dataRows = rows.slice(1);
+        
+        const atoms = [];
+        dataRows.forEach((row, index) => {
+            if (row.length < 7) {
+                console.warn(`⚠️ Строка ${index + 2} пропущена (недостаточно колонок)`);
+                return;
+            }
+            
+            const [number, name, howTo, whyHowTo, mistakes, whyMistakes, videoLink] = row;
+            
+            if (!name || name.trim() === '') return;
+            
+            atoms.push({
+                id: `atom_${number || index}`,
+                number: number || (index + 1).toString(),
+                name: name.trim(),
+                howTo: howTo.trim(),
+                whyHowTo: whyHowTo.trim(),
+                mistakes: mistakes.trim(),
+                whyMistakes: whyMistakes.trim(),
+                videoLink: videoLink.trim()
+            });
+        });
+        
+        console.log(`✅ Загружено атомов: ${atoms.length}`);
+        return atoms;
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки данных из Google Sheets:', error);
+        return [];
+    }
+}
+
+async function loadAthleteData(athleteId) {
+    try {
+        if (!auth.currentUser) {
+            console.error('❌ Пользователь не авторизован');
+            return null;
+        }
+        
+        console.log(`🔍 Загрузка данных спортсмена ${athleteId}`);
+        
+        const doc = await db.collection('students').doc(athleteId).get();
+        
+        if (!doc.exists) {
+            console.error(`❌ Спортсмен ${athleteId} не найден`);
+            return null;
+        }
+        
+        const data = doc.data();
+        
+        // ✅ ИСПРАВЛЕНО: новая проверка прав доступа
+        if (!data.coachIds || !data.coachIds.includes(auth.currentUser.uid)) {
+            console.error(`❌ У вас нет прав доступа к этому спортсмену`);
+            return null;
+        }
+        
+        console.log(`✅ Данные спортсмена загружены`);
+        
+        return {
+            id: doc.id,
+            ...data,
+            technicalData: data.technicalData || {}
+        };
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки данных спортсмена:', error);
+        return null;
+    }
+}
+
+
+function renderLevelTooltip(level) {
+    let content = `<h4>${level.emoji} ${level.name}</h4>`;
+    content += `<p>${level.description}</p>`;
+    
+    if (level.details) {
+        content += '<ul>';
+        level.details.forEach(detail => {
+            content += `<li data-icon="${detail.icon}">${detail.text}</li>`;
+        });
+        content += '</ul>';
+    }
+    
+    return content;
+}
+
+function renderAtomCard(atom) {
+    const savedData = athleteTechnicalData[atom.id] || { level: 0, comment: '' };
+    
+    const card = document.createElement('div');
+    card.className = 'atom-card';
+    card.dataset.atomId = atom.id;
+    
+    card.innerHTML = `
+        <div class="atom-header">
+            <h3 class="atom-title">${atom.name}</h3>
+            <span class="atom-number">#${atom.number}</span>
+        </div>
+        
+        <div class="level-selector" data-atom-id="${atom.id}">
+            ${LEVELS.map(level => `
+                <div class="level-option level-${level.value} ${savedData.level === level.value ? 'active' : ''}" 
+                     data-level="${level.value}">
+                    <span class="level-info-icon" data-level-info="${level.value}">ℹ️</span>
+                    <span class="level-emoji">${level.emoji}</span>
+                    <span class="level-name">${level.name}</span>
+                    <div class="level-tooltip" id="tooltip-${atom.id}-${level.value}">
+                        ${renderLevelTooltip(level)}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+        
+        <div class="comment-field">
+            <label>💬 Комментарий тренера (опционально)</label>
+            <textarea placeholder="Дополнительные замечания..." data-atom-id="${atom.id}">${savedData.comment || ''}</textarea>
+        </div>
+        
+        <div class="atom-actions">
+            <button class="atom-btn" onclick="toggleHint('${atom.id}')">💡 Подсказка</button>
+            <button class="atom-btn" onclick="toggleDetails('${atom.id}')">📖 Подробнее</button>
+            ${atom.videoLink ? `<button class="atom-btn atom-btn-video" onclick="openVideo('${atom.videoLink}')">▶️ Видео</button>` : ''}
+        </div>
+        
+        <div id="hint-${atom.id}" class="collapsible-content">
+            <div class="collapsible-section">
+                <h4>КАК НАДО:</h4>
+                <p>${atom.howTo || 'Нет данных'}</p>
+            </div>
+            <div class="collapsible-section">
+                <h4>ОШИБКИ:</h4>
+                <p>${atom.mistakes || 'Нет данных'}</p>
+            </div>
+        </div>
+        
+        <div id="details-${atom.id}" class="collapsible-content">
+            <div class="collapsible-section">
+                <h4>Почему так надо:</h4>
+                <p>${atom.whyHowTo || 'Нет данных'}</p>
+            </div>
+            <div class="collapsible-section">
+                <h4>Почему так не надо:</h4>
+                <p>${atom.whyMistakes || 'Нет данных'}</p>
+            </div>
+        </div>
+    `;
+    
+    return card;
+}
+
+function toggleHint(atomId) {
+    const hint = document.getElementById(`hint-${atomId}`);
+    hint.classList.toggle('show');
+}
+
+function toggleDetails(atomId) {
+    const details = document.getElementById(`details-${atomId}`);
+    details.classList.toggle('show');
+}
+
+function openVideo(link) {
+    if (link) {
+        window.open(link, '_blank');
+    }
+}
+
+function calculateTechnicalKSR() {
+    if (technicalAtoms.length === 0) {
+        return 0;
+    }
+    
+    let totalKSR = 0;
+    let count = 0;
+    
+    technicalAtoms.forEach(atom => {
+        const data = athleteTechnicalData[atom.id];
+        const level = data ? data.level : 0;
+        const levelConfig = LEVELS.find(l => l.value === level);
+        
+        if (levelConfig) {
+            totalKSR += levelConfig.ksr;
+            count++;
+        }
+    });
+    
+    return count > 0 ? (totalKSR / count) : 0;
+}
+
+function renderOverallScore() {
+    const ksr = calculateTechnicalKSR();
+    const percentage = Math.round(ksr * 100);
+    
+    const completedAtoms = Object.keys(athleteTechnicalData).filter(key => {
+        return athleteTechnicalData[key].level > 0;
+    }).length;
+    
+    return `
+        <div class="overall-score-card">
+            <div class="overall-score-label">Средний уровень технической подготовки</div>
+            <div class="overall-score-value">${percentage}%</div>
+            <div class="overall-score-description">
+                Оценено атомов: ${completedAtoms} из ${technicalAtoms.length}
+            </div>
+        </div>
+    `;
+}
+
+function hideAllTooltips() {
+    document.querySelectorAll('.level-tooltip').forEach(tooltip => {
+        tooltip.classList.remove('show');
+    });
+}
+
+function renderContent() {
+    const container = document.getElementById('main-content');
+    
+    container.innerHTML = renderOverallScore();
+    
+    technicalAtoms.forEach(atom => {
+        const card = renderAtomCard(atom);
+        container.appendChild(card);
+    });
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'save-all-btn';
+    saveBtn.textContent = '💾 Сохранить все изменения';
+    saveBtn.onclick = saveAllData;
+    container.appendChild(saveBtn);
+    
+    document.querySelectorAll('.level-selector').forEach(selector => {
+        selector.addEventListener('click', (e) => {
+            const infoIcon = e.target.closest('.level-info-icon');
+            const option = e.target.closest('.level-option');
+            
+            if (!option) return;
+            
+            const atomId = selector.dataset.atomId;
+            const level = parseInt(option.dataset.level);
+            
+            if (infoIcon) {
+                e.stopPropagation();
+                const tooltipId = `tooltip-${atomId}-${level}`;
+                const tooltip = document.getElementById(tooltipId);
+                
+                document.querySelectorAll('.level-tooltip').forEach(t => {
+                    if (t.id !== tooltipId) {
+                        t.classList.remove('show');
+                    }
+                });
+                
+                tooltip.classList.toggle('show');
+                return;
+            }
+            
+            hideAllTooltips();
+            
+            selector.querySelectorAll('.level-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            
+            option.classList.add('active');
+            
+            if (!athleteTechnicalData[atomId]) {
+                athleteTechnicalData[atomId] = {};
+            }
+            athleteTechnicalData[atomId].level = level;
+            
+            console.log(`Уровень атома ${atomId} установлен на ${level}`);
+        });
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.level-option')) {
+            hideAllTooltips();
+        }
+    });
+}
+
+async function saveAllData() {
+    if (!currentAthlete) return;
+    
+    try {
+        document.querySelectorAll('textarea[data-atom-id]').forEach(textarea => {
+            const atomId = textarea.dataset.atomId;
+            const comment = textarea.value.trim();
+            
+            if (!athleteTechnicalData[atomId]) {
+                athleteTechnicalData[atomId] = { level: 0 };
+            }
+            athleteTechnicalData[atomId].comment = comment;
+        });
+        
+        const technicalKSR = calculateTechnicalKSR();
+        
+        console.log('💾 Сохранение данных:', {
+            technicalData: athleteTechnicalData,
+            technicalKSR: technicalKSR
+        });
+        
+        await db.collection('students').doc(currentAthlete.id).update({
+            technicalData: athleteTechnicalData,
+            technicalScore: technicalKSR
+        });
+        
+        console.log('✅ Данные успешно сохранены');
+        
+        const successMsg = document.getElementById('success-msg');
+        successMsg.classList.add('show');
+        setTimeout(() => {
+            successMsg.classList.remove('show');
+        }, 3000);
+        
+        renderContent();
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения:', error);
+        alert('❌ Ошибка сохранения данных');
+    }
+}
+
+async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const athleteId = urlParams.get('id');
+    
+    
+    if (!athleteId) {
+        document.getElementById('main-content').innerHTML = '<div class="loading">ID спортсмена не указан</div>';
+        return;
+    }
+    
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            console.error('❌ Пользователь не авторизован');
+            document.getElementById('main-content').innerHTML = `
+                <div class="loading" style="color: #e74c3c;">
+                    <h2>⚠️ Требуется авторизация</h2>
+                    <p>Для доступа к этой странице необходимо войти в систему.</p>
+                    <a href="index.html" style="display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 8px;">
+                        Вернуться на главную
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        console.log(`✅ Пользователь авторизован: ${user.email}`);
+        
+        try {
+            technicalAtoms = await loadTechnicalAtoms();
+            
+            if (technicalAtoms.length === 0) {
+                document.getElementById('main-content').innerHTML = '<div class="loading">Не удалось загрузить данные из Google Sheets</div>';
+                return;
+            }
+            
+            currentAthlete = await loadAthleteData(athleteId);
+            
+            
+            athleteTechnicalData = currentAthlete.technicalData || {};
+            
+            document.getElementById('athlete-name').textContent = `${currentAthlete.firstName} ${currentAthlete.lastName} — Техническая подготовленность`;
+            
+            renderContent();
+            
+        } catch (error) {
+            console.error('❌ Ошибка:', error);
+            document.getElementById('main-content').innerHTML = '<div class="loading">Ошибка загрузки данных</div>';
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
