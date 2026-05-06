@@ -23,6 +23,9 @@ coverage
 .turbo
 *.tsbuildinfo
 
+# Vercel (локальные привязки CLI)
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
