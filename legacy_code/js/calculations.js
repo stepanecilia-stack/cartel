@@ -178,11 +178,47 @@ function calculateBiometricPotential(height, reach, idealHeight) {
     return Math.max(10, Math.round(potential));
 }
 
+/**
+ * Полный потенциал по последней антропометрии (как в script.js → Calculations.calculatePotential).
+ * physical.html / functional.html вызывают именно этот метод на window.Calculations / SharedCalculations.
+ */
+function calculatePotential(athlete) {
+    if (!athlete.anthropometry || athlete.anthropometry.length === 0) return 0;
+
+    const latest = athlete.anthropometry[athlete.anthropometry.length - 1];
+    const { height, weight, reach } = latest;
+
+    const ageGroup = getAgeGroup(athlete.birthYear);
+    if (!ageGroup) return 0;
+
+    const category = findWeightCategory(athlete.gender, ageGroup, weight);
+    if (!category) return 0;
+
+    const idealHeight = category.idealHeight;
+
+    let potential = 100;
+
+    const heightDiff = idealHeight - height;
+    if (heightDiff > 0) {
+        potential -= heightDiff * 5;
+    }
+
+    const apeIndex = reach - height;
+    if (apeIndex < 0) {
+        potential -= Math.abs(apeIndex) * 4;
+    }
+
+    potential = Math.max(10, potential);
+
+    return Math.round(potential);
+}
+
 window.SharedCalculations = {
     BOXING_BENCHMARKS,
     getAgeGroup,
     findWeightCategory,
-    calculateBiometricPotential
+    calculateBiometricPotential,
+    calculatePotential,
 };
 // ✅ Добавьте алиас для совместимости
 window.Calculations = window.SharedCalculations;
