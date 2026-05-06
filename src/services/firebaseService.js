@@ -21,13 +21,15 @@ import {
   where,
 } from 'firebase/firestore'
 
+const trimEnv = (value) => (typeof value === 'string' ? value.trim() : value)
+
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: trimEnv(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: trimEnv(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: trimEnv(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: trimEnv(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: trimEnv(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: trimEnv(import.meta.env.VITE_FIREBASE_APP_ID),
 }
 
 const hasFirebaseConfig =
@@ -35,6 +37,9 @@ const hasFirebaseConfig =
   Boolean(firebaseConfig.authDomain) &&
   Boolean(firebaseConfig.projectId) &&
   firebaseConfig.apiKey !== 'undefined'
+
+/** false на проде, если при сборке не были заданы VITE_FIREBASE_* (например в Vercel → Environment Variables). */
+export const isFirebaseConfigured = hasFirebaseConfig
 
 let app = null
 let db = null

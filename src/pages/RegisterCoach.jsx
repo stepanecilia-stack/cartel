@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerCoach } from '../services/firebaseService'
+import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages'
 
 const initialForm = {
   firstName: '',
@@ -49,8 +50,8 @@ function RegisterCoach() {
       })
       navigate('/')
     } catch (submitError) {
-      setError('Регистрация не прошла. Проверьте почту (возможно, аккаунт уже есть) и интернет.')
       console.error(submitError)
+      setError(formatFirebaseAuthError(submitError))
     } finally {
       setIsSubmitting(false)
     }

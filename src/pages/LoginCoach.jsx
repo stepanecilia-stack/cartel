@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loginCoach } from '../services/firebaseService'
+import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages'
 
 function LoginCoach() {
   const navigate = useNavigate()
@@ -23,7 +24,7 @@ function LoginCoach() {
       navigate('/')
     } catch (submitError) {
       console.error(submitError)
-      setError('Не удалось войти. Проверьте почту, пароль и раскладку клавиатуры.')
+      setError(formatFirebaseAuthError(submitError))
     } finally {
       setIsSubmitting(false)
     }
