@@ -920,36 +920,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               </div>
             </div>
             <div className="bg-white px-4 py-4">
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
-                  <p className="mt-1 text-xs text-slate-700">
-                    Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
-                  </p>
-                  <p className="text-xs text-slate-700">
-                    Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
-                  </p>
-                  <p className="text-xs text-slate-700">
-                    Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Эталонные параметры</p>
-                  <p className="mt-1 text-xs text-slate-700">
-                    Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
-                  </p>
-                  <p className="text-xs text-slate-700">
-                    Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
-                  </p>
-                </div>
-                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Рекомендация для спортсмена</p>
-                  <p className="mt-1 text-sm font-semibold text-blue-700">{tacticDistanceDisplay || '—'}</p>
-                  <p className="text-[11px] text-slate-600">Эффективная дистанция боя</p>
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+              <div className="flex flex-col gap-3">
+                <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 md:order-2">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
                 <div className="mt-2 grid grid-cols-[1fr_auto_1fr] overflow-hidden rounded-md border border-slate-200 text-[10px] uppercase tracking-wide">
                   <div className="bg-blue-100 px-3 py-1 font-semibold text-blue-900">
@@ -989,6 +961,53 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                       </div>
                     )
                   })}
+                </div>
+              </div>
+                <div className="order-2 grid gap-3 md:order-1 md:grid-cols-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:hidden">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
+                    <p className="mt-1 text-xs text-slate-700">
+                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-700">
+                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
+                    </p>
+                  </div>
+                  <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:block">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
+                    <p className="mt-1 text-xs text-slate-700">
+                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
+                    </p>
+                  </div>
+                  <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:block">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Эталонные параметры</p>
+                    <p className="mt-1 text-xs text-slate-700">
+                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Рекомендация для спортсмена</p>
+                    <p className="mt-1 text-sm font-semibold text-blue-700">{tacticDistanceDisplay || '—'}</p>
+                    <p className="text-[11px] text-slate-600">Эффективная дистанция боя</p>
+                  </div>
                 </div>
               </div>
             </div>
