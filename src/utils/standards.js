@@ -265,17 +265,43 @@ export function calculateHeightFactorH(heightCm, row) {
  * Z: антропометрия (Ape Index + насколько вес «сидит» в категории + согласованность с типажом)
  */
 export function calculateAnthropometricZ(reach, height, row, weightDistance) {
-  const apeIndex = Number(reach) - Number(height)
-  const label = (row.label || '').toLowerCase()
-  let targetApe = 1.5
-  if (/снайпер|длинн|рычаг|размах|линейн|мухач|сух|дистанц|геометр|высокий снайпер/i.test(label)) targetApe = 3.2
-  else if (/силов|плотн|масс|тяж|сбит|костяк|прессинг|абсолют/i.test(label)) targetApe = -0.4
+  const h = Number(height)
+  const r = Number(reach)
+  const referenceHeight = referenceIdealHeightCm(row)
+  const referenceReach = referenceHeight
+  const heightDelta =
+    Number.isFinite(h) && Number.isFinite(referenceHeight) ? h - referenceHeight : 0
+  const reachDelta =
+    Number.isFinite(r) && Number.isFinite(referenceReach) ? r - referenceReach : 0
 
-  const zApe = clamp(1 - Math.abs(apeIndex - targetApe) / 14, 0.52, 1)
+  // Рост: дефицит штрафуем жёстче, избыток — мягче.
+  const zHeight =
+    heightDelta >= 0
+      ? clamp(1 + heightDelta / 60, 0.55, 1.03)
+      : clamp(1 + heightDelta / 22, 0.35, 1)
+
+  // Размах: даём больший вес, т.к. может компенсировать небольшой недобор роста.
+  const zReach =
+    reachDelta >= 0
+      ? clamp(1 + reachDelta / 35, 0.55, 1.08)
+      : clamp(1 + reachDelta / 28, 0.4, 1)
+
+  const zGeom = clamp(0.4 * zHeight + 0.6 * zReach, 0, 1.08)
   const zWeight = weightDistance === 0 ? 1 : clamp(1 - weightDistance / 18, 0.55, 1)
-
-  const z = clamp(zApe * zWeight, 0, 1)
-  return { z, zApe, zWeight, apeIndex, targetApe }
+  const z = clamp(zGeom * zWeight, 0, 1)
+  return {
+    z,
+    zHeight,
+    zReach,
+    zGeom,
+    zWeight,
+    referenceHeight,
+    referenceReach,
+    heightDelta,
+    reachDelta,
+    apeIndex: r - h,
+    targetApe: 0,
+  }
 }
 
 /**
@@ -299,7 +325,19 @@ export function calculateKSPPercent(studentData = {}) {
   }
   const { row, weightDistance } = match
   const h = calculateHeightFactorH(height, row)
-  const { z, zApe, zWeight, apeIndex, targetApe } = calculateAnthropometricZ(
+  const {
+    z,
+    zHeight,
+    zReach,
+    zGeom,
+    zWeight,
+    referenceHeight,
+    referenceReach,
+    heightDelta,
+    reachDelta,
+    apeIndex,
+    targetApe,
+  } = calculateAnthropometricZ(
     reach,
     height,
     row,
@@ -311,7 +349,11 @@ export function calculateKSPPercent(studentData = {}) {
     ksp,
     z,
     h,
-    zApe,
+    // Совместимость: ранее UI/отчёты могли использовать поле zApe как «антропометрический подфактор».
+    zApe: zGeom,
+    zHeight,
+    zReach,
+    zGeom,
     zWeight,
     row,
     typage: row.label,
@@ -321,6 +363,10 @@ export function calculateKSPPercent(studentData = {}) {
         ? `${row.heightMin} см`
         : `${row.heightMin}–${row.heightMax} см`,
     weightDistance,
+    referenceHeight,
+    referenceReach,
+    heightDelta,
+    reachDelta,
     apeIndex,
     targetApe,
   }

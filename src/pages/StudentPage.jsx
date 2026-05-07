@@ -323,6 +323,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [baseKSR, kdBundle.kd],
   )
   const apeIndex = Number(anthropometry.reach || 0) - Number(anthropometry.height || 0)
+  const basePercent = Math.max(0, Math.min(100, Number(baseKSR) || 0))
+  const kspPercent = Math.max(0, Math.min(100, Number(ksrKsp.ksp) || 0))
+  const realizedInsidePotentialPercent =
+    kspPercent > 0 ? Math.max(0, Math.min(100, Math.round((basePercent / kspPercent) * 100))) : 0
 
   const shortIdRaw = student?.short_id ?? safeStudent?.short_id
   const shortIdDigits =
@@ -952,6 +956,22 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 умножается на «потолок по телу» ниже — получается базовый балл.
               </p>
               <p className="text-5xl font-bold tracking-tight text-slate-900">{baseKSR}</p>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-3">
+                <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
+                  <span>Спортивная реализация (базовый балл)</span>
+                  <span className="font-semibold text-slate-900">{basePercent}%</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                    style={{ width: `${basePercent}%` }}
+                  />
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                  <span>0%</span>
+                  <span>100%</span>
+                </div>
+              </div>
             </div>
             <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-5 py-4">
               <p className="text-sm font-medium text-amber-900">Потолок по телу (сколько «максимум» можно набрать)</p>
@@ -960,11 +980,82 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 оценка ударов — только тело.
               </p>
               <p className="mt-3 text-5xl font-bold tracking-tight text-amber-950">{ksrKsp.ksp}</p>
+              <div className="mt-3 rounded-lg border border-amber-200 bg-white/90 px-3 py-3">
+                <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
+                  <span>Коэффициент спортивного потенциала (КСП)</span>
+                  <span className="font-semibold text-amber-900">{kspPercent}%</span>
+                </div>
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-300">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-amber-200"
+                    style={{ width: `${kspPercent}%` }}
+                    title="Потенциально достижимая зона (потолок)"
+                  />
+                  <div
+                    className="absolute inset-y-0 left-0 bg-blue-600 transition-all duration-500"
+                    style={{ width: `${Math.min(basePercent, kspPercent)}%` }}
+                    title="Реализовано из доступного потенциала"
+                  />
+                  <div
+                    className="absolute inset-y-[-2px] w-[2px] bg-amber-700/70"
+                    style={{ left: `${kspPercent}%` }}
+                    aria-hidden
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-600">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden />
+                    Реализовано: {Math.min(basePercent, kspPercent)}%
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-amber-200" aria-hidden />
+                    Доступно до потолка: {kspPercent}%
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-slate-300" aria-hidden />
+                    Недостижимо без изменения данных тела
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>Освоено от потолка: {realizedInsidePotentialPercent}%</span>
+                  <span>Потолок: {kspPercent}%</span>
+                </div>
+              </div>
               <p className="mt-2 text-xs text-slate-600">
                 Детали расчёта (для любознательных): антропометрия ≈ {Math.round((ksrKsp.kspZ ?? 0) * 100)}%, близость
                 к эталонному росту ≈ {Math.round((ksrKsp.kspH ?? 0) * 100)}%
                 {ksrKsp.kspIdealHeight ? ` · ориентир роста для веса: ${ksrKsp.kspIdealHeight}` : ''}
               </p>
+              {(ksrKsp?.kspDetail?.heightDelta != null || ksrKsp?.kspDetail?.reachDelta != null) && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-xs ${
+                      Number(ksrKsp?.kspDetail?.heightDelta ?? 0) >= 0
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                        : 'border-red-200 bg-red-50 text-red-900'
+                    }`}
+                  >
+                    <p className="font-semibold">Рост vs эталон</p>
+                    <p>
+                      {Number(ksrKsp?.kspDetail?.heightDelta ?? 0) >= 0 ? '+' : ''}
+                      {Number(ksrKsp?.kspDetail?.heightDelta ?? 0).toFixed(1)} см
+                    </p>
+                  </div>
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-xs ${
+                      Number(ksrKsp?.kspDetail?.reachDelta ?? 0) >= 0
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                        : 'border-red-200 bg-red-50 text-red-900'
+                    }`}
+                  >
+                    <p className="font-semibold">Размах vs эталон</p>
+                    <p>
+                      {Number(ksrKsp?.kspDetail?.reachDelta ?? 0) >= 0 ? '+' : ''}
+                      {Number(ksrKsp?.kspDetail?.reachDelta ?? 0).toFixed(1)} см
+                    </p>
+                  </div>
+                </div>
+              )}
               {ksrKsp.kspTypage && (
                 <p className="mt-2 text-xs text-slate-700">
                   Подпись категории по таблице веса: {ksrKsp.kspTypage}
