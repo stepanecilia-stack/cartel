@@ -16,6 +16,22 @@ import {
   studentAthleteShape,
 } from '../utils/studentModel'
 
+function mapDashboardDistanceLabel(rawProfile) {
+  if (!rawProfile) return '—'
+  if (rawProfile.includes('Инфайтер')) return 'Ближняя'
+  if (rawProfile.includes('Аутфайтер')) return 'Дальняя'
+  if (rawProfile === 'Линейный') return 'Дистанционный'
+  if (rawProfile === 'Силовой') return 'Ближняя / средняя'
+  return rawProfile
+}
+
+function distanceIcon(profileLabel) {
+  if (profileLabel === 'Ближняя') return '🥊'
+  if (profileLabel === 'Дальняя' || profileLabel === 'Дистанционный') return '↔️'
+  if (profileLabel === 'Ближняя / средняя') return '⚡'
+  return '◻️'
+}
+
 /** Понятная подпись веса по таблице программы (возраст + пол + вес из анкеты). */
 function formatDashboardWeightCategory(athleteShaped) {
   const w = Number(athleteShaped.weight ?? 0)
@@ -90,11 +106,12 @@ function HomePage({ onSelectStudent, coachId }) {
             : null
         const birthYearLabel = formatBirthYearRu(shaped.birthYear) || 'не указан'
         const weightCategoryLine = formatDashboardWeightCategory(shaped)
+        const profileForKsr = mapDashboardDistanceLabel(weights.archetypeSmart)
         return {
           ...raw,
           name: displayNameFromStudent(raw),
           archetype: raw.archetype ?? weights.archetype,
-          profileForKsr: weights.archetypeSmart,
+          profileForKsr,
           weightCategoryTypage: weightTypage,
           birthYearLabel,
           weightCategoryLine,
@@ -131,8 +148,8 @@ function HomePage({ onSelectStudent, coachId }) {
               <p className="mt-2 max-w-2xl text-slate-600">
                 Большая цифра на карточке — <strong>итоговый балл</strong> ученика: сначала считается базовый балл по
                 тестам и телу, затем он умножается на «насколько техника вкатана» по списку ударов. Синий бейдж — стиль
-                боя по рукам и росту (не «хуже» или «лучше» других). Под именем — год рождения, весовая категория по
-                таблице программы и короткая подпись к категории (не диагноз человека).
+                дистанции, рассчитанный по рукам и росту (не «хуже» или «лучше» других). Под именем — год рождения,
+                весовая категория по таблице программы и короткая подпись к категории (не диагноз человека).
               </p>
             </div>
             <button
@@ -179,9 +196,10 @@ function HomePage({ onSelectStudent, coachId }) {
                 <div className="mb-5 flex items-center justify-between">
                   <span
                     className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${badgeClasses}`}
-                    title="Как программа оценивает стиль боя по рукам и росту — просто метка, не оценка характера"
+                    title="Рекомендуемая дистанция боя по антропометрии — ориентир тактики"
                   >
-                    {student.profileForKsr ?? student.archetype}
+                    <span className="mr-1.5" aria-hidden>{distanceIcon(student.profileForKsr)}</span>
+                    {student.profileForKsr ?? mapDashboardDistanceLabel(student.archetype)}
                   </span>
                   <span
                     className="text-xs font-semibold tabular-nums text-slate-600"

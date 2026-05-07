@@ -138,10 +138,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [isSaving, setIsSaving] = useState(false)
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
-  const [nextAttestationDate, setNextAttestationDate] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
   const [shareError, setShareError] = useState('')
   const [shareBusy, setShareBusy] = useState(false)
+  const [shareUrl, setShareUrl] = useState('')
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -165,15 +165,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   useEffect(() => {
     if (!student?.id) return
-    const d =
-      typeof student.nextAttestationDate === 'string' && student.nextAttestationDate
-        ? student.nextAttestationDate.slice(0, 10)
-        : ''
-    setNextAttestationDate(d)
-  }, [student?.id, student?.nextAttestationDate])
-
-  useEffect(() => {
-    if (!student?.id) return
     const sh = studentAthleteShape(student)
     const tests = student.tests && typeof student.tests === 'object' ? student.tests : {}
     setAnthropometry({
@@ -190,6 +181,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setPhysicalResults(emptyTestsRecord(tests.physical))
     setFunctionalResults(emptyTestsRecord(tests.functional))
     setTechnicalData(emptyTechnicalRecord(student.technicalData))
+    setShareUrl('')
+    setShareFlash(false)
   }, [student])
 
   useEffect(() => {
@@ -396,7 +389,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       currentWeight: w,
       weightHistory: weightHistoryArg,
       measureDate,
-      nextAttestationDate: nextAttestationDate || null,
+      nextAttestationDate: typeof student?.nextAttestationDate === 'string' ? student.nextAttestationDate : null,
       allNorms: norms,
       athleteForNorms,
       physicalResults: physicalMerged,
@@ -409,6 +402,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const handleShareProgress = async () => {
     if (!student?.id) return
     setShareError('')
+    setShareUrl('')
     setShareBusy(true)
     try {
       let token = typeof student.progressShareToken === 'string' ? student.progressShareToken : ''
@@ -433,6 +427,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         ownerCoachIds: ownerCoachIdsForShare,
       })
       const url = `${window.location.origin}/share/${token}`
+      setShareUrl(url)
       try {
         await navigator.clipboard.writeText(url)
       } catch {
@@ -461,6 +456,24 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     } finally {
       setShareBusy(false)
     }
+  }
+
+  const copyShareUrl = async () => {
+    if (!shareUrl) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = shareUrl
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setShareFlash(true)
+    window.setTimeout(() => setShareFlash(false), 2200)
   }
 
   const copyShortId = async () => {
@@ -529,7 +542,17 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   ]
   const maxInfluenceValue = Math.max(...influenceItems.map((item) => item.value))
   const smartStyleDisplay =
-    weights.archetypeSmart === 'Силовой' ? 'Ближняя / средняя' : weights.archetypeSmart
+    weights.archetypeSmart === 'Силовой'
+      ? 'Ближняя / средняя'
+      : weights.archetypeSmart === 'Линейный'
+        ? 'Дистанционный'
+        : weights.archetypeSmart
+  const tacticDistanceDisplay =
+    weights.tacticMode === 'infighter'
+      ? 'Ближняя'
+      : weights.tacticMode === 'outfighter'
+        ? 'Дальняя'
+        : smartStyleDisplay
 
   const tabProgress = useMemo(() => {
     const anthropometryFilled = [
@@ -690,7 +713,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         birthYearLabel: formatBirthYearRu(birthYear),
         anthropometryDate: measureDate,
         weightHistory,
-        nextAttestationDate: nextAttestationDate || null,
         tests: {
           physical: physicalResults,
           functional: functionalResults,
@@ -873,46 +895,31 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             {shareError && (
               <p className="mt-2 text-xs font-medium text-red-700">{shareError}</p>
             )}
-            <label className="mt-4 block max-w-xs space-y-1">
-              <span className="text-xs font-medium text-slate-600">Дата следующей аттестации (для публичной страницы)</span>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                value={nextAttestationDate}
-                onChange={(e) => setNextAttestationDate(e.target.value)}
-              />
-            </label>
-            <p className="mt-2 text-xs text-slate-500">Сохраните карточку ученика, чтобы дата попала в облако вместе с остальными данными.</p>
+            {shareUrl && (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                <p className="text-xs font-medium text-slate-600">Ссылка готова:</p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyShareUrl}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Копировать ссылку
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Отправьте её родителям или спортсмену.</p>
+              </div>
+            )}
           </div>
-          {(weights.tacticMode === 'infighter' || weights.tacticMode === 'outfighter') && (
-            <p className="mt-2 text-slate-600">
-              Рекомендуемая дистанция боя:{' '}
-              <span className="font-semibold text-blue-600">{weights.archetype}</span>
-            </p>
-          )}
-          {weights.tacticMode === 'standard' && weights.typageFromTable && (
-            <div className="mt-2 space-y-1 text-slate-600">
-              <p>
-                <span className="text-slate-500">
-                  Антропометрическая рамка (не меняется тренировками): эталонный типаж в этой весовой категории
-                </span>{' '}
-                <span className="font-semibold text-slate-800">{weights.archetype}</span>
-                <span className="ml-1 text-xs text-slate-500">
-                  — образ для веса, не личный диагноз спортсмена
-                </span>
-              </p>
-              <p>
-                <span className="text-slate-500">Рекомендуемая дистанция боя:</span>{' '}
-                <span className="font-semibold text-blue-600">{smartStyleDisplay}</span>
-              </p>
-            </div>
-          )}
-          {weights.tacticMode === 'standard' && !weights.typageFromTable && (
-            <p className="mt-2 text-slate-600">
-              Рекомендуемая дистанция боя:{' '}
-              <span className="font-semibold text-blue-600">{smartStyleDisplay}</span>
-            </p>
-          )}
+          <p className="mt-2 text-slate-600">
+            Рекомендуемая дистанция боя:{' '}
+            <span className="font-semibold text-blue-600">{tacticDistanceDisplay}</span>
+          </p>
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
             <div className="flex items-center justify-between bg-slate-900 px-4 py-3 text-white">
               <div className="flex items-center gap-2">
@@ -954,10 +961,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   <p className="text-xs text-slate-700">
                     Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
                   </p>
+                  <p className="text-xs text-slate-700">
+                    Архетип эталона: <span className="font-semibold text-slate-900">{weights.archetype || '—'}</span>
+                  </p>
                 </div>
                 <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">Рекомендация для спортсмена</p>
-                  <p className="mt-1 text-sm font-semibold text-blue-700">{smartStyleDisplay || '—'}</p>
+                  <p className="mt-1 text-sm font-semibold text-blue-700">{tacticDistanceDisplay || '—'}</p>
                   <p className="text-[11px] text-slate-600">Эффективная дистанция боя</p>
                 </div>
               </div>
