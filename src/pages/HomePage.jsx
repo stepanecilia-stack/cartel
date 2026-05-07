@@ -2,29 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddStudentModal from '../components/AddStudentModal'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import { getCoachStudents } from '../services/firebaseService'
-import { calculateKsrAndKsp, findGoldStandardRow, getWeights } from '../utils/ksrUtils'
+import { calculateKsrAndKsp, findGoldStandardRow } from '../utils/ksrUtils'
 import {
   coerceScores,
   displayNameFromStudent,
   formatBirthYearRu,
   studentAthleteShape,
 } from '../utils/studentModel'
-
-function mapDashboardDistanceLabel(rawProfile) {
-  if (!rawProfile) return '—'
-  if (rawProfile.includes('Инфайтер')) return 'Ближняя'
-  if (rawProfile.includes('Аутфайтер')) return 'Дальняя'
-  if (rawProfile === 'Линейный') return 'Дистанционный'
-  if (rawProfile === 'Силовой') return 'Ближняя / средняя'
-  return rawProfile
-}
-
-function distanceIcon(profileLabel) {
-  if (profileLabel === 'Ближняя') return '🥊'
-  if (profileLabel === 'Дальняя' || profileLabel === 'Дистанционный') return '↔️'
-  if (profileLabel === 'Ближняя / средняя') return '⚡'
-  return '◻️'
-}
 
 /** Понятная подпись веса по таблице программы (возраст + пол + вес из анкеты). */
 function formatDashboardWeightCategory(athleteShaped) {
@@ -73,18 +57,14 @@ function HomePage({ onSelectStudent, coachId }) {
       students.map((raw) => {
         const shaped = studentAthleteShape(raw)
         const scores = coerceScores(raw.scores)
-        const weights = getWeights(shaped)
         const ksrKsp = calculateKsrAndKsp(shaped, scores)
         const kspPercent = Math.max(0, Math.min(100, Number(ksrKsp.ksp) || 0))
         const basePercent = Math.max(0, Math.min(100, Number(ksrKsp.baseKSR) || 0))
         const birthYearLabel = formatBirthYearRu(shaped.birthYear) || 'не указан'
         const weightCategoryLine = formatDashboardWeightCategory(shaped)
-        const profileForKsr = mapDashboardDistanceLabel(weights.archetypeSmart)
         return {
           ...raw,
           name: displayNameFromStudent(raw),
-          archetype: raw.archetype ?? weights.archetype,
-          profileForKsr,
           birthYearLabel,
           weightCategoryLine,
           kspPercent,
@@ -146,51 +126,33 @@ function HomePage({ onSelectStudent, coachId }) {
           </div>
         )}
 
-        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {studentsWithKsr.map((student) => {
-            const badgeClasses = 'border-blue-100 bg-blue-50 text-blue-700'
-
-            return (
+        <section className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
+          {studentsWithKsr.map((student) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onSelectStudent?.(student)}
-                className="rounded-xl border border-slate-100 bg-white p-6 text-left shadow-sm transition-shadow hover:shadow-md"
+                className="rounded-xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="mb-5 flex items-center justify-between">
-                  <span
-                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${badgeClasses}`}
-                    title="Рекомендуемая дистанция боя по антропометрии — ориентир тактики"
-                  >
-                    <span className="mr-1.5" aria-hidden>{distanceIcon(student.profileForKsr)}</span>
-                    {student.profileForKsr ?? mapDashboardDistanceLabel(student.archetype)}
-                  </span>
-                  <span
-                    className="text-xs font-semibold tabular-nums text-slate-600"
-                    title="Насколько техника вкатана: от 0,25 до 1. Чем ближе к 1 — тем сильнее техника тянет итоговый балл"
-                  >
-                    техника ×{Number(student.kd ?? 0.25).toFixed(2)}
-                  </span>
+                <h2 className="text-lg font-semibold leading-snug text-slate-900">{student.name}</h2>
+                <div className="mt-2.5 grid min-h-[2.75rem] grid-cols-2 gap-2">
+                  <div className="flex min-w-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/90 px-2 py-2 text-center shadow-sm">
+                    <span className="text-sm font-semibold tabular-nums text-slate-900">{student.birthYearLabel}</span>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-2 py-2 text-center shadow-sm">
+                    <span className="break-words text-sm font-semibold leading-tight text-slate-900">
+                      {student.weightCategoryLine}
+                    </span>
+                  </div>
                 </div>
-
-                <h2 className="text-xl font-semibold text-slate-900">
-                  {student.name}
-                </h2>
-                <p className="mt-2 text-sm text-slate-700">
-                  {student.birthYearLabel}
-                  <span className="mx-2 text-slate-300" aria-hidden>
-                    ·
-                  </span>
-                  {student.weightCategoryLine}
-                </p>
                 <BiometricPotentialBar
-                  className="mt-4"
+                  className="mt-3"
+                  compact
                   kspPercent={student.kspPercent}
                   basePercent={student.basePercent}
                 />
               </button>
-            )
-          })}
+            ))}
         </section>
       </div>
     </main>

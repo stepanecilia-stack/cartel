@@ -520,6 +520,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     },
   ]
   const maxInfluenceValue = Math.max(...influenceItems.map((item) => item.value))
+  const dominantInfluenceKeys = influenceItems
+    .filter((item) => item.value === maxInfluenceValue && maxInfluenceValue > 0)
+    .map((item) => item.key)
+  const tabIdToInfluenceKey = {
+    physical: 'physical',
+    functional: 'functional',
+    technical: 'tech',
+  }
   const smartStyleDisplay =
     weights.archetypeSmart === 'Силовой'
       ? 'Ближняя / средняя'
@@ -802,7 +810,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           Назад к дашборду
         </button>
 
-        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-8">
+        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h1 className="text-3xl font-bold text-slate-900">{safeStudent.name}</h1>
             {student?.id && (
@@ -868,8 +876,316 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               {shareUrl}
             </button>
           )}
+        </section>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-900">Тесты и техника</h2>
+          <div
+            className="mt-2 flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-950 shadow-sm sm:px-4"
+            role="note"
+          >
+            <span className="select-none text-lg leading-none text-amber-600" aria-hidden>
+              ⚠️
+            </span>
+            <p className="min-w-0 leading-snug">
+              После внесения изменений не забудьте нажать «Сохранить изменения».
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Степень влияния на реализацию потенциала
+            </p>
+            <p className="mt-1 text-xs leading-snug text-slate-600">
+              Для этого спортсмена при расчёте балла сильнее всего тянет раздел с наибольшим процентом; остальные
+              разделы дают меньший вклад.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {[...influenceItems]
+                .sort((a, b) => b.value - a.value)
+                .map((item) => {
+                  const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
+                  return (
+                    <div
+                      key={item.key}
+                      className={`rounded-lg border px-3 py-2.5 transition-shadow ${
+                        isTop
+                          ? 'border-emerald-300 bg-emerald-50 shadow-md ring-1 ring-emerald-200'
+                          : 'border-slate-200 bg-white shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-xs ${isTop ? 'font-semibold text-emerald-950' : 'font-medium text-slate-700'}`}>
+                          {item.label}
+                        </span>
+                        <span className={`shrink-0 text-sm font-bold tabular-nums ${isTop ? 'text-emerald-800' : 'text-slate-800'}`}>
+                          {item.value}%
+                        </span>
+                      </div>
+                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className={`h-full rounded-full ${isTop ? 'bg-emerald-600' : 'bg-slate-600'}`}
+                          style={{ width: `${item.value}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
+            {TAB_ITEMS.map((tab) => {
+              const infKey = tabIdToInfluenceKey[tab.id]
+              const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
+              return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`group relative min-h-[116px] rounded-xl border bg-[#1A1A1A] px-3 py-3 text-left text-[#E8E8E8] transition-all duration-300 sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
+                  activeTab === tab.id
+                    ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
+                    : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
+                } ${
+                  isTopInfluenceTab
+                    ? 'ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-white md:min-h-[138px]'
+                    : ''
+                }`}
+              >
+                <span
+                  className={`absolute inset-x-0 bottom-0 h-1 rounded-b-xl transition-all duration-300 ${
+                    activeTab === tab.id ? 'bg-[#E8E8E8]' : 'bg-transparent'
+                  }`}
+                  aria-hidden
+                />
+                <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10">
+                  {TAB_ICONS[tab.id]}
+                </span>
+                <span
+                  className="block text-[14px] uppercase leading-tight tracking-normal sm:text-[16px] md:text-[18px] md:tracking-wide"
+                  style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
+                >
+                  {tab.label}
+                </span>
+                <span className="mt-2 block text-[11px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
+                  {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
+                </span>
+                <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
+                  <span
+                    className={`block h-full transition-all duration-300 ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
+                    style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
+                  />
+                </span>
+              </button>
+              )
+            })}
+          </div>
+
+          <div className="mt-6 space-y-6">
+            {activeTab === 'anthropometry' && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-800">Антропометрия</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm font-medium text-slate-700">Год рождения</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        type="number"
+                        min={1990}
+                        max={new Date().getFullYear()}
+                        placeholder="например, 2012"
+                        className="w-full max-w-[200px] rounded-lg border border-slate-200 px-3 py-2"
+                        value={anthropometry.birthYear}
+                        onChange={(e) =>
+                          setAnthropometry((prev) => ({ ...prev, birthYear: e.target.value }))
+                        }
+                      />
+                      <span className="text-sm text-slate-600">
+                        {formatBirthYearRu(anthropometry.birthYear) || '—'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Возраст в расчётах: текущий год минус год рождения.
+                    </span>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Рост (см)</span>
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      value={anthropometry.height}
+                      onChange={(e) =>
+                        setAnthropometry((prev) => ({ ...prev, height: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Вес (кг)</span>
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      value={anthropometry.weight}
+                      onChange={(e) =>
+                        setAnthropometry((prev) => ({ ...prev, weight: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Размах рук (см)</span>
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      value={anthropometry.reach}
+                      onChange={(e) =>
+                        setAnthropometry((prev) => ({ ...prev, reach: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Пол (для подбора норм тестов)</span>
+                    <select
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      value={anthropometry.gender}
+                      onChange={(e) =>
+                        setAnthropometry((prev) => ({ ...prev, gender: e.target.value }))
+                      }
+                    >
+                      <option value="M">Мужской</option>
+                      <option value="F">Женский</option>
+                    </select>
+                  </label>
+                  <label className="md:col-span-2 space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Дата измерения</span>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      value={anthropometry.date}
+                      onChange={(e) =>
+                        setAnthropometry((prev) => ({ ...prev, date: e.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'physical' && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-800">Физическое развитие</h3>
+                <div className="grid gap-4">{renderNormInputs('physical', physicalNorms, physicalResults)}</div>
+              </div>
+            )}
+
+            {activeTab === 'functional' && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-800">Функциональная готовность</h3>
+                <div className="grid gap-4">{renderNormInputs('functional', functionalNorms, functionalResults)}</div>
+              </div>
+            )}
+
+            {activeTab === 'technical' && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-800">Техника</h3>
+                {technicalAtoms.length === 0 && !loadingNorms ? (
+                  <p className="text-sm text-slate-500">
+                    Список ударов из общей таблицы не загрузился — проверьте интернет и откройте страницу позже.
+                  </p>
+                ) : (
+                  technicalAtoms.map((atom) => (
+                    <article
+                      key={atom.id}
+                      className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-slate-900">
+                          #{atom.number} {atom.name}
+                        </h3>
+                        <a
+                          className="text-xs text-blue-600"
+                          href={atom.videoLink || '#'}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Видео
+                        </a>
+                      </div>
+                      <label className="mt-3 block space-y-1">
+                        <span className="text-xs font-medium text-slate-600">Уровень освоения</span>
+                        <select
+                          className="w-full max-w-md rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
+                          value={normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)}
+                          onChange={(event) =>
+                            setTechnicalData((prev) => ({
+                              ...prev,
+                              [atom.id]: { ...(prev[atom.id] ?? {}), level: event.target.value },
+                            }))
+                          }
+                        >
+                          {TECH_DOMINANCE_OPTIONS.map((opt) => (
+                            <option key={opt.key} value={opt.key}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <textarea
+                        className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                        placeholder="Комментарий тренера"
+                        value={technicalData[atom.id]?.comment ?? ''}
+                        onChange={(event) =>
+                          setTechnicalData((prev) => ({
+                            ...prev,
+                            [atom.id]: { ...(prev[atom.id] ?? {}), comment: event.target.value },
+                          }))
+                        }
+                      />
+                      <details className="mt-2 text-sm text-slate-600">
+                        <summary className="cursor-pointer text-blue-600">Подсказка и детали</summary>
+                        <p className="mt-2">
+                          <strong>Как надо:</strong> {atom.howTo}
+                        </p>
+                        <p className="mt-1">
+                          <strong>Почему:</strong> {atom.whyHowTo}
+                        </p>
+                        <p className="mt-1">
+                          <strong>Ошибки:</strong> {atom.mistakes}
+                        </p>
+                        <p className="mt-1">
+                          <strong>Почему ошибка:</strong> {atom.whyMistakes}
+                        </p>
+                      </details>
+                    </article>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 border-t border-slate-200 pt-5">
+            {saveError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {saveError}
+              </div>
+            )}
+            {saveOk && !saveError && (
+              <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                Сохранено. Данные ученика в облаке обновлены.
+              </div>
+            )}
+            <button
+              type="button"
+              disabled={isSaving || !student?.id}
+              onClick={handleSave}
+              className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
+            >
+              {isSaving ? 'Сохранение…' : 'Сохранить изменения'}
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-8">
+          <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="flex flex-wrap items-center gap-2 bg-slate-900 px-3 py-2.5 text-white sm:px-4 sm:py-3">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span
@@ -1135,279 +1451,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             {normsError}
           </div>
         )}
-
-        <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3 sm:px-5 sm:py-4">
-          <h3 className="text-sm font-semibold text-slate-900">Степень влияния</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            {influenceItems.map((item) => (
-              <div
-                key={item.key}
-                className={`rounded-lg border px-3 py-3 ${
-                  item.value === maxInfluenceValue && maxInfluenceValue > 0
-                    ? 'border-emerald-300 bg-emerald-50'
-                    : 'border-slate-200 bg-white'
-                }`}
-              >
-                <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
-                  <span>{item.label}</span>
-                  <span className="font-semibold text-slate-900">{item.value}%</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-full rounded-full bg-slate-700" style={{ width: `${item.value}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold text-slate-900">Тесты и техника</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            То, что вы здесь введёте, хранится в карточке ученика. После изменений нажмите кнопку «Сохранить изменения»
-            — она сразу под этим разделом.
-          </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
-            {TAB_ITEMS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`group relative min-h-[116px] rounded-xl border bg-[#1A1A1A] px-3 py-3 text-left text-[#E8E8E8] transition-all duration-300 sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
-                  activeTab === tab.id
-                    ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
-                    : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
-                }`}
-              >
-                <span
-                  className={`absolute inset-x-0 bottom-0 h-1 rounded-b-xl transition-all duration-300 ${
-                    activeTab === tab.id ? 'bg-[#E8E8E8]' : 'bg-transparent'
-                  }`}
-                  aria-hidden
-                />
-                <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10">
-                  {TAB_ICONS[tab.id]}
-                </span>
-                <span
-                  className="block text-[14px] uppercase leading-tight tracking-normal sm:text-[16px] md:text-[18px] md:tracking-wide"
-                  style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
-                >
-                  {tab.label}
-                </span>
-                <span className="mt-2 block text-[11px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
-                  {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
-                </span>
-                <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
-                  <span
-                    className={`block h-full transition-all duration-300 ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
-                    style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
-                  />
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6 space-y-6">
-            {activeTab === 'anthropometry' && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Антропометрия</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm font-medium text-slate-700">Год рождения</span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        type="number"
-                        min={1990}
-                        max={new Date().getFullYear()}
-                        placeholder="например, 2012"
-                        className="w-full max-w-[200px] rounded-lg border border-slate-200 px-3 py-2"
-                        value={anthropometry.birthYear}
-                        onChange={(e) =>
-                          setAnthropometry((prev) => ({ ...prev, birthYear: e.target.value }))
-                        }
-                      />
-                      <span className="text-sm text-slate-600">
-                        {formatBirthYearRu(anthropometry.birthYear) || '—'}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500">
-                      Возраст в расчётах: текущий год минус год рождения.
-                    </span>
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Рост (см)</span>
-                    <input
-                      type="number"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      value={anthropometry.height}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, height: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Вес (кг)</span>
-                    <input
-                      type="number"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      value={anthropometry.weight}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, weight: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Размах рук (см)</span>
-                    <input
-                      type="number"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      value={anthropometry.reach}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, reach: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Пол (для подбора норм тестов)</span>
-                    <select
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      value={anthropometry.gender}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, gender: e.target.value }))
-                      }
-                    >
-                      <option value="M">Мужской</option>
-                      <option value="F">Женский</option>
-                    </select>
-                  </label>
-                  <label className="md:col-span-2 space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Дата измерения</span>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      value={anthropometry.date}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, date: e.target.value }))
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'physical' && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Физическое развитие</h3>
-                <div className="grid gap-4">{renderNormInputs('physical', physicalNorms, physicalResults)}</div>
-              </div>
-            )}
-
-            {activeTab === 'functional' && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Функциональная готовность</h3>
-                <div className="grid gap-4">{renderNormInputs('functional', functionalNorms, functionalResults)}</div>
-              </div>
-            )}
-
-            {activeTab === 'technical' && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Техника</h3>
-                {technicalAtoms.length === 0 && !loadingNorms ? (
-                  <p className="text-sm text-slate-500">
-                    Список ударов из общей таблицы не загрузился — проверьте интернет и откройте страницу позже.
-                  </p>
-                ) : (
-                  technicalAtoms.map((atom) => (
-                    <article
-                      key={atom.id}
-                      className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-slate-900">
-                          #{atom.number} {atom.name}
-                        </h3>
-                        <a
-                          className="text-xs text-blue-600"
-                          href={atom.videoLink || '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Видео
-                        </a>
-                      </div>
-                      <label className="mt-3 block space-y-1">
-                        <span className="text-xs font-medium text-slate-600">Уровень освоения</span>
-                        <select
-                          className="w-full max-w-md rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
-                          value={normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)}
-                          onChange={(event) =>
-                            setTechnicalData((prev) => ({
-                              ...prev,
-                              [atom.id]: { ...(prev[atom.id] ?? {}), level: event.target.value },
-                            }))
-                          }
-                        >
-                          {TECH_DOMINANCE_OPTIONS.map((opt) => (
-                            <option key={opt.key} value={opt.key}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <textarea
-                        className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                        placeholder="Комментарий тренера"
-                        value={technicalData[atom.id]?.comment ?? ''}
-                        onChange={(event) =>
-                          setTechnicalData((prev) => ({
-                            ...prev,
-                            [atom.id]: { ...(prev[atom.id] ?? {}), comment: event.target.value },
-                          }))
-                        }
-                      />
-                      <details className="mt-2 text-sm text-slate-600">
-                        <summary className="cursor-pointer text-blue-600">Подсказка и детали</summary>
-                        <p className="mt-2">
-                          <strong>Как надо:</strong> {atom.howTo}
-                        </p>
-                        <p className="mt-1">
-                          <strong>Почему:</strong> {atom.whyHowTo}
-                        </p>
-                        <p className="mt-1">
-                          <strong>Ошибки:</strong> {atom.mistakes}
-                        </p>
-                        <p className="mt-1">
-                          <strong>Почему ошибка:</strong> {atom.whyMistakes}
-                        </p>
-                      </details>
-                    </article>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          {saveError && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {saveError}
-            </div>
-          )}
-          {saveOk && !saveError && (
-            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-              Сохранено. Данные ученика в облаке обновлены.
-            </div>
-          )}
-          <button
-            type="button"
-            disabled={isSaving || !student?.id}
-            onClick={handleSave}
-            className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
-          >
-            {isSaving ? 'Сохранение…' : 'Сохранить изменения'}
-          </button>
-        </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

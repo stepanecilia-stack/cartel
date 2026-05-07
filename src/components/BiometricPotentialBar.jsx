@@ -1,18 +1,25 @@
 /**
  * Полоса «потенциал тела» (КСП) и реализованный базовый КСР — как на карточке ученика.
+ * @param {{ compact?: boolean }} props — compact: плотнее для карточек списка.
  */
-export default function BiometricPotentialBar({ kspPercent, basePercent, className = '' }) {
+export default function BiometricPotentialBar({ kspPercent, basePercent, className = '', compact = false }) {
   const k = Math.max(0, Math.min(100, Number(kspPercent) || 0))
   const b = Math.max(0, Math.min(100, Number(basePercent) || 0))
   const realized = Math.min(b, k)
 
+  const box = compact
+    ? `rounded-md border border-amber-200 bg-white/90 px-2 py-2 ${className}`
+    : `rounded-lg border border-amber-200 bg-white/90 px-3 py-3 ${className}`
+
   return (
-    <div className={`rounded-lg border border-amber-200 bg-white/90 px-3 py-3 ${className}`}>
-      <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
-        <span>Коэффициент спортивного потенциала (КСП)</span>
-        <span className="font-semibold text-amber-900">{k}%</span>
+    <div className={box}>
+      <div
+        className={`flex items-center justify-between text-slate-600 ${compact ? 'mb-1 text-[10px] leading-tight' : 'mb-2 text-xs'}`}
+      >
+        <span className={compact ? 'pr-1' : ''}>Коэффициент спортивного потенциала (КСП)</span>
+        <span className="shrink-0 font-semibold text-amber-900">{k}%</span>
       </div>
-      <div className="relative h-4 w-full overflow-hidden rounded-full bg-slate-300">
+      <div className={`relative w-full overflow-hidden rounded-full bg-slate-300 ${compact ? 'h-2.5' : 'h-4'}`}>
         <div
           className="absolute inset-y-0 left-0 bg-slate-200/90"
           style={{ width: `${k}%` }}
@@ -38,7 +45,9 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
           aria-hidden
         />
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-600">
+      <div
+        className={`flex flex-wrap items-center text-slate-600 ${compact ? 'mt-1.5 gap-2 text-[9px] leading-tight' : 'mt-2 gap-3 text-[10px]'}`}
+      >
         <span className="inline-flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden />
           Реализовано: {realized}%
