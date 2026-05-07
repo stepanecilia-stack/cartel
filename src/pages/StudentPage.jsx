@@ -1171,13 +1171,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             в облако».
           </p>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 md:flex md:flex-nowrap md:gap-4">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
             {TAB_ITEMS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`group relative min-h-[132px] rounded-xl border bg-[#1A1A1A] px-4 py-4 text-left text-[#E8E8E8] transition-all duration-300 md:flex-1 ${
+                className={`group relative min-h-[116px] rounded-xl border bg-[#1A1A1A] px-3 py-3 text-left text-[#E8E8E8] transition-all duration-300 sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
                   activeTab === tab.id
                     ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
                     : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
@@ -1189,16 +1189,16 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   }`}
                   aria-hidden
                 />
-                <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#333333] bg-[#222222]">
+                <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10">
                   {TAB_ICONS[tab.id]}
                 </span>
                 <span
-                  className="block text-[18px] uppercase leading-tight tracking-wide"
+                  className="block text-[14px] uppercase leading-tight tracking-normal sm:text-[16px] md:text-[18px] md:tracking-wide"
                   style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
                 >
                   {tab.label}
                 </span>
-                <span className="mt-3 block text-xs text-[#A8A8A8]">
+                <span className="mt-2 block text-[11px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
                   {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
                 </span>
                 <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
