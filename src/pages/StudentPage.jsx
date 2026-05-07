@@ -46,6 +46,32 @@ const TAB_ITEMS = [
   { id: 'technical', label: 'Техника' },
 ]
 
+const TAB_ICONS = {
+  anthropometry: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M4 8h16M4 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M6 6v4M9 7v2M12 6v4M15 7v2M18 6v4M6 14v4M9 15v2M12 14v4M15 15v2M18 14v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  ),
+  physical: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M8 15c1.2-1.6 2.7-2.4 4.6-2.4 1.5 0 2.8.5 3.8 1.5l1.6 1.6c.8.8.8 2.1 0 2.9-.8.8-2.1.8-2.9 0l-1-1c-.6-.6-1.3-.9-2.2-.9-1.2 0-2.2.5-2.9 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.4 8.8 8 10.4c.6.6 1.4.9 2.2.9 1.1 0 2-.4 2.7-1.2l1-1.1c.8-.8 2.1-.9 2.9-.1.8.8.9 2.1.1 2.9l-1.5 1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  functional: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M13.2 2 5 13h5l-1 9 8.2-11H12l1.2-9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  ),
+  technical: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M8.5 13.5c-1.2 0-2.2-1-2.2-2.2V8.8c0-1.8 1.5-3.3 3.3-3.3h3.8c2.4 0 4.3 2 4.3 4.3v5.2c0 1.9-1.6 3.5-3.5 3.5H9.7c-1.8 0-3.2-1.4-3.2-3.2v-.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.3 10.7h3.3c1.1 0 2 .9 2 2v2.2c0 .9-.7 1.6-1.6 1.6H8c-.9 0-1.7-.8-1.7-1.7v-4.1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  ),
+}
+
 function emptyTestsRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -451,6 +477,40 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     },
     { section: 'техника', gap: -1 },
   )
+
+  const tabProgress = useMemo(() => {
+    const anthropometryFilled = [
+      anthropometry.birthYear,
+      anthropometry.height,
+      anthropometry.weight,
+      anthropometry.reach,
+      anthropometry.gender,
+      anthropometry.date,
+    ].filter((v) => String(v ?? '').trim() !== '').length
+    const anthropometryPercent = Math.round((anthropometryFilled / 6) * 100)
+
+    const physicalTotal = physicalNorms.length
+    const physicalFilled = physicalNorms.filter((norm) => physicalResults[norm.testId]?.result != null).length
+    const physicalPercent = physicalTotal > 0 ? Math.round((physicalFilled / physicalTotal) * 100) : 0
+
+    const functionalTotal = functionalNorms.length
+    const functionalFilled = functionalNorms.filter((norm) => functionalResults[norm.testId]?.result != null).length
+    const functionalPercent = functionalTotal > 0 ? Math.round((functionalFilled / functionalTotal) * 100) : 0
+
+    const technicalTotal = technicalAtoms.length
+    const technicalFilled = technicalAtoms.filter((atom) => {
+      const level = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
+      return level && level !== 'not_learned'
+    }).length
+    const technicalPercent = technicalTotal > 0 ? Math.round((technicalFilled / technicalTotal) * 100) : 0
+
+    return {
+      anthropometry: Math.max(0, Math.min(100, anthropometryPercent)),
+      physical: Math.max(0, Math.min(100, physicalPercent)),
+      functional: Math.max(0, Math.min(100, functionalPercent)),
+      technical: Math.max(0, Math.min(100, technicalPercent)),
+    }
+  }, [anthropometry, functionalNorms, functionalResults, physicalNorms, physicalResults, technicalAtoms, technicalData])
 
   const updateNormResult = (category, norm, rawValue) => {
     const set =
@@ -903,19 +963,40 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             в облако».
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:flex md:flex-nowrap md:gap-4">
             {TAB_ITEMS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                className={`group relative min-h-[132px] rounded-xl border bg-[#1A1A1A] px-4 py-4 text-left text-[#E8E8E8] transition-all duration-300 md:flex-1 ${
                   activeTab === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
+                    : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
                 }`}
               >
-                {tab.label}
+                <span
+                  className={`absolute inset-x-0 bottom-0 h-1 rounded-b-xl transition-all duration-300 ${
+                    activeTab === tab.id ? 'bg-[#E8E8E8]' : 'bg-transparent'
+                  }`}
+                  aria-hidden
+                />
+                <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#333333] bg-[#222222]">
+                  {TAB_ICONS[tab.id]}
+                </span>
+                <span
+                  className="block text-[18px] uppercase leading-tight tracking-wide"
+                  style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
+                >
+                  {tab.label}
+                </span>
+                <span className="mt-3 block text-xs text-[#A8A8A8]">Заполнено: {tabProgress[tab.id] ?? 0}%</span>
+                <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
+                  <span
+                    className="block h-full rounded-full bg-[#E8E8E8] transition-all duration-300"
+                    style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
+                  />
+                </span>
               </button>
             ))}
           </div>
