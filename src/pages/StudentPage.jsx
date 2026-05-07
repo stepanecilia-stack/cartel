@@ -32,13 +32,8 @@ import {
   setPublicStudentShareDocument,
   updateStudentData,
 } from '../services/firebaseService'
+import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
-
-const SECTION_LABELS = {
-  техника: 'техника (удары, ноги, защита)',
-  физика: 'сила и мощность тела',
-  функционал: 'выносливость и высокий темп',
-}
 
 const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Антропометрия' },
@@ -143,6 +138,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [standardInfoOpen, setStandardInfoOpen] = useState(false)
+  const [sensitivePeriodExpanded, setSensitivePeriodExpanded] = useState(false)
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -185,6 +181,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setShareFlash(false)
     setShareUrl('')
     setStandardInfoOpen(false)
+    setSensitivePeriodExpanded(false)
   }, [student])
 
   useEffect(() => {
@@ -505,22 +502,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [resolvedBirthYear],
   )
 
-  const criticalZone = Object.entries(scores).reduce(
-    (worst, [section, score]) => {
-      const weightKey =
-        section === 'техника' ? 'T' : section === 'физика' ? 'P' : 'F'
-      const weight = weights[weightKey]
-      const currentValue = Number(score) * weight
-      const maxValue = 100 * weight
-      const gap = maxValue - currentValue
-
-      if (gap > worst.gap) {
-        return { section, gap }
-      }
-      return worst
-    },
-    { section: 'техника', gap: -1 },
-  )
   const influenceItems = [
     {
       key: 'tech',
@@ -1040,48 +1021,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-5 py-4">
               <p className="text-sm font-medium text-amber-900">Спортивный биометрический потенциал на базе математических расчётов</p>
               <p className="mt-3 text-5xl font-bold tracking-tight text-amber-950">{ksrKsp.ksp}</p>
-              <div className="mt-3 rounded-lg border border-amber-200 bg-white/90 px-3 py-3">
-                <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
-                  <span>Коэффициент спортивного потенциала (КСП)</span>
-                  <span className="font-semibold text-amber-900">{kspPercent}%</span>
-                </div>
-                <div className="relative h-4 w-full overflow-hidden rounded-full bg-slate-300">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-slate-200/90"
-                    style={{ width: `${kspPercent}%` }}
-                    title="Предел тела (КСП)"
-                  />
-                  <div
-                    className="absolute inset-y-0 left-0 opacity-40"
-                    style={{
-                      width: `${kspPercent}%`,
-                      backgroundImage:
-                        'repeating-linear-gradient(135deg, rgba(71,85,105,0.25) 0px, rgba(71,85,105,0.25) 6px, rgba(148,163,184,0.08) 6px, rgba(148,163,184,0.08) 12px)',
-                    }}
-                    aria-hidden
-                  />
-                  <div
-                    className="absolute inset-y-0 left-0 bg-blue-600 transition-all duration-500"
-                    style={{ width: `${Math.min(basePercent, kspPercent)}%` }}
-                    title="Реализовано из доступного потенциала"
-                  />
-                  <div
-                    className="absolute inset-y-[-2px] w-[3px] bg-amber-700/70"
-                    style={{ left: `${kspPercent}%` }}
-                    aria-hidden
-                  />
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-slate-600">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden />
-                    Реализовано: {Math.min(basePercent, kspPercent)}%
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-slate-300" aria-hidden />
-                    Предел тела (КСП): {kspPercent}%
-                  </span>
-                </div>
-              </div>
+              <BiometricPotentialBar className="mt-3" kspPercent={kspPercent} basePercent={basePercent} />
               {(ksrKsp?.kspDetail?.heightDelta != null || ksrKsp?.kspDetail?.reachDelta != null) && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div
@@ -1167,8 +1107,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         <section className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Тесты и техника</h2>
           <p className="mt-1 text-sm text-slate-600">
-            То, что вы здесь введёте, хранится в карточке ученика. После изменений нажмите внизу кнопку «Сохранить всё
-            в облако».
+            То, что вы здесь введёте, хранится в карточке ученика. После изменений нажмите кнопку «Сохранить изменения»
+            — она сразу под этим разделом.
           </p>
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
@@ -1393,89 +1333,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">В каком возрасте что лучше тренировать</h2>
-          <p className="mt-1 text-xs text-slate-600">
-            Ориентир по научным таблицам: в зелёном списке качества, которые в этом возрасте «лучше всего ложатся».
-            Красный список — всё остальное из таблицы: тренировать можно, но прирост обычно не такой быстрый.
-          </p>
-          {sensitivePeriods.reason === 'no_birth_year' && (
-            <p className="mt-3 text-sm text-slate-600">
-              Укажите год рождения в разделе «Антропометрия» — тогда список сформируется автоматически.
-            </p>
-          )}
-          {sensitivePeriods.reason === 'below_table' && (
-            <p className="mt-3 text-sm text-slate-600">
-              Таблица «что в каком возрасте лучше тренировать» начинается с 7 лет. Сейчас в расчётах:{' '}
-              {sensitivePeriods.ageInt ?? '—'} {sensitivePeriods.ageInt != null ? 'полных лет' : ''}.
-            </p>
-          )}
-          {sensitivePeriods.reason === 'ok' && (
-            <>
-              <p className="mt-3 text-sm text-slate-700">
-                Возраст в расчётах:{' '}
-                <span className="font-semibold text-slate-900">{sensitivePeriods.ageInt} лет</span>
-              </p>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm ring-1 ring-emerald-100">
-                  <p className="text-sm font-semibold text-emerald-950">Сейчас удобнее всего развивать:</p>
-                  {sensitivePeriods.qualities.length === 0 ? (
-                    <p className="mt-3 text-sm text-emerald-900/80">Для этого возраста в таблице нет отдельной строки.</p>
-                  ) : (
-                    <ul className="mt-3 list-none space-y-2 text-sm text-emerald-950">
-                      {sensitivePeriods.qualities.map((q) => (
-                        <li
-                          key={q}
-                          className="flex gap-2 rounded-lg border border-emerald-200/80 bg-white/70 px-3 py-2"
-                        >
-                          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                          <span>{q}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm ring-1 ring-red-100">
-                  <p className="text-sm font-semibold text-red-950">Остальные качества из таблицы (прирост обычно слабее):</p>
-                  {sensitivePeriods.lowImpactQualities.length === 0 ? (
-                    <p className="mt-3 text-sm text-red-900/80">Все строки таблицы сейчас в «зелёной» зоне.</p>
-                  ) : (
-                    <ul className="mt-3 list-none space-y-2 text-sm text-red-950">
-                      {sensitivePeriods.lowImpactQualities.map((q) => (
-                        <li
-                          key={q}
-                          className="flex gap-2 rounded-lg border border-red-200/80 bg-white/70 px-3 py-2"
-                        >
-                          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" aria-hidden />
-                          <span>{q}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-
-        <section className="rounded-xl bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Куда смотреть в первую очередь</h2>
-          <p className="mt-3 text-sm text-slate-600">
-            Баллы по разделам (от 0 до 100): сила и тело —{' '}
-            <span className="font-semibold text-blue-600">{scores.физика}</span>, выносливость и форма —{' '}
-            <span className="font-semibold text-blue-600">{scores.функционал}</span>, техника по списку —{' '}
-            <span className="font-semibold text-blue-600">{scores.техника}</span>
-          </p>
-          <p className="mt-3 text-slate-700">
-            Слабее всего сейчас (с учётом важности для этого спортсмена):{' '}
-            <span className="font-semibold text-blue-600">{SECTION_LABELS[criticalZone.section]}</span>
-          </p>
-          <p className="mt-2 text-sm text-slate-500">
-            Программа сравнивает: «сколько раздел даёт баллов» и «сколько он мог бы дать при идеале» — где разрыв
-            больше, тот раздел и подсвечивается.
-          </p>
-        </section>
-
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           {saveError && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {saveError}
@@ -1490,10 +1347,117 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             type="button"
             disabled={isSaving || !student?.id}
             onClick={handleSave}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
           >
-            {isSaving ? 'Сохранение…' : 'Сохранить всё в облако'}
+            {isSaving ? 'Сохранение…' : 'Сохранить изменения'}
           </button>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
+              Сенситивный период для{' '}
+              <span className="text-slate-800">
+                «{displayNameFromStudent(safeStudent) || safeStudent.name || 'Спортсмен'}»
+              </span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => setSensitivePeriodExpanded((prev) => !prev)}
+              aria-expanded={sensitivePeriodExpanded}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-100"
+            >
+              <span>{sensitivePeriodExpanded ? 'Скрыть' : 'Показать'}</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform duration-500 ${sensitivePeriodExpanded ? 'rotate-180' : ''}`}
+                aria-hidden
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          </div>
+          <div
+            className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
+              sensitivePeriodExpanded ? 'max-h-[8000px] opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-xs text-slate-600">
+                Ориентир по научным таблицам: в зелёном списке качества, которые в этом возрасте «лучше всего ложатся».
+                Красный список — всё остальное из таблицы: тренировать можно, но прирост обычно не такой быстрый.
+              </p>
+              {sensitivePeriods.reason === 'no_birth_year' && (
+                <p className="mt-3 text-sm text-slate-600">
+                  Укажите год рождения в разделе «Антропометрия» — тогда список сформируется автоматически.
+                </p>
+              )}
+              {sensitivePeriods.reason === 'below_table' && (
+                <p className="mt-3 text-sm text-slate-600">
+                  Таблица «что в каком возрасте лучше тренировать» начинается с 7 лет. Сейчас в расчётах:{' '}
+                  {sensitivePeriods.ageInt ?? '—'} {sensitivePeriods.ageInt != null ? 'полных лет' : ''}.
+                </p>
+              )}
+              {sensitivePeriods.reason === 'ok' && (
+                <>
+                  <p className="mt-3 text-sm text-slate-700">
+                    Возраст в расчётах:{' '}
+                    <span className="font-semibold text-slate-900">{sensitivePeriods.ageInt} лет</span>
+                  </p>
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm ring-1 ring-emerald-100">
+                      <p className="text-sm font-semibold text-emerald-950">Сейчас удобнее всего развивать:</p>
+                      {sensitivePeriods.qualities.length === 0 ? (
+                        <p className="mt-3 text-sm text-emerald-900/80">
+                          Для этого возраста в таблице нет отдельной строки.
+                        </p>
+                      ) : (
+                        <ul className="mt-3 list-none space-y-2 text-sm text-emerald-950">
+                          {sensitivePeriods.qualities.map((q) => (
+                            <li
+                              key={q}
+                              className="flex gap-2 rounded-lg border border-emerald-200/80 bg-white/70 px-3 py-2"
+                            >
+                              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                              <span>{q}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm ring-1 ring-red-100">
+                      <p className="text-sm font-semibold text-red-950">
+                        Остальные качества из таблицы (прирост обычно слабее):
+                      </p>
+                      {sensitivePeriods.lowImpactQualities.length === 0 ? (
+                        <p className="mt-3 text-sm text-red-900/80">Все строки таблицы сейчас в «зелёной» зоне.</p>
+                      ) : (
+                        <ul className="mt-3 list-none space-y-2 text-sm text-red-950">
+                          {sensitivePeriods.lowImpactQualities.map((q) => (
+                            <li
+                              key={q}
+                              className="flex gap-2 rounded-lg border border-red-200/80 bg-white/70 px-3 py-2"
+                            >
+                              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" aria-hidden />
+                              <span>{q}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </section>
       </div>
     </main>

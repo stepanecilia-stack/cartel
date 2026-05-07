@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddStudentModal from '../components/AddStudentModal'
+import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import { getCoachStudents } from '../services/firebaseService'
-import {
-  calculateBaseKSR,
-  calculateEffectiveKSR,
-  calculateKD,
-  calculateKSP,
-  findGoldStandardRow,
-  getWeights,
-} from '../utils/ksrUtils'
+import { calculateKsrAndKsp, findGoldStandardRow, getWeights } from '../utils/ksrUtils'
 import {
   coerceScores,
   displayNameFromStudent,
@@ -80,30 +74,9 @@ function HomePage({ onSelectStudent, coachId }) {
         const shaped = studentAthleteShape(raw)
         const scores = coerceScores(raw.scores)
         const weights = getWeights(shaped)
-        const ksp = calculateKSP(shaped)
-        const computedBase = calculateBaseKSR(shaped, scores, ksp)
-        const storedBase =
-          raw.baseKSR !== undefined && raw.baseKSR !== null && raw.baseKSR !== ''
-            ? Number(raw.baseKSR)
-            : NaN
-        const hasScores =
-          scores.техника > 0 || scores.физика > 0 || scores.функционал > 0
-        const cap = ksp > 0 ? ksp : 100
-        const baseKSR = hasScores
-          ? computedBase
-          : Number.isFinite(storedBase)
-            ? Math.min(Math.floor(storedBase), cap)
-            : computedBase
-        const baseRounded = Number.isFinite(baseKSR) ? baseKSR : 0
-        const storedKd = Number(raw.kd)
-        const kd =
-          Number.isFinite(storedKd) && storedKd >= 0.25
-            ? storedKd
-            : calculateKD([], raw.technicalData || {}).kd
-        const weightTypage =
-          weights.typageFromTable && weights.archetype !== weights.archetypeSmart
-            ? weights.archetype
-            : null
+        const ksrKsp = calculateKsrAndKsp(shaped, scores)
+        const kspPercent = Math.max(0, Math.min(100, Number(ksrKsp.ksp) || 0))
+        const basePercent = Math.max(0, Math.min(100, Number(ksrKsp.baseKSR) || 0))
         const birthYearLabel = formatBirthYearRu(shaped.birthYear) || 'не указан'
         const weightCategoryLine = formatDashboardWeightCategory(shaped)
         const profileForKsr = mapDashboardDistanceLabel(weights.archetypeSmart)
@@ -112,13 +85,10 @@ function HomePage({ onSelectStudent, coachId }) {
           name: displayNameFromStudent(raw),
           archetype: raw.archetype ?? weights.archetype,
           profileForKsr,
-          weightCategoryTypage: weightTypage,
           birthYearLabel,
           weightCategoryLine,
-          scores,
-          baseKSR: baseRounded,
-          kd,
-          effectiveKSR: calculateEffectiveKSR(baseRounded, kd),
+          kspPercent,
+          basePercent,
         }
       }),
     [students],
@@ -145,12 +115,6 @@ function HomePage({ onSelectStudent, coachId }) {
               <h1 className="text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
                 Дашборд учеников
               </h1>
-              <p className="mt-2 max-w-2xl text-slate-600">
-                Большая цифра на карточке — <strong>итоговый балл</strong> ученика: сначала считается базовый балл по
-                тестам и телу, затем он умножается на «насколько техника вкатана» по списку ударов. Синий бейдж — стиль
-                дистанции, рассчитанный по рукам и росту (не «хуже» или «лучше» других). Под именем — год рождения,
-                весовая категория по таблице программы и короткая подпись к категории (не диагноз человека).
-              </p>
             </div>
             <button
               type="button"
@@ -212,33 +176,18 @@ function HomePage({ onSelectStudent, coachId }) {
                 <h2 className="text-xl font-semibold text-slate-900">
                   {student.name}
                 </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-800">Год рождения:</span>{' '}
+                <p className="mt-2 text-sm text-slate-700">
                   {student.birthYearLabel}
                   <span className="mx-2 text-slate-300" aria-hidden>
                     ·
                   </span>
-                  <span className="font-medium text-slate-800">Весовая категория (по таблице программы):</span>{' '}
                   {student.weightCategoryLine}
                 </p>
-                {student.weightCategoryTypage && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    Подпись к этой категории в таблице (не про личность): {student.weightCategoryTypage}
-                  </p>
-                )}
-                <p className="mt-2 text-sm text-slate-600">Итоговый балл (для сравнения с другими)</p>
-
-                <div className="mt-3 flex items-end gap-2">
-                  <span className="text-4xl font-bold tracking-tight text-slate-900">
-                    {Number(student.effectiveKSR ?? 0).toFixed(1)}
-                  </span>
-                  <span
-                    className="pb-1 text-xs font-medium text-slate-500"
-                    title="Множитель техники: чем выше — тем лучше отработаны удары по списку"
-                  >
-                    × техника {Number(student.kd ?? 0.25).toFixed(2)}
-                  </span>
-                </div>
+                <BiometricPotentialBar
+                  className="mt-4"
+                  kspPercent={student.kspPercent}
+                  basePercent={student.basePercent}
+                />
               </button>
             )
           })}
