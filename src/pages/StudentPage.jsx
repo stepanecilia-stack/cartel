@@ -11,6 +11,7 @@ import {
   loadLegacyNorms,
   loadLegacyTechnicalAtoms,
   normalizeTechnicalDominanceKey,
+  shortTypageLabel,
 } from '../utils/ksrUtils'
 import {
   anthropometryFieldToInputString,
@@ -139,10 +140,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
-  const [shareError, setShareError] = useState('')
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
-  const [shareHint, setShareHint] = useState('')
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -182,8 +181,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setPhysicalResults(emptyTestsRecord(tests.physical))
     setFunctionalResults(emptyTestsRecord(tests.functional))
     setTechnicalData(emptyTechnicalRecord(student.technicalData))
-    setShareUrl('')
     setShareFlash(false)
+    setShareUrl('')
   }, [student])
 
   useEffect(() => {
@@ -317,6 +316,18 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [baseKSR, kdBundle.kd],
   )
   const apeIndex = Number(anthropometry.reach || 0) - Number(anthropometry.height || 0)
+  const standardRow = ksrKsp?.kspDetail?.row ?? null
+  const standardWeightCategory = useMemo(() => {
+    if (!standardRow) return '—'
+    const wMin = Number(standardRow.weightMin)
+    const wMax = Number(standardRow.weightMax)
+    if (!Number.isFinite(wMin) || !Number.isFinite(wMax)) return '—'
+    if (standardRow.openTop) return `${wMin}+`
+    if (wMin === wMax) return String(wMin)
+    return `${wMin}-${wMax}`
+  }, [standardRow])
+  const standardAgeGroup = standardRow?.ageGroup ?? '—'
+  const standardArchetype = shortTypageLabel(standardRow?.label) || '—'
   const referenceHeight = Number(ksrKsp?.kspDetail?.referenceHeight ?? 0)
   const referenceReach = Number(ksrKsp?.kspDetail?.referenceReach ?? referenceHeight ?? 0)
   const athleteHeight = Number(anthropometry.height || 0)
@@ -402,9 +413,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const handleShareProgress = async () => {
     if (!student?.id) return
-    setShareError('')
-    setShareHint('')
-    setShareUrl('')
     setShareBusy(true)
     try {
       let token = typeof student.progressShareToken === 'string' ? student.progressShareToken : ''
@@ -430,42 +438,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       })
       const url = `${window.location.origin}/share/${token}`
       setShareUrl(url)
-      let copied = false
-      try {
-        await navigator.clipboard.writeText(url)
-        copied = true
-      } catch {
-        try {
-          const ta = document.createElement('textarea')
-          ta.value = url
-          ta.style.position = 'fixed'
-          ta.style.left = '-9999px'
-          document.body.appendChild(ta)
-          ta.select()
-          ta.setSelectionRange(0, ta.value.length)
-          copied = document.execCommand('copy')
-          document.body.removeChild(ta)
-        } catch {
-          copied = false
-        }
-      }
-      if (copied) {
-        setShareFlash(true)
-        window.setTimeout(() => setShareFlash(false), 3200)
-      } else {
-        setShareHint('На этом устройстве автокопирование ограничено. Нажмите «Копировать ссылку» ниже.')
-      }
     } catch (e) {
       console.error(e)
-      if (e?.code === 'permission-denied' || e?.code === 'unauthenticated') {
-        setShareError(
-          'Не удалось записать ссылку в базу. На мобильном часто причина — не выполнен вход тренера в этом браузере. Войдите в аккаунт и попробуйте снова.',
-        )
-      } else {
-        setShareError(
-          'Не удалось создать ссылку или записать её в базу. Проверьте интернет и вход в аккаунт тренера.',
-        )
-      }
+      window.alert('Не удалось создать ссылку. Проверьте интернет и вход тренера в этом браузере.')
     } finally {
       setShareBusy(false)
     }
@@ -494,11 +469,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
     if (!copied) {
       window.prompt('Скопируйте ссылку вручную:', shareUrl)
-      setShareHint('Открылось окно ручного копирования — выделите и скопируйте ссылку.')
       return
     }
     setShareFlash(true)
-    setShareHint('')
     window.setTimeout(() => setShareFlash(false), 2200)
   }
 
@@ -888,6 +861,24 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                   </svg>
                 </button>
+                <button
+                  type="button"
+                  disabled={shareBusy || !student?.id}
+                  onClick={handleShareProgress}
+                  title="Поделиться прогрессом"
+                  aria-label="Поделиться прогрессом"
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-md border bg-white hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 ${
+                    shareFlash
+                      ? 'border-emerald-300 text-emerald-700'
+                      : 'border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+                    <path d="M12 16V4" />
+                    <path d="m7 9 5-5 5 5" />
+                  </svg>
+                </button>
                 {copyIdFlash && (
                   <span className="text-xs font-medium text-emerald-700">Скопировано</span>
                 )}
@@ -899,52 +890,22 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               {shortIdAssignError}
             </p>
           )}
+          {shareUrl && (
+            <button
+              type="button"
+              onClick={copyShareUrl}
+              title="Нажмите, чтобы скопировать ссылку"
+              aria-label="Скопировать ссылку прогресса"
+              className={`mt-3 w-full rounded-lg border px-3 py-2 text-left text-xs break-all transition ${
+                shareFlash
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {shareUrl}
+            </button>
+          )}
 
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-            <h3 className="text-sm font-semibold text-slate-900">Ссылка для родителей и спортсмена</h3>
-            <p className="mt-1 text-xs text-slate-600">
-              На публичной странице нет внутренних баллов тренера — только прогресс по тестам и технике.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={shareBusy || !student?.id}
-                onClick={handleShareProgress}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {shareBusy ? 'Готовим ссылку…' : 'Поделиться прогрессом'}
-              </button>
-              {shareFlash && (
-                <span className="text-xs font-medium text-emerald-700">Ссылка скопирована в буфер обмена</span>
-              )}
-            </div>
-            {shareError && (
-              <p className="mt-2 text-xs font-medium text-red-700">{shareError}</p>
-            )}
-            {shareHint && (
-              <p className="mt-2 text-xs font-medium text-amber-700">{shareHint}</p>
-            )}
-            {shareUrl && (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-                <p className="text-xs font-medium text-slate-600">Ссылка готова:</p>
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                  <input
-                    readOnly
-                    value={shareUrl}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                  />
-                  <button
-                    type="button"
-                    onClick={copyShareUrl}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    Копировать ссылку
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-slate-500">Отправьте её родителям или спортсмену.</p>
-              </div>
-            )}
-          </div>
           <p className="mt-2 text-slate-600">
             Рекомендуемая дистанция боя:{' '}
             <span className="font-semibold text-blue-600">{tacticDistanceDisplay}</span>
@@ -976,10 +937,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
                   <p className="mt-1 text-xs text-slate-700">
-                    Весовая: <span className="font-semibold text-slate-900">{weights.lookupWeight ?? '—'} кг</span>
+                    Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
                   </p>
                   <p className="text-xs text-slate-700">
-                    Возрастная: <span className="font-semibold text-slate-900">{weights.weightFirstAgeGroup ?? '—'}</span>
+                    Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
+                  </p>
+                  <p className="text-xs text-slate-700">
+                    Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
@@ -989,9 +953,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   </p>
                   <p className="text-xs text-slate-700">
                     Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
-                  </p>
-                  <p className="text-xs text-slate-700">
-                    Архетип эталона: <span className="font-semibold text-slate-900">{weights.archetype || '—'}</span>
                   </p>
                 </div>
                 <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
