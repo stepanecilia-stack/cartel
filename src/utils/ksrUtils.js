@@ -235,19 +235,23 @@ export const getWeights = (studentData = {}) => {
   const height = Number(studentData.height ?? 0)
   const reach = Number(studentData.reach ?? 0)
   const apeIndex = reach - height
+  const isFemale = studentData.gender === 'F' || studentData.gender === 'Ж'
 
   const wf = resolveWeightFirstHeightDiff(studentData)
 
   if (wf.tacticMode === 'infighter') {
     const label = 'Инфайтер (Дефицит роста)'
+    const T = isFemale ? 0.35 : 0.3
+    const F = 0.3
+    const P = isFemale ? 0.35 : 0.4
     return {
       archetype: label,
       archetypeSmart: label,
       archetypeFull: null,
       typageFromTable: false,
-      T: 0.2,
-      F: 0.3,
-      P: 0.5,
+      T,
+      F,
+      P,
       apeIndex,
       tacticAdvice:
         'Критический дефицит роста. Рекомендована работа через агрессивное давление.',
@@ -257,14 +261,17 @@ export const getWeights = (studentData = {}) => {
 
   if (wf.tacticMode === 'outfighter') {
     const label = 'Аутфайтер (Преимущество роста)'
+    const T = 0.6
+    const F = isFemale ? 0.3 : 0.25
+    const P = isFemale ? 0.1 : 0.15
     return {
       archetype: label,
       archetypeSmart: label,
       archetypeFull: null,
       typageFromTable: false,
-      T: 0.6,
-      F: 0.25,
-      P: 0.15,
+      T,
+      F,
+      P,
       apeIndex,
       tacticAdvice:
         'Максимальное преимущество в росте. Рекомендована работа на дальней дистанции.',
@@ -273,19 +280,19 @@ export const getWeights = (studentData = {}) => {
   }
 
   let archetypeSmart = 'Универсал'
-  let T = 0.4
+  let T = isFemale ? 0.45 : 0.4
   let F = 0.3
-  let P = 0.3
+  let P = isFemale ? 0.25 : 0.3
   if (apeIndex > 3) {
     archetypeSmart = 'Линейный'
-    T = 0.5
+    T = isFemale ? 0.55 : 0.5
     F = 0.3
-    P = 0.2
+    P = isFemale ? 0.15 : 0.2
   } else if (apeIndex < 0) {
     archetypeSmart = 'Силовой'
-    T = 0.25
+    T = isFemale ? 0.35 : 0.3
     F = 0.3
-    P = 0.45
+    P = isFemale ? 0.35 : 0.4
   }
 
   const table = findGoldStandardRow(studentData)
