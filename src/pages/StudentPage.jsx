@@ -142,6 +142,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareError, setShareError] = useState('')
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
+  const [shareHint, setShareHint] = useState('')
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -402,6 +403,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const handleShareProgress = async () => {
     if (!student?.id) return
     setShareError('')
+    setShareHint('')
     setShareUrl('')
     setShareBusy(true)
     try {
@@ -428,25 +430,36 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       })
       const url = `${window.location.origin}/share/${token}`
       setShareUrl(url)
+      let copied = false
       try {
         await navigator.clipboard.writeText(url)
+        copied = true
       } catch {
-        const ta = document.createElement('textarea')
-        ta.value = url
-        ta.style.position = 'fixed'
-        ta.style.left = '-9999px'
-        document.body.appendChild(ta)
-        ta.select()
-        document.execCommand('copy')
-        document.body.removeChild(ta)
+        try {
+          const ta = document.createElement('textarea')
+          ta.value = url
+          ta.style.position = 'fixed'
+          ta.style.left = '-9999px'
+          document.body.appendChild(ta)
+          ta.select()
+          ta.setSelectionRange(0, ta.value.length)
+          copied = document.execCommand('copy')
+          document.body.removeChild(ta)
+        } catch {
+          copied = false
+        }
       }
-      setShareFlash(true)
-      window.setTimeout(() => setShareFlash(false), 3200)
+      if (copied) {
+        setShareFlash(true)
+        window.setTimeout(() => setShareFlash(false), 3200)
+      } else {
+        setShareHint('На этом устройстве автокопирование ограничено. Нажмите «Копировать ссылку» ниже.')
+      }
     } catch (e) {
       console.error(e)
-      if (e?.code === 'permission-denied') {
+      if (e?.code === 'permission-denied' || e?.code === 'unauthenticated') {
         setShareError(
-          'База отклонила запись: в консоли Firebase откройте Firestore → Rules и опубликуйте правила из файла firestore.rules проекта (нужны правила для коллекции public_student_shares и обновление карточки ученика).',
+          'Не удалось записать ссылку в базу. На мобильном часто причина — не выполнен вход тренера в этом браузере. Войдите в аккаунт и попробуйте снова.',
         )
       } else {
         setShareError(
@@ -460,19 +473,32 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const copyShareUrl = async () => {
     if (!shareUrl) return
+    let copied = false
     try {
       await navigator.clipboard.writeText(shareUrl)
+      copied = true
     } catch {
-      const ta = document.createElement('textarea')
-      ta.value = shareUrl
-      ta.style.position = 'fixed'
-      ta.style.left = '-9999px'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = shareUrl
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        document.body.appendChild(ta)
+        ta.select()
+        ta.setSelectionRange(0, ta.value.length)
+        copied = document.execCommand('copy')
+        document.body.removeChild(ta)
+      } catch {
+        copied = false
+      }
+    }
+    if (!copied) {
+      window.prompt('Скопируйте ссылку вручную:', shareUrl)
+      setShareHint('Открылось окно ручного копирования — выделите и скопируйте ссылку.')
+      return
     }
     setShareFlash(true)
+    setShareHint('')
     window.setTimeout(() => setShareFlash(false), 2200)
   }
 
@@ -894,6 +920,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             </div>
             {shareError && (
               <p className="mt-2 text-xs font-medium text-red-700">{shareError}</p>
+            )}
+            {shareHint && (
+              <p className="mt-2 text-xs font-medium text-amber-700">{shareHint}</p>
             )}
             {shareUrl && (
               <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
