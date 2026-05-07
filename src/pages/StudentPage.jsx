@@ -46,6 +46,13 @@ const TAB_ITEMS = [
   { id: 'technical', label: 'Техника' },
 ]
 
+const TAB_PROGRESS_LABELS = {
+  anthropometry: 'Антропометрия',
+  physical: 'Физика',
+  functional: 'Функционал',
+  technical: 'Техника',
+}
+
 const TAB_ICONS = {
   anthropometry: (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -489,20 +496,58 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     ].filter((v) => String(v ?? '').trim() !== '').length
     const anthropometryPercent = Math.round((anthropometryFilled / 6) * 100)
 
+    const normPercent = (norm, row) => {
+      const result = Number(row?.result)
+      if (!Number.isFinite(result)) return 0
+      const evaluated = evaluateLegacyTest(result, norm)
+      if (evaluated.status === 'gold') return 100
+      if (evaluated.status === 'silver') return 66
+      if (evaluated.status === 'bronze') return 33
+      // Ниже нормы: интерполируем внутри диапазона 10-20%
+      return Math.round(10 + (Math.max(0, Math.min(60, evaluated.normalizedScore)) / 60) * 10)
+    }
+
     const physicalTotal = physicalNorms.length
-    const physicalFilled = physicalNorms.filter((norm) => physicalResults[norm.testId]?.result != null).length
-    const physicalPercent = physicalTotal > 0 ? Math.round((physicalFilled / physicalTotal) * 100) : 0
+    const physicalPercent =
+      physicalTotal > 0
+        ? Math.round(
+            physicalNorms.reduce((acc, norm) => acc + normPercent(norm, physicalResults[norm.testId]), 0) /
+              physicalTotal,
+          )
+        : 0
 
     const functionalTotal = functionalNorms.length
-    const functionalFilled = functionalNorms.filter((norm) => functionalResults[norm.testId]?.result != null).length
-    const functionalPercent = functionalTotal > 0 ? Math.round((functionalFilled / functionalTotal) * 100) : 0
+    const functionalPercent =
+      functionalTotal > 0
+        ? Math.round(
+            functionalNorms.reduce((acc, norm) => acc + normPercent(norm, functionalResults[norm.testId]), 0) /
+              functionalTotal,
+          )
+        : 0
+
+    const technicalLevelToPercent = (level) => {
+      const key = normalizeTechnicalDominanceKey(level)
+      if (key === 'KNOWLEDGE') return 30
+      if (key === 'MOTOR_SKILL_LEVEL_1') return 45
+      if (key === 'MOTOR_SKILL_LEVEL_2') return 70
+      if (key === 'AUTOMATED') return 100
+      return 0
+    }
 
     const technicalTotal = technicalAtoms.length
-    const technicalFilled = technicalAtoms.filter((atom) => {
-      const level = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
-      return level && level !== 'not_learned'
-    }).length
-    const technicalPercent = technicalTotal > 0 ? Math.round((technicalFilled / technicalTotal) * 100) : 0
+    const technicalPercent =
+      technicalTotal > 0
+        ? Math.round(
+            technicalAtoms.reduce((acc, atom) => acc + technicalLevelToPercent(technicalData[atom.id]?.level), 0) /
+              technicalTotal,
+          )
+        : (() => {
+            const entries = Object.values(technicalData || {})
+            if (!entries.length) return 0
+            return Math.round(
+              entries.reduce((acc, item) => acc + technicalLevelToPercent(item?.level), 0) / entries.length,
+            )
+          })()
 
     return {
       anthropometry: Math.max(0, Math.min(100, anthropometryPercent)),
@@ -511,6 +556,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       technical: Math.max(0, Math.min(100, technicalPercent)),
     }
   }, [anthropometry, functionalNorms, functionalResults, physicalNorms, physicalResults, technicalAtoms, technicalData])
+
+  const progressColorClass = (value) => {
+    if (value <= 30) return 'bg-red-500'
+    if (value <= 70) return 'bg-amber-400'
+    return 'bg-emerald-500'
+  }
 
   const updateNormResult = (category, norm, rawValue) => {
     const set =
@@ -990,10 +1041,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 >
                   {tab.label}
                 </span>
-                <span className="mt-3 block text-xs text-[#A8A8A8]">Заполнено: {tabProgress[tab.id] ?? 0}%</span>
+                <span className="mt-3 block text-xs text-[#A8A8A8]">
+                  {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
+                </span>
                 <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
                   <span
-                    className="block h-full rounded-full bg-[#E8E8E8] transition-all duration-300"
+                    className={`block h-full transition-all duration-300 ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
                     style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
                   />
                 </span>
