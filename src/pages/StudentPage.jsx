@@ -142,6 +142,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareFlash, setShareFlash] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
+  const [standardInfoOpen, setStandardInfoOpen] = useState(false)
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -183,6 +184,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setTechnicalData(emptyTechnicalRecord(student.technicalData))
     setShareFlash(false)
     setShareUrl('')
+    setStandardInfoOpen(false)
   }, [student])
 
   useEffect(() => {
@@ -905,13 +907,19 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     <span className="group relative inline-flex">
                       <button
                         type="button"
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-300 bg-blue-500/20 text-[12px] font-bold leading-none text-blue-100 hover:bg-blue-500/30"
+                        onClick={() => setStandardInfoOpen((prev) => !prev)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-blue-300 bg-blue-500/20 text-sm font-bold leading-none text-blue-100 hover:bg-blue-500/30"
                         aria-label="Информация об исторической модели эталона"
+                        aria-expanded={standardInfoOpen}
                         title="В этой весовой и возрастной категории спортсмены именно с такой антропометрией чаще всего становились победителями в соревнованиях высокой квалификации (усредн.)"
                       >
                         i
                       </button>
-                      <span className="pointer-events-none absolute left-1/2 top-[130%] z-20 hidden w-[290px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-lg group-hover:block">
+                      <span
+                        className={`absolute left-1/2 top-[130%] z-20 w-[290px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ${
+                          standardInfoOpen ? 'block' : 'hidden group-hover:block'
+                        }`}
+                      >
                         В этой весовой и возрастной категории спортсмены именно с такой антропометрией чаще всего становились победителями в соревнованиях высокой квалификации (усредн.)
                       </span>
                     </span>
@@ -1109,20 +1117,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
           <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 px-5 py-5">
             <h3 className="text-sm font-semibold text-slate-900">
-              Насколько «вкатана» техника по списку ударов:{' '}
+              Коэффициент прочности навыков:{' '}
               <span className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                 {kdBundle.kd.toFixed(3)}
               </span>
-              <span className="ml-1 text-xs font-normal text-slate-500">(от 0,25 до 1, чем ближе к 1 — тем лучше)</span>
             </h3>
-            <p className="mt-2 text-sm text-slate-700">
-              Учтено элементов в программе: {kdBundle.atomCount}. Доля элементов на высшем уровне «автоматизм»:{' '}
-              {kdBundle.automationPercent}%.
-            </p>
-            <p className="mt-2 text-xs text-slate-600">
-              Итоговый балл на главной = базовый балл × этот множитель. Если техника на автомате, общая цифра не
-              просядет даже при посредственных силовых тестах.
-            </p>
             <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-200 pt-4">
               <div>
                 <p className="text-xs font-medium text-slate-600">Итоговый балл (то, что видно на главной)</p>
