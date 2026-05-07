@@ -16,13 +16,13 @@ import {
 function Navbar({ user, coachProfile }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
-        <Link to={user ? '/' : '/welcome'} className="text-lg font-bold text-slate-900">
+      <div className="mx-auto flex min-h-[72px] max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:h-[72px] sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
+        <Link to={user ? '/' : '/welcome'} className="shrink-0 text-base font-bold text-slate-900 sm:text-lg">
           Cartel Boxing
         </Link>
         {user ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-600">
+          <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-2 sm:max-w-none sm:flex-none sm:gap-3">
+            <span className="min-w-0 truncate text-right text-xs text-slate-600 sm:text-sm">
               {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
             </span>
             <button
