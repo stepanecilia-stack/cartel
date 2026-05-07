@@ -323,6 +323,28 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [baseKSR, kdBundle.kd],
   )
   const apeIndex = Number(anthropometry.reach || 0) - Number(anthropometry.height || 0)
+  const referenceHeight = Number(ksrKsp?.kspDetail?.referenceHeight ?? 0)
+  const referenceReach = Number(ksrKsp?.kspDetail?.referenceReach ?? referenceHeight ?? 0)
+  const athleteHeight = Number(anthropometry.height || 0)
+  const athleteReach = Number(anthropometry.reach || 0)
+  const duelRows = [
+    {
+      key: 'height',
+      label: 'Рост',
+      athleteValue: athleteHeight,
+      referenceValue: referenceHeight,
+      delta: athleteHeight - referenceHeight,
+      unit: 'см',
+    },
+    {
+      key: 'reach',
+      label: 'Размах',
+      athleteValue: athleteReach,
+      referenceValue: referenceReach,
+      delta: athleteReach - referenceReach,
+      unit: 'см',
+    },
+  ]
   const basePercent = Math.max(0, Math.min(100, Number(baseKSR) || 0))
   const kspPercent = Math.max(0, Math.min(100, Number(ksrKsp.ksp) || 0))
   const realizedInsidePotentialPercent =
@@ -488,6 +510,26 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     },
     { section: 'техника', gap: -1 },
   )
+  const influenceItems = [
+    {
+      key: 'tech',
+      label: 'Техника',
+      value: Math.round(weights.T * 100),
+    },
+    {
+      key: 'physical',
+      label: 'Физическое развитие',
+      value: Math.round(weights.P * 100),
+    },
+    {
+      key: 'functional',
+      label: 'Функциональная готовность',
+      value: Math.round(weights.F * 100),
+    },
+  ]
+  const maxInfluenceValue = Math.max(...influenceItems.map((item) => item.value))
+  const smartStyleDisplay =
+    weights.archetypeSmart === 'Силовой' ? 'Ближняя / средняя' : weights.archetypeSmart
 
   const tabProgress = useMemo(() => {
     const anthropometryFilled = [
@@ -844,34 +886,126 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </div>
           {(weights.tacticMode === 'infighter' || weights.tacticMode === 'outfighter') && (
             <p className="mt-2 text-slate-600">
-              Тактический профиль:{' '}
+              Рекомендуемая дистанция боя:{' '}
               <span className="font-semibold text-blue-600">{weights.archetype}</span>
             </p>
           )}
           {weights.tacticMode === 'standard' && weights.typageFromTable && (
             <div className="mt-2 space-y-1 text-slate-600">
               <p>
-                <span className="text-slate-500">Какой «тип телосложения» у этой весовой категории по таблице (не про самого человека):</span>{' '}
+                <span className="text-slate-500">
+                  Антропометрическая рамка (не меняется тренировками): эталонный типаж в этой весовой категории
+                </span>{' '}
                 <span className="font-semibold text-slate-800">{weights.archetype}</span>
                 <span className="ml-1 text-xs text-slate-500">
                   — образ для веса, не личный диагноз спортсмена
                 </span>
               </p>
               <p>
-                <span className="text-slate-500">
-                  Какой стиль боя считает программа по размаху рук и росту (чем длиннее руки относительно роста — тем
-                  больше упор на дистанцию):
-                </span>{' '}
-                <span className="font-semibold text-blue-600">{weights.archetypeSmart}</span>
+                <span className="text-slate-500">Рекомендуемая дистанция боя:</span>{' '}
+                <span className="font-semibold text-blue-600">{smartStyleDisplay}</span>
               </p>
             </div>
           )}
           {weights.tacticMode === 'standard' && !weights.typageFromTable && (
             <p className="mt-2 text-slate-600">
-              Стиль боя по размаху и росту:{' '}
-              <span className="font-semibold text-blue-600">{weights.archetypeSmart}</span>
+              Рекомендуемая дистанция боя:{' '}
+              <span className="font-semibold text-blue-600">{smartStyleDisplay}</span>
             </p>
           )}
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between bg-slate-900 px-4 py-3 text-white">
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-500 bg-slate-800"
+                  aria-hidden
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-300">Role</p>
+                  <p className="text-sm font-semibold">Историческая модель эталона (главный ориентир)</p>
+                </div>
+              </div>
+              <span className="rounded-full border border-red-300/60 bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-red-200">
+                MAIN RIVAL
+              </span>
+            </div>
+            <div className="bg-white px-4 py-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
+                  <p className="mt-1 text-xs text-slate-700">
+                    Весовая: <span className="font-semibold text-slate-900">{weights.lookupWeight ?? '—'} кг</span>
+                  </p>
+                  <p className="text-xs text-slate-700">
+                    Возрастная: <span className="font-semibold text-slate-900">{weights.weightFirstAgeGroup ?? '—'}</span>
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Эталонные параметры</p>
+                  <p className="mt-1 text-xs text-slate-700">
+                    Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
+                  </p>
+                  <p className="text-xs text-slate-700">
+                    Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
+                  </p>
+                </div>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Рекомендация для спортсмена</p>
+                  <p className="mt-1 text-sm font-semibold text-blue-700">{smartStyleDisplay || '—'}</p>
+                  <p className="text-[11px] text-slate-600">Эффективная дистанция боя</p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
+                <div className="mt-2 grid grid-cols-[1fr_auto_1fr] overflow-hidden rounded-md border border-slate-200 text-[10px] uppercase tracking-wide">
+                  <div className="bg-blue-100 px-3 py-1 font-semibold text-blue-900">
+                    {safeStudent.name || 'Спортсмен'}
+                  </div>
+                  <div className="bg-slate-800 px-2 py-1 font-semibold text-white">VS</div>
+                  <div className="bg-red-100 px-3 py-1 text-right font-semibold text-red-900">Эталон</div>
+                </div>
+                <div className="mt-2 space-y-2">
+                  {duelRows.map((row) => {
+                    const tone =
+                      !Number.isFinite(row.delta) || row.delta === 0
+                        ? 'text-slate-700'
+                        : row.delta > 0
+                          ? 'text-emerald-700'
+                          : 'text-red-700'
+                    return (
+                      <div key={row.key} className="grid grid-cols-[1fr_auto_1fr] items-stretch overflow-hidden rounded-md border border-slate-200 text-xs">
+                        <div className="bg-blue-50 px-3 py-2 text-blue-900">
+                          <p className="font-medium text-slate-700">{row.label}</p>
+                          <p className="mt-0.5 font-semibold">
+                            {Number.isFinite(row.athleteValue) && row.athleteValue > 0 ? row.athleteValue : '—'} {row.unit}
+                          </p>
+                        </div>
+                        <div className="flex min-w-[74px] flex-col items-center justify-center bg-slate-900 px-2 text-white">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-300">delta</span>
+                          <span className={`font-semibold ${tone}`}>
+                            {Number.isFinite(row.delta) ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)} ${row.unit}` : '—'}
+                          </span>
+                        </div>
+                        <div className="bg-red-50 px-3 py-2 text-right text-red-900">
+                          <p className="font-medium text-slate-700">{row.label}</p>
+                          <p className="mt-0.5 font-semibold">
+                            {Number.isFinite(row.referenceValue) && row.referenceValue > 0 ? row.referenceValue : '—'} {row.unit}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
           {weights.tacticMode === 'infighter' && weights.tacticAdvice && (
             <div
               className="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900"
@@ -902,50 +1036,27 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </p>
 
           <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 px-5 py-4">
-            <h3 className="text-sm font-semibold text-slate-900">Что важнее развивать по данным тела</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-700">
-              {weights.tacticMode === 'infighter' && (
-                <>
-                  Из-за разницы в росте техника дистанционного боя имеет низкую эффективность.{' '}
-                  <strong>Фокус на физическую мощь</strong> — физика 50%, функционал 30%, техника 20%
-                  (инфайт, плотный блок).
-                </>
-              )}
-              {weights.tacticMode === 'outfighter' && (
-                <>
-                  Удерживайте дистанцию и линейные удары: <strong>техника 60%</strong>, функционал 25%,
-                  физика 15% — запрет на лишнее сближение.
-                </>
-              )}
-              {weights.tacticMode === 'standard' && weights.archetypeSmart === 'Линейный' && (
-                <>
-                  Ваш главный рычаг — <strong>техника</strong> (она даёт <strong>половину</strong> общего балла).
-                  Функционал — 30%, сила тела — 20%. Если «потолок по телу» не меняется, то поднять{' '}
-                  <strong>общий балл</strong> проще всего за счёт техники — она тянет оценку сильнее, чем сила.
-                </>
-              )}
-              {weights.tacticMode === 'standard' && weights.archetypeSmart === 'Силовой' && (
-                <>
-                  Ваш главный рычаг — <strong>физическая мощь</strong> (влияние на результат{' '}
-                  <strong>45%</strong>). Функционал — 30%, техника — 25%.
-                </>
-              )}
-              {weights.tacticMode === 'standard' && weights.archetypeSmart === 'Универсал' && (
-                <>
-                  Универсальный профиль: <strong>Техника 40%</strong>, физика 30%, функционал 30% — равномерное
-                  развитие всех разделов.
-                </>
-              )}
-              {weights.tacticMode === 'none' && (
-                <span className="text-slate-500">
-                  Укажите вес, рост и год рождения — тогда появится оценка соответствия категории и приоритеты.
-                </span>
-              )}
-            </p>
-            <p className="mt-2 text-xs text-slate-600">
-              Доли в общей оценке: техника — {Math.round(weights.T * 100)}%, сила тела —{' '}
-              {Math.round(weights.P * 100)}%, выносливость и форма — {Math.round(weights.F * 100)}% (в сумме 100%).
-            </p>
+            <h3 className="text-sm font-semibold text-slate-900">Степень влияния</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {influenceItems.map((item) => (
+                <div
+                  key={item.key}
+                  className={`rounded-lg border px-3 py-3 ${
+                    item.value === maxInfluenceValue && maxInfluenceValue > 0
+                      ? 'border-emerald-300 bg-emerald-50'
+                      : 'border-slate-200 bg-white'
+                  }`}
+                >
+                  <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                    <span>{item.label}</span>
+                    <span className="font-semibold text-slate-900">{item.value}%</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-full rounded-full bg-slate-700" style={{ width: `${item.value}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
