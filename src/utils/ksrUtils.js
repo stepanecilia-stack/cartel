@@ -402,6 +402,36 @@ export const getAgeGroup = (birthYear) => {
   return ageToStandardsGroup(age)
 }
 
+const parseLegacyNormThreshold = (raw, unit = '') => {
+  const source = String(raw ?? '').trim()
+  if (!source) return NaN
+
+  const minuteSecondMatch = source.match(/^(\d+)\s*:\s*([0-5]?\d)$/)
+  if (minuteSecondMatch) {
+    const minutes = Number(minuteSecondMatch[1])
+    const seconds = Number(minuteSecondMatch[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return NaN
+    return minutes + seconds / 60
+  }
+
+  // CSV often contains comma decimals (e.g. 8,5)
+  const normalized = source.replace(',', '.')
+  const asNumber = Number(normalized)
+  if (Number.isFinite(asNumber)) return asNumber
+
+  // Fallback for time-like unit values with dot separator in source.
+  if (String(unit).toLowerCase().includes('мин')) {
+    const dotTime = source.match(/^(\d+)\.(\d{1,2})$/)
+    if (dotTime) {
+      const minutes = Number(dotTime[1])
+      const seconds = Number(dotTime[2])
+      if (Number.isFinite(minutes) && Number.isFinite(seconds)) return minutes + seconds / 60
+    }
+  }
+
+  return NaN
+}
+
 export const loadLegacyNorms = async () => {
   const response = await fetch(NORMS_SHEET_URL)
   const rows = parseCsv(await response.text()).slice(1)
@@ -414,10 +444,10 @@ export const loadLegacyNorms = async () => {
       description: row[3],
       ageGroup: row[4],
       gender: row[5],
-      gold: Number(row[6]),
-      silver: Number(row[7]),
-      bronze: Number(row[8]),
       unit: row[9],
+      gold: parseLegacyNormThreshold(row[6], row[9]),
+      silver: parseLegacyNormThreshold(row[7], row[9]),
+      bronze: parseLegacyNormThreshold(row[8], row[9]),
       measureType: row[10],
     }))
 }

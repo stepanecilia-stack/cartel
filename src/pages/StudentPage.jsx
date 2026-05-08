@@ -84,6 +84,66 @@ function emptyTestsRecord(raw) {
   return out
 }
 
+function normalizeLegacyTestId(id) {
+  return String(id ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getNormValueByTestId(values, testId) {
+  if (!values || typeof values !== 'object') return undefined
+  if (values[testId]) return values[testId]
+  const normalizedTarget = normalizeLegacyTestId(testId)
+  if (!normalizedTarget) return undefined
+  for (const [key, value] of Object.entries(values)) {
+    if (normalizeLegacyTestId(key) === normalizedTarget) return value
+  }
+  return undefined
+}
+
+function removeNormValueByTestId(values, testId) {
+  const normalizedTarget = normalizeLegacyTestId(testId)
+  if (!normalizedTarget) return { ...values }
+  const next = { ...values }
+  for (const key of Object.keys(next)) {
+    if (normalizeLegacyTestId(key) === normalizedTarget) {
+      delete next[key]
+    }
+  }
+  return next
+}
+
+function isMinuteSecondNorm(norm) {
+  const unit = String(norm?.unit ?? '').toLowerCase()
+  return unit.includes('мин') || unit.includes('mm:ss') || unit.includes('м:с')
+}
+
+function parseMinuteSecondToMinutes(rawValue) {
+  const normalized = String(rawValue ?? '').trim()
+  const match = normalized.match(/^(\d+)\s*:\s*([0-5]?\d)$/)
+  if (!match) return null
+  const minutes = Number(match[1])
+  const seconds = Number(match[2])
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null
+  return {
+    value: minutes + seconds / 60,
+    display: `${minutes}:${String(seconds).padStart(2, '0')}`,
+  }
+}
+
+function formatMinutesToMinuteSecond(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return ''
+  let minutes = Math.floor(num)
+  let seconds = Math.round((num - minutes) * 60)
+  if (seconds === 60) {
+    minutes += 1
+    seconds = 0
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function emptyTechnicalRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -567,7 +627,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     const physicalPercent =
       physicalTotal > 0
         ? Math.round(
-            physicalNorms.reduce((acc, norm) => acc + normPercent(norm, physicalResults[norm.testId]), 0) /
+            physicalNorms.reduce((acc, norm) => acc + normPercent(norm, getNormValueByTestId(physicalResults, norm.testId)), 0) /
               physicalTotal,
           )
         : 0
@@ -576,7 +636,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     const functionalPercent =
       functionalTotal > 0
         ? Math.round(
-            functionalNorms.reduce((acc, norm) => acc + normPercent(norm, functionalResults[norm.testId]), 0) /
+            functionalNorms.reduce((acc, norm) => acc + normPercent(norm, getNormValueByTestId(functionalResults, norm.testId)), 0) /
               functionalTotal,
           )
         : 0
@@ -624,20 +684,22 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       category === 'physical' ? setPhysicalResults : setFunctionalResults
     if (rawValue === '' || rawValue === null || rawValue === undefined) {
       set((prev) => {
-        const next = { ...prev }
-        delete next[norm.testId]
-        return next
+        return removeNormValueByTestId(prev, norm.testId)
       })
       return
     }
-    const result = Number(rawValue)
+    const trimmed = String(rawValue ?? '').trim()
+    const minuteSecond = parseMinuteSecondToMinutes(trimmed)
+    const numericRaw = trimmed.replace(',', '.')
+    const result = minuteSecond ? minuteSecond.value : Number(numericRaw)
     if (!Number.isFinite(result)) return
     const evaluated = evaluateLegacyTest(result, norm)
     set((prev) => ({
-      ...prev,
+      ...removeNormValueByTestId(prev, norm.testId),
       [norm.testId]: {
         ...evaluated,
         result,
+        resultRaw: minuteSecond?.display,
         date: new Date().toISOString().slice(0, 10),
       },
     }))
@@ -760,22 +822,36 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       )
     }
     return norms.map((norm) => {
-      const row = values[norm.testId]
-      const displayVal = row?.result !== undefined && row?.result !== null ? String(row.result) : ''
+      const row = getNormValueByTestId(values, norm.testId)
+      const displayVal =
+        row?.resultRaw ??
+        (row?.result !== undefined && row?.result !== null
+          ? isMinuteSecondNorm(norm)
+            ? formatMinutesToMinuteSecond(row.result)
+            : String(row.result)
+          : '')
+      const inputType = isMinuteSecondNorm(norm) ? 'text' : 'number'
+      const goalLabel =
+        Number.isFinite(norm.gold)
+          ? isMinuteSecondNorm(norm)
+            ? formatMinutesToMinuteSecond(norm.gold)
+            : String(norm.gold)
+          : '—'
       return (
         <label key={norm.testId} className="block space-y-1 rounded-xl border border-slate-100 bg-slate-50/80 p-4">
           <span className="text-sm font-semibold text-slate-900">{norm.testName}</span>
           <p className="text-xs text-slate-500">{norm.description}</p>
           <p className="text-xs text-blue-600">
-            Цель «отлично»: {norm.gold} {norm.unit} · как сравнивается результат:{' '}
+            Цель «отлично»: {goalLabel} {norm.unit} · как сравнивается результат:{' '}
             {norm.measureType === 'MAX' ? 'чем больше — тем лучше' : 'чем меньше — тем лучше'}
           </p>
           <div className="flex flex-wrap items-end gap-3 pt-2">
             <div className="min-w-[140px] flex-1">
               <span className="mb-1 block text-xs font-medium text-slate-600">Результат ({norm.unit})</span>
               <input
-                type="number"
-                step="any"
+                type={inputType}
+                inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
+                step={inputType === 'number' ? 'any' : undefined}
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                 value={displayVal}
                 onChange={(e) => updateNormResult(category, norm, e.target.value)}
