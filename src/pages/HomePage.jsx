@@ -37,6 +37,7 @@ function HomePage({ onSelectStudent, coachId }) {
   const [genderFilter, setGenderFilter] = useState('all')
   const [birthYearFilter, setBirthYearFilter] = useState('all')
   const [weightFilter, setWeightFilter] = useState('all')
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
 
   const loadStudents = useCallback(async () => {
     if (!coachId) {
@@ -124,6 +125,14 @@ function HomePage({ onSelectStudent, coachId }) {
       .slice(0, 12)
   }, [studentsWithKsr, searchQuery])
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (genderFilter !== 'all') count += 1
+    if (birthYearFilter !== 'all') count += 1
+    if (weightFilter !== 'all') count += 1
+    return count
+  }, [genderFilter, birthYearFilter, weightFilter])
+
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
   return (
@@ -183,22 +192,41 @@ function HomePage({ onSelectStudent, coachId }) {
                 <label htmlFor="dashboard-search" className="mb-1 block text-xs font-medium text-slate-600">
                   Поиск по ФИО
                 </label>
-                <input
-                  id="dashboard-search"
-                  type="text"
-                  list="student-name-suggestions"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Начните вводить имя..."
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                />
+                <div className="flex gap-2 md:block">
+                  <input
+                    id="dashboard-search"
+                    type="text"
+                    list="student-name-suggestions"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Начните вводить имя..."
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFiltersExpanded((prev) => !prev)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 md:hidden"
+                    aria-expanded={filtersExpanded}
+                    aria-controls="dashboard-mobile-filters"
+                  >
+                    Фильтры
+                    {activeFiltersCount > 0 && (
+                      <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
                 <datalist id="student-name-suggestions">
                   {suggestedNames.map((name) => (
                     <option key={name} value={name} />
                   ))}
                 </datalist>
               </div>
-              <div>
+              <div
+                id="dashboard-mobile-filters"
+                className={`${filtersExpanded ? 'block' : 'hidden'} md:block`}
+              >
                 <label htmlFor="dashboard-gender" className="mb-1 block text-xs font-medium text-slate-600">
                   Пол
                 </label>
@@ -213,7 +241,7 @@ function HomePage({ onSelectStudent, coachId }) {
                   <option value="F">Женский</option>
                 </select>
               </div>
-              <div>
+              <div className={`${filtersExpanded ? 'block' : 'hidden'} md:block`}>
                 <label htmlFor="dashboard-birth-year" className="mb-1 block text-xs font-medium text-slate-600">
                   Год рождения
                 </label>
@@ -231,7 +259,7 @@ function HomePage({ onSelectStudent, coachId }) {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className={`${filtersExpanded ? 'block' : 'hidden'} md:block`}>
                 <label htmlFor="dashboard-weight-category" className="mb-1 block text-xs font-medium text-slate-600">
                   Весовая категория
                 </label>

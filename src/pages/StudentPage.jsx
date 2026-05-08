@@ -144,6 +144,13 @@ function formatMinutesToMinuteSecond(value) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
+function getCoachInputHint(norm) {
+  if (isMinuteSecondNorm(norm)) {
+    return 'Формат времени: можно вводить 8:30, 8.30, 8,30 или 8 30 — программа распознает автоматически.'
+  }
+  return 'Числовой формат: можно вводить с точкой или запятой (например, 6.5 или 6,5) — программа распознает автоматически.'
+}
+
 function emptyTechnicalRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -842,8 +849,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <span className="text-sm font-semibold text-slate-900">{norm.testName}</span>
           <p className="text-xs text-slate-500">{norm.description}</p>
           <p className="text-xs text-blue-600">
-            Цель «отлично»: {goalLabel} {norm.unit} · как сравнивается результат:{' '}
+            Цель «отлично»: {goalLabel} {norm.unit} ·{' '}
             {norm.measureType === 'MAX' ? 'чем больше — тем лучше' : 'чем меньше — тем лучше'}
+          </p>
+          <p className="text-xs text-slate-500">
+            {getCoachInputHint(norm)}
           </p>
           <div className="flex flex-wrap items-end gap-3 pt-2">
             <div className="min-w-[140px] flex-1">
