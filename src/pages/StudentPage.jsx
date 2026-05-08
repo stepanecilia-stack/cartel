@@ -151,6 +151,153 @@ function getCoachInputHint(norm) {
   return 'Числовой формат: можно вводить с точкой или запятой (например, 6.5 или 6,5) — программа распознает автоматически.'
 }
 
+function normCardToneByStatus(status) {
+  if (status === 'gold')
+    return [
+      'border-amber-500',
+      'bg-gradient-to-br from-yellow-100 via-amber-200/95 to-yellow-300/75',
+      'shadow-[0_10px_28px_-8px_rgba(234,179,8,0.55),inset_0_1px_0_rgba(255,255,255,0.75)]',
+      'ring-2 ring-amber-300/70 ring-offset-2 ring-offset-white',
+    ].join(' ')
+  if (status === 'silver')
+    return [
+      'border-slate-500',
+      'bg-gradient-to-br from-slate-300/80 via-slate-200 to-sky-100',
+      'shadow-[inset_0_2px_0_rgba(255,255,255,0.65),0_6px_18px_-6px_rgba(51,65,85,0.22)]',
+    ].join(' ')
+  if (status === 'bronze')
+    return [
+      'border-orange-600',
+      'bg-gradient-to-br from-orange-200/90 via-orange-50 to-amber-900/20',
+      'shadow-[inset_0_0_0_1px_rgba(251,146,60,0.45),0_4px_14px_-6px_rgba(234,88,12,0.2)]',
+    ].join(' ')
+  if (status === 'red')
+    return 'border-red-400 bg-red-50 shadow-[0_4px_14px_-6px_rgba(239,68,68,0.2)]'
+  // Несданный: белая «бланковая» карточка — без серого заливки, чтобы серебро не сливалось
+  return 'border-slate-200 bg-white shadow-sm'
+}
+
+function normScoreToneByStatus(status) {
+  if (status === 'gold') return 'text-amber-900'
+  if (status === 'silver') return 'text-slate-800'
+  if (status === 'bronze') return 'text-orange-900'
+  if (status === 'red') return 'text-red-800'
+  return 'text-slate-700'
+}
+
+/** Карточка атома техники: знание → бронза, умение → серебро, навык → золото (как нормативы); автоматизм → «бетон». */
+function technicalAtomCardToneByLevel(level) {
+  const k = normalizeTechnicalDominanceKey(level)
+  if (k === 'AUTOMATED') {
+    return [
+      'border-stone-600',
+      'bg-gradient-to-br from-stone-300 via-stone-400 to-stone-600/85',
+      'shadow-[inset_0_3px_10px_rgba(28,25,23,0.18),0_4px_16px_-6px_rgba(68,64,60,0.35)]',
+    ].join(' ')
+  }
+  if (k === 'MOTOR_SKILL_LEVEL_2') return normCardToneByStatus('gold')
+  if (k === 'MOTOR_SKILL_LEVEL_1') return normCardToneByStatus('silver')
+  if (k === 'KNOWLEDGE') return normCardToneByStatus('bronze')
+  return normCardToneByStatus()
+}
+
+function AutomationCheckBadge() {
+  return (
+    <span
+      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-emerald-800/90 bg-emerald-500 text-white shadow-md ring-2 ring-white/90"
+      title="Автоматизм закреплён"
+      aria-label="Автоматизм закреплён"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M20 6 9 17l-5-5" />
+      </svg>
+    </span>
+  )
+}
+
+const NORM_MEDAL_CHIP = {
+  gold: {
+    emoji: '🥇',
+    label: 'Золото',
+    shell:
+      'border-amber-200/90 bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100/90 text-amber-950 shadow-sm ring-1 ring-amber-200/50',
+    disc: 'bg-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-amber-100/80',
+  },
+  silver: {
+    emoji: '🥈',
+    label: 'Серебро',
+    shell:
+      'border-slate-300/80 bg-gradient-to-br from-slate-50 via-slate-100/95 to-slate-50 text-slate-900 shadow-sm ring-1 ring-slate-200/60',
+    disc: 'bg-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.95)] ring-1 ring-slate-200/70',
+  },
+  bronze: {
+    emoji: '🥉',
+    label: 'Бронза',
+    shell:
+      'border-orange-200/90 bg-gradient-to-br from-orange-50 via-amber-50/80 to-orange-100/70 text-orange-950 shadow-sm ring-1 ring-orange-200/45',
+    disc: 'bg-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-orange-100/80',
+  },
+  red: {
+    emoji: null,
+    label: 'Ниже бронзы',
+    shell:
+      'border-red-200/90 bg-gradient-to-br from-red-50 to-rose-50/90 text-red-950 shadow-sm ring-1 ring-red-200/50',
+    disc: 'bg-white/95 ring-1 ring-red-100/80',
+  },
+}
+
+function NormGoldGoalIcon() {
+  const g = NORM_MEDAL_CHIP.gold
+  return (
+    <span
+      className={`inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-200/90 ${g.disc} text-[17px] leading-none shadow-sm`}
+      aria-hidden
+    >
+      <span className="translate-y-px drop-shadow-sm">🥇</span>
+    </span>
+  )
+}
+
+function NormMedalChip({ status, size = 'md' }) {
+  const key = status === 'gold' || status === 'silver' || status === 'bronze' || status === 'red' ? status : null
+  if (!key) {
+    return <span className="text-xs font-medium text-slate-500">—</span>
+  }
+  const cfg = NORM_MEDAL_CHIP[key]
+  const compact = size === 'sm'
+  const shellPad = compact ? 'gap-1 px-2 py-0.5' : 'gap-1.5 px-2.5 py-1'
+  const discSize = compact ? 'h-6 w-6 min-h-6 min-w-6' : 'h-7 w-7 min-h-7 min-w-7'
+  const emojiClass = compact ? 'text-[15px] leading-none' : 'text-lg leading-none'
+  const labelClass = compact ? 'text-[11px] font-semibold tracking-tight' : 'text-xs font-semibold tracking-tight'
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border ${shellPad} ${cfg.shell}`}
+      title={cfg.label}
+    >
+      <span
+        className={`inline-flex ${discSize} flex-shrink-0 items-center justify-center rounded-full ${cfg.disc} ${emojiClass}`}
+        aria-hidden
+      >
+        {cfg.emoji ? (
+          <span className="translate-y-[0.5px] drop-shadow-sm">{cfg.emoji}</span>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 16 16"
+            className={`${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} text-red-500`}
+            fill="currentColor"
+            aria-hidden
+          >
+            <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM7 4.5h2v5H7v-5Zm0 6.5a1 1 0 1 1 2 0 1 1 0 0 1-2 0Z" />
+          </svg>
+        )}
+      </span>
+      <span className={labelClass}>{cfg.label}</span>
+    </span>
+  )
+}
+
 function emptyTechnicalRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -844,18 +991,39 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             ? formatMinutesToMinuteSecond(norm.gold)
             : String(norm.gold)
           : '—'
+      const cardTone = normCardToneByStatus(row?.status)
+      const scoreTone = normScoreToneByStatus(row?.status)
+      const betterHint =
+        norm.measureType === 'MAX' ? 'Чем больше — тем лучше' : 'Чем меньше — тем лучше'
       return (
-        <label key={norm.testId} className="block space-y-1 rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-          <span className="text-sm font-semibold text-slate-900">{norm.testName}</span>
-          <p className="text-xs text-slate-500">{norm.description}</p>
-          <p className="text-xs text-blue-600">
-            Цель «отлично»: {goalLabel} {norm.unit} ·{' '}
-            {norm.measureType === 'MAX' ? 'чем больше — тем лучше' : 'чем меньше — тем лучше'}
-          </p>
-          <p className="text-xs text-slate-500">
-            {getCoachInputHint(norm)}
-          </p>
-          <div className="flex flex-wrap items-end gap-3 pt-2">
+        <label key={norm.testId} className={`flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}>
+          <div className="text-center">
+            <span className="block text-base font-bold leading-snug text-slate-900 sm:text-lg">{norm.testName}</span>
+            {norm.description ? (
+              <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:text-xs">{norm.description}</p>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <NormGoldGoalIcon />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/85">Цель</p>
+                <p className="truncate text-sm font-bold tabular-nums text-slate-900">
+                  {goalLabel}{' '}
+                  <span className="text-xs font-semibold text-slate-600">{norm.unit}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end">
+              <p className="max-w-[11rem] text-right text-[11px] font-medium leading-snug text-slate-700 sm:max-w-none sm:text-xs">
+                {betterHint}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-[11px] leading-snug text-slate-500 sm:text-xs">{getCoachInputHint(norm)}</p>
+          <div className="flex flex-wrap items-end gap-3 pt-0.5">
             <div className="min-w-[140px] flex-1">
               <span className="mb-1 block text-xs font-medium text-slate-600">Результат ({norm.unit})</span>
               <input
@@ -868,16 +1036,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               />
             </div>
             {row && (
-              <p className="text-xs text-slate-600">
-                Оценка в баллах: <span className="font-semibold text-slate-900">{row.normalizedScore}</span> · уровень:{' '}
-                {row.status === 'gold'
-                  ? 'отлично'
-                  : row.status === 'silver'
-                    ? 'хорошо'
-                    : row.status === 'bronze'
-                      ? 'норма'
-                      : 'ниже нормы'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-slate-600">
+                  Оценка в баллах:{' '}
+                  <span className={`font-semibold tabular-nums ${scoreTone}`}>{row.normalizedScore}</span>
+                </span>
+                <NormMedalChip status={row.status} size="sm" />
+              </div>
             )}
           </div>
         </label>
@@ -1178,17 +1343,31 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     Список ударов из общей таблицы не загрузился — проверьте интернет и откройте страницу позже.
                   </p>
                 ) : (
-                  technicalAtoms.map((atom) => (
+                  technicalAtoms.map((atom) => {
+                    const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
+                    const atomCardTone = technicalAtomCardToneByLevel(atomLevelKey)
+                    const isAutomatedLevel = atomLevelKey === 'AUTOMATED'
+                    return (
                     <article
                       key={atom.id}
-                      className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+                      className={`relative overflow-hidden rounded-xl border p-4 transition-colors ${atomCardTone}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-slate-900">
-                          #{atom.number} {atom.name}
-                        </h3>
+                      {isAutomatedLevel ? (
+                        <div
+                          className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(105deg,rgba(255,255,255,0.09)_0px,rgba(255,255,255,0.09)_2px,transparent_2px,10px)] opacity-80"
+                          aria-hidden
+                        />
+                      ) : null}
+                      <div className={`space-y-3 ${isAutomatedLevel ? 'relative z-10' : ''}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          {isAutomatedLevel ? <AutomationCheckBadge /> : null}
+                          <h3 className="font-semibold text-slate-900">
+                            #{atom.number} {atom.name}
+                          </h3>
+                        </div>
                         <a
-                          className="text-xs text-blue-600"
+                          className="flex-shrink-0 text-xs font-medium text-blue-700 underline-offset-2 hover:underline"
                           href={atom.videoLink || '#'}
                           target="_blank"
                           rel="noreferrer"
@@ -1241,8 +1420,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           <strong>Почему ошибка:</strong> {atom.whyMistakes}
                         </p>
                       </details>
+                      </div>
                     </article>
-                  ))
+                    )
+                  })
                 )}
               </div>
             )}
