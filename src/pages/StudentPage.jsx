@@ -1392,8 +1392,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               <p className="text-sm font-medium leading-snug text-amber-900">
                 Спортивный биометрический потенциал на базе математических расчётов
               </p>
-              <p className="mt-2 text-4xl font-bold tracking-tight text-amber-950 sm:mt-3 sm:text-5xl">{ksrKsp.ksp}</p>
-              <BiometricPotentialBar className="mt-3" kspPercent={kspPercent} basePercent={basePercent} />
+              <BiometricPotentialBar className="mt-4" kspPercent={kspPercent} basePercent={basePercent} />
               {(ksrKsp?.kspDetail?.heightDelta != null || ksrKsp?.kspDetail?.reachDelta != null) && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div
@@ -1424,24 +1423,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 sm:mt-8 sm:px-5 sm:py-5">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Коэффициент прочности навыков:{' '}
-              <span className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
-                {kdBundle.kd.toFixed(3)}
-              </span>
-            </h3>
-            <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-200 pt-4">
-              <div>
-                <p className="text-xs font-medium text-slate-600">Итоговый балл (то, что видно на главной)</p>
-                <p className="text-3xl font-bold tracking-tight text-blue-700">{effectiveKSR.toFixed(1)}</p>
-                <p className="text-xs text-slate-500">
-                  Считается как: базовый балл {baseKSR} × множитель техники {kdBundle.kd.toFixed(3)}
-                </p>
-              </div>
             </div>
           </div>
         </section>
@@ -1558,6 +1539,18 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             </div>
           </div>
         </section>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm sm:px-5 sm:py-5">
+          <p className="text-sm font-semibold text-slate-900">
+            Коэффициент прочности навыков:{' '}
+            <span className="text-2xl font-bold tabular-nums text-slate-900">
+              {(kdBundle.kd * 100).toFixed(1)}%
+            </span>
+          </p>
+          <p className="mt-2 text-sm leading-snug text-slate-700">
+            Вероятность успешного применения технических элементов в соревновательном бою
+          </p>
+        </div>
       </div>
     </main>
   )

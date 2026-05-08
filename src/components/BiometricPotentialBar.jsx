@@ -14,12 +14,14 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
   return (
     <div className={box}>
       <div
-        className={`flex items-center justify-between text-slate-600 ${compact ? 'mb-1 text-[10px] leading-tight' : 'mb-2 text-xs'}`}
+        className={`flex items-center justify-between ${compact ? 'mb-1 text-[10px] leading-tight text-slate-600' : 'mb-3 text-sm font-medium text-slate-800'}`}
       >
         <span className={compact ? 'pr-1' : ''}>Коэффициент спортивного потенциала (КСП)</span>
-        <span className="shrink-0 font-semibold text-amber-900">{k}%</span>
+        <span className="shrink-0 font-bold tabular-nums text-amber-900">{k}%</span>
       </div>
-      <div className={`relative w-full overflow-hidden rounded-full bg-slate-300 ${compact ? 'h-2.5' : 'h-4'}`}>
+      <div
+        className={`relative w-full overflow-hidden rounded-full bg-slate-300 ${compact ? 'h-2.5' : 'h-11 sm:h-12'}`}
+      >
         <div
           className="absolute inset-y-0 left-0 bg-slate-200/90"
           style={{ width: `${k}%` }}
@@ -40,20 +42,20 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
           title="Реализовано из доступного потенциала"
         />
         <div
-          className="absolute inset-y-[-2px] w-[3px] bg-amber-700/70"
+          className={`absolute bg-amber-700/80 ${compact ? 'inset-y-[-2px] w-[3px]' : 'inset-y-0 w-1'}`}
           style={{ left: `${k}%` }}
           aria-hidden
         />
       </div>
       <div
-        className={`flex flex-wrap items-center text-slate-600 ${compact ? 'mt-1.5 gap-2 text-[9px] leading-tight' : 'mt-2 gap-3 text-[10px]'}`}
+        className={`flex flex-wrap items-center ${compact ? 'mt-1.5 gap-2 text-[9px] leading-tight text-slate-600' : 'mt-4 gap-4 text-sm font-semibold text-slate-900'}`}
       >
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-blue-600" aria-hidden />
+        <span className="inline-flex items-center gap-2">
+          <span className={`rounded-full bg-blue-600 ${compact ? 'h-2 w-2' : 'h-3 w-3'}`} aria-hidden />
           Реализовано: {realized}%
         </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-slate-300" aria-hidden />
+        <span className="inline-flex items-center gap-2">
+          <span className={`rounded-full bg-slate-400 ${compact ? 'h-2 w-2' : 'h-3 w-3'}`} aria-hidden />
           Предел тела (КСП): {k}%
         </span>
       </div>
