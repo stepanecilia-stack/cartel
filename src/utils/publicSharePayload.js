@@ -4,6 +4,8 @@ import {
   normalizeTechnicalDominanceKey,
   TECH_DOMINANCE_OPTIONS,
 } from './ksrUtils'
+import { formatNormAcceptedMeta } from './normAcceptanceHistory'
+import { formatBirthYearRu } from './studentModel.js'
 import { findGoldStandardRow, referenceIdealHeightCm, shortTypageLabel } from './standards.js'
 
 /** Подпись уровня освоения атома — те же названия, что у тренера в карточке. */
@@ -97,6 +99,38 @@ export function buildShareContext(athleteForNorms) {
   }
 }
 
+function isMinuteSecondUnit(norm) {
+  const u = String(norm?.unit ?? '').toLowerCase()
+  return u.includes('мин') || u.includes('mm:ss') || u.includes('м:с')
+}
+
+function toMinuteSecondDisplay(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return ''
+  let minutes = Math.floor(num)
+  let seconds = Math.round((num - minutes) * 60)
+  if (seconds === 60) {
+    minutes += 1
+    seconds = 0
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatThresholdDisplay(norm, value) {
+  if (!Number.isFinite(value)) return null
+  return isMinuteSecondUnit(norm) ? toMinuteSecondDisplay(value) : String(value)
+}
+
+function formatStandardWeightCategory(row) {
+  if (!row) return '—'
+  const wMin = Number(row.weightMin)
+  const wMax = Number(row.weightMax)
+  if (!Number.isFinite(wMin) || !Number.isFinite(wMax)) return '—'
+  if (row.openTop) return `${wMin}+`
+  if (wMin === wMax) return String(wMin)
+  return `${wMin}-${wMax}`
+}
+
 function mapNormRows(norms, results) {
   return norms.map((norm) => {
     const row = results[norm.testId]
@@ -105,6 +139,7 @@ function mapNormRows(norms, results) {
     let critical = false
     let tierLabel = 'Результат не внесён'
     let resultValue = null
+    let normalizedScore = null
     const unit = norm.unit != null && norm.unit !== '' ? String(norm.unit) : ''
     const g = Number(norm.gold)
     const s = Number(norm.silver)
@@ -118,6 +153,7 @@ function mapNormRows(norms, results) {
       resultValue = Number(row.result)
       const ev = evaluateLegacyTest(resultValue, norm)
       status = ev.status
+      normalizedScore = row.normalizedScore != null && Number.isFinite(Number(row.normalizedScore)) ? Number(row.normalizedScore) : ev.normalizedScore
       if (ev.status === 'red') critical = true
       if (status === 'gold') tierLabel = 'Золото'
       else if (status === 'silver') tierLabel = 'Серебро'
@@ -126,9 +162,20 @@ function mapNormRows(norms, results) {
       else tierLabel = 'Ниже нормы'
     }
     const passedDisplay = status === 'gold' || status === 'silver' || status === 'bronze'
+    const resultDisplay =
+      hasResult && resultValue != null
+        ? row?.resultRaw && String(row.resultRaw).trim()
+          ? String(row.resultRaw).trim()
+          : isMinuteSecondUnit(norm)
+            ? toMinuteSecondDisplay(resultValue)
+            : String(resultValue)
+        : ''
+    const acceptedDisplay = row ? formatNormAcceptedMeta(row) : null
+    const acceptanceHistoryCount = Array.isArray(row?.acceptanceHistory) ? row.acceptanceHistory.length : 0
     return {
       id: String(norm.testId ?? ''),
       name: String(norm.testName ?? 'Норматив'),
+      description: String(norm.description ?? ''),
       unit,
       hasResult,
       status,
@@ -136,11 +183,18 @@ function mapNormRows(norms, results) {
       passedDisplay,
       tierLabel,
       resultValue,
+      resultDisplay,
+      normalizedScore,
       measureType,
       compareHint,
       normGold: Number.isFinite(g) ? g : null,
       normSilver: Number.isFinite(s) ? s : null,
       normBronze: Number.isFinite(b) ? b : null,
+      normGoldDisplay: formatThresholdDisplay(norm, g),
+      normSilverDisplay: formatThresholdDisplay(norm, s),
+      normBronzeDisplay: formatThresholdDisplay(norm, b),
+      acceptedDisplay,
+      acceptanceHistoryCount,
     }
   })
 }
@@ -187,6 +241,12 @@ export function buildPublicSharePayload({
       levelKey: k,
       levelLabel,
       levelPercent,
+      videoLink: typeof atom.videoLink === 'string' ? atom.videoLink : '',
+      comment: typeof row.comment === 'string' ? row.comment : '',
+      howTo: String(atom.howTo ?? ''),
+      whyHowTo: String(atom.whyHowTo ?? ''),
+      mistakes: String(atom.mistakes ?? ''),
+      whyMistakes: String(atom.whyMistakes ?? ''),
     }
   })
   const techTotal = Math.max(technicalItems.length, 1)
@@ -210,8 +270,51 @@ export function buildPublicSharePayload({
 
   const context = buildShareContext(athleteForNorms)
 
+  const m = findGoldStandardRow(athleteForNorms)
+  const referenceHeight = m?.row ? referenceIdealHeightCm(m.row) : 0
+  const referenceReach = Number.isFinite(referenceHeight) ? referenceHeight : 0
+  const ah = Number(athleteForNorms?.height) || 0
+  const ar = Number(athleteForNorms?.reach) || 0
+  const birthYear = Number(athleteForNorms?.birthYear) || 0
+  const gender = athleteForNorms?.gender === 'F' ? 'F' : 'M'
+  const md =
+    typeof measureDate === 'string' && measureDate.trim()
+      ? measureDate.trim().slice(0, 10)
+      : new Date().toISOString().slice(0, 10)
+
+  const duelRows = [
+    {
+      key: 'height',
+      label: 'Рост',
+      athleteValue: ah,
+      referenceValue: referenceHeight,
+      delta: ah - referenceHeight,
+      unit: 'см',
+    },
+    {
+      key: 'reach',
+      label: 'Размах',
+      athleteValue: ar,
+      referenceValue: referenceReach,
+      delta: ar - referenceReach,
+      unit: 'см',
+    },
+  ]
+
+  const standardRow = m?.row ?? null
+  const standardPassport = {
+    weightCategory: standardRow ? formatStandardWeightCategory(standardRow) : '—',
+    ageGroup: standardRow?.ageGroup ?? '—',
+    archetype: shortTypageLabel(standardRow?.label) || '—',
+  }
+
+  const anthropometryPct =
+    ah > 0 && ar > 0 && cw > 0 && birthYear > 0
+      ? 100
+      : Math.round(([ah > 0, ar > 0, cw > 0, birthYear > 0].filter(Boolean).length / 4) * 100)
+
   return {
-    v: 4,
+    v: 5,
     displayName: displayName || 'Спортсмен',
     photoURL: typeof photoURL === 'string' ? photoURL : '',
     currentWeight: cw,
@@ -221,6 +324,24 @@ export function buildPublicSharePayload({
         ? nextAttestationDate.trim()
         : null,
     context,
+    athleteSnapshot: {
+      birthYear,
+      birthYearLabel: formatBirthYearRu(birthYear),
+      gender,
+      genderLabel: gender === 'F' ? 'Женский' : 'Мужской',
+      height: ah,
+      reach: ar,
+      weight: cw,
+      measureDate: md,
+    },
+    standardPassport,
+    duelRows,
+    tabProgress: {
+      anthropometry: anthropometryPct,
+      physical: Math.round((physicalFilled / physicalTotal) * 100),
+      functional: Math.round((functionalFilled / functionalTotal) * 100),
+      technical: technicalFillPct,
+    },
     physical: {
       items: physicalItems,
       fillPct: Math.round((physicalFilled / physicalTotal) * 100),

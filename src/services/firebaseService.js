@@ -14,6 +14,7 @@ import {
   getDocs,
   getFirestore,
   limit,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -87,6 +88,31 @@ export const getPublicStudentShareByToken = async (token) => {
   const snap = await getDoc(doc(ensureDb(), 'public_student_shares', token))
   if (!snap.exists()) return null
   return { id: snap.id, ...snap.data() }
+}
+
+/**
+ * Подписка на публичную карточку (realtime). Возвращает функцию отписки.
+ */
+export const subscribePublicStudentShareByToken = (token, onData, onError) => {
+  if (!db || !token || typeof token !== 'string' || token.length < 16) {
+    onData?.(null)
+    return () => {}
+  }
+  const ref = doc(ensureDb(), 'public_student_shares', token)
+  return onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists()) {
+        onData?.(null)
+        return
+      }
+      onData?.({ id: snap.id, ...snap.data() })
+    },
+    (err) => {
+      console.error('subscribePublicStudentShareByToken', err)
+      onError?.(err)
+    },
+  )
 }
 
 export const setPublicStudentShareDocument = async (token, { payload, ownerCoachIds = [] }) => {
