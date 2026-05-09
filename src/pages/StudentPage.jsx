@@ -292,17 +292,75 @@ function isMinuteSecondNorm(norm) {
   return unit.includes('мин') || unit.includes('mm:ss') || unit.includes('м:с')
 }
 
+/** Только полная пара секунд (две цифры), иначе «8:3» ошибочно читалось как 8:03 при вводе 8:30. */
 function parseMinuteSecondToMinutes(rawValue) {
   const normalized = String(rawValue ?? '').trim()
-  const match = normalized.match(/^(\d+)\s*:\s*([0-5]?\d)$/)
+  const match = normalized.match(/^(\d+)\s*:\s*(\d{2})$/)
   if (!match) return null
   const minutes = Number(match[1])
   const seconds = Number(match[2])
   if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null
+  if (seconds > 59) return null
   return {
     value: minutes + seconds / 60,
     display: `${minutes}:${String(seconds).padStart(2, '0')}`,
   }
+}
+
+/** 8.30 / 8,30 / 8 30 → мин:сек; ровно две цифры после точки/запятой или после пробела. */
+function parseDotCommaOrSpaceMinuteSecond(rawValue) {
+  const normalized = String(rawValue ?? '').trim()
+  const comma = normalized.match(/^(\d+),(\d{2})$/)
+  if (comma) {
+    const minutes = Number(comma[1])
+    const seconds = Number(comma[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+    return {
+      value: minutes + seconds / 60,
+      display: `${minutes}:${String(seconds).padStart(2, '0')}`,
+    }
+  }
+  const dot = normalized.match(/^(\d+)\.(\d{2})$/)
+  if (dot) {
+    const minutes = Number(dot[1])
+    const seconds = Number(dot[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+    return {
+      value: minutes + seconds / 60,
+      display: `${minutes}:${String(seconds).padStart(2, '0')}`,
+    }
+  }
+  const sp = normalized.match(/^(\d+)\s+(\d{2})$/)
+  if (sp) {
+    const minutes = Number(sp[1])
+    const seconds = Number(sp[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+    return {
+      value: minutes + seconds / 60,
+      display: `${minutes}:${String(seconds).padStart(2, '0')}`,
+    }
+  }
+  return null
+}
+
+function parseAnyCompleteMinuteSecond(rawValue) {
+  return parseMinuteSecondToMinutes(rawValue) ?? parseDotCommaOrSpaceMinuteSecond(rawValue)
+}
+
+/**
+ * Неполный ввод времени: не превращать в число минут и не подставлять :00.
+ * «8:3» — ждём вторую цифру секунд; «8.3» при точке — ждём вторую цифру (8.30) или уход с поля (десятичные минуты).
+ */
+function isPartialMinuteSecondInput(trimmed) {
+  if (!trimmed) return false
+  if (/^\d+$/.test(trimmed)) return true
+  if (/^\d+\s*:\s*$/.test(trimmed)) return true
+  if (/^\d+\s*:\s*\d{1}$/.test(trimmed)) return true
+  if (/^\d+\s+\d{1}$/.test(trimmed)) return true
+  if (/^\d+[.,]\s*$/.test(trimmed)) return true
+  if (/^\d+\.\d{1}$/.test(trimmed)) return true
+  if (/^\d+[.,]\d{3,}$/.test(trimmed)) return true
+  return false
 }
 
 function formatMinutesToMinuteSecond(value) {
@@ -319,7 +377,7 @@ function formatMinutesToMinuteSecond(value) {
 
 function getCoachInputHint(norm) {
   if (isMinuteSecondNorm(norm)) {
-    return 'Формат времени: можно вводить 8:30, 8.30, 8,30 или 8 30 — программа распознает автоматически.'
+    return 'Время: 8:30 и 8:05 (секунды всегда двумя цифрами), либо 8.30 / 8,30 / 8 30. Дробные минуты без секунд — только запятой: 8,5.'
   }
   return 'Числовой формат: можно вводить с точкой или запятой (например, 6.5 или 6,5) — программа распознает автоматически.'
 }
@@ -886,6 +944,51 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       return
     }
     const trimmed = String(rawValue ?? '').trim()
+
+    if (isMinuteSecondNorm(norm)) {
+      const complete = parseAnyCompleteMinuteSecond(trimmed)
+      if (complete) {
+        const result = complete.value
+        if (!Number.isFinite(result)) return
+        const evaluated = evaluateLegacyTest(result, norm)
+        set((prev) => ({
+          ...removeNormValueByTestId(prev, norm.testId),
+          [norm.testId]: {
+            ...evaluated,
+            result,
+            resultRaw: complete.display,
+            date: new Date().toISOString().slice(0, 10),
+          },
+        }))
+        return
+      }
+      if (isPartialMinuteSecondInput(trimmed)) {
+        set((prev) => ({
+          ...removeNormValueByTestId(prev, norm.testId),
+          [norm.testId]: {
+            resultRaw: trimmed,
+            date: new Date().toISOString().slice(0, 10),
+          },
+        }))
+        return
+      }
+      // Дробные минуты с точкой не разбираем здесь — иначе «8.3» при вводе 8.30 станет числом; 8,5 — норма.
+      if (trimmed.includes('.') && !parseAnyCompleteMinuteSecond(trimmed)) return
+      const numericRaw = trimmed.replace(',', '.')
+      const result = Number(numericRaw)
+      if (!Number.isFinite(result)) return
+      const evaluated = evaluateLegacyTest(result, norm)
+      set((prev) => ({
+        ...removeNormValueByTestId(prev, norm.testId),
+        [norm.testId]: {
+          ...evaluated,
+          result,
+          date: new Date().toISOString().slice(0, 10),
+        },
+      }))
+      return
+    }
+
     const minuteSecond = parseMinuteSecondToMinutes(trimmed)
     const numericRaw = trimmed.replace(',', '.')
     const result = minuteSecond ? minuteSecond.value : Number(numericRaw)
@@ -1249,7 +1352,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 onChange={(e) => updateNormResult(category, norm, e.target.value)}
               />
             </label>
-            {row && (
+            {row && Number.isFinite(row.result) ? (
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="text-slate-600">
                   Оценка в баллах:{' '}
@@ -1257,7 +1360,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 </span>
                 <NormMedalChip status={row.status} size="sm" />
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-1.5 border-t border-slate-200/80 pt-2">
