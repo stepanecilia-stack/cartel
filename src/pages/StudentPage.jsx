@@ -44,7 +44,111 @@ import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 import { getSensitiveMotorQualities, orderSensitiveQualitiesForBoxing } from '../utils/sensitivePeriods'
-import { buildCoachRecommendations } from '../utils/coachRecommendations'
+import {
+  buildCoachRecommendations,
+  COACH_REC_ELEMENT_NAME_CLASS,
+  COACH_REC_FOCUS,
+  isCoachRecFocusItem,
+  isCoachRecSessionFormula,
+} from '../utils/coachRecommendations'
+
+/** Таблица минут по тренировке 90 / 60 (данные из buildCoachRecommendations). */
+function CoachSessionPlanTable({ item }) {
+  const [minutes, setMinutes] = useState(90)
+  const rows = item.rows ?? []
+  const footnotes = item.footnotes ?? []
+  const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
+
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+          Временная формула тренировки
+        </p>
+        <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setMinutes(90)}
+            className={`rounded-md px-2.5 py-1 transition ${
+              minutes === 90 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            1,5 ч
+          </button>
+          <button
+            type="button"
+            onClick={() => setMinutes(60)}
+            className={`rounded-md px-2.5 py-1 transition ${
+              minutes === 60 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            1 ч
+          </button>
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-slate-600">
+        Только тайминги по блокам; конкретные упражнения для качеств не задаются. Названия — техника по программе и
+        отстающий норматив (если есть в расчёте).
+      </p>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full min-w-[280px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th className="py-2 pr-2">Этап</th>
+              <th className="w-16 py-2 text-right tabular-nums sm:w-20">Мин</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-800">
+            {rows.map((row) => {
+              const m = minutes === 90 ? row.m90 : row.m60
+              let stageCell = null
+              if (row.kind === 'technical') {
+                stageCell =
+                  row.technical != null ? (
+                    <span className="leading-snug">
+                      Техника по программе: «
+                      <span className={COACH_REC_ELEMENT_NAME_CLASS}>{row.technical.name}</span>
+                      »{row.technical.taskSuffix}
+                    </span>
+                  ) : (
+                    <span className="text-slate-700">Техника по программе — без выделенного элемента в расчёте</span>
+                  )
+              } else if (row.kind === 'norm') {
+                stageCell =
+                  row.normative != null ? (
+                    <span className="leading-snug">Отстающий норматив: «{row.normative.testName}»</span>
+                  ) : (
+                    <span className="text-slate-600">Отстающий норматив — слот не активирован порогами расчёта</span>
+                  )
+              } else {
+                stageCell = <span className="leading-snug">{row.label}</span>
+              }
+              return (
+                <tr key={row.key} className="border-b border-slate-100 last:border-0">
+                  <td className="py-2 pr-2 align-top">{stageCell}</td>
+                  <td className="py-2 text-right font-medium tabular-nums text-slate-900 align-top">{m}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-200 text-sm font-semibold text-slate-900">
+              <td className="py-2 pr-2">Итого</td>
+              <td className="py-2 text-right tabular-nums">{total}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {footnotes.length > 0 && (
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-xs leading-snug text-slate-700">
+          {footnotes.map((line, j) => (
+            <li key={j}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Антропометрия' },
@@ -1313,11 +1417,41 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
                 Рекомендации для тренера
               </h2>
-              <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-snug text-slate-800">
-                {coachRecommendations.map((line, i) => (
-                  <li key={i}>{line}</li>
-                ))}
-              </ul>
+              <p className="mt-1 text-xs leading-snug text-slate-600">
+                Короткий план по данным карточки: сначала приоритеты, затем таблица минут (переключатель 1,5 ч / 1 ч).
+              </p>
+              {(() => {
+                const formula = coachRecommendations.find(isCoachRecSessionFormula)
+                const rest = coachRecommendations.filter((it) => !isCoachRecSessionFormula(it))
+                return (
+                  <>
+                    {rest.length > 0 && (
+                      <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-snug text-slate-800">
+                        {rest.map((item, i) => (
+                          <li key={i}>
+                            {isCoachRecFocusItem(item) ? (
+                              <>
+                                {item.before}
+                                <span
+                                  className={
+                                    COACH_REC_FOCUS[item.section]?.className ?? 'font-semibold text-blue-700'
+                                  }
+                                >
+                                  {COACH_REC_FOCUS[item.section]?.label ?? 'Технику'}
+                                </span>
+                                {item.after}
+                              </>
+                            ) : (
+                              item
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {formula ? <CoachSessionPlanTable item={formula} /> : null}
+                  </>
+                )
+              })()}
             </div>
           )}
         </section>
