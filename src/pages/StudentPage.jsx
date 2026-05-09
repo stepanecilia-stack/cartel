@@ -56,16 +56,15 @@ import {
 function CoachSessionPlanTable({ item }) {
   const [minutes, setMinutes] = useState(90)
   const rows = item.rows ?? []
-  const footnotes = item.footnotes ?? []
   const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
 
   return (
-    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
           Временная формула тренировки
         </p>
-        <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
+        <div className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
           <button
             type="button"
             onClick={() => setMinutes(90)}
@@ -86,66 +85,72 @@ function CoachSessionPlanTable({ item }) {
           </button>
         </div>
       </div>
-      <p className="mt-1 text-xs text-slate-600">
-        Только тайминги по блокам; конкретные упражнения для качеств не задаются. Названия — техника по программе и
-        отстающий норматив (если есть в расчёте).
-      </p>
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full min-w-[280px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-              <th className="py-2 pr-2">Этап</th>
-              <th className="w-16 py-2 text-right tabular-nums sm:w-20">Мин</th>
-            </tr>
-          </thead>
-          <tbody className="text-slate-800">
-            {rows.map((row) => {
-              const m = minutes === 90 ? row.m90 : row.m60
-              let stageCell = null
-              if (row.kind === 'technical') {
-                stageCell =
-                  row.technical != null ? (
-                    <span className="leading-snug">
-                      Техника по программе: «
-                      <span className={COACH_REC_ELEMENT_NAME_CLASS}>{row.technical.name}</span>
-                      »{row.technical.taskSuffix}
-                    </span>
-                  ) : (
-                    <span className="text-slate-700">Техника по программе — без выделенного элемента в расчёте</span>
-                  )
-              } else if (row.kind === 'norm') {
-                stageCell =
-                  row.normative != null ? (
-                    <span className="leading-snug">Отстающий норматив: «{row.normative.testName}»</span>
-                  ) : (
-                    <span className="text-slate-600">Отстающий норматив — слот не активирован порогами расчёта</span>
-                  )
-              } else {
-                stageCell = <span className="leading-snug">{row.label}</span>
-              }
-              return (
-                <tr key={row.key} className="border-b border-slate-100 last:border-0">
-                  <td className="py-2 pr-2 align-top">{stageCell}</td>
-                  <td className="py-2 text-right font-medium tabular-nums text-slate-900 align-top">{m}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-slate-200 text-sm font-semibold text-slate-900">
-              <td className="py-2 pr-2">Итого</td>
-              <td className="py-2 text-right tabular-nums">{total}</td>
-            </tr>
-          </tfoot>
-        </table>
+      {/* Flex-строки вместо table: на узком экране min-w-0 + shrink-0 гарантируют видимость минут */}
+      <div className="mt-2 min-w-0 text-sm" role="table" aria-label="Распределение минут по этапам">
+        <div className="flex gap-3 border-b border-slate-200 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600" role="row">
+          <div className="min-w-0 flex-1" role="columnheader">
+            Этап
+          </div>
+          <div className="w-11 shrink-0 text-right tabular-nums sm:w-12" role="columnheader">
+            Мин
+          </div>
+        </div>
+        <div className="text-slate-800" role="rowgroup">
+          {rows.map((row) => {
+            const m = minutes === 90 ? row.m90 : row.m60
+            let stageCell = null
+            if (row.kind === 'technical') {
+              stageCell =
+                row.technical != null ? (
+                  <span className="leading-snug">
+                    Техника по программе: «
+                    <span className={COACH_REC_ELEMENT_NAME_CLASS}>{row.technical.name}</span>
+                    »{row.technical.taskSuffix}
+                  </span>
+                ) : (
+                  <span className="text-slate-700">Техника по программе — без выделенного элемента в расчёте</span>
+                )
+            } else if (row.kind === 'norm') {
+              stageCell =
+                row.normative != null ? (
+                  <span className="leading-snug">Отстающий норматив: «{row.normative.testName}»</span>
+                ) : (
+                  <span className="text-slate-600">Отстающий норматив — слот не активирован порогами расчёта</span>
+                )
+            } else {
+              stageCell = <span className="leading-snug">{row.label}</span>
+            }
+            return (
+              <div
+                key={row.key}
+                className="flex gap-3 border-b border-slate-100 py-2 last:border-b-0"
+                role="row"
+              >
+                <div className="min-w-0 flex-1 break-words" role="cell">
+                  {stageCell}
+                </div>
+                <div
+                  className="w-11 shrink-0 self-start pt-0.5 text-right text-sm font-medium tabular-nums text-slate-900 sm:w-12"
+                  role="cell"
+                >
+                  {m}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div
+          className="flex gap-3 border-t border-slate-200 py-2 text-sm font-semibold text-slate-900"
+          role="row"
+        >
+          <div className="min-w-0 flex-1" role="cell">
+            Итого
+          </div>
+          <div className="w-11 shrink-0 text-right tabular-nums sm:w-12" role="cell">
+            {total}
+          </div>
+        </div>
       </div>
-      {footnotes.length > 0 && (
-        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-xs leading-snug text-slate-700">
-          {footnotes.map((line, j) => (
-            <li key={j}>{line}</li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }
@@ -1306,7 +1311,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         ageInt: sensitivePeriods.ageInt ?? null,
         sensitive: sensitivePeriods,
         weights,
-        tacticDistanceDisplay: tacticDistanceDisplay ?? '—',
         kd: kdBundle.kd,
         baseKSR,
         effectiveKSR,
@@ -1321,7 +1325,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [
       sensitivePeriods,
       weights,
-      tacticDistanceDisplay,
       kdBundle.kd,
       baseKSR,
       effectiveKSR,
@@ -1337,7 +1340,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+      <div className="mx-auto min-w-0 max-w-4xl space-y-4 sm:space-y-6">
         <button
           type="button"
           onClick={onBack}
@@ -1413,7 +1416,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             </button>
           )}
           {coachRecommendations.length > 0 && (
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
+            <div className="mt-4 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
                 Рекомендации для тренера
               </h2>

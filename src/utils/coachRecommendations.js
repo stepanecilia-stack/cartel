@@ -104,14 +104,13 @@ function worstNormInCategory(norms, values) {
 /**
  * Рекомендации для тренера: префикс по КД + временная формула тренировки (логика веток без изменений).
  * @param {object} ctx
- * @returns {(string | { type: 'focus', before: string, section: 'technical'|'physical'|'functional', after: string } | { type: 'sessionFormula', rows: object[], footnotes: string[] })[]}
+ * @returns {(string | { type: 'focus', before: string, section: 'technical'|'physical'|'functional', after: string } | { type: 'sessionFormula', rows: object[] })[]}
  */
 export function buildCoachRecommendations(ctx) {
   const {
     ageInt,
     sensitive,
     weights,
-    tacticDistanceDisplay,
     kd,
     baseKSR,
     effectiveKSR,
@@ -193,20 +192,14 @@ export function buildCoachRecommendations(ctx) {
     }
   }
 
-  const chainOpenNote =
-    atoms.length && !firstLocked && !focusOpen
-      ? 'Цепочка открыта: нагрузку не наращивать за счёт новизны — 1–2 боевые связки из уже освоенного и смена условий (усталость, дистанция, счёт).'
-      : null
-
   const anchor = getBoxingAgeAnchorQuality(ageInt)
   const stdGroup = ageInt != null && Number.isFinite(ageInt) ? ageToStandardsGroup(ageInt) : null
 
-  let sensitiveWeeklyNote = null
-  let sensitiveDailyNote = null
   const hasAgeBody = sensitive?.reason === 'ok' && Boolean(anchor)
 
   let orderedGreen = []
-  let inGreen = []
+  /** Качества сенситивной «зелёной» зоны без повтора якоря возраста (якорь уже отдельной строкой таблицы). */
+  let greenWithoutAnchor = []
   let tail = ''
   let greenHint = ''
 
@@ -218,27 +211,16 @@ export function buildCoachRecommendations(ctx) {
     )
   } else if (hasAgeBody) {
     orderedGreen = orderSensitiveQualitiesForBoxing(sensitive.qualities || [])
-    inGreen = orderedGreen.filter((q) => q === anchor)
-    tail = orderedGreen.slice(0, 2).join(', ')
+    greenWithoutAnchor = orderedGreen.filter((q) => q !== anchor)
+    tail = greenWithoutAnchor.slice(0, 2).join(', ') || orderedGreen.slice(0, 2).join(', ')
     greenHint =
       tail || 'см. раздел «Сенситивный период» ниже — список того, что в этом возрасте лучше всего усваивается'
-    const weeklyQualityList = orderedGreen.slice(0, 2).join(', ') || greenHint
-    if (stdGroup) {
-      sensitiveWeeklyNote = `Дважды за неделю по 10 мин — на то, что сейчас лучше всего усваивается: ${weeklyQualityList}.`
-    } else {
-      sensitiveWeeklyNote = `Включить в неделю то, что сейчас лучше всего усваивается: ${weeklyQualityList}.`
-    }
-    if (inGreen.length === 0 && orderedGreen.length) {
-      const topGreen = orderedGreen[0]
-      sensitiveDailyNote = `Каждое занятие 10–15 мин на «${topGreen}»; «${anchor}» не убирать — чередовать отрезки работы.`
-    }
   }
 
   const physWorst = worstNormInCategory(physicalNorms || [], physicalResults)
   const funcWorst = worstNormInCategory(functionalNorms || [], functionalResults)
 
   let normative = null
-  let normFuncPlacementNote = null
 
   if (P >= F && P >= T && physWorst && physWorst.score < 55) {
     normative = {
@@ -248,9 +230,6 @@ export function buildCoachRecommendations(ctx) {
       category: 'phys',
     }
   } else if (F > P && funcWorst && funcWorst.score < 55) {
-    normFuncPlacementNote = `Функционал тянет общий балл (КСР): тест «${funcWorst.norm.testName}» (${Math.round(
-      funcWorst.score,
-    )} балл.) — в микроцикле ставить вторым после разминки, не в «хвост» тренировки.`
   } else if (physWorst && physWorst.score < 45) {
     normative = {
       testName: physWorst.norm.testName,
@@ -267,42 +246,9 @@ export function buildCoachRecommendations(ctx) {
     }
   }
 
-  let tacticNote = null
-  if (weights?.tacticMode === 'infighter' && weights?.tacticAdvice) {
-    tacticNote = `В бою и спарринге: ${weights.tacticAdvice}`
-  } else if (weights?.tacticMode === 'outfighter' && weights?.tacticAdvice) {
-    tacticNote = `В бою и спарринге: ${weights.tacticAdvice}`
-  } else if (tacticDistanceDisplay && tacticDistanceDisplay !== '—') {
-    tacticNote = `Спарринг на неделю: одна явная задача по дистанции — «${tacticDistanceDisplay}» (${weights?.archetypeSmart ?? 'профиль'}), без смешения стиля за один раунд.`
-  }
-
-  const maxInf = Math.max(T, P, F)
-  let modelNote = null
-  if (maxInf > 0 && T === maxInf && kdNum < 0.55) {
-    modelNote =
-      'Сначала довести технику по программе (поднять КД), потом наращивать объём силы и бега вне связки с техникой — для этого спортсмена так считает модель; иначе общий балл (КСР) почти не вырастет.'
-  }
-
-  const footnotes = []
-  if (sensitiveWeeklyNote) footnotes.push(sensitiveWeeklyNote)
-  if (sensitiveDailyNote) footnotes.push(sensitiveDailyNote)
-  if (normFuncPlacementNote) footnotes.push(normFuncPlacementNote)
-  if (chainOpenNote) footnotes.push(chainOpenNote)
-  if (tacticNote) footnotes.push(tacticNote)
-  if (modelNote) footnotes.push(modelNote)
-
-  const hasGreenRow = hasAgeBody && Boolean(tail || orderedGreen.length)
-  const greensForTable = orderedGreen.slice(0, 2)
+  const hasGreenRow = hasAgeBody && greenWithoutAnchor.length > 0
+  const greensForTable = greenWithoutAnchor.slice(0, 2)
   const hasNormSlot = Boolean(normative)
-
-  if (normative) {
-    const wkMin = normative.weekly === '2×15' ? 15 : 12
-    let nLine = `Норматив «${normative.testName}» (${normative.score} балл.): в неделю два раза по ${wkMin} мин только этот тест`
-    if (normative.weekly === '2×15' && normative.category === 'phys') {
-      nLine += ' + простое «домашнее» на то же качество'
-    }
-    footnotes.unshift(nLine)
-  }
 
   let mWarm90 = 10
   let mWarm60 = 8
@@ -406,7 +352,6 @@ export function buildCoachRecommendations(ctx) {
   out.push({
     type: 'sessionFormula',
     rows,
-    footnotes,
   })
 
   return out.slice(0, 7)
