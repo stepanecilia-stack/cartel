@@ -4,7 +4,7 @@ function WelcomePage() {
   return (
     <main className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-slate-50 px-6 py-10 text-slate-900">
       <div className="w-full max-w-2xl rounded-xl bg-white p-10 text-center shadow-sm">
-        <h1 className="text-4xl font-bold tracking-tight">Cartel Boxing</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Cartel Academy</h1>
         <p className="mx-auto mt-4 max-w-xl text-slate-600">
           Ведите учеников, вводите тесты и технику, смотрите понятные баллы и подсказки, что развивать в первую очередь.
         </p>

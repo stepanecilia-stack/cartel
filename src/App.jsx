@@ -17,8 +17,12 @@ function Navbar({ user, coachProfile }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex min-h-[72px] max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:h-[72px] sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
-        <Link to={user ? '/' : '/welcome'} className="shrink-0 text-base font-bold text-slate-900 sm:text-lg">
-          Cartel Boxing
+        <Link
+          to={user ? '/' : '/welcome'}
+          className="shrink-0 text-base font-bold tracking-tight text-slate-900 sm:text-lg"
+          aria-label="Cartel Academy — на главную"
+        >
+          Cartel Academy
         </Link>
         {user ? (
           <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-2 sm:max-w-none sm:flex-none sm:gap-3">

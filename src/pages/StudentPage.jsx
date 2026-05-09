@@ -86,17 +86,24 @@ function CoachSessionPlanTable({ item }) {
         </div>
       </div>
       {/* Flex-строки вместо table: на узком экране min-w-0 + shrink-0 гарантируют видимость минут */}
-      <div className="mt-2 min-w-0 text-sm" role="table" aria-label="Распределение минут по этапам">
-        <div className="flex gap-3 border-b border-slate-200 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600" role="row">
-          <div className="min-w-0 flex-1" role="columnheader">
+      <div
+        className="mt-2 min-w-0 overflow-hidden rounded-md border border-slate-200 text-sm"
+        role="table"
+        aria-label="Распределение минут по этапам"
+      >
+        <div
+          className="flex gap-3 border-b border-slate-200 bg-slate-100/90 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600"
+          role="row"
+        >
+          <div className="min-w-0 flex-1 px-2 sm:px-2.5" role="columnheader">
             Этап
           </div>
-          <div className="w-11 shrink-0 text-right tabular-nums sm:w-12" role="columnheader">
+          <div className="w-11 shrink-0 px-2 text-right tabular-nums sm:w-12 sm:px-2.5" role="columnheader">
             Мин
           </div>
         </div>
         <div className="text-slate-800" role="rowgroup">
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const m = minutes === 90 ? row.m90 : row.m60
             let stageCell = null
             if (row.kind === 'technical') {
@@ -120,10 +127,11 @@ function CoachSessionPlanTable({ item }) {
             } else {
               stageCell = <span className="leading-snug">{row.label}</span>
             }
+            const zebra = index % 2 === 0 ? 'bg-slate-50' : 'bg-white'
             return (
               <div
                 key={row.key}
-                className="flex gap-3 border-b border-slate-100 py-2 last:border-b-0"
+                className={`flex gap-3 border-b border-slate-100 py-2 ${zebra} px-2 sm:px-2.5`}
                 role="row"
               >
                 <div className="min-w-0 flex-1 break-words" role="cell">
@@ -140,7 +148,7 @@ function CoachSessionPlanTable({ item }) {
           })}
         </div>
         <div
-          className="flex gap-3 border-t border-slate-200 py-2 text-sm font-semibold text-slate-900"
+          className="flex gap-3 border-t border-slate-200 bg-slate-100 py-2 text-sm font-semibold text-slate-900 px-2 sm:px-2.5"
           role="row"
         >
           <div className="min-w-0 flex-1" role="cell">

@@ -145,10 +145,7 @@ function HomePage({ onSelectStudent, coachId }) {
         onListChanged={loadStudents}
       />
       <div className="mx-auto max-w-6xl space-y-10">
-        <header className="space-y-4">
-          <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-            Cartel Boxing
-          </span>
+        <header>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
