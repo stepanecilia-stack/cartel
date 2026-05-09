@@ -85,6 +85,59 @@ const TAB_ICONS = {
   ),
 }
 
+const TECH_SEQUENCE_REQUIRED_LEVEL = 'MOTOR_SKILL_LEVEL_1'
+const TECH_LEVEL_RANK = {
+  NOT_LEARNED: 0,
+  KNOWLEDGE: 1,
+  MOTOR_SKILL_LEVEL_1: 2,
+  MOTOR_SKILL_LEVEL_2: 3,
+  AUTOMATED: 4,
+}
+const TECH_SEQUENCE_NAME_HINTS = [
+  ['фронтальная стойка'],
+  ['передвижение по кругу', 'фронталь'],
+  ['боевая стойка'],
+  ['передвижение в боевой стойке'],
+  ['оттяжка (шагом)', 'оттяжка шагом'],
+  ['оттяжка (отскоком назад)', 'оттяжка отскоком'],
+  ['прямой удар передней рукой в голову', 'прямой передней в голову'],
+  ['защита подставкой от прямого удара в голову', 'защита подставкой (голова)'],
+  ['прямой удар передней рукой в туловище', 'прямой передней в туловище'],
+  ['защита подставкой  локтя', 'защита подставкой локтя'],
+  ['прямой удар сильной рукой в голову', 'прямой сильной в голову'],
+  ['защита подставкой плеча'],
+  ['прямой удар сильной рукой в туловище', 'прямой сильной в туловище'],
+  ['удары во фронтальной стойке на скресном шаге', 'удары во фронтальной стойке на скрёстном шаге'],
+  ['защита уклоном'],
+  ['защита отбивом', 'внутрь', 'наружу'],
+  ['сайд-степ', 'сайдстеп'],
+  ['нырок'],
+]
+
+const normalizeTechName = (value) =>
+  String(value ?? '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const atomNameMatchesHints = (atomName, hints) => {
+  const normalized = normalizeTechName(atomName)
+  return hints.every((hint) => normalized.includes(normalizeTechName(hint)))
+}
+
+const resolveSequenceOrderIndex = (atom) => {
+  const byName = TECH_SEQUENCE_NAME_HINTS.findIndex((hints) => atomNameMatchesHints(atom?.name, hints))
+  if (byName >= 0) return byName
+  const n = Number(atom?.number)
+  if (Number.isFinite(n) && n >= 1) return n - 1
+  return Number.MAX_SAFE_INTEGER
+}
+
+const isTechnicalLevelUnlockedForNext = (levelKey) =>
+  (TECH_LEVEL_RANK[normalizeTechnicalDominanceKey(levelKey)] ?? 0) >=
+  (TECH_LEVEL_RANK[TECH_SEQUENCE_REQUIRED_LEVEL] ?? 2)
+
 function emptyTestsRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -210,6 +263,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [saveOk, setSaveOk] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [normSavingKey, setNormSavingKey] = useState('')
+  const [technicalSavingKey, setTechnicalSavingKey] = useState('')
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -728,7 +782,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }))
   }
 
-  const buildStudentUpdatePayload = (physicalMerged, functionalMerged, weightHistoryArg) => {
+  const buildStudentUpdatePayload = (
+    physicalMerged,
+    functionalMerged,
+    weightHistoryArg,
+    technicalDataOverride = technicalData,
+  ) => {
     const height = Number(anthropometry.height) || 0
     const reach = Number(anthropometry.reach) || 0
     const weight = Number(anthropometry.weight) || 0
@@ -749,12 +808,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       functionalNorms,
       physicalResults: physicalMerged,
       functionalResults: functionalMerged,
-      technicalData,
+      technicalData: technicalDataOverride,
     })
     const w = getWeights(mergedAthlete)
     const kspBundle = calculateKsrAndKsp(mergedAthlete, nextScores)
     const technicalScore = nextScores.техника / 100
-    const kdStats = calculateKD(technicalAtoms, technicalData)
+    const kdStats = calculateKD(technicalAtoms, technicalDataOverride)
     const effective = calculateEffectiveKSR(kspBundle.baseKSR, kdStats.kd)
     const measureDate = anthropometry.date || new Date().toISOString().slice(0, 10)
 
@@ -771,7 +830,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         physical: physicalMerged,
         functional: functionalMerged,
       },
-      technicalData,
+      technicalData: technicalDataOverride,
       scores: nextScores,
       archetype: w.archetype,
       archetypeSmart: w.archetypeSmart,
@@ -941,6 +1000,62 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
   }
 
+  const handleSaveTechnicalAtom = async (atom) => {
+    if (!student?.id) {
+      setSaveError('Сначала выберите ученика в списке на главной странице.')
+      return
+    }
+    const atomId = atom?.id
+    if (!atomId) return
+    const busyKey = `technical:${atomId}`
+    setSaveError('')
+    setSaveOk(false)
+    setTechnicalSavingKey(busyKey)
+    try {
+      const fresh = await getStudentById(student.id)
+      if (!fresh) {
+        setSaveError('Ученик не найден в базе.')
+        return
+      }
+
+      const physicalMerged = { ...emptyTestsRecord(fresh.tests?.physical) }
+      const functionalMerged = { ...emptyTestsRecord(fresh.tests?.functional) }
+      const serverTechnical = emptyTechnicalRecord(fresh.technicalData)
+      const localAtom = technicalData[atomId] ?? {}
+      const technicalMerged = {
+        ...serverTechnical,
+        [atomId]: {
+          ...(serverTechnical[atomId] ?? {}),
+          ...localAtom,
+          level: normalizeTechnicalDominanceKey(localAtom.level),
+        },
+      }
+
+      const weight = Number(anthropometry.weight) || 0
+      const prevHistory = Array.isArray(fresh.weightHistory) ? [...fresh.weightHistory] : []
+      const measureDate = anthropometry.date || new Date().toISOString().slice(0, 10)
+      let weightHistory = prevHistory
+      if (weight >= 20) {
+        const last = prevHistory[prevHistory.length - 1]
+        if (!last || last.weight !== weight || last.date !== measureDate) {
+          weightHistory = [...prevHistory, { date: measureDate, weight }].slice(-36)
+        }
+      }
+
+      const payload = buildStudentUpdatePayload(physicalMerged, functionalMerged, weightHistory, technicalMerged)
+      await updateStudentData(student.id, payload)
+      setTechnicalData(technicalMerged)
+      setSaveOk(true)
+      onStudentUpdated?.(payload)
+      await syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+    } catch (err) {
+      console.error(err)
+      setSaveError('Не удалось сохранить техэлемент.')
+    } finally {
+      setTechnicalSavingKey('')
+    }
+  }
+
   const renderNormInputs = (category, norms, values) => {
     if (loadingNorms) {
       return <p className="text-sm text-slate-500">Загрузка нормативов...</p>
@@ -1046,6 +1161,29 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       )
     })
   }
+
+  const orderedTechnicalAtoms = useMemo(
+    () =>
+      [...technicalAtoms].sort((a, b) => {
+        const aIdx = resolveSequenceOrderIndex(a)
+        const bIdx = resolveSequenceOrderIndex(b)
+        if (aIdx !== bIdx) return aIdx - bIdx
+        return String(a?.number ?? '').localeCompare(String(b?.number ?? ''), 'ru')
+      }),
+    [technicalAtoms],
+  )
+
+  const technicalLocksById = useMemo(() => {
+    const locks = {}
+    let previousUnlocked = true
+    for (const atom of orderedTechnicalAtoms) {
+      const locked = !previousUnlocked
+      locks[atom.id] = locked
+      const currentLevel = technicalData[atom.id]?.level
+      previousUnlocked = previousUnlocked && isTechnicalLevelUnlockedForNext(currentLevel)
+    }
+    return locks
+  }, [orderedTechnicalAtoms, technicalData])
 
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-12">
@@ -1335,31 +1473,61 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             {activeTab === 'technical' && (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-slate-800">Техника</h3>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-900">
+                  Предложенные технические элементы и видеоматериалы носят рекомендательный методический характер и
+                  не являются единственно верным стандартом исполнения. В зависимости от школы бокса допустимы
+                  различия в технике и акцентах обучения. Приоритетным является соблюдение последовательности
+                  освоения: переход к следующему элементу осуществляется после уверенного закрепления предыдущего.
+                  Видео используется как дополнительный визуальный инструмент по усмотрению тренера.
+                </div>
                 {technicalAtoms.length === 0 && !loadingNorms ? (
                   <p className="text-sm text-slate-500">
                     Список ударов из общей таблицы не загрузился — проверьте интернет и откройте страницу позже.
                   </p>
                 ) : (
-                  technicalAtoms.map((atom) => {
+                  orderedTechnicalAtoms.map((atom) => {
                     const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
+                    const isLockedBySequence = Boolean(technicalLocksById[atom.id])
                     return (
                     <article
                       key={atom.id}
-                      className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                      className={`rounded-lg border bg-white p-3 shadow-sm ${
+                        isLockedBySequence ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
                         <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900">
                           <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
                         </h3>
-                        <a
-                          className="flex-shrink-0 text-[11px] font-medium text-blue-600 underline-offset-2 hover:underline sm:text-xs"
-                          href={atom.videoLink || '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Видео
-                        </a>
+                        {isLockedBySequence && (
+                          <span
+                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-amber-800"
+                            title="Элемент закрыт до уровня «Умение» на предыдущем"
+                            aria-label="Элемент закрыт"
+                          >
+                            🔒
+                          </span>
+                        )}
                       </div>
+                      {atom.id === 'atom_1' && atom.embedUrl && (
+                        <details className="mt-2 rounded-lg border border-slate-200 bg-white">
+                          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                            Видеоматериал (опционально)
+                          </summary>
+                          <div className="overflow-hidden border-t border-slate-200 bg-slate-950 p-2">
+                            <div className="relative w-full pt-[177.78%]">
+                              <iframe
+                                src={atom.embedUrl}
+                                title={`Видео: ${atom.name}`}
+                                className="absolute left-0 top-0 h-full w-full"
+                                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock;"
+                                allowFullScreen
+                                loading="lazy"
+                              />
+                            </div>
+                          </div>
+                        </details>
+                      )}
 
                       <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                         <label className="min-w-0 space-y-0.5">
@@ -1367,9 +1535,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                             Уровень освоения
                           </span>
                           <select
-                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 sm:max-w-md"
+                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:max-w-md"
                             value={atomLevelKey}
+                            disabled={isLockedBySequence}
                             onChange={(event) =>
+                              isLockedBySequence
+                                ? null
+                                :
                               setTechnicalData((prev) => ({
                                 ...prev,
                                 [atom.id]: { ...(prev[atom.id] ?? {}), level: event.target.value },
@@ -1394,10 +1566,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         </span>
                         <textarea
                           rows={2}
-                          className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
+                          className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                           placeholder="Заметки по элементу…"
                           value={technicalData[atom.id]?.comment ?? ''}
+                          disabled={isLockedBySequence}
                           onChange={(event) =>
+                            isLockedBySequence
+                              ? null
+                              :
                             setTechnicalData((prev) => ({
                               ...prev,
                               [atom.id]: { ...(prev[atom.id] ?? {}), comment: event.target.value },
@@ -1405,6 +1581,21 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           }
                         />
                       </label>
+                      {isLockedBySequence && (
+                        <p className="mt-2 rounded-md border border-amber-200 bg-amber-100/70 px-2.5 py-1.5 text-xs font-medium text-amber-900">
+                          Элемент под замком. Чтобы открыть его, предыдущий элемент должен быть на уровне «Умение».
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                        <button
+                          type="button"
+                          disabled={!student?.id || isLockedBySequence || technicalSavingKey === `technical:${atom.id}`}
+                          onClick={() => handleSaveTechnicalAtom(atom)}
+                          className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
+                        </button>
+                      </div>
 
                       <details className="mt-1.5 text-xs text-slate-600">
                         <summary className="cursor-pointer font-medium text-blue-600">Подсказка и детали</summary>
@@ -1446,7 +1637,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               onClick={handleSaveProfile}
               className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
             >
-              {isSaving ? 'Сохранение…' : 'Сохранить антропометрию и технику'}
+              {isSaving ? 'Сохранение…' : 'Сохранить антропометрию'}
             </button>
           </div>
         </section>

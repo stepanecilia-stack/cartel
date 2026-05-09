@@ -12,8 +12,42 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
 const NORMS_SHEET_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSznwbE_UU03tW5O2ps783zQ_V6lXjGnx7IdqYCTfF7XRN6ioJ7EQ4kclNSyrok2Yu2CGXr4M4qGzcs/pub?gid=1658605285&single=true&output=csv'
-const TECHNICAL_SHEET_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSznwbE_UU03tW5O2ps783zQ_V6lXjGnx7IdqYCTfF7XRN6ioJ7EQ4kclNSyrok2Yu2CGXr4M4qGzcs/pub?gid=320989263&single=true&output=csv'
+
+const INTERNAL_TECHNICAL_ATOMS = [
+  {
+    number: '1',
+    name: 'Фронтальная стойка',
+    videoLink: 'https://kinescope.io/crkhdpg2H4pfNF9QAe7K6j',
+    embedUrl: 'https://kinescope.io/embed/crkhdpg2H4pfNF9QAe7K6j',
+  },
+  { number: '2', name: 'Передвижение по кругу во фронтальной стойке' },
+  { number: '3', name: 'Боевая стойка' },
+  { number: '4', name: 'Передвижение в боевой стойке (вперед-назад, влево-вправо)' },
+  { number: '5', name: 'Оттяжка шагом' },
+  { number: '6', name: 'Оттяжка отскоком' },
+  { number: '7', name: 'Прямой передней в голову' },
+  { number: '8', name: 'Защита подставкой (голова)' },
+  { number: '9', name: 'Прямой передней в туловище' },
+  { number: '10', name: 'Защита подставкой локтя (туловище)' },
+  { number: '11', name: 'Прямой сильной в голову' },
+  { number: '12', name: 'Защита подставкой плеча' },
+  { number: '13', name: 'Прямой сильной в туловище' },
+  { number: '14', name: 'Удары во фронтальной стойке на скрёстном шаге' },
+  { number: '15', name: 'Защита уклоном' },
+  { number: '16', name: 'Защита отбивом (внутрь/наружу)' },
+  { number: '17', name: 'Сайдстеп' },
+  { number: '18', name: 'Нырок' },
+].map((item) => ({
+  id: `atom_${item.number}`,
+  number: item.number,
+  name: item.name,
+  howTo: item.howTo ?? '',
+  whyHowTo: item.whyHowTo ?? '',
+  mistakes: item.mistakes ?? '',
+  whyMistakes: item.whyMistakes ?? '',
+  videoLink: item.videoLink ?? '',
+  embedUrl: item.embedUrl ?? '',
+}))
 
 /** Коэффициент доминантности по уровню освоения технического атома. */
 export const DOMINANCE_COEFFICIENTS = {
@@ -462,20 +496,7 @@ export const getNormsForAthlete = (allNorms, athlete, category) => {
 }
 
 export const loadLegacyTechnicalAtoms = async () => {
-  const response = await fetch(TECHNICAL_SHEET_URL)
-  return parseCsv(await response.text())
-    .slice(1)
-    .filter((row) => row.length >= 7 && row[1])
-    .map((row, index) => ({
-      id: `atom_${row[0] || index + 1}`,
-      number: row[0] || String(index + 1),
-      name: row[1],
-      howTo: row[2],
-      whyHowTo: row[3],
-      mistakes: row[4],
-      whyMistakes: row[5],
-      videoLink: row[6],
-    }))
+  return INTERNAL_TECHNICAL_ATOMS
 }
 
 export const calculateLegacySectionScores = ({
