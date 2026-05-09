@@ -41,7 +41,7 @@ import {
   updateStudentData,
 } from '../services/firebaseService'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
-import { NormGoldGoalIcon, NormMedalChip, TechnicalLevelIndicators } from '../components/NormMedals'
+import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
 
@@ -264,6 +264,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [isSaving, setIsSaving] = useState(false)
   const [normSavingKey, setNormSavingKey] = useState('')
   const [technicalSavingKey, setTechnicalSavingKey] = useState('')
+  const [openTechnicalVideoId, setOpenTechnicalVideoId] = useState(null)
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -314,6 +315,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setShareUrl('')
     setStandardInfoOpen(false)
     setSensitivePeriodExpanded(false)
+    setOpenTechnicalVideoId(null)
   }, [student])
 
   useEffect(() => {
@@ -1495,47 +1497,62 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         isLockedBySequence ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
-                        <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900">
+                      <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2">
+                        <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900">
                           <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
                         </h3>
                         {isLockedBySequence && (
                           <span
-                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-amber-800"
+                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-sm text-amber-800"
                             title="Элемент закрыт до уровня «Умение» на предыдущем"
                             aria-label="Элемент закрыт"
                           >
                             🔒
                           </span>
                         )}
+                        {atom.embedUrl && (
+                          <button
+                            type="button"
+                            className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-slate-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-200 ${
+                              openTechnicalVideoId === atom.id
+                                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                : 'border-slate-200 bg-white hover:bg-slate-50'
+                            }`}
+                            title="Видеоматериал (опционально)"
+                            aria-label="Показать или скрыть видео"
+                            aria-expanded={openTechnicalVideoId === atom.id}
+                            onClick={() =>
+                              setOpenTechnicalVideoId((id) => (id === atom.id ? null : atom.id))
+                            }
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                              <path d="M8 5v14l11-7L8 5z" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
-                      {atom.embedUrl && (
-                        <details className="mt-2 rounded-lg border border-slate-200 bg-white">
-                          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                            Видеоматериал (опционально)
-                          </summary>
-                          <div className="overflow-hidden border-t border-slate-200 bg-slate-950 p-2">
-                            <div className="relative w-full pt-[177.78%]">
-                              <iframe
-                                src={atom.embedUrl}
-                                title={`Видео: ${atom.name}`}
-                                className="absolute left-0 top-0 h-full w-full"
-                                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock;"
-                                allowFullScreen
-                                loading="lazy"
-                              />
-                            </div>
+                      {atom.embedUrl && openTechnicalVideoId === atom.id && (
+                        <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-950 p-2">
+                          <div className="relative w-full pt-[177.78%]">
+                            <iframe
+                              src={atom.embedUrl}
+                              title={`Видео: ${atom.name}`}
+                              className="absolute left-0 top-0 h-full w-full"
+                              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock;"
+                              allowFullScreen
+                              loading="lazy"
+                            />
                           </div>
-                        </details>
+                        </div>
                       )}
 
-                      <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                      <div className="mt-2">
                         <label className="min-w-0 space-y-0.5">
                           <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                             Уровень освоения
                           </span>
                           <select
-                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:max-w-md"
+                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                             value={atomLevelKey}
                             disabled={isLockedBySequence}
                             onChange={(event) =>
@@ -1555,9 +1572,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                             ))}
                           </select>
                         </label>
-                        <div className="flex min-h-[28px] flex-wrap items-center gap-1 sm:justify-end">
-                          <TechnicalLevelIndicators level={atomLevelKey} />
-                        </div>
                       </div>
 
                       <label className="mt-2 block space-y-0.5">
@@ -1586,12 +1600,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           Элемент под замком. Чтобы открыть его, предыдущий элемент должен быть на уровне «Умение».
                         </p>
                       )}
-                      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                      <div className="mt-2 border-t border-slate-100 pt-2">
                         <button
                           type="button"
                           disabled={!student?.id || isLockedBySequence || technicalSavingKey === `technical:${atom.id}`}
                           onClick={() => handleSaveTechnicalAtom(atom)}
-                          className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
+                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
                         >
                           {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
                         </button>
