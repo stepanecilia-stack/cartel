@@ -43,7 +43,8 @@ import {
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
-import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
+import { getSensitiveMotorQualities, orderSensitiveQualitiesForBoxing } from '../utils/sensitivePeriods'
+import { buildCoachRecommendations } from '../utils/coachRecommendations'
 
 const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Антропометрия' },
@@ -640,6 +641,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     () => getSensitiveMotorQualities(computeAthleteAgeYears(resolvedBirthYear)),
     [resolvedBirthYear],
   )
+  const orderedSensitiveQualities = useMemo(
+    () => orderSensitiveQualitiesForBoxing(sensitivePeriods.qualities),
+    [sensitivePeriods.qualities],
+  )
+  const orderedLowImpactQualities = useMemo(
+    () => orderSensitiveQualitiesForBoxing(sensitivePeriods.lowImpactQualities),
+    [sensitivePeriods.lowImpactQualities],
+  )
 
   const influenceItems = [
     {
@@ -1187,6 +1196,41 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     return locks
   }, [orderedTechnicalAtoms, technicalData])
 
+  const coachRecommendations = useMemo(
+    () =>
+      buildCoachRecommendations({
+        ageInt: sensitivePeriods.ageInt ?? null,
+        sensitive: sensitivePeriods,
+        weights,
+        tacticDistanceDisplay: tacticDistanceDisplay ?? '—',
+        kd: kdBundle.kd,
+        baseKSR,
+        effectiveKSR,
+        orderedTechnicalAtoms,
+        technicalLocksById,
+        technicalData,
+        physicalNorms,
+        functionalNorms,
+        physicalResults,
+        functionalResults,
+      }),
+    [
+      sensitivePeriods,
+      weights,
+      tacticDistanceDisplay,
+      kdBundle.kd,
+      baseKSR,
+      effectiveKSR,
+      orderedTechnicalAtoms,
+      technicalLocksById,
+      technicalData,
+      physicalNorms,
+      functionalNorms,
+      physicalResults,
+      functionalResults,
+    ],
+  )
+
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
@@ -1263,6 +1307,18 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             >
               {shareUrl}
             </button>
+          )}
+          {coachRecommendations.length > 0 && (
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+                Рекомендации для тренера
+              </h2>
+              <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-snug text-slate-800">
+                {coachRecommendations.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            </div>
           )}
         </section>
 
@@ -2008,7 +2064,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         </p>
                       ) : (
                         <ul className="mt-3 list-none space-y-2 text-sm text-emerald-950">
-                          {sensitivePeriods.qualities.map((q) => (
+                          {orderedSensitiveQualities.map((q) => (
                             <li
                               key={q}
                               className="flex gap-2 rounded-lg border border-emerald-200/80 bg-white/70 px-3 py-2"
@@ -2028,7 +2084,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         <p className="mt-3 text-sm text-red-900/80">Все строки таблицы сейчас в «зелёной» зоне.</p>
                       ) : (
                         <ul className="mt-3 list-none space-y-2 text-sm text-red-950">
-                          {sensitivePeriods.lowImpactQualities.map((q) => (
+                          {orderedLowImpactQualities.map((q) => (
                             <li
                               key={q}
                               className="flex gap-2 rounded-lg border border-red-200/80 bg-white/70 px-3 py-2"
@@ -2049,13 +2105,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm sm:px-5 sm:py-5">
           <p className="text-sm font-semibold text-slate-900">
-            Коэффициент прочности навыков:{' '}
+            Коэффициент доминантности техники (КД):{' '}
             <span className="text-2xl font-bold tabular-nums text-slate-900">
               {(kdBundle.kd * 100).toFixed(1)}%
             </span>
           </p>
           <p className="mt-2 text-sm leading-snug text-slate-700">
-            Вероятность успешного применения технических элементов в соревновательном бою
+            Среднее коэффициентов по уровням освоения элементов техники; на него умножается базовый КСР, чтобы получить эффективный КСР.
           </p>
         </div>
       </div>

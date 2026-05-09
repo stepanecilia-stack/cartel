@@ -19,6 +19,40 @@ const QUALITY_ORDER = [
   'Точность',
 ]
 
+/**
+ * Иерархия значимости для бокса (от большего к меньшему).
+ * Используется только для порядка отображения в UI; логика «зелёный / красный список» не меняется.
+ */
+export const BOXING_SENSITIVE_DISPLAY_ORDER = [
+  'Быстрота',
+  'Скоростно-силовые качества',
+  'Скоростная сила',
+  'Координационные способности',
+  'Точность',
+  'Динамическая сила',
+  'Анаэробные возможности',
+  'Равновесие',
+  'Выносливость (аэробные возможности)',
+  'Сила',
+  'Статическая сила',
+  'Гибкость',
+  'Мышечная масса',
+  'Рост',
+]
+
+/**
+ * @param {string[]} items — подмножество QUALITY_ORDER
+ * @returns {string[]}
+ */
+export function orderSensitiveQualitiesForBoxing(items) {
+  if (!Array.isArray(items) || items.length === 0) return []
+  const set = new Set(items)
+  const ordered = BOXING_SENSITIVE_DISPLAY_ORDER.filter((q) => set.has(q))
+  const remaining = [...set].filter((q) => !BOXING_SENSITIVE_DISPLAY_ORDER.includes(q))
+  remaining.sort((a, b) => QUALITY_ORDER.indexOf(a) - QUALITY_ORDER.indexOf(b))
+  return [...ordered, ...remaining]
+}
+
 /** @type {Record<string, (number | '17-18')[]>} */
 const QUALITY_SENSITIVE_AGES = {
   Рост: [11, 12, 13, 14, 15],
