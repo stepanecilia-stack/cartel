@@ -1509,7 +1509,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           </span>
                         )}
                       </div>
-                      {atom.id === 'atom_1' && atom.embedUrl && (
+                      {atom.embedUrl && (
                         <details className="mt-2 rounded-lg border border-slate-200 bg-white">
                           <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-blue-700">
                             Видеоматериал (опционально)
