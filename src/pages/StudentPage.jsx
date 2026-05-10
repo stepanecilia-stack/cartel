@@ -58,18 +58,43 @@ function CoachSessionPlanTable({ item }) {
   const rows = item.rows ?? []
   const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
 
+  const rowsWithAbs = useMemo(() => {
+    let cum = 0
+    return rows.map((row) => {
+      const raw = minutes === 90 ? row.m90 : row.m60
+      const dur = Number(raw) || 0
+      let absLabel = '—'
+      let absTitle = 'Длительность этапа не задана'
+      if (dur > 0) {
+        const fromMin = cum + 1
+        cum += dur
+        const toMin = cum
+        absLabel = `${fromMin}–${toMin}`
+        absTitle = `С ${fromMin}-й по ${toMin}-ю минуту от начала тренировки (${dur} мин)`
+      }
+      return { row, d: dur, absLabel, absTitle }
+    })
+  }, [rows, minutes])
+
   return (
-    <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-          Временная формула тренировки
-        </p>
-        <div className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+            Временная формула тренировки
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
+            Колонка «От старта» — номера минут тренировки с первой (включительно), чтобы ориентироваться на общем таймере.
+          </p>
+        </div>
+        <div className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium dark:border-slate-600 dark:bg-slate-800">
           <button
             type="button"
             onClick={() => setMinutes(90)}
             className={`rounded-md px-2.5 py-1 transition ${
-              minutes === 90 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              minutes === 90
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
             }`}
           >
             1,5 ч
@@ -78,7 +103,9 @@ function CoachSessionPlanTable({ item }) {
             type="button"
             onClick={() => setMinutes(60)}
             className={`rounded-md px-2.5 py-1 transition ${
-              minutes === 60 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              minutes === 60
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
             }`}
           >
             1 ч
@@ -87,24 +114,30 @@ function CoachSessionPlanTable({ item }) {
       </div>
       {/* Flex-строки вместо table: на узком экране min-w-0 + shrink-0 гарантируют видимость минут */}
       <div
-        className="mt-2 min-w-0 overflow-hidden rounded-md border border-slate-200 text-sm"
+        className="mt-2 min-w-0 overflow-hidden rounded-md border border-slate-200 text-sm dark:border-slate-600"
         role="table"
         aria-label="Распределение минут по этапам"
       >
         <div
-          className="flex gap-3 border-b border-slate-200 bg-slate-100/90 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600"
+          className="flex gap-2 border-b border-slate-200 bg-slate-100/90 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 sm:gap-3"
           role="row"
         >
           <div className="min-w-0 flex-1 px-2 sm:px-2.5" role="columnheader">
             Этап
           </div>
+          <div
+            className="w-[4.25rem] shrink-0 px-1 text-right tabular-nums sm:w-[4.75rem] sm:px-2"
+            role="columnheader"
+            title="Минута тренировки от начала (включительно)"
+          >
+            От старта
+          </div>
           <div className="w-11 shrink-0 px-2 text-right tabular-nums sm:w-12 sm:px-2.5" role="columnheader">
             Мин
           </div>
         </div>
-        <div className="text-slate-800" role="rowgroup">
-          {rows.map((row, index) => {
-            const m = minutes === 90 ? row.m90 : row.m60
+        <div className="text-slate-800 dark:text-slate-200" role="rowgroup">
+          {rowsWithAbs.map(({ row, d: m, absLabel, absTitle }, index) => {
             let stageCell = null
             if (row.kind === 'technical') {
               stageCell =
@@ -127,18 +160,25 @@ function CoachSessionPlanTable({ item }) {
             } else {
               stageCell = <span className="leading-snug">{row.label}</span>
             }
-            const zebra = index % 2 === 0 ? 'bg-slate-50' : 'bg-white'
+            const zebra = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'
             return (
               <div
                 key={row.key}
-                className={`flex gap-3 border-b border-slate-100 py-2 ${zebra} px-2 sm:px-2.5`}
+                className={`flex gap-3 border-b border-slate-100 py-2 dark:border-slate-700 ${zebra} px-2 sm:px-2.5`}
                 role="row"
               >
                 <div className="min-w-0 flex-1 break-words" role="cell">
                   {stageCell}
                 </div>
                 <div
-                  className="w-11 shrink-0 self-start pt-0.5 text-right text-sm font-medium tabular-nums text-slate-900 sm:w-12"
+                  className="w-[4.25rem] shrink-0 self-start px-1 pt-0.5 text-right text-[11px] font-medium tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
+                  role="cell"
+                  title={absTitle}
+                >
+                  {absLabel}
+                </div>
+                <div
+                  className="w-11 shrink-0 self-start pt-0.5 text-right text-sm font-medium tabular-nums text-slate-900 dark:text-slate-100 sm:w-12"
                   role="cell"
                 >
                   {m}
@@ -148,11 +188,18 @@ function CoachSessionPlanTable({ item }) {
           })}
         </div>
         <div
-          className="flex gap-3 border-t border-slate-200 bg-slate-100 py-2 text-sm font-semibold text-slate-900 px-2 sm:px-2.5"
+          className="flex gap-2 border-t border-slate-200 bg-slate-100 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 px-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:gap-3 sm:px-2.5"
           role="row"
         >
           <div className="min-w-0 flex-1" role="cell">
             Итого
+          </div>
+          <div
+            className="w-[4.25rem] shrink-0 px-1 text-right text-xs tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2"
+            role="cell"
+            title="Вся тренировка от первой до последней минуты"
+          >
+            {total > 0 ? `1–${total}` : '—'}
           </div>
           <div className="w-11 shrink-0 text-right tabular-nums sm:w-12" role="cell">
             {total}
@@ -437,7 +484,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   })
   const [saveError, setSaveError] = useState('')
   const [saveOk, setSaveOk] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [anthropometrySaveError, setAnthropometrySaveError] = useState('')
+  const [anthropometrySaveOk, setAnthropometrySaveOk] = useState(false)
+  const [isAnthropometrySaving, setIsAnthropometrySaving] = useState(false)
   const [normSavingKey, setNormSavingKey] = useState('')
   const [technicalSavingKey, setTechnicalSavingKey] = useState('')
   const [openTechnicalVideoId, setOpenTechnicalVideoId] = useState(null)
@@ -492,6 +541,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setStandardInfoOpen(false)
     setSensitivePeriodExpanded(false)
     setOpenTechnicalVideoId(null)
+    setSaveError('')
+    setSaveOk(false)
+    setAnthropometrySaveError('')
+    setAnthropometrySaveOk(false)
   }, [student])
 
   useEffect(() => {
@@ -1108,19 +1161,19 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     return 'Тренер'
   }
 
-  /** Антропометрия и техника; нормативы в базе не перезаписываются из черновиков формы. */
+  /** Антропометрия, весовая история и пересчёт баллов (тесты сливаются с текущими черновиками формы). */
   const handleSaveProfile = async () => {
     if (!student?.id) {
-      setSaveError('Сначала выберите ученика в списке на главной странице.')
+      setAnthropometrySaveError('Сначала выберите ученика в списке на главной странице.')
       return
     }
-    setSaveError('')
-    setSaveOk(false)
-    setIsSaving(true)
+    setAnthropometrySaveError('')
+    setAnthropometrySaveOk(false)
+    setIsAnthropometrySaving(true)
     try {
       const fresh = await getStudentById(student.id)
       if (!fresh) {
-        setSaveError('Ученик не найден в базе.')
+        setAnthropometrySaveError('Ученик не найден в базе.')
         return
       }
       const physicalMerged = {
@@ -1145,14 +1198,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       await updateStudentData(student.id, payload)
       setPhysicalResults(physicalMerged)
       setFunctionalResults(functionalMerged)
-      setSaveOk(true)
+      setAnthropometrySaveOk(true)
       onStudentUpdated?.(payload)
       await syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
     } catch (err) {
       console.error(err)
-      setSaveError('Не удалось сохранить. Проверьте интернет и права доступа к базе данных.')
+      setAnthropometrySaveError('Не удалось сохранить. Проверьте интернет и права доступа к базе данных.')
     } finally {
-      setIsSaving(false)
+      setIsAnthropometrySaving(false)
     }
   }
 
@@ -1341,7 +1394,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       return (
         <div key={norm.testId} className={`flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}>
           <div className="text-center">
-            <span className="block text-base font-bold leading-snug text-slate-900 sm:text-lg">{norm.testName}</span>
+            <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{norm.testName}</span>
             {norm.description ? (
               <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:text-xs">{norm.description}</p>
             ) : null}
@@ -1352,7 +1405,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               <NormGoldGoalIcon />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/85">Цель</p>
-                <p className="truncate text-sm font-bold tabular-nums text-slate-900">
+                <p className="truncate text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
                   {goalLabel}{' '}
                   <span className="text-xs font-semibold text-slate-600">{norm.unit}</span>
                 </p>
@@ -1373,7 +1426,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 type={inputType}
                 inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
                 step={inputType === 'number' ? 'any' : undefined}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                 value={displayVal}
                 onChange={(e) => updateNormResult(category, norm, e.target.value)}
               />
@@ -1395,7 +1448,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 type="button"
                 disabled={!student?.id || normBusy || !row || !Number.isFinite(row.result)}
                 onClick={() => handleSaveNormAcceptance(category, norm)}
-                className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
+                className="rounded-lg border border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {normBusy ? 'Сохранение…' : 'Сохранить норматив'}
               </button>
@@ -1468,31 +1521,31 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   )
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-12">
+    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
       <div className="mx-auto min-w-0 max-w-4xl space-y-4 sm:space-y-6">
         <div
-          className="sticky top-[72px] z-30 -mx-3 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2.5 pr-2 pl-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:-mx-6 sm:gap-3 sm:px-6"
+          className="sticky top-[72px] z-30 -mx-3 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2.5 pr-2 pl-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 dark:border-slate-600 dark:bg-slate-900/95 sm:-mx-6 sm:gap-3 sm:px-6"
           aria-label="Карточка ученика — закреплённая строка"
         >
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
+            className="shrink-0 rounded-lg border border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
           >
             Назад к дашборду
           </button>
-          <p className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+          <p className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
             {safeStudent.name}
           </p>
         </div>
 
-        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+        <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h1 className="text-3xl font-bold text-slate-900">{safeStudent.name}</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{safeStudent.name}</h1>
             {student?.id && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 <span className="text-slate-500">Личный код:</span>
-                <span className="font-mono text-base font-semibold tabular-nums text-slate-900">
+                <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                   {shortIdDigits ? formatShortIdDisplay(shortIdDigits) : '—'}
                 </span>
                 <button
@@ -1501,7 +1554,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   onClick={copyShortId}
                   title="Скопировать шесть цифр без пробелов — чтобы передать другому тренеру"
                   aria-label="Скопировать личный код ученика"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -1596,8 +1649,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold text-slate-900">Тесты и техника</h2>
+        <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Тесты и техника</h2>
           <div
             className="mt-2 flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-950 shadow-sm sm:px-4"
             role="note"
@@ -1785,6 +1838,27 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     />
                   </label>
                 </div>
+
+                <div className="mt-6 border-t border-slate-200 pt-5">
+                  {anthropometrySaveError && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {anthropometrySaveError}
+                    </div>
+                  )}
+                  {anthropometrySaveOk && !anthropometrySaveError && (
+                    <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                      Антропометрия и расчётные поля сохранены в облаке.
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isAnthropometrySaving || !student?.id}
+                    onClick={handleSaveProfile}
+                    className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
+                  >
+                    {isAnthropometrySaving ? 'Сохранение…' : 'Сохранить антропометрию'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1828,7 +1902,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                       }`}
                     >
                       <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2">
-                        <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900">
+                        <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
                           <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
                         </h3>
                         {isLockedBySequence && (
@@ -1882,7 +1956,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                             Уровень освоения
                           </span>
                           <select
-                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                            className="w-full rounded-md border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                             value={atomLevelKey}
                             disabled={isLockedBySequence}
                             onChange={(event) =>
@@ -1910,7 +1984,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         </span>
                         <textarea
                           rows={2}
-                          className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                          className="w-full resize-y rounded-md border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                           placeholder="Заметки по элементу…"
                           value={technicalData[atom.id]?.comment ?? ''}
                           disabled={isLockedBySequence}
@@ -1935,7 +2009,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           type="button"
                           disabled={!student?.id || isLockedBySequence || technicalSavingKey === `technical:${atom.id}`}
                           onClick={() => handleSaveTechnicalAtom(atom)}
-                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
+                          className="w-full rounded-lg border border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-800 px-3 py-2.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
                         >
                           {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
                         </button>
@@ -1964,29 +2038,23 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             )}
           </div>
 
-          <div className="mt-8 border-t border-slate-200 pt-5">
-            {saveError && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {saveError}
-              </div>
-            )}
-            {saveOk && !saveError && (
-              <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                Сохранено. Данные ученика в облаке обновлены.
-              </div>
-            )}
-            <button
-              type="button"
-              disabled={isSaving || !student?.id}
-              onClick={handleSaveProfile}
-              className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
-            >
-              {isSaving ? 'Сохранение…' : 'Сохранить антропометрию'}
-            </button>
-          </div>
+          {(saveError || saveOk) && (
+            <div className="mt-8 border-t border-slate-200 pt-5">
+              {saveError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {saveError}
+                </div>
+              )}
+              {saveOk && !saveError && (
+                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                  Сохранено. Данные ученика в облаке обновлены.
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
-        <section className="rounded-xl bg-white p-4 shadow-sm sm:p-8">
+        <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-8">
           <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="flex flex-col gap-2 bg-slate-900 px-3 py-2.5 text-white sm:px-4 sm:py-3">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -2015,7 +2083,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     i
                   </button>
                   <span
-                    className={`absolute left-1/2 top-[calc(100%+8px)] z-20 w-[min(calc(100vw-2rem),290px)] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ${
+                    className={`absolute left-1/2 top-[calc(100%+8px)] z-20 w-[min(calc(100vw-2rem),290px)] -translate-x-1/2 rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ${
                       standardInfoOpen ? 'block' : 'hidden group-hover:block'
                     }`}
                   >
@@ -2163,40 +2231,40 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:hidden">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
+                      Весовая: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardWeightCategory} кг</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
+                      Возрастная: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardAgeGroup}</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
+                      Архетип эталона: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardArchetype}</span>
                     </p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
+                      Рост: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceHeight || '—'} см</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
+                      Размах: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceReach || '—'} см</span>
                     </p>
                   </div>
                   <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:block">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
+                      Весовая: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardWeightCategory} кг</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
+                      Возрастная: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardAgeGroup}</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
+                      Архетип эталона: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardArchetype}</span>
                     </p>
                   </div>
                   <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:block">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Эталонные параметры</p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
+                      Рост: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceHeight || '—'} см</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
+                      Размах: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceReach || '—'} см</span>
                     </p>
                   </div>
                   <div className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-2 sm:px-3">
@@ -2270,9 +2338,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </div>
         )}
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
+            <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
               Сенситивный период для{' '}
               <span className="text-slate-800">
                 «{displayNameFromStudent(safeStudent) || safeStudent.name || 'Спортсмен'}»
@@ -2327,7 +2395,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 <>
                   <p className="mt-3 text-sm text-slate-700">
                     Возраст в расчётах:{' '}
-                    <span className="font-semibold text-slate-900">{sensitivePeriods.ageInt} лет</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{sensitivePeriods.ageInt} лет</span>
                   </p>
                   <div className="mt-4 grid gap-4 lg:grid-cols-2">
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm ring-1 ring-emerald-100">
@@ -2341,7 +2409,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           {orderedSensitiveQualities.map((q) => (
                             <li
                               key={q}
-                              className="flex gap-2 rounded-lg border border-emerald-200/80 bg-white/70 px-3 py-2"
+                              className="flex gap-2 rounded-lg border border-emerald-200/80 bg-white/70 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/40"
                             >
                               <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
                               <span>{q}</span>
@@ -2361,7 +2429,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           {orderedLowImpactQualities.map((q) => (
                             <li
                               key={q}
-                              className="flex gap-2 rounded-lg border border-red-200/80 bg-white/70 px-3 py-2"
+                              className="flex gap-2 rounded-lg border border-red-200/80 bg-white/70 px-3 py-2 dark:border-red-900/50 dark:bg-red-950/30"
                             >
                               <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" aria-hidden />
                               <span>{q}</span>
@@ -2378,9 +2446,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         </section>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm sm:px-5 sm:py-5">
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             Коэффициент доминантности техники (КД):{' '}
-            <span className="text-2xl font-bold tabular-nums text-slate-900">
+            <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
               {(kdBundle.kd * 100).toFixed(1)}%
             </span>
           </p>

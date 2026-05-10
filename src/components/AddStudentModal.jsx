@@ -84,7 +84,7 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
   return (
     <div className="mt-4 space-y-4">
       <label className="block space-y-1">
-        <span className="text-sm font-medium text-slate-700">Шесть цифр личного кода (без пробелов)</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Шесть цифр личного кода (без пробелов)</span>
         <input
           type="text"
           inputMode="numeric"
@@ -98,7 +98,9 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
           }}
           onBlur={() => setTouched(true)}
           className={`w-full max-w-xs rounded-lg border px-3 py-2 font-mono text-lg tracking-widest outline-none focus:ring-2 focus:ring-blue-200 ${
-            showLengthError || searchError ? 'border-red-400 bg-red-50/50' : 'border-slate-200 bg-white'
+            showLengthError || searchError
+              ? 'border-red-400 bg-red-50/50 dark:border-red-500 dark:bg-red-950/40'
+              : 'border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
           }`}
         />
         {showLengthError && (
@@ -111,18 +113,18 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
           type="button"
           disabled={isSearching || code.length !== 6}
           onClick={runSearch}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600"
         >
           {isSearching ? 'Поиск…' : 'Найти и добавить'}
         </button>
         <button
           type="button"
           onClick={() => onCancel?.()}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Отмена
         </button>
-        <p className="text-xs text-slate-500 sm:ml-1 sm:flex-1 sm:self-center">
+        <p className="text-xs text-slate-500 dark:text-slate-400 sm:ml-1 sm:flex-1 sm:self-center">
           Сначала нажмите кнопку — программа найдёт ученика. Потом проверьте фото и имя и подтвердите.
         </p>
       </div>
@@ -132,7 +134,7 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
       )}
 
       {preview && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-800/80">
           <div className="flex flex-wrap items-center gap-4">
             {photo ? (
               <img
@@ -142,15 +144,15 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
               />
             ) : (
               <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-600"
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
                 aria-hidden
               >
                 {studentInitials(preview)}
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-slate-600">Подтвердите добавление в свой список:</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">Добавить {name}?</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Подтвердите добавление в свой список:</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Добавить {name}?</p>
             </div>
           </div>
           {attachError && (
@@ -171,7 +173,7 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
                 setPreview(null)
                 setSearchError('')
               }}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               Отмена
             </button>
@@ -197,36 +199,38 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-student-modal-title"
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-600 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
-          <h2 id="add-student-modal-title" className="text-xl font-bold text-slate-900">
+          <h2 id="add-student-modal-title" className="text-xl font-bold text-slate-900 dark:text-slate-100">
             Добавить ученика
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            className="rounded-lg px-2 py-1 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             aria-label="Закрыть"
           >
             ✕
           </button>
         </div>
 
-        <div className="mt-4 flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+        <div className="mt-4 flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-600 dark:bg-slate-800">
           <button
             type="button"
             onClick={() => setMode('create')}
             className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${
-              mode === 'create' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              mode === 'create'
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
             }`}
           >
             Новый ученик
@@ -235,7 +239,9 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
             type="button"
             onClick={() => setMode('join')}
             className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${
-              mode === 'join' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              mode === 'join'
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
             }`}
           >
             Присоединить существующего
@@ -244,7 +250,7 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
 
         {mode === 'create' && (
           <>
-            <p className="mt-3 text-sm text-slate-600">
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
               Заполните анкету — появится карточка ученика и <strong>личный шестизначный код</strong>. Этот код можно
               дать другому тренеру, чтобы он добавил того же человека к себе в список.
             </p>
@@ -261,7 +267,7 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
 
         {mode === 'join' && (
           <>
-            <p className="mt-3 text-sm text-slate-600">
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
               Введите шесть цифр подряд — такой код показан в карточке ученика у другого тренера (кнопка «скопировать»).
               Буквы и пробелы не нужны, только цифры.
             </p>

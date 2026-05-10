@@ -12,47 +12,51 @@ import {
   logoutCoach,
   subscribeToAuth,
 } from './services/firebaseService'
+import ThemeToggleButton from './components/ThemeToggleButton'
 
 function Navbar({ user, coachProfile }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
       <div className="mx-auto flex min-h-[72px] max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:h-[72px] sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
         <Link
           to={user ? '/' : '/welcome'}
-          className="shrink-0 text-base font-bold tracking-tight text-slate-900 sm:text-lg"
+          className="shrink-0 text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg"
           aria-label="Cartel Academy — на главную"
         >
           Cartel Academy
         </Link>
-        {user ? (
-          <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-2 sm:max-w-none sm:flex-none sm:gap-3">
-            <span className="min-w-0 truncate text-right text-xs text-slate-600 sm:text-sm">
-              {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
-            </span>
-            <button
-              type="button"
-              onClick={() => logoutCoach()}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              Выйти
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-            >
-              Вход
-            </Link>
-            <Link
-              to="/register"
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Регистрация
-            </Link>
-          </div>
-        )}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-3">
+          <ThemeToggleButton />
+          {user ? (
+            <>
+              <span className="min-w-0 truncate text-right text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
+              </span>
+              <button
+                type="button"
+                onClick={() => logoutCoach()}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Выйти
+              </button>
+            </>
+          ) : (
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                to="/login"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Вход
+              </Link>
+              <Link
+                to="/register"
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                Регистрация
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )
@@ -141,8 +145,10 @@ function App() {
 
   if (authUser === undefined) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
-        <p className="rounded-xl bg-white px-5 py-3 shadow-sm">Проверка авторизации...</p>
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <p className="rounded-xl bg-white px-5 py-3 shadow-sm dark:bg-slate-900 dark:text-slate-200">
+          Проверка авторизации...
+        </p>
       </main>
     )
   }

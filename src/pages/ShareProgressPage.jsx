@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { subscribePublicStudentShareByToken } from '../services/firebaseService'
 import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
+import ThemeToggleButton from '../components/ThemeToggleButton'
 import { NormGoldGoalIcon, NormMedalChip, TechnicalLevelIndicators } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 
@@ -88,14 +89,14 @@ function WeightLineChartLight({ points }) {
 
   if (sorted.length === 0) {
     return (
-      <div className="flex h-52 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-500">
+      <div className="flex h-52 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 text-sm text-slate-500">
         Пока нет записей веса для графика.
       </div>
     )
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 p-4 shadow-sm">
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mx-auto max-w-full text-blue-600">
         <defs>
           <linearGradient id="share-w-lg" x1="0" y1="0" x2="1" y2="0">
@@ -117,10 +118,10 @@ function WeightLineChartLight({ points }) {
           <circle key={`${c.date}-${c.weight}`} cx={c.x} cy={c.y} r="5" fill="white" stroke="#2563eb" strokeWidth="2" />
         ))}
       </svg>
-      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-slate-600">
+      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
         {sorted.map((p) => (
           <span key={`${p.date}-${p.weight}`}>
-            {p.date}: <span className="font-semibold text-slate-900">{p.weight} кг</span>
+            {p.date}: <span className="font-semibold text-slate-900 dark:text-slate-100">{p.weight} кг</span>
           </span>
         ))}
       </div>
@@ -144,9 +145,9 @@ function ShareReadonlyNormCard({ item }) {
   return (
     <div className={`flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}>
       <div className="text-center">
-        <span className="block text-base font-bold leading-snug text-slate-900 sm:text-lg">{item.name}</span>
+        <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{item.name}</span>
         {item.description ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:text-xs">{item.description}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400 sm:text-xs">{item.description}</p>
         ) : null}
       </div>
 
@@ -155,8 +156,8 @@ function ShareReadonlyNormCard({ item }) {
           <NormGoldGoalIcon />
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/85">Цель</p>
-            <p className="truncate text-sm font-bold tabular-nums text-slate-900">
-              {goalStr} <span className="text-xs font-semibold text-slate-600">{item.unit}</span>
+            <p className="truncate text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
+              {goalStr} <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{item.unit}</span>
             </p>
           </div>
         </div>
@@ -167,16 +168,16 @@ function ShareReadonlyNormCard({ item }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 border-t border-slate-200/80 pt-2">
+      <div className="flex flex-wrap items-end gap-3 border-t border-slate-200 dark:border-slate-600/80 pt-2">
         <div className="min-w-[140px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-slate-600">Результат ({item.unit})</span>
-          <div className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900">
+          <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Результат ({item.unit})</span>
+          <div className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100">
             {item.hasResult ? item.resultDisplay || item.resultValue : '—'}
           </div>
         </div>
         {item.hasResult && item.status !== 'empty' && (
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-600">
+            <span className="text-slate-600 dark:text-slate-400">
               Оценка в баллах:{' '}
               <span className={`font-semibold tabular-nums ${scoreTone}`}>{item.normalizedScore ?? '—'}</span>
             </span>
@@ -185,7 +186,7 @@ function ShareReadonlyNormCard({ item }) {
         )}
       </div>
 
-      <div className="border-t border-slate-200/80 pt-2">
+      <div className="border-t border-slate-200 dark:border-slate-600/80 pt-2">
         {item.acceptedDisplay ? (
           <p className="text-[11px] leading-snug text-slate-700">
             <span className="font-semibold text-slate-800">Фиксация норматива:</span> {item.acceptedDisplay}
@@ -307,12 +308,15 @@ export default function ShareProgressPage() {
   const standardPassport = p?.standardPassport
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-10">
+    <main className="relative min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-10">
+      <div className="absolute right-0 top-0 z-50 pr-3 pt-3 sm:pr-6 sm:pt-6">
+        <ThemeToggleButton />
+      </div>
       <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
         <header className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cartel Academy</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">Карточка спортсмена</h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cartel Academy</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">Карточка спортсмена</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Та же информация, что видит тренер (кроме сенситивных периодов и диаграммы потенциала). Данные обновляются
             автоматически.
           </p>
@@ -328,7 +332,7 @@ export default function ShareProgressPage() {
         </header>
 
         {loading && !p && (
-          <div className="rounded-xl border border-slate-200 bg-white py-16 text-center text-slate-500 shadow-sm">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 py-16 text-center text-slate-500 shadow-sm">
             Загрузка…
           </div>
         )}
@@ -339,9 +343,9 @@ export default function ShareProgressPage() {
 
         {!loading && p && (
           <>
-            <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
+            <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100">
                   {p.photoURL ? (
                     <img src={p.photoURL} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -353,16 +357,16 @@ export default function ShareProgressPage() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-2xl font-bold text-slate-900">{p.displayName}</h2>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{p.displayName}</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                     Текущий вес:{' '}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {p.currentWeight > 0 ? `${p.currentWeight} кг` : '—'}
                     </span>
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     Следующая аттестация:{' '}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {p.nextAttestationDate
                         ? new Date(p.nextAttestationDate + 'T12:00:00').toLocaleDateString('ru-RU', {
                             day: 'numeric',
@@ -376,8 +380,8 @@ export default function ShareProgressPage() {
               </div>
 
               {p.context && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Сравнение по таблице программы</h3>
+                <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Сравнение по таблице программы</h3>
                   <p className="mt-2 text-sm text-slate-800">
                     <span className="text-slate-500">Весовая категория:</span>{' '}
                     <span className="font-semibold">{p.context.weightCategoryLabel}</span>
@@ -402,8 +406,8 @@ export default function ShareProgressPage() {
             </section>
 
             {duelRows?.length > 0 && standardPassport && (
-              <section className="rounded-xl bg-white p-4 shadow-sm sm:p-8">
-                <div className="overflow-hidden rounded-xl border border-slate-200">
+              <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-8">
+                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600">
                   <div className="flex flex-col gap-2 bg-slate-900 px-3 py-2.5 text-white sm:px-4 sm:py-3">
                     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                       <span
@@ -428,7 +432,7 @@ export default function ShareProgressPage() {
                           i
                         </button>
                         <span
-                          className={`absolute left-1/2 top-[calc(100%+8px)] z-20 w-[min(calc(100vw-2rem),290px)] -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ${
+                          className={`absolute left-1/2 top-[calc(100%+8px)] z-20 w-[min(calc(100vw-2rem),290px)] -translate-x-1/2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ${
                             standardInfoOpen ? 'block' : 'hidden group-hover:block'
                           }`}
                         >
@@ -476,9 +480,9 @@ export default function ShareProgressPage() {
                     </div>
                   </div>
 
-                  <div className="bg-white px-2 py-3 sm:px-4 sm:py-4">
+                  <div className="bg-white dark:bg-slate-900 px-2 py-3 sm:px-4 sm:py-4">
                     <div className="flex flex-col gap-3">
-                      <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
+                      <div className="order-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
                         <p className="text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
                         <div className="mt-2 space-y-2">
                           {duelRows.map((row) => {
@@ -506,15 +510,15 @@ export default function ShareProgressPage() {
                               ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)} ${row.unit}`
                               : '—'
                             return (
-                              <div key={row.key} className="overflow-hidden rounded-md border border-slate-200 text-xs">
+                              <div key={row.key} className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-600 text-xs">
                                 <div className="p-2.5 sm:hidden">
                                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{row.label}</p>
                                   <div className="mt-2 flex justify-between gap-3 border-b border-slate-100 pb-2">
-                                    <span className="shrink-0 text-slate-600">Спортсмен</span>
+                                    <span className="shrink-0 text-slate-600 dark:text-slate-400">Спортсмен</span>
                                     <span className="min-w-0 text-right font-semibold tabular-nums text-blue-900">{athleteStr}</span>
                                   </div>
                                   <div className="mt-2 flex justify-between gap-3 border-b border-slate-100 pb-2">
-                                    <span className="shrink-0 text-slate-600">Эталон</span>
+                                    <span className="shrink-0 text-slate-600 dark:text-slate-400">Эталон</span>
                                     <span className="min-w-0 text-right font-semibold tabular-nums text-red-900">{refStr}</span>
                                   </div>
                                   <div className="mt-3 rounded-md bg-slate-900 px-2 py-2.5 text-center">
@@ -551,29 +555,29 @@ export default function ShareProgressPage() {
                       </div>
 
                       <div className="order-2 grid gap-2 sm:gap-3 md:order-1 md:grid-cols-3">
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:hidden">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2 py-2 sm:px-3 md:hidden">
                           <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
                           <p className="mt-1 text-xs text-slate-700">
-                            Весовая: <span className="font-semibold text-slate-900">{standardPassport.weightCategory} кг</span>
+                            Весовая: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardPassport.weightCategory} кг</span>
                           </p>
                           <p className="text-xs text-slate-700">
-                            Возрастная: <span className="font-semibold text-slate-900">{standardPassport.ageGroup}</span>
+                            Возрастная: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardPassport.ageGroup}</span>
                           </p>
                           <p className="text-xs text-slate-700">
-                            Типаж: <span className="font-semibold text-slate-900">{standardPassport.archetype}</span>
+                            Типаж: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardPassport.archetype}</span>
                           </p>
                         </div>
-                        <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 md:block">
+                        <div className="hidden rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 md:block">
                           <p className="text-[11px] uppercase tracking-wide text-slate-500">Весовая группа</p>
-                          <p className="mt-1 text-lg font-bold text-slate-900">{standardPassport.weightCategory} кг</p>
+                          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{standardPassport.weightCategory} кг</p>
                         </div>
-                        <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 md:block">
+                        <div className="hidden rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 md:block">
                           <p className="text-[11px] uppercase tracking-wide text-slate-500">Возрастная группа</p>
-                          <p className="mt-1 text-lg font-bold text-slate-900">{standardPassport.ageGroup}</p>
+                          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{standardPassport.ageGroup}</p>
                         </div>
-                        <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 md:block">
+                        <div className="hidden rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 md:block">
                           <p className="text-[11px] uppercase tracking-wide text-slate-500">Типаж эталона</p>
-                          <p className="mt-1 text-lg font-bold text-slate-900">{standardPassport.archetype}</p>
+                          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{standardPassport.archetype}</p>
                         </div>
                       </div>
                     </div>
@@ -582,18 +586,18 @@ export default function ShareProgressPage() {
               </section>
             )}
 
-            <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
-              <h2 className="text-lg font-semibold text-slate-900">Тесты и техника</h2>
-              <p className="mt-2 text-sm text-slate-600">
+            <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Тесты и техника</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 Разделы и оформление совпадают с кабинетом тренера. Нормативы с отметкой фиксации синхронизируются сразу после
                 сохранения тренером.
               </p>
 
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 sm:px-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                   Степень влияния на реализацию потенциала
                 </p>
-                <p className="mt-1 text-xs leading-snug text-slate-600">
+                <p className="mt-1 text-xs leading-snug text-slate-600 dark:text-slate-400">
                   Доля техники, физики и функционала в формуле балла (Smart Weights по антропометрии и эталону). Это не
                   процент заполнения анкеты — заполненность разделов показана на тёмных вкладках ниже.
                 </p>
@@ -605,12 +609,12 @@ export default function ShareProgressPage() {
                       return (
                         <div
                           key={item.key}
-                          className={`rounded-lg border bg-white px-3 py-2 ${
-                            isTop ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-slate-200'
+                          className={`rounded-lg border bg-white dark:bg-slate-900 px-3 py-2 ${
+                            isTop ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-slate-200 dark:border-slate-600'
                           }`}
                         >
                           <p className="text-xs font-medium text-slate-800">{item.label}</p>
-                          <p className="mt-1 text-lg font-bold tabular-nums text-slate-900">{item.value}%</p>
+                          <p className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{item.value}%</p>
                           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
                             <div
                               className={`h-full rounded-full transition-colors ${progressColorClass(item.value)}`}
@@ -675,31 +679,31 @@ export default function ShareProgressPage() {
                     <h3 className="text-sm font-semibold text-slate-800">Антропометрия</h3>
                     {athlete ? (
                       <div className="grid gap-3 md:grid-cols-2">
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
                           <p className="text-xs text-slate-500">Год рождения</p>
-                          <p className="text-sm font-semibold text-slate-900">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {athlete.birthYearLabel || athlete.birthYear || '—'}
                           </p>
                         </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
                           <p className="text-xs text-slate-500">Пол</p>
-                          <p className="text-sm font-semibold text-slate-900">{athlete.genderLabel || '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.genderLabel || '—'}</p>
                         </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
                           <p className="text-xs text-slate-500">Рост (см)</p>
-                          <p className="text-sm font-semibold text-slate-900">{athlete.height > 0 ? athlete.height : '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.height > 0 ? athlete.height : '—'}</p>
                         </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
                           <p className="text-xs text-slate-500">Вес (кг)</p>
-                          <p className="text-sm font-semibold text-slate-900">{athlete.weight > 0 ? athlete.weight : '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.weight > 0 ? athlete.weight : '—'}</p>
                         </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
                           <p className="text-xs text-slate-500">Размах (см)</p>
-                          <p className="text-sm font-semibold text-slate-900">{athlete.reach > 0 ? athlete.reach : '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.reach > 0 ? athlete.reach : '—'}</p>
                         </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:col-span-2">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2 md:col-span-2">
                           <p className="text-xs text-slate-500">Дата измерения</p>
-                          <p className="text-sm font-semibold text-slate-900">{athlete.measureDate || '—'}</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.measureDate || '—'}</p>
                         </div>
                       </div>
                     ) : (
@@ -748,9 +752,9 @@ export default function ShareProgressPage() {
                             ? Number(atom.levelPercent)
                             : technicalLevelInterpolationPercent(atom.levelKey)
                         return (
-                          <article key={atom.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                          <article key={atom.id} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 p-3 shadow-sm">
                             <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
-                              <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900">
+                              <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
                                 <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
                               </h3>
                               {atom.videoLink ? (
@@ -769,7 +773,7 @@ export default function ShareProgressPage() {
                                 <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                                   Уровень освоения
                                 </span>
-                                <div className="w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-900 sm:max-w-md">
+                                <div className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 sm:max-w-md">
                                   {atom.levelLabel}
                                 </div>
                               </div>
@@ -784,13 +788,13 @@ export default function ShareProgressPage() {
                               />
                             </div>
                             {atom.comment ? (
-                              <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5">
+                              <div className="mt-2 rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2.5 py-1.5">
                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Комментарий тренера</p>
                                 <p className="mt-0.5 text-sm text-slate-800 whitespace-pre-wrap">{atom.comment}</p>
                               </div>
                             ) : null}
                             {(atom.howTo || atom.whyHowTo || atom.mistakes || atom.whyMistakes) && (
-                              <details className="mt-1.5 text-xs text-slate-600">
+                              <details className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">
                                 <summary className="cursor-pointer font-medium text-blue-600">Подсказка и детали</summary>
                                 {atom.howTo ? (
                                   <p className="mt-2">

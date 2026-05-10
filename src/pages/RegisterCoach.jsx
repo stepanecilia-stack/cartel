@@ -58,66 +58,66 @@ function RegisterCoach() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-10 text-slate-900">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">Регистрация тренера</h1>
-        <p className="mt-2 text-sm text-slate-600">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm dark:bg-slate-900">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Регистрация тренера</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Заполните поля — программа создаст ваш аккаунт и сохранит имя и город в облаке.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Имя</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Имя</span>
             <input
               name="firstName"
               type="text"
               value={formData.firstName}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Фамилия</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Фамилия</span>
             <input
               name="lastName"
               type="text"
               value={formData.lastName}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Город</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Город</span>
             <input
               name="city"
               type="text"
               value={formData.city}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Электронная почта (будет логином)</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Электронная почта (будет логином)</span>
             <input
               name="email"
               type="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Пароль</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Пароль</span>
             <input
               name="password"
               type="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>
 
@@ -135,9 +135,9 @@ function RegisterCoach() {
             {isSubmitting ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
         </form>
-        <p className="mt-4 text-sm text-slate-600">
+        <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
           Уже есть аккаунт?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700">
+          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
             Войти
           </Link>
         </p>

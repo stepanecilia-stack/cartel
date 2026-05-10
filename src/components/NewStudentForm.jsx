@@ -104,18 +104,18 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
   return (
     <form className={gridClass} onSubmit={onSubmit}>
       <label className={compact ? 'sm:col-span-2' : 'md:col-span-2'}>
-        <span className="mb-1 block text-sm font-medium text-slate-700">ФИО</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">ФИО</span>
         <input
           name="fullName"
           type="text"
           value={formData.fullName}
           onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </label>
 
       <label className={compact ? 'sm:col-span-2' : 'md:col-span-2'}>
-        <span className="mb-1 block text-sm font-medium text-slate-700">Год рождения</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Год рождения</span>
         <div className="flex flex-wrap items-center gap-3">
           <input
             name="birthYear"
@@ -125,19 +125,19 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
             placeholder="2012"
             value={formData.birthYear}
             onChange={onChange}
-            className="w-full max-w-[200px] rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full max-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
-          <span className="text-sm text-slate-600">{formatBirthYearRu(formData.birthYear) || '—'}</span>
+          <span className="text-sm text-slate-600 dark:text-slate-400">{formatBirthYearRu(formData.birthYear) || '—'}</span>
         </div>
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700">Пол (чтобы подобрать нормы тестов)</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Пол (чтобы подобрать нормы тестов)</span>
         <select
           name="gender"
           value={formData.gender}
           onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         >
           <option value="M">Мужской</option>
           <option value="F">Женский</option>
@@ -145,35 +145,35 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700">Рост (см)</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Рост (см)</span>
         <input
           name="height"
           type="number"
           value={formData.height}
           onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700">Размах рук (см)</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Размах рук (см)</span>
         <input
           name="reach"
           type="number"
           value={formData.reach}
           onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700">Вес (кг)</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Вес (кг)</span>
         <input
           name="weight"
           type="number"
           value={formData.weight}
           onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </label>
 
@@ -189,14 +189,14 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
         <button
           type="button"
           onClick={() => onCancel?.()}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Отмена
         </button>
         <button
           type="submit"
           disabled={isSaving}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600"
         >
           {isSaving ? 'Сохранение...' : 'Сохранить'}
         </button>
