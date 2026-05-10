@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddStudentModal from '../components/AddStudentModal'
-import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import { getCoachStudents } from '../services/firebaseService'
-import { calculateKsrAndKsp, findGoldStandardRow } from '../utils/ksrUtils'
-import {
-  coerceScores,
-  displayNameFromStudent,
-  formatBirthYearRu,
-  studentAthleteShape,
-} from '../utils/studentModel'
+import { findGoldStandardRow } from '../utils/ksrUtils'
+import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
 
 function normalizeSearchText(value) {
   return String(value ?? '')
@@ -67,10 +61,6 @@ function HomePage({ onSelectStudent, coachId }) {
     () =>
       students.map((raw) => {
         const shaped = studentAthleteShape(raw)
-        const scores = coerceScores(raw.scores)
-        const ksrKsp = calculateKsrAndKsp(shaped, scores)
-        const kspPercent = Math.max(0, Math.min(100, Number(ksrKsp.ksp) || 0))
-        const basePercent = Math.max(0, Math.min(100, Number(ksrKsp.baseKSR) || 0))
         const birthYearNum = Number(shaped.birthYear) || null
         const birthYearLabel = formatBirthYearRu(shaped.birthYear) || 'не указан'
         const weightCategoryLine = formatDashboardWeightCategory(shaped)
@@ -84,8 +74,6 @@ function HomePage({ onSelectStudent, coachId }) {
           birthYearNum,
           birthYearLabel,
           weightCategoryLine,
-          kspPercent,
-          basePercent,
         }
       }),
     [students],
@@ -292,8 +280,19 @@ function HomePage({ onSelectStudent, coachId }) {
                 onClick={() => onSelectStudent?.(student)}
                 className="rounded-xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 text-left shadow-sm transition-shadow hover:shadow-md"
               >
-                <h2 className="text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100">{student.name}</h2>
-                <div className="mt-2.5 grid min-h-[2.75rem] grid-cols-2 gap-2">
+                <div className="flex min-w-0 items-start gap-2">
+                  <h2 className="min-w-0 flex-1 text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                    {student.name}
+                  </h2>
+                  <span
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-xs font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                    title={student.genderLabel}
+                    aria-label={`Пол: ${student.genderLabel}`}
+                  >
+                    {student.gender === 'F' ? 'Ж' : 'М'}
+                  </span>
+                </div>
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
                   <div className="flex min-w-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/90 px-2 py-2 text-center shadow-sm">
                     <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">{student.birthYearLabel}</span>
                   </div>
@@ -303,12 +302,6 @@ function HomePage({ onSelectStudent, coachId }) {
                     </span>
                   </div>
                 </div>
-                <BiometricPotentialBar
-                  className="mt-3"
-                  compact
-                  kspPercent={student.kspPercent}
-                  basePercent={student.basePercent}
-                />
               </button>
             ))}
         </section>
