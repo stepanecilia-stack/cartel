@@ -47,8 +47,6 @@ import { getSensitiveMotorQualities, orderSensitiveQualitiesForBoxing } from '..
 import {
   buildCoachRecommendations,
   COACH_REC_ELEMENT_NAME_CLASS,
-  COACH_REC_FOCUS,
-  isCoachRecFocusItem,
   isCoachRecSessionFormula,
 } from '../utils/coachRecommendations'
 import { Link } from 'react-router-dom'
@@ -167,39 +165,35 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
 
   return (
     <div className="mt-2 min-w-0 rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-2 shadow-sm sm:mt-3 sm:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-            Временная формула тренировки
-          </p>
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
-            Колонка «От старта» — номера минут тренировки с первой (включительно), чтобы ориентироваться на общем таймере.
-          </p>
-        </div>
-        <div className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium dark:border-slate-600 dark:bg-slate-800">
-          <button
-            type="button"
-            onClick={() => setMinutes(90)}
-            className={`rounded-md px-2.5 py-1 transition ${
-              minutes === 90
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-            }`}
-          >
-            1,5 ч
-          </button>
-          <button
-            type="button"
-            onClick={() => setMinutes(60)}
-            className={`rounded-md px-2.5 py-1 transition ${
-              minutes === 60
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-            }`}
-          >
-            1 ч
-          </button>
-        </div>
+      <div
+        className="flex w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-semibold dark:border-slate-600 dark:bg-slate-800"
+        role="group"
+        aria-label="Длительность тренировки для расчёта минут"
+      >
+        <button
+          type="button"
+          onClick={() => setMinutes(90)}
+          aria-pressed={minutes === 90}
+          className={`min-w-0 flex-1 rounded-md py-2.5 transition sm:py-3 ${
+            minutes === 90
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+          }`}
+        >
+          1,5 ч
+        </button>
+        <button
+          type="button"
+          onClick={() => setMinutes(60)}
+          aria-pressed={minutes === 60}
+          className={`min-w-0 flex-1 rounded-md py-2.5 transition sm:py-3 ${
+            minutes === 60
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+          }`}
+        >
+          1 ч
+        </button>
       </div>
       {/* Flex-строки вместо table: на узком экране min-w-0 + shrink-0 гарантируют видимость минут */}
       <div
@@ -1786,55 +1780,21 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               {shareUrl}
             </button>
           )}
-          {coachRecommendations.length > 0 && (
-            <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 sm:text-sm">
-                Рекомендации для тренера
-              </h2>
-              <p className="mt-1 text-[11px] leading-snug text-slate-600 sm:text-xs">
-                Короткий план по данным карточки: сначала приоритеты, затем таблица минут (переключатель 1,5 ч / 1 ч).
-              </p>
-              {(() => {
-                const formula = coachRecommendations.find(isCoachRecSessionFormula)
-                const rest = coachRecommendations.filter((it) => !isCoachRecSessionFormula(it))
-                return (
-                  <>
-                    {rest.length > 0 && (
-                      <ul className="mt-2 list-disc space-y-2 pl-4 text-[13px] leading-snug text-slate-800 sm:pl-5 sm:text-sm">
-                        {rest.map((item, i) => (
-                          <li key={i}>
-                            {isCoachRecFocusItem(item) ? (
-                              <>
-                                {item.before}
-                                <span
-                                  className={
-                                    COACH_REC_FOCUS[item.section]?.className ?? 'font-semibold text-blue-700'
-                                  }
-                                >
-                                  {COACH_REC_FOCUS[item.section]?.label ?? 'Технику'}
-                                </span>
-                                {item.after}
-                              </>
-                            ) : (
-                              item
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {formula ? (
-                      <CoachSessionPlanTable
-                        item={formula}
-                        qualityReturnState={motorQualityReturnState}
-                        onGoToTechnicalAtom={goToCoachTechnicalElement}
-                        onGoToNormative={goToCoachNormative}
-                      />
-                    ) : null}
-                  </>
-                )
-              })()}
-            </div>
-          )}
+          {coachRecommendations.length > 0 &&
+            (() => {
+              const formula = coachRecommendations.find(isCoachRecSessionFormula)
+              if (!formula) return null
+              return (
+                <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
+                  <CoachSessionPlanTable
+                    item={formula}
+                    qualityReturnState={motorQualityReturnState}
+                    onGoToTechnicalAtom={goToCoachTechnicalElement}
+                    onGoToNormative={goToCoachNormative}
+                  />
+                </div>
+              )
+            })()}
         </section>
 
         <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
