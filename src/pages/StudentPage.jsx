@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   TECH_DOMINANCE_OPTIONS,
   calculateEffectiveKSR,
@@ -129,8 +129,20 @@ function renderSensitivPeriodHintLabel(label, hintLinkTitles, qualityReturnState
   )
 }
 
+const COACH_TECH_NAME_BUTTON_CLASS = `${COACH_REC_ELEMENT_NAME_CLASS} rounded-sm text-left underline decoration-blue-400/60 decoration-2 underline-offset-2 hover:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-600`
+
+const COACH_NORM_NAME_BUTTON_CLASS = COACH_TECH_NAME_BUTTON_CLASS
+
+const COACH_NORM_TAB = { phys: 'physical', func: 'functional' }
+
+/** Стабильный id карточки норматива на вкладке «Физика» / «Функционал». */
+function normCardDomId(category, testId) {
+  const safe = String(testId ?? '').replace(/[^a-zA-Z0-9_-]/g, '_')
+  return `norm-card-${category}-${safe}`
+}
+
 /** Таблица минут по тренировке 90 / 60 (данные из buildCoachRecommendations). */
-function CoachSessionPlanTable({ item, qualityReturnState }) {
+function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, onGoToNormative }) {
   const [minutes, setMinutes] = useState(90)
   const rows = item.rows ?? []
   const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
@@ -221,7 +233,18 @@ function CoachSessionPlanTable({ item, qualityReturnState }) {
                 row.technical != null ? (
                   <span className="leading-snug">
                     Техника по программе: «
-                    <span className={COACH_REC_ELEMENT_NAME_CLASS}>{row.technical.name}</span>
+                    {row.technical.atomId && typeof onGoToTechnicalAtom === 'function' ? (
+                      <button
+                        type="button"
+                        className={COACH_TECH_NAME_BUTTON_CLASS}
+                        title="Перейти к элементу во вкладке «Техника»"
+                        onClick={() => onGoToTechnicalAtom(row.technical.atomId)}
+                      >
+                        {row.technical.name}
+                      </button>
+                    ) : (
+                      <span className={COACH_REC_ELEMENT_NAME_CLASS}>{row.technical.name}</span>
+                    )}
                     »{row.technical.taskSuffix}
                   </span>
                 ) : (
@@ -230,7 +253,27 @@ function CoachSessionPlanTable({ item, qualityReturnState }) {
             } else if (row.kind === 'norm') {
               stageCell =
                 row.normative != null ? (
-                  <span className="leading-snug">Отстающий норматив: «{row.normative.testName}»</span>
+                  <span className="leading-snug">
+                    Отстающий норматив: «
+                    {row.normative.testId &&
+                    row.normative.category &&
+                    COACH_NORM_TAB[row.normative.category] &&
+                    typeof onGoToNormative === 'function' ? (
+                      <button
+                        type="button"
+                        className={COACH_NORM_NAME_BUTTON_CLASS}
+                        title="Перейти к нормативу на вкладке «Физика» или «Функционал»"
+                        onClick={() =>
+                          onGoToNormative(COACH_NORM_TAB[row.normative.category], row.normative.testId)
+                        }
+                      >
+                        {row.normative.testName}
+                      </button>
+                    ) : (
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{row.normative.testName}</span>
+                    )}
+                    »
+                  </span>
                 ) : (
                   <span className="text-slate-600">Отстающий норматив — слот не активирован порогами расчёта</span>
                 )
@@ -571,6 +614,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [normSavingKey, setNormSavingKey] = useState('')
   const [technicalSavingKey, setTechnicalSavingKey] = useState('')
   const [openTechnicalVideoId, setOpenTechnicalVideoId] = useState(null)
+  const [pendingTechnicalFocusId, setPendingTechnicalFocusId] = useState(null)
+  const [pendingNormFocus, setPendingNormFocus] = useState(null)
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -1473,7 +1518,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       const acceptedMeta = formatNormAcceptedMeta(row)
       const normBusy = normSavingKey === `${category}:${norm.testId}`
       return (
-        <div key={norm.testId} className={`flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}>
+        <div
+          key={norm.testId}
+          id={normCardDomId(category, norm.testId)}
+          className={`scroll-mt-40 flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}
+        >
           <div className="text-center">
             <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{norm.testName}</span>
             {norm.description ? (
@@ -1609,6 +1658,47 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
   }, [safeStudent])
 
+  const goToCoachTechnicalElement = useCallback((atomId) => {
+    if (atomId == null || atomId === '') return
+    setActiveTab('technical')
+    setPendingNormFocus(null)
+    setPendingTechnicalFocusId(String(atomId))
+  }, [])
+
+  const goToCoachNormative = useCallback((section, testId) => {
+    if (!section || testId == null || testId === '') return
+    if (section !== 'physical' && section !== 'functional') return
+    setPendingTechnicalFocusId(null)
+    setActiveTab(section)
+    setPendingNormFocus({ section, testId: String(testId) })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (activeTab !== 'technical') {
+      setPendingTechnicalFocusId((p) => (p == null ? p : null))
+    } else if (pendingTechnicalFocusId != null) {
+      const atomId = pendingTechnicalFocusId
+      requestAnimationFrame(() => {
+        document.getElementById(`technical-atom-${atomId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      setPendingTechnicalFocusId(null)
+    }
+  }, [activeTab, pendingTechnicalFocusId])
+
+  useLayoutEffect(() => {
+    if (activeTab !== 'physical' && activeTab !== 'functional') {
+      setPendingNormFocus((p) => (p == null ? p : null))
+      return
+    }
+    if (pendingNormFocus == null) return
+    if (pendingNormFocus.section !== activeTab) return
+    const { section, testId } = pendingNormFocus
+    requestAnimationFrame(() => {
+      document.getElementById(normCardDomId(section, testId))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    setPendingNormFocus(null)
+  }, [activeTab, pendingNormFocus])
+
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
       <div className="mx-auto min-w-0 max-w-4xl space-y-4 sm:space-y-6">
@@ -1731,7 +1821,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                       </ul>
                     )}
                     {formula ? (
-                      <CoachSessionPlanTable item={formula} qualityReturnState={motorQualityReturnState} />
+                      <CoachSessionPlanTable
+                        item={formula}
+                        qualityReturnState={motorQualityReturnState}
+                        onGoToTechnicalAtom={goToCoachTechnicalElement}
+                        onGoToNormative={goToCoachNormative}
+                      />
                     ) : null}
                   </>
                 )
@@ -1988,7 +2083,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     return (
                     <article
                       key={atom.id}
-                      className={`rounded-lg border bg-white p-3 shadow-sm ${
+                      id={`technical-atom-${atom.id}`}
+                      className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm ${
                         isLockedBySequence ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'
                       }`}
                     >

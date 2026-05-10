@@ -206,12 +206,13 @@ export function buildCoachRecommendations(ctx) {
   let technical = null
   if (focusOpen) {
     const label = focusOpen.name ?? 'текущий элемент'
+    const atomId = focusOpen.id ?? null
     if (focusRank <= 0) {
-      technical = { name: label, taskSuffix: ', задача — вывести на «Знание», затем на «Умение».' }
+      technical = { atomId, name: label, taskSuffix: ', задача — вывести на «Знание», затем на «Умение».' }
     } else if (focusRank === 1) {
-      technical = { name: label, taskSuffix: ', задача — довести до уровня «Умение».' }
+      technical = { atomId, name: label, taskSuffix: ', задача — довести до уровня «Умение».' }
     } else {
-      technical = { name: label, taskSuffix: ', задача — довести до «Навык» или «Автоматизм».' }
+      technical = { atomId, name: label, taskSuffix: ', задача — довести до «Навык» или «Автоматизм».' }
     }
   }
 
@@ -247,6 +248,7 @@ export function buildCoachRecommendations(ctx) {
 
   if (P >= F && P >= T && physWorst && physWorst.score < 55) {
     normative = {
+      testId: physWorst.norm.testId,
       testName: physWorst.norm.testName,
       score: Math.round(physWorst.score),
       weekly: '2×15',
@@ -255,6 +257,7 @@ export function buildCoachRecommendations(ctx) {
   } else if (F > P && funcWorst && funcWorst.score < 55) {
   } else if (physWorst && physWorst.score < 45) {
     normative = {
+      testId: physWorst.norm.testId,
       testName: physWorst.norm.testName,
       score: Math.round(physWorst.score),
       weekly: '2×12',
@@ -262,6 +265,7 @@ export function buildCoachRecommendations(ctx) {
     }
   } else if (funcWorst && funcWorst.score < 45) {
     normative = {
+      testId: funcWorst.norm.testId,
       testName: funcWorst.norm.testName,
       score: Math.round(funcWorst.score),
       weekly: '2×12',
