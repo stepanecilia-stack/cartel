@@ -146,15 +146,6 @@ export const updateStudent = async (studentId, studentPayload) => {
   await updateDoc(doc(ensureDb(), 'students', studentId), studentPayload)
 }
 
-const omitUndefined = (data) => {
-  const out = {}
-  if (!data || typeof data !== 'object') return out
-  for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined) out[key] = value
-  }
-  return out
-}
-
 /** Firestore не допускает undefined ни на одном уровне вложенности. */
 const deepOmitUndefined = (value) => {
   if (value === undefined) return undefined
@@ -173,8 +164,8 @@ const deepOmitUndefined = (value) => {
 
 /** Обновление полей ученика (без вложенных undefined — совместимо с Firestore). */
 export const updateStudentData = async (studentId, updatedData) => {
-  const payload = omitUndefined(updatedData)
-  if (Object.keys(payload).length === 0) return
+  const payload = deepOmitUndefined(updatedData)
+  if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) return
   await updateDoc(doc(ensureDb(), 'students', studentId), {
     ...payload,
     updatedAt: serverTimestamp(),

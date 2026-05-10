@@ -1123,8 +1123,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         setSaveError('Ученик не найден в базе.')
         return
       }
-      const physicalMerged = { ...emptyTestsRecord(fresh.tests?.physical) }
-      const functionalMerged = { ...emptyTestsRecord(fresh.tests?.functional) }
+      const physicalMerged = {
+        ...emptyTestsRecord(fresh.tests?.physical),
+        ...emptyTestsRecord(physicalResults),
+      }
+      const functionalMerged = {
+        ...emptyTestsRecord(fresh.tests?.functional),
+        ...emptyTestsRecord(functionalResults),
+      }
       const weight = Number(anthropometry.weight) || 0
       const prevHistory = Array.isArray(fresh.weightHistory) ? [...fresh.weightHistory] : []
       const measureDate = anthropometry.date || new Date().toISOString().slice(0, 10)
@@ -1178,8 +1184,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         setSaveError('Ученик не найден в базе.')
         return
       }
-      const physicalMerged = { ...emptyTestsRecord(fresh.tests?.physical) }
-      const functionalMerged = { ...emptyTestsRecord(fresh.tests?.functional) }
+      const physicalMerged = {
+        ...emptyTestsRecord(fresh.tests?.physical),
+        ...emptyTestsRecord(physicalResults),
+      }
+      const functionalMerged = {
+        ...emptyTestsRecord(fresh.tests?.functional),
+        ...emptyTestsRecord(functionalResults),
+      }
       const bucket = category === 'physical' ? physicalMerged : functionalMerged
       const serverRow = getNormValueByTestId(bucket, norm.testId)
       const coachName = await resolveCoachDisplayName(coachId)
@@ -1249,8 +1261,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         return
       }
 
-      const physicalMerged = { ...emptyTestsRecord(fresh.tests?.physical) }
-      const functionalMerged = { ...emptyTestsRecord(fresh.tests?.functional) }
+      const physicalMerged = {
+        ...emptyTestsRecord(fresh.tests?.physical),
+        ...emptyTestsRecord(physicalResults),
+      }
+      const functionalMerged = {
+        ...emptyTestsRecord(fresh.tests?.functional),
+        ...emptyTestsRecord(functionalResults),
+      }
       const serverTechnical = emptyTechnicalRecord(fresh.technicalData)
       const localAtom = technicalData[atomId] ?? {}
       const technicalMerged = {
