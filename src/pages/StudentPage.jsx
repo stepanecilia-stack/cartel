@@ -51,9 +51,86 @@ import {
   isCoachRecFocusItem,
   isCoachRecSessionFormula,
 } from '../utils/coachRecommendations'
+import { Link } from 'react-router-dom'
+import { getMotorQualitySlug } from '../data/motorQualitiesCatalog'
+
+const MOTOR_QUALITY_LINK_CLASS =
+  'font-medium text-blue-600 underline underline-offset-2 decoration-blue-400/70 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
+
+function MotorQualityInlineLink({ title, qualityReturnState }) {
+  const slug = getMotorQualitySlug(title)
+  if (!slug) {
+    return <span className="font-medium text-slate-800 dark:text-slate-200">{title}</span>
+  }
+  const to =
+    qualityReturnState != null
+      ? {
+          pathname: `/qualities/${slug}`,
+          state: { studentQualityReturn: qualityReturnState },
+        }
+      : `/qualities/${slug}`
+  return (
+    <Link to={to} className={MOTOR_QUALITY_LINK_CLASS}>
+      {title}
+    </Link>
+  )
+}
+
+/** Подпись этапа вида «… «название» …» — название ведёт на страницу качества. */
+function renderQuotedMotorQualityLabel(label, titles, qualityReturnState) {
+  if (!titles?.length) return <span className="leading-snug">{label}</span>
+  const parts = []
+  let rest = label
+  let key = 0
+  for (const title of titles) {
+    const needle = `«${title}»`
+    const i = rest.indexOf(needle)
+    if (i === -1) {
+      parts.push(<span key={`q-${key++}`}>{rest}</span>)
+      return <span className="leading-snug">{parts}</span>
+    }
+    if (i > 0) parts.push(<span key={`q-${key++}`}>{rest.slice(0, i)}</span>)
+    parts.push(
+      <span key={`q-${key++}`}>
+        «<MotorQualityInlineLink title={title} qualityReturnState={qualityReturnState} />»
+      </span>,
+    )
+    rest = rest.slice(i + needle.length)
+  }
+  if (rest) parts.push(<span key={`q-${key++}`}>{rest}</span>)
+  return <span className="leading-snug">{parts}</span>
+}
+
+/** Строка «сенситивный период — A, B» с кликабельными качествами из каталога. */
+function renderSensitivPeriodHintLabel(label, hintLinkTitles, qualityReturnState) {
+  const prefix = 'Упражнения на развитие (сенситивный период — '
+  const suffix = ')'
+  if (!label.startsWith(prefix) || !label.endsWith(suffix) || !hintLinkTitles?.length) {
+    return <span className="leading-snug">{label}</span>
+  }
+  const hint = label.slice(prefix.length, -suffix.length)
+  const segments = hint.split(', ').map((s) => s.trim())
+  const linkSet = new Set(hintLinkTitles)
+  return (
+    <span className="leading-snug">
+      {prefix}
+      {segments.map((segment, i) => (
+        <span key={`h-${segment}-${i}`}>
+          {i > 0 ? ', ' : ''}
+          {linkSet.has(segment) ? (
+            <MotorQualityInlineLink title={segment} qualityReturnState={qualityReturnState} />
+          ) : (
+            segment
+          )}
+        </span>
+      ))}
+      {suffix}
+    </span>
+  )
+}
 
 /** Таблица минут по тренировке 90 / 60 (данные из buildCoachRecommendations). */
-function CoachSessionPlanTable({ item }) {
+function CoachSessionPlanTable({ item, qualityReturnState }) {
   const [minutes, setMinutes] = useState(90)
   const rows = item.rows ?? []
   const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
@@ -157,6 +234,10 @@ function CoachSessionPlanTable({ item }) {
                 ) : (
                   <span className="text-slate-600">Отстающий норматив — слот не активирован порогами расчёта</span>
                 )
+            } else if (row.kind === 'plain' && row.key === 'greenFallback' && row.hintLinkTitles?.length) {
+              stageCell = renderSensitivPeriodHintLabel(row.label, row.hintLinkTitles, qualityReturnState)
+            } else if (row.kind === 'plain' && row.linkableQuotedQualities?.length) {
+              stageCell = renderQuotedMotorQualityLabel(row.label, row.linkableQuotedQualities, qualityReturnState)
             } else {
               stageCell = <span className="leading-snug">{row.label}</span>
             }
@@ -1520,6 +1601,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     ],
   )
 
+  const motorQualityReturnState = useMemo(() => {
+    if (!safeStudent?.id) return null
+    return {
+      returnPath: '/',
+      studentName: displayNameFromStudent(safeStudent) || undefined,
+    }
+  }, [safeStudent])
+
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
       <div className="mx-auto min-w-0 max-w-4xl space-y-4 sm:space-y-6">
@@ -1641,7 +1730,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         ))}
                       </ul>
                     )}
-                    {formula ? <CoachSessionPlanTable item={formula} /> : null}
+                    {formula ? (
+                      <CoachSessionPlanTable item={formula} qualityReturnState={motorQualityReturnState} />
+                    ) : null}
                   </>
                 )
               })()}

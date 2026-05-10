@@ -59,6 +59,12 @@ export function getMotorQualitiesCatalog() {
     .filter(Boolean)
 }
 
+/** @param {string} title — подпись качества как в `QUALITY_ORDER` */
+export function getMotorQualitySlug(title) {
+  if (!title || typeof title !== 'string') return null
+  return MOTOR_QUALITY_SLUG_BY_TITLE[title] ?? null
+}
+
 export function getMotorQualityBySlug(slug) {
   if (!slug || typeof slug !== 'string') return null
   const title = TITLE_BY_SLUG[slug]

@@ -1,3 +1,4 @@
+import { MOTOR_QUALITY_SLUG_BY_TITLE } from '../data/motorQualitiesCatalog.js'
 import { evaluateLegacyTest, normalizeTechnicalDominanceKey } from './ksrUtils.js'
 import { ageToStandardsGroup } from './standards.js'
 import { orderSensitiveQualitiesForBoxing } from './sensitivePeriods.js'
@@ -308,6 +309,7 @@ export function buildCoachRecommendations(ctx) {
         : 'Тело: возрастной ориентир — нет данных (укажите год рождения)',
       m90: mAnc90,
       m60: mAnc60,
+      ...(hasAgeBody && anchor ? { linkableQuotedQualities: [anchor] } : {}),
     },
   ]
   if (hasGreenRow) {
@@ -318,6 +320,7 @@ export function buildCoachRecommendations(ctx) {
         label: `Упражнения на развитие «${greensForTable[0]}»`,
         m90: mGreen1_90,
         m60: mGreen1_60,
+        linkableQuotedQualities: [greensForTable[0]],
       })
       rows.push({
         key: 'green1',
@@ -325,6 +328,7 @@ export function buildCoachRecommendations(ctx) {
         label: `Упражнения на развитие «${greensForTable[1]}»`,
         m90: mGreen2_90,
         m60: mGreen2_60,
+        linkableQuotedQualities: [greensForTable[1]],
       })
     } else if (greensForTable.length === 1) {
       rows.push({
@@ -333,6 +337,7 @@ export function buildCoachRecommendations(ctx) {
         label: `Упражнения на развитие «${greensForTable[0]}»`,
         m90: mGreen1_90,
         m60: mGreen1_60,
+        linkableQuotedQualities: [greensForTable[0]],
       })
     } else {
       rows.push({
@@ -341,6 +346,14 @@ export function buildCoachRecommendations(ctx) {
         label: `Упражнения на развитие (сенситивный период — ${greenHint})`,
         m90: mGreen1_90,
         m60: mGreen1_60,
+        ...(() => {
+          if (!tail || String(greenHint).trim().startsWith('см.')) return {}
+          const hintLinkTitles = tail
+            .split(', ')
+            .map((s) => s.trim())
+            .filter((t) => MOTOR_QUALITY_SLUG_BY_TITLE[t])
+          return hintLinkTitles.length ? { hintLinkTitles } : {}
+        })(),
       })
     }
   }
