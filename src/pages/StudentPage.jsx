@@ -1452,13 +1452,21 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-12">
       <div className="mx-auto min-w-0 max-w-4xl space-y-4 sm:space-y-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm hover:bg-blue-50"
+        <div
+          className="sticky top-[72px] z-30 -mx-3 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2.5 pr-2 pl-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:-mx-6 sm:gap-3 sm:px-6"
+          aria-label="Карточка ученика — закреплённая строка"
         >
-          Назад к дашборду
-        </button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
+          >
+            Назад к дашборду
+          </button>
+          <p className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+            {safeStudent.name}
+          </p>
+        </div>
 
         <section className="rounded-xl bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
