@@ -2,7 +2,7 @@
  * Примерные сенситивные периоды развития двигательных качеств (возраст в полных годах).
  * Колонка «17–18» в таблице: для кода используется возраст ≥ 17.
  */
-const QUALITY_ORDER = [
+export const QUALITY_ORDER = [
   'Рост',
   'Мышечная масса',
   'Быстрота',
@@ -54,7 +54,7 @@ export function orderSensitiveQualitiesForBoxing(items) {
 }
 
 /** @type {Record<string, (number | '17-18')[]>} */
-const QUALITY_SENSITIVE_AGES = {
+export const QUALITY_SENSITIVE_AGES = {
   Рост: [11, 12, 13, 14, 15],
   'Мышечная масса': [11, 12, 13, 14, 15],
   Быстрота: [9, 10, 11, 12, 13, 14],
