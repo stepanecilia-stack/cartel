@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 function WelcomePage() {
   return (
-    <main className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)]">
       <div className="w-full max-w-2xl rounded-xl bg-white p-10 text-center shadow-sm dark:bg-slate-900">
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Cartel Academy</h1>
         <p className="mx-auto mt-4 max-w-xl text-slate-600 dark:text-slate-400">

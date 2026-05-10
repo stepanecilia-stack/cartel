@@ -31,7 +31,7 @@ function LoginCoach() {
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)]">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm dark:bg-slate-900">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Вход для тренера</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Войдите в аккаунт, чтобы открыть дашборд.</p>

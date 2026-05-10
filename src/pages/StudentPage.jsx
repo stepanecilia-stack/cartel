@@ -166,8 +166,8 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
   }, [rows, minutes])
 
   return (
-    <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-3 shadow-sm sm:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="mt-2 min-w-0 rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-2 shadow-sm sm:mt-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Временная формула тренировки
@@ -208,20 +208,20 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
         aria-label="Распределение минут по этапам"
       >
         <div
-          className="flex gap-2 border-b border-slate-200 bg-slate-100/90 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 sm:gap-3"
+          className="flex gap-1.5 border-b border-slate-200 bg-slate-100/90 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 sm:gap-3 sm:py-2 sm:text-xs"
           role="row"
         >
-          <div className="min-w-0 flex-1 px-2 sm:px-2.5" role="columnheader">
+          <div className="min-w-0 flex-1 px-1.5 sm:px-2.5" role="columnheader">
             Этап
           </div>
           <div
-            className="w-[4.25rem] shrink-0 px-1 text-right tabular-nums sm:w-[4.75rem] sm:px-2"
+            className="w-[3.35rem] shrink-0 px-0.5 text-right tabular-nums sm:w-[4.75rem] sm:px-2"
             role="columnheader"
             title="Минута тренировки от начала (включительно)"
           >
             От старта
           </div>
-          <div className="w-11 shrink-0 px-2 text-right tabular-nums sm:w-12 sm:px-2.5" role="columnheader">
+          <div className="w-9 shrink-0 px-1 text-right tabular-nums sm:w-12 sm:px-2.5" role="columnheader">
             Мин
           </div>
         </div>
@@ -288,21 +288,21 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
             return (
               <div
                 key={row.key}
-                className={`flex gap-3 border-b border-slate-100 py-2 dark:border-slate-700 ${zebra} px-2 sm:px-2.5`}
+                className={`flex gap-1.5 border-b border-slate-100 py-1.5 dark:border-slate-700 sm:gap-3 sm:py-2 ${zebra} px-1.5 sm:px-2.5`}
                 role="row"
               >
-                <div className="min-w-0 flex-1 break-words" role="cell">
+                <div className="min-w-0 flex-1 break-words text-[13px] leading-snug sm:text-sm" role="cell">
                   {stageCell}
                 </div>
                 <div
-                  className="w-[4.25rem] shrink-0 self-start px-1 pt-0.5 text-right text-[11px] font-medium tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
+                  className="w-[3.35rem] shrink-0 self-start px-0.5 pt-0.5 text-right text-[10px] font-medium tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
                   role="cell"
                   title={absTitle}
                 >
                   {absLabel}
                 </div>
                 <div
-                  className="w-11 shrink-0 self-start pt-0.5 text-right text-sm font-medium tabular-nums text-slate-900 dark:text-slate-100 sm:w-12"
+                  className="w-9 shrink-0 self-start px-0.5 pt-0.5 text-right text-xs font-medium tabular-nums text-slate-900 dark:text-slate-100 sm:w-12 sm:px-0 sm:text-sm"
                   role="cell"
                 >
                   {m}
@@ -312,20 +312,20 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
           })}
         </div>
         <div
-          className="flex gap-2 border-t border-slate-200 bg-slate-100 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 px-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:gap-3 sm:px-2.5"
+          className="flex gap-1.5 border-t border-slate-200 bg-slate-100 px-1.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:gap-3 sm:px-2.5 sm:py-2 sm:text-sm"
           role="row"
         >
           <div className="min-w-0 flex-1" role="cell">
             Итого
           </div>
           <div
-            className="w-[4.25rem] shrink-0 px-1 text-right text-xs tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2"
+            className="w-[3.35rem] shrink-0 px-0.5 text-right text-[10px] tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
             role="cell"
             title="Вся тренировка от первой до последней минуты"
           >
             {total > 0 ? `1–${total}` : '—'}
           </div>
-          <div className="w-11 shrink-0 text-right tabular-nums sm:w-12" role="cell">
+          <div className="w-9 shrink-0 px-0.5 text-right tabular-nums sm:w-12 sm:px-0" role="cell">
             {total}
           </div>
         </div>
@@ -1700,10 +1700,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   }, [activeTab, pendingNormFocus])
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
-      <div className="mx-auto min-w-0 max-w-4xl space-y-4 sm:space-y-6">
+    <main className="min-h-screen bg-slate-50 px-2 py-5 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+      <div className="mx-auto min-w-0 max-w-4xl space-y-3 sm:space-y-6">
         <div
-          className="sticky top-[72px] z-30 -mx-3 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2.5 pr-2 pl-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 dark:border-slate-600 dark:bg-slate-900/95 sm:-mx-6 sm:gap-3 sm:px-6"
+          className="sticky top-14 z-30 -mx-2 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2.5 pr-2 pl-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 dark:border-slate-600 dark:bg-slate-900/95 sm:top-[72px] sm:-mx-6 sm:gap-3 sm:px-6"
           aria-label="Карточка ученика — закреплённая строка"
         >
           <button
@@ -1718,9 +1718,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </p>
         </div>
 
-        <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+        <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{safeStudent.name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl sm:tracking-normal">
+              {safeStudent.name}
+            </h1>
             {student?.id && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 <span className="text-slate-500">Личный код:</span>
@@ -1785,11 +1787,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             </button>
           )}
           {coachRecommendations.length > 0 && (
-            <div className="mt-4 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+            <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600 sm:text-sm">
                 Рекомендации для тренера
               </h2>
-              <p className="mt-1 text-xs leading-snug text-slate-600">
+              <p className="mt-1 text-[11px] leading-snug text-slate-600 sm:text-xs">
                 Короткий план по данным карточки: сначала приоритеты, затем таблица минут (переключатель 1,5 ч / 1 ч).
               </p>
               {(() => {
@@ -1798,7 +1800,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 return (
                   <>
                     {rest.length > 0 && (
-                      <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-snug text-slate-800">
+                      <ul className="mt-2 list-disc space-y-2 pl-4 text-[13px] leading-snug text-slate-800 sm:pl-5 sm:text-sm">
                         {rest.map((item, i) => (
                           <li key={i}>
                             {isCoachRecFocusItem(item) ? (
@@ -1835,7 +1837,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
+        <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Тесты и техника</h2>
           <div
             className="mt-2 flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-950 shadow-sm sm:px-4"
@@ -2241,9 +2243,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-8">
+        <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-8">
           <div className="overflow-hidden rounded-xl border border-slate-200">
-            <div className="flex flex-col gap-2 bg-slate-900 px-3 py-2.5 text-white sm:px-4 sm:py-3">
+            <div className="flex flex-col gap-2 bg-slate-900 px-2.5 py-2.5 text-white sm:px-4 sm:py-3">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <span
                   className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-500 bg-slate-800 sm:inline-flex"

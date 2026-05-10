@@ -26,7 +26,7 @@ function MotorQualityDetailPage() {
   const linkState = location.state && Object.keys(location.state).length > 0 ? location.state : undefined
 
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-slate-50 px-3 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-3 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-12">
       <div className="mx-auto max-w-3xl space-y-8">
         {studentReturn ? (
           <div className="rounded-xl border border-blue-200 bg-blue-50/90 px-4 py-3 dark:border-blue-900/60 dark:bg-blue-950/40">

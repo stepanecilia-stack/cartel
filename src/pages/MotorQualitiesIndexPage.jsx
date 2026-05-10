@@ -5,7 +5,7 @@ function MotorQualitiesIndexPage() {
   const items = getMotorQualitiesCatalog()
 
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-slate-50 px-3 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-3 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-12">
       <div className="mx-auto max-w-4xl space-y-8">
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
