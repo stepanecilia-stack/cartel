@@ -1911,7 +1911,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="number"
-                        min={1990}
+                        min={1900}
                         max={new Date().getFullYear()}
                         placeholder="например, 2012"
                         className="w-full max-w-[200px] rounded-lg border border-slate-200 px-3 py-2"

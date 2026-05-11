@@ -27,7 +27,7 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
     const by = normalizeBirthYearNumber(formData.birthYear)
     if (!by) return 'Укажите год рождения (четыре цифры)'
     const yNow = new Date().getFullYear()
-    if (by < 1990 || by > yNow) return 'Укажите реалистичный год рождения'
+    if (by < 1900 || by > yNow) return 'Укажите реалистичный год рождения'
     if (!formData.height || Number(formData.height) < 100) return 'Укажите корректный рост'
     if (!formData.reach || Number(formData.reach) < 100) return 'Укажите корректный размах рук'
     if (!formData.weight || Number(formData.weight) < 20) return 'Укажите корректный вес'
@@ -120,7 +120,7 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
           <input
             name="birthYear"
             type="number"
-            min={1990}
+            min={1900}
             max={new Date().getFullYear()}
             placeholder="2012"
             value={formData.birthYear}
