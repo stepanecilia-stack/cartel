@@ -2,13 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddStudentModal from '../components/AddStudentModal'
 import DashboardTechnicalStrip from '../components/DashboardTechnicalStrip'
 import { getCoachStudents } from '../services/firebaseService'
-import { loadLegacyTechnicalAtoms, TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils'
-import {
-  buildDashboardTechnicalSnapshot,
-  orderTechnicalAtomsForProgram,
-  rankTechnicalLevel,
-} from '../utils/technicalProgramProgress.js'
-import { findGoldStandardRow } from '../utils/ksrUtils'
+import { findGoldStandardRow, loadLegacyTechnicalAtoms } from '../utils/ksrUtils'
+import { buildDashboardTechnicalSnapshot, rankTechnicalLevel } from '../utils/technicalProgramProgress.js'
 import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
 
 function normalizeSearchText(value) {
@@ -41,8 +36,7 @@ function HomePage({ onSelectStudent, coachId }) {
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [programAtoms, setProgramAtoms] = useState([])
   const [techAtomsLoadError, setTechAtomsLoadError] = useState('')
-  const [techAtomFilter, setTechAtomFilter] = useState('all')
-  const [techLevelFilter, setTechLevelFilter] = useState('all')
+  const [pairWorkFilter, setPairWorkFilter] = useState('all')
   const [dashboardSort, setDashboardSort] = useState('tech')
 
   const loadStudents = useCallback(async () => {
@@ -122,12 +116,6 @@ function HomePage({ onSelectStudent, coachId }) {
     return map
   }, [programAtoms, studentsWithKsr])
 
-  const techAtomNumberOptions = useMemo(() => {
-    const ordered = orderTechnicalAtomsForProgram(programAtoms)
-    const nums = ordered.map((a) => Number(a.number)).filter((n) => Number.isFinite(n) && n >= 1)
-    return [...new Set(nums)].sort((a, b) => a - b)
-  }, [programAtoms])
-
   const filteredStudents = useMemo(() => {
     const normalizedQuery = normalizeSearchText(searchQuery)
     let list = studentsWithKsr.filter((student) => {
@@ -139,16 +127,11 @@ function HomePage({ onSelectStudent, coachId }) {
       const byWeight = weightFilter === 'all' || student.weightCategoryLine === weightFilter
       if (!byQuery || !byGender || !byBirthYear || !byWeight) return false
 
-      const snap = snapshotsByStudentId.get(student.id)
-      if (techAtomFilter !== 'all' || techLevelFilter !== 'all') {
-        if (!snap || snap.empty) return false
-        if (techAtomFilter !== 'all') {
-          const n = snap.focus?.atom?.number
-          if (String(n ?? '') !== techAtomFilter) return false
-        }
-        if (techLevelFilter !== 'all') {
-          if ((snap.focus?.levelKey ?? '') !== techLevelFilter) return false
-        }
+      if (pairWorkFilter !== 'all' && programAtoms.length > 0) {
+        const snap = snapshotsByStudentId.get(student.id)
+        if (!snap || snap.empty) return true
+        if (pairWorkFilter === 'yes' && !snap.pairWorkEligible) return false
+        if (pairWorkFilter === 'no' && snap.pairWorkEligible) return false
       }
       return true
     })
@@ -175,8 +158,7 @@ function HomePage({ onSelectStudent, coachId }) {
     genderFilter,
     birthYearFilter,
     weightFilter,
-    techAtomFilter,
-    techLevelFilter,
+    pairWorkFilter,
     dashboardSort,
     programAtoms.length,
     snapshotsByStudentId,
@@ -208,10 +190,9 @@ function HomePage({ onSelectStudent, coachId }) {
     if (genderFilter !== 'all') count += 1
     if (birthYearFilter !== 'all') count += 1
     if (weightFilter !== 'all') count += 1
-    if (techAtomFilter !== 'all') count += 1
-    if (techLevelFilter !== 'all') count += 1
+    if (pairWorkFilter !== 'all') count += 1
     return count
-  }, [genderFilter, birthYearFilter, weightFilter, techAtomFilter, techLevelFilter])
+  }, [genderFilter, birthYearFilter, weightFilter, pairWorkFilter])
 
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
@@ -359,47 +340,26 @@ function HomePage({ onSelectStudent, coachId }) {
               <p className="mt-3 text-xs text-amber-800 dark:text-amber-200">{techAtomsLoadError}</p>
             ) : null}
             <div
-              className={`mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 ${filtersExpanded ? 'grid' : 'hidden'} md:grid`}
+              className={`mt-3 grid gap-3 sm:grid-cols-2 ${filtersExpanded ? 'grid' : 'hidden'} md:grid`}
             >
               <div>
-                <label htmlFor="dashboard-tech-atom" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Техника · номер элемента
+                <label htmlFor="dashboard-pair-work" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Допуск к парам
                 </label>
                 <select
-                  id="dashboard-tech-atom"
-                  value={techAtomFilter}
-                  onChange={(e) => setTechAtomFilter(e.target.value)}
+                  id="dashboard-pair-work"
+                  value={pairWorkFilter}
+                  onChange={(e) => setPairWorkFilter(e.target.value)}
                   disabled={!programAtoms.length}
+                  title="Допуск: первые 8 элементов программы не ниже уровня «Умение»"
                   className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
                 >
                   <option value="all">Все</option>
-                  {techAtomNumberOptions.map((n) => (
-                    <option key={n} value={String(n)}>
-                      №{n}
-                    </option>
-                  ))}
+                  <option value="yes">С допуском (первые 8 на «Умение»+)</option>
+                  <option value="no">Без допуска</option>
                 </select>
               </div>
               <div>
-                <label htmlFor="dashboard-tech-level" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Техника · уровень (по фокусу)
-                </label>
-                <select
-                  id="dashboard-tech-level"
-                  value={techLevelFilter}
-                  onChange={(e) => setTechLevelFilter(e.target.value)}
-                  disabled={!programAtoms.length}
-                  className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
-                >
-                  <option value="all">Все</option>
-                  {TECH_DOMINANCE_OPTIONS.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="sm:col-span-2 lg:col-span-2">
                 <label htmlFor="dashboard-sort" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
                   Сортировка списка
                 </label>

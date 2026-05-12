@@ -219,6 +219,29 @@ export function buildTechnicalFiveWindow(orderedAtoms, focusIndex) {
   return { slots: slots.slice(0, 5) }
 }
 
+/** Сколько первых атомов в программе должны быть не ниже «Умение», чтобы был допуск к отработке в парах. */
+export const PAIR_WORK_MIN_UMENIE_ATOMS = 8
+
+/**
+ * Сколько из первых 8 атомов программы (по каноническому порядку) уже не ниже «Умение».
+ * Допуск к парам: все первые 8 на «Умение» или выше.
+ */
+export function countFirstProgramAtomsAtOrAboveUmenie(orderedAtoms, data) {
+  const d = data && typeof data === 'object' ? data : {}
+  if (!Array.isArray(orderedAtoms) || !orderedAtoms.length) return 0
+  const slice = orderedAtoms.slice(0, PAIR_WORK_MIN_UMENIE_ATOMS)
+  let n = 0
+  for (const atom of slice) {
+    if (rankTechnicalLevel(d[atom.id]?.level) >= TECH_LEVEL_RANK.MOTOR_SKILL_LEVEL_1) n += 1
+  }
+  return n
+}
+
+export function hasPairWorkEligibility(orderedAtoms, data) {
+  if (!Array.isArray(orderedAtoms) || orderedAtoms.length < PAIR_WORK_MIN_UMENIE_ATOMS) return false
+  return countFirstProgramAtomsAtOrAboveUmenie(orderedAtoms, data) >= PAIR_WORK_MIN_UMENIE_ATOMS
+}
+
 export function buildDashboardTechnicalSnapshot(programAtoms, technicalDataRaw) {
   const ordered = orderTechnicalAtomsForProgram(programAtoms || [])
   if (!ordered.length) {
@@ -229,11 +252,26 @@ export function buildDashboardTechnicalSnapshot(programAtoms, technicalDataRaw) 
       locks: {},
       focus: null,
       window: { slots: [] },
+      pairWorkEligible: false,
+      pairWorkUmenieCount: 0,
+      pairWorkRequired: PAIR_WORK_MIN_UMENIE_ATOMS,
     }
   }
   const data = normalizeStudentTechnicalData(technicalDataRaw)
   const locks = buildTechnicalLocksById(ordered, data)
   const focus = resolveDashboardFocusAtom(ordered, locks, data)
   const window = buildTechnicalFiveWindow(ordered, focus.focusIndex)
-  return { empty: false, ordered, data, locks, focus, window }
+  const pairWorkUmenieCount = countFirstProgramAtomsAtOrAboveUmenie(ordered, data)
+  const pairWorkEligible = pairWorkUmenieCount >= PAIR_WORK_MIN_UMENIE_ATOMS
+  return {
+    empty: false,
+    ordered,
+    data,
+    locks,
+    focus,
+    window,
+    pairWorkEligible,
+    pairWorkUmenieCount,
+    pairWorkRequired: PAIR_WORK_MIN_UMENIE_ATOMS,
+  }
 }

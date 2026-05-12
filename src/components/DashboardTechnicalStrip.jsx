@@ -55,7 +55,7 @@ export default function DashboardTechnicalStrip({ snapshot }) {
     )
   }
 
-  const { focus, window, data } = snapshot
+  const { focus, window, data, pairWorkEligible, pairWorkUmenieCount, pairWorkRequired } = snapshot
   const atom = focus?.atom
   const num = atom?.number != null && atom.number !== '' ? `#${atom.number}` : ''
   const fullName = String(atom?.name ?? '—').trim()
@@ -81,6 +81,13 @@ export default function DashboardTechnicalStrip({ snapshot }) {
             {line || '—'}
           </p>
           {roleHint ? <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{roleHint}</p> : null}
+          <p
+            className={`mt-1 text-[11px] font-medium leading-snug ${
+              pairWorkEligible ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            Допуск к парам: {pairWorkEligible ? 'есть' : 'нет'} (первые {pairWorkRequired ?? 8}: {pairWorkUmenieCount ?? 0}/{pairWorkRequired ?? 8} на «Умение»+)
+          </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-0.5">
           <TechnicalLevelDot levelKey={levelKey} size="md" showCheck />
