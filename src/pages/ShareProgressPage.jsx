@@ -329,10 +329,6 @@ export default function ShareProgressPage() {
         <header className="text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cartel Academy</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">Карточка спортсмена</h1>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Та же информация, что видит тренер (кроме сенситивных периодов и диаграммы потенциала). Данные обновляются
-            автоматически.
-          </p>
           {live && !error && p ? (
             <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
               <span className="relative flex h-2 w-2">
