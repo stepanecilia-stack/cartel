@@ -13,6 +13,7 @@ import {
   normalizeTechnicalDominanceKey,
   shortTypageLabel,
 } from '../utils/ksrUtils'
+import { buildTechnicalLocksById, orderTechnicalAtomsForProgram } from '../utils/technicalProgramProgress.js'
 import {
   anthropometryFieldToInputString,
   birthYearToInputString,
@@ -367,59 +368,6 @@ const TAB_ICONS = {
     </svg>
   ),
 }
-
-const TECH_SEQUENCE_REQUIRED_LEVEL = 'MOTOR_SKILL_LEVEL_1'
-const TECH_LEVEL_RANK = {
-  NOT_LEARNED: 0,
-  KNOWLEDGE: 1,
-  MOTOR_SKILL_LEVEL_1: 2,
-  MOTOR_SKILL_LEVEL_2: 3,
-  AUTOMATED: 4,
-}
-const TECH_SEQUENCE_NAME_HINTS = [
-  ['фронтальная стойка'],
-  ['передвижение по кругу', 'фронталь'],
-  ['боевая стойка'],
-  ['передвижение в боевой стойке'],
-  ['оттяжка (шагом)', 'оттяжка шагом'],
-  ['оттяжка (отскоком назад)', 'оттяжка отскоком'],
-  ['прямой удар передней рукой в голову', 'прямой передней в голову'],
-  ['защита подставкой от прямого удара в голову', 'защита подставкой (голова)'],
-  ['прямой удар передней рукой в туловище', 'прямой передней в туловище'],
-  ['защита подставкой  локтя', 'защита подставкой локтя'],
-  ['прямой удар сильной рукой в голову', 'прямой сильной в голову'],
-  ['защита подставкой плеча'],
-  ['прямой удар сильной рукой в туловище', 'прямой сильной в туловище'],
-  ['удары во фронтальной стойке на скресном шаге', 'удары во фронтальной стойке на скрёстном шаге'],
-  ['защита уклоном'],
-  ['защита отбивом', 'внутрь', 'наружу'],
-  ['сайд-степ', 'сайдстеп'],
-  ['нырок'],
-]
-
-const normalizeTechName = (value) =>
-  String(value ?? '')
-    .toLowerCase()
-    .replace(/ё/g, 'е')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-const atomNameMatchesHints = (atomName, hints) => {
-  const normalized = normalizeTechName(atomName)
-  return hints.every((hint) => normalized.includes(normalizeTechName(hint)))
-}
-
-const resolveSequenceOrderIndex = (atom) => {
-  const byName = TECH_SEQUENCE_NAME_HINTS.findIndex((hints) => atomNameMatchesHints(atom?.name, hints))
-  if (byName >= 0) return byName
-  const n = Number(atom?.number)
-  if (Number.isFinite(n) && n >= 1) return n - 1
-  return Number.MAX_SAFE_INTEGER
-}
-
-const isTechnicalLevelUnlockedForNext = (levelKey) =>
-  (TECH_LEVEL_RANK[normalizeTechnicalDominanceKey(levelKey)] ?? 0) >=
-  (TECH_LEVEL_RANK[TECH_SEQUENCE_REQUIRED_LEVEL] ?? 2)
 
 function emptyTestsRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
@@ -1588,28 +1536,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     })
   }
 
-  const orderedTechnicalAtoms = useMemo(
-    () =>
-      [...technicalAtoms].sort((a, b) => {
-        const aIdx = resolveSequenceOrderIndex(a)
-        const bIdx = resolveSequenceOrderIndex(b)
-        if (aIdx !== bIdx) return aIdx - bIdx
-        return String(a?.number ?? '').localeCompare(String(b?.number ?? ''), 'ru')
-      }),
-    [technicalAtoms],
-  )
+  const orderedTechnicalAtoms = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
 
-  const technicalLocksById = useMemo(() => {
-    const locks = {}
-    let previousUnlocked = true
-    for (const atom of orderedTechnicalAtoms) {
-      const locked = !previousUnlocked
-      locks[atom.id] = locked
-      const currentLevel = technicalData[atom.id]?.level
-      previousUnlocked = previousUnlocked && isTechnicalLevelUnlockedForNext(currentLevel)
-    }
-    return locks
-  }, [orderedTechnicalAtoms, technicalData])
+  const technicalLocksById = useMemo(
+    () => buildTechnicalLocksById(orderedTechnicalAtoms, technicalData),
+    [orderedTechnicalAtoms, technicalData],
+  )
 
   const coachRecommendations = useMemo(
     () =>
