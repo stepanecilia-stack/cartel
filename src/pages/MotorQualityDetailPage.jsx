@@ -1,5 +1,6 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import { getMotorQualityBySlug, getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
+import { getMotorQualityExercisesBySlug } from '../data/motorQualityExercises'
 
 /** Безопасный разбор state после перехода с карточки ученика (только «/»). */
 function parseStudentQualityReturn(state) {
@@ -16,6 +17,7 @@ function MotorQualityDetailPage() {
   const { slug } = useParams()
   const location = useLocation()
   const item = getMotorQualityBySlug(slug ?? '')
+  const exercises = item ? getMotorQualityExercisesBySlug(item.slug) : []
 
   if (!item) {
     return <Navigate to="/qualities" replace />
@@ -71,14 +73,75 @@ function MotorQualityDetailPage() {
           ) : null}
         </header>
 
-        <section className="rounded-xl border border-dashed border-slate-300 bg-white p-6 dark:border-slate-600 dark:bg-slate-900">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Банк упражнений
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            Здесь появится подборка упражнений и объёмов для развития этого качества. Пока раздел пустой — контент
-            будет добавляться по мере наполнения базы.
-          </p>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Банк упражнений
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              Подборка для этого качества; каждое упражнение в каталоге привязано только к одной странице качества. К
+              карточке позже можно добавить демонстрацию: поля <span className="font-mono text-xs">media.webmSrc</span>{' '}
+              или <span className="font-mono text-xs">media.gifSrc</span> в данных.
+            </p>
+          </div>
+          <ul className="space-y-4">
+            {exercises.map((ex) => {
+              const webm = ex.media?.webmSrc
+              const gif = ex.media?.gifSrc
+              const hasVideo = typeof webm === 'string' && webm.trim().length > 0
+              const hasGif = typeof gif === 'string' && gif.trim().length > 0
+              return (
+                <li
+                  key={ex.id}
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900"
+                >
+                  <div className="aspect-video w-full border-b border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                    {hasVideo ? (
+                      <video
+                        className="h-full w-full object-cover"
+                        controls
+                        playsInline
+                        preload="metadata"
+                        src={webm.trim()}
+                      >
+                        Ваш браузер не поддерживает воспроизведение WebM.
+                      </video>
+                    ) : hasGif ? (
+                      <img
+                        src={gif.trim()}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                        <span className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-medium uppercase tracking-wide dark:border-slate-500">
+                          Демонстрация
+                        </span>
+                        <span>Заглушка под GIF или WebM (пока нет файла в данных).</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 p-4 sm:p-5">
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{ex.title}</h3>
+                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{ex.intent}</p>
+                    {ex.cues ? (
+                      <p className="text-sm text-slate-700 dark:text-slate-300">
+                        <span className="font-medium text-slate-800 dark:text-slate-200">Подсказки: </span>
+                        {ex.cues}
+                      </p>
+                    ) : null}
+                    {ex.avoid ? (
+                      <p className="text-sm text-amber-800 dark:text-amber-200/90">
+                        <span className="font-medium">Избегать: </span>
+                        {ex.avoid}
+                      </p>
+                    ) : null}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         </section>
 
         <section>

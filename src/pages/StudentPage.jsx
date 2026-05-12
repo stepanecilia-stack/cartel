@@ -50,6 +50,7 @@ import {
   COACH_REC_ELEMENT_NAME_CLASS,
   isCoachRecSessionFormula,
 } from '../utils/coachRecommendations'
+import { buildCoachDevelopmentExercisePlan, developmentExerciseSlotCountForAge } from '../utils/motorQualityWorkoutExercises'
 import { Link } from 'react-router-dom'
 import { getMotorQualitySlug } from '../data/motorQualitiesCatalog'
 
@@ -141,7 +142,13 @@ function normCardDomId(category, testId) {
 }
 
 /** Таблица минут по тренировке 90 / 60 (данные из buildCoachRecommendations). */
-function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, onGoToNormative }) {
+function CoachSessionPlanTable({
+  item,
+  qualityReturnState,
+  onGoToTechnicalAtom,
+  onGoToNormative,
+  developmentByRowKey,
+}) {
   const [minutes, setMinutes] = useState(90)
   const rows = item.rows ?? []
   const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
@@ -280,6 +287,7 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
               stageCell = <span className="leading-snug">{row.label}</span>
             }
             const zebra = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'
+            const devBlock = developmentByRowKey?.[row.key]
             return (
               <div
                 key={row.key}
@@ -288,6 +296,30 @@ function CoachSessionPlanTable({ item, qualityReturnState, onGoToTechnicalAtom, 
               >
                 <div className="min-w-0 flex-1 break-words text-[13px] leading-snug sm:text-sm" role="cell">
                   {stageCell}
+                  {devBlock?.qualities?.length ? (
+                    <div className="mt-2 rounded-md border border-blue-100 bg-blue-50/90 px-2 py-2 dark:border-blue-900/50 dark:bg-blue-950/35">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">
+                        Подборка упражнений
+                      </p>
+                      <div className="mt-1.5 space-y-2">
+                        {devBlock.qualities.map((q) => (
+                          <div key={q.slug}>
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{q.title}</p>
+                            <ol className="mt-0.5 list-decimal space-y-1 pl-4 text-[12px] leading-snug text-slate-700 dark:text-slate-300">
+                              {q.exercises.map((ex) => (
+                                <li key={ex.id}>
+                                  <span className="font-medium text-slate-900 dark:text-slate-100">{ex.title}</span>
+                                  {ex.intent ? (
+                                    <span className="text-slate-600 dark:text-slate-400"> — {ex.intent}</span>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 <div
                   className="w-[3.35rem] shrink-0 self-start px-0.5 pt-0.5 text-right text-[10px] font-medium tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
@@ -565,6 +597,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareUrl, setShareUrl] = useState('')
   const [standardInfoOpen, setStandardInfoOpen] = useState(false)
   const [sensitivePeriodExpanded, setSensitivePeriodExpanded] = useState(false)
+  const [coachGenDevPlan, setCoachGenDevPlan] = useState(null)
+  const [coachGenDevNotice, setCoachGenDevNotice] = useState('')
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -613,6 +647,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setSaveOk(false)
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
+    setCoachGenDevPlan(null)
+    setCoachGenDevNotice('')
   }, [student])
 
   useEffect(() => {
@@ -1576,6 +1612,43 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     ],
   )
 
+  const coachSessionPlanFingerprint = useMemo(() => {
+    const formula = coachRecommendations.find(isCoachRecSessionFormula)
+    const rows = formula?.rows
+    if (!Array.isArray(rows)) return ''
+    return JSON.stringify(
+      rows.map((r) => [r.key, r.label, r.linkableQuotedQualities ?? null, r.hintLinkTitles ?? null]),
+    )
+  }, [coachRecommendations])
+
+  const coachDevPlanByRowKey = useMemo(() => {
+    if (!coachGenDevPlan?.blocks?.length) return null
+    const rec = {}
+    for (const b of coachGenDevPlan.blocks) rec[b.rowKey] = b
+    return rec
+  }, [coachGenDevPlan])
+
+  useEffect(() => {
+    setCoachGenDevPlan(null)
+    setCoachGenDevNotice('')
+  }, [safeStudent?.id, coachSessionPlanFingerprint])
+
+  const handleGenerateCoachDevExercises = useCallback(() => {
+    setCoachGenDevNotice('')
+    const formula = coachRecommendations.find(isCoachRecSessionFormula)
+    if (!formula?.rows?.length) return
+    const ageInt = sensitivePeriods.ageInt ?? null
+    const blocks = buildCoachDevelopmentExercisePlan(formula.rows, ageInt)
+    if (!blocks.length) {
+      setCoachGenDevPlan(null)
+      setCoachGenDevNotice(
+        'В плане нет этапов «Упражнения на развитие» с привязкой к качеству — укажите год рождения или проверьте возраст (до 7 лет таблица сенситивных периодов не используется).',
+      )
+      return
+    }
+    setCoachGenDevPlan({ blocks })
+  }, [coachRecommendations, sensitivePeriods.ageInt])
+
   const motorQualityReturnState = useMemo(() => {
     if (!safeStudent?.id) return null
     return {
@@ -1718,11 +1791,47 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               if (!formula) return null
               return (
                 <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
+                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Предложенная тренировка</p>
+                      {sensitivePeriods.ageInt != null && Number.isFinite(sensitivePeriods.ageInt) ? (
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Подбор упражнений учитывает возраст:{' '}
+                          <span className="font-medium tabular-nums text-slate-800 dark:text-slate-200">
+                            {sensitivePeriods.ageInt} полных лет
+                          </span>
+                          {coachGenDevPlan?.blocks?.length ? (
+                            <span className="text-slate-500 dark:text-slate-500">
+                              {' '}
+                              (до {developmentExerciseSlotCountForAge(sensitivePeriods.ageInt)} на каждое качество)
+                            </span>
+                          ) : null}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Без года рождения подбор идёт в режиме «до 2 упражнений на качество».
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGenerateCoachDevExercises}
+                      className="shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-200 dark:hover:bg-slate-700 sm:text-sm"
+                    >
+                      Сгенерировать
+                    </button>
+                  </div>
+                  {coachGenDevNotice ? (
+                    <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+                      {coachGenDevNotice}
+                    </p>
+                  ) : null}
                   <CoachSessionPlanTable
                     item={formula}
                     qualityReturnState={motorQualityReturnState}
                     onGoToTechnicalAtom={goToCoachTechnicalElement}
                     onGoToNormative={goToCoachNormative}
+                    developmentByRowKey={coachDevPlanByRowKey}
                   />
                 </div>
               )
