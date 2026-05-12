@@ -7,6 +7,7 @@ import {
 import { formatNormAcceptedMeta } from './normAcceptanceHistory'
 import { formatBirthYearRu } from './studentModel.js'
 import { findGoldStandardRow, referenceIdealHeightCm, shortTypageLabel } from './standards.js'
+import { buildShareAutoRecommendations } from './shareAutoRecommendations.js'
 
 /** Подпись уровня освоения атома — те же названия, что у тренера в карточке. */
 export function technicalDominancePublicLabel(level) {
@@ -49,54 +50,6 @@ function normalizeHistoryEntry(e) {
   const weight = Number(e.weight)
   if (!date || !Number.isFinite(weight) || weight < 15 || weight > 200) return null
   return { date, weight }
-}
-
-/**
- * Весовая категория по золотой таблице + ориентир роста «типичного бойца» для возраста/пола/веса.
- * Без КСР/КСП — только справочные строки для родителя и атлета.
- */
-export function buildShareContext(athleteForNorms) {
-  const w = Number(athleteForNorms?.weight ?? 0)
-  const m = findGoldStandardRow(athleteForNorms)
-
-  let weightCategoryLabel
-  if (!w || w < 20) {
-    weightCategoryLabel = 'не указан (тренер внесёт вес в анкете)'
-  } else if (!m) {
-    weightCategoryLabel = `${Math.round(w)} кг — личный вес; категория по таблице не найдена (нужны год рождения и пол в анкете).`
-  } else {
-    const row = m.row
-    if (row.openTop) weightCategoryLabel = `свыше ${Math.floor(row.weightMin)} кг`
-    else if (row.weightMin === row.weightMax) weightCategoryLabel = `${row.weightMin} кг`
-    else weightCategoryLabel = `${row.weightMin}–${row.weightMax} кг`
-  }
-
-  let idealHeightLine = '—'
-  let typageHint = ''
-  if (m?.row) {
-    const row = m.row
-    typageHint = shortTypageLabel(row.label) || ''
-    const ideal = referenceIdealHeightCm(row)
-    if (row.openTop && Number.isFinite(row.heightMin)) {
-      idealHeightLine = `Ориентир роста «идеального бойца» по таблице: от ${row.heightMin} см (верх по росту в таблице открыт).`
-    } else if (Number.isFinite(row.heightMin) && Number.isFinite(row.heightMax)) {
-      if (row.heightMin === row.heightMax) {
-        idealHeightLine = `${row.heightMin} см — эталонный рост в этой весовой категории по нашей таблице.`
-      } else {
-        idealHeightLine = `${row.heightMin}–${row.heightMax} см — коридор роста «идеального бойца» по таблице программы.`
-      }
-    } else if (ideal != null && Number.isFinite(ideal)) {
-      idealHeightLine = `${Math.round(ideal)} см — средний ориентир по таблице.`
-    }
-  }
-
-  return {
-    weightCategoryLabel,
-    idealHeightLine,
-    typageHint,
-    note:
-      'Это образ для сравнения по возрасту, полу и весу из справочника программы — не медицинская норма и не требование к вашему ребёнку.',
-  }
 }
 
 function isMinuteSecondUnit(norm) {
@@ -158,8 +111,8 @@ function mapNormRows(norms, results) {
       if (status === 'gold') tierLabel = 'Золото'
       else if (status === 'silver') tierLabel = 'Серебро'
       else if (status === 'bronze') tierLabel = 'Бронза'
-      else if (critical) tierLabel = 'Критическое отставание'
-      else tierLabel = 'Ниже нормы'
+      else if (critical) tierLabel = 'Зона роста'
+      else tierLabel = 'Есть запас для улучшения'
     }
     const passedDisplay = status === 'gold' || status === 'silver' || status === 'bronze'
     const resultDisplay =
@@ -268,8 +221,6 @@ export function buildPublicSharePayload({
     chartHistory = [{ date: d, weight: cw }]
   }
 
-  const context = buildShareContext(athleteForNorms)
-
   const m = findGoldStandardRow(athleteForNorms)
   const referenceHeight = m?.row ? referenceIdealHeightCm(m.row) : 0
   const referenceReach = Number.isFinite(referenceHeight) ? referenceHeight : 0
@@ -313,8 +264,15 @@ export function buildPublicSharePayload({
       ? 100
       : Math.round(([ah > 0, ar > 0, cw > 0, birthYear > 0].filter(Boolean).length / 4) * 100)
 
+  const autoRecommendations = buildShareAutoRecommendations({
+    physicalItems,
+    functionalItems,
+    technicalItems,
+    duelRows,
+  })
+
   return {
-    v: 5,
+    v: 7,
     displayName: displayName || 'Спортсмен',
     photoURL: typeof photoURL === 'string' ? photoURL : '',
     currentWeight: cw,
@@ -323,7 +281,7 @@ export function buildPublicSharePayload({
       typeof nextAttestationDate === 'string' && nextAttestationDate.trim()
         ? nextAttestationDate.trim()
         : null,
-    context,
+    autoRecommendations,
     athleteSnapshot: {
       birthYear,
       birthYearLabel: formatBirthYearRu(birthYear),

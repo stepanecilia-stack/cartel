@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom'
 import { subscribePublicStudentShareByToken } from '../services/firebaseService'
 import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
+import { buildShareAutoRecommendations } from '../utils/shareAutoRecommendations'
 import ThemeToggleButton from '../components/ThemeToggleButton'
-import { NormGoldGoalIcon, NormMedalChip, TechnicalLevelIndicators } from '../components/NormMedals'
+import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 
 const TAB_ITEMS = [
@@ -307,6 +308,18 @@ export default function ShareProgressPage() {
   const duelRows = p?.duelRows
   const standardPassport = p?.standardPassport
 
+  const autoRecommendations = useMemo(() => {
+    if (!p) return null
+    const embedded = p.autoRecommendations
+    if (embedded && Array.isArray(embedded.bullets) && embedded.bullets.length > 0) return embedded
+    return buildShareAutoRecommendations({
+      physicalItems: p.physical?.items ?? [],
+      functionalItems: p.functional?.items ?? [],
+      technicalItems: p.technical?.atoms ?? [],
+      duelRows: p.duelRows ?? [],
+    })
+  }, [p])
+
   return (
     <main className="relative min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-10">
       <div className="absolute right-0 top-0 z-50 pr-3 pt-3 sm:pr-6 sm:pt-6">
@@ -379,31 +392,23 @@ export default function ShareProgressPage() {
                 </div>
               </div>
 
-              {p.context && (
-                <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Сравнение по таблице программы</h3>
-                  <p className="mt-2 text-sm text-slate-800">
-                    <span className="text-slate-500">Весовая категория:</span>{' '}
-                    <span className="font-semibold">{p.context.weightCategoryLabel}</span>
-                  </p>
-                  <p className="mt-2 text-sm text-slate-800">
-                    <span className="text-slate-500">Рост «идеального бойца» по базе:</span>{' '}
-                    <span className="font-semibold">{p.context.idealHeightLine}</span>
-                  </p>
-                  {p.context.typageHint ? (
-                    <p className="mt-2 text-sm text-slate-700">
-                      <span className="text-slate-500">Образ по таблице:</span> {p.context.typageHint}
-                    </p>
-                  ) : null}
-                  <p className="mt-3 text-xs leading-relaxed text-slate-500">{p.context.note}</p>
-                </div>
-              )}
-
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-800">Динамика веса</h3>
                 <WeightLineChartLight points={p.weightHistory || []} />
               </div>
             </section>
+
+            {autoRecommendations ? (
+              <section className="rounded-xl border border-sky-200 bg-sky-50/90 p-4 shadow-sm dark:border-sky-800 dark:bg-sky-950/40 sm:p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Ориентиры и зоны роста</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{autoRecommendations.intro}</p>
+                <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                  {autoRecommendations.bullets.map((line, idx) => (
+                    <li key={idx}>{line}</li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             {duelRows?.length > 0 && standardPassport && (
               <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-8">
@@ -768,17 +773,12 @@ export default function ShareProgressPage() {
                                 </a>
                               ) : null}
                             </div>
-                            <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                              <div className="min-w-0 space-y-0.5">
-                                <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                  Уровень освоения
-                                </span>
-                                <div className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 sm:max-w-md">
-                                  {atom.levelLabel}
-                                </div>
-                              </div>
-                              <div className="flex min-h-[28px] flex-wrap items-center gap-1 sm:justify-end">
-                                <TechnicalLevelIndicators level={atom.levelKey} />
+                            <div className="mt-2 space-y-0.5">
+                              <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                Уровень освоения
+                              </span>
+                              <div className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 sm:max-w-md">
+                                {atom.levelLabel}
                               </div>
                             </div>
                             <div className="mt-2 h-2 min-w-0 overflow-hidden rounded-full bg-slate-200">

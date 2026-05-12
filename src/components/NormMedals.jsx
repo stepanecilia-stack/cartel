@@ -24,7 +24,7 @@ export const NORM_MEDAL_CHIP = {
   },
   red: {
     emoji: null,
-    label: 'Ниже бронзы',
+    label: 'Зона роста',
     shell:
       'border-red-200/90 bg-gradient-to-br from-red-50 to-rose-50/90 text-red-950 shadow-sm ring-1 ring-red-200/50',
     disc: 'bg-white/95 ring-1 ring-red-100/80',
