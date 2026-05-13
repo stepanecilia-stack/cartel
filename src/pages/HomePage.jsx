@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
-import DashboardTechnicalStrip from '../components/DashboardTechnicalStrip'
 import { getCoachStudents } from '../services/firebaseService'
-import { findGoldStandardRow, loadLegacyTechnicalAtoms } from '../utils/ksrUtils'
-import { buildDashboardTechnicalSnapshot, rankTechnicalLevel } from '../utils/technicalProgramProgress.js'
+import { findGoldStandardRow } from '../utils/ksrUtils'
 import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
 
 function normalizeSearchText(value) {
@@ -35,10 +33,6 @@ function HomePage({ onSelectStudent, coachId }) {
   const [birthYearFilter, setBirthYearFilter] = useState('all')
   const [weightFilter, setWeightFilter] = useState('all')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
-  const [programAtoms, setProgramAtoms] = useState([])
-  const [techAtomsLoadError, setTechAtomsLoadError] = useState('')
-  const [pairWorkFilter, setPairWorkFilter] = useState('all')
-  const [dashboardSort, setDashboardSort] = useState('tech')
 
   const loadStudents = useCallback(async () => {
     if (!coachId) {
@@ -64,28 +58,6 @@ function HomePage({ onSelectStudent, coachId }) {
     loadStudents()
   }, [loadStudents])
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const atoms = await loadLegacyTechnicalAtoms()
-        if (!cancelled) {
-          setProgramAtoms(Array.isArray(atoms) ? atoms : [])
-          setTechAtomsLoadError('')
-        }
-      } catch (e) {
-        console.error('Ошибка загрузки атомов техники для дашборда:', e)
-        if (!cancelled) {
-          setProgramAtoms([])
-          setTechAtomsLoadError('Не удалось загрузить программу техники — блок «Техника» на карточках недоступен.')
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   const studentsWithKsr = useMemo(
     () =>
       students.map((raw) => {
@@ -108,62 +80,19 @@ function HomePage({ onSelectStudent, coachId }) {
     [students],
   )
 
-  const snapshotsByStudentId = useMemo(() => {
-    const map = new Map()
-    if (!programAtoms.length) return map
-    for (const s of studentsWithKsr) {
-      map.set(s.id, buildDashboardTechnicalSnapshot(programAtoms, s.technicalData))
-    }
-    return map
-  }, [programAtoms, studentsWithKsr])
-
   const filteredStudents = useMemo(() => {
     const normalizedQuery = normalizeSearchText(searchQuery)
-    let list = studentsWithKsr.filter((student) => {
+    const list = studentsWithKsr.filter((student) => {
       const byQuery =
         !normalizedQuery || student.nameSearch.includes(normalizedQuery)
       const byGender = genderFilter === 'all' || student.gender === genderFilter
       const byBirthYear =
         birthYearFilter === 'all' || String(student.birthYearNum ?? '') === birthYearFilter
       const byWeight = weightFilter === 'all' || student.weightCategoryLine === weightFilter
-      if (!byQuery || !byGender || !byBirthYear || !byWeight) return false
-
-      if (pairWorkFilter !== 'all' && programAtoms.length > 0) {
-        const snap = snapshotsByStudentId.get(student.id)
-        if (!snap || snap.empty) return true
-        if (pairWorkFilter === 'yes' && !snap.pairWorkEligible) return false
-        if (pairWorkFilter === 'no' && snap.pairWorkEligible) return false
-      }
-      return true
+      return byQuery && byGender && byBirthYear && byWeight
     })
-
-    if (dashboardSort === 'tech' && programAtoms.length > 0) {
-      list = [...list].sort((a, b) => {
-        const sa = snapshotsByStudentId.get(a.id)
-        const sb = snapshotsByStudentId.get(b.id)
-        const ia = !sa || sa.empty ? 99999 : sa.focus.focusIndex
-        const ib = !sb || sb.empty ? 99999 : sb.focus.focusIndex
-        if (ia !== ib) return ia - ib
-        const ra = !sa || sa.empty ? 99 : rankTechnicalLevel(sa.focus.levelKey)
-        const rb = !sb || sb.empty ? 99 : rankTechnicalLevel(sb.focus.levelKey)
-        if (ra !== rb) return ra - rb
-        return a.nameSearch.localeCompare(b.nameSearch, 'ru')
-      })
-    } else {
-      list = [...list].sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
-    }
-    return list
-  }, [
-    studentsWithKsr,
-    searchQuery,
-    genderFilter,
-    birthYearFilter,
-    weightFilter,
-    pairWorkFilter,
-    dashboardSort,
-    programAtoms.length,
-    snapshotsByStudentId,
-  ])
+    return [...list].sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
+  }, [studentsWithKsr, searchQuery, genderFilter, birthYearFilter, weightFilter])
 
   const birthYearOptions = useMemo(
     () =>
@@ -191,9 +120,8 @@ function HomePage({ onSelectStudent, coachId }) {
     if (genderFilter !== 'all') count += 1
     if (birthYearFilter !== 'all') count += 1
     if (weightFilter !== 'all') count += 1
-    if (pairWorkFilter !== 'all') count += 1
     return count
-  }, [genderFilter, birthYearFilter, weightFilter, pairWorkFilter])
+  }, [genderFilter, birthYearFilter, weightFilter])
 
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
@@ -346,44 +274,6 @@ function HomePage({ onSelectStudent, coachId }) {
                 </select>
               </div>
             </div>
-            {techAtomsLoadError ? (
-              <p className="mt-3 text-xs text-amber-800 dark:text-amber-200">{techAtomsLoadError}</p>
-            ) : null}
-            <div
-              className={`mt-3 grid gap-3 sm:grid-cols-2 ${filtersExpanded ? 'grid' : 'hidden'} md:grid`}
-            >
-              <div>
-                <label htmlFor="dashboard-pair-work" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Допуск к парам
-                </label>
-                <select
-                  id="dashboard-pair-work"
-                  value={pairWorkFilter}
-                  onChange={(e) => setPairWorkFilter(e.target.value)}
-                  disabled={!programAtoms.length}
-                  title="Допуск: первые 8 элементов программы не ниже уровня «Умение»"
-                  className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
-                >
-                  <option value="all">Все</option>
-                  <option value="yes">С допуском (первые 8 на «Умение»+)</option>
-                  <option value="no">Без допуска</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="dashboard-sort" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Сортировка списка
-                </label>
-                <select
-                  id="dashboard-sort"
-                  value={dashboardSort}
-                  onChange={(e) => setDashboardSort(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="tech">По программе техники (номер → уровень)</option>
-                  <option value="name">По ФИО (А–Я)</option>
-                </select>
-              </div>
-            </div>
           </section>
         )}
 
@@ -422,9 +312,6 @@ function HomePage({ onSelectStudent, coachId }) {
                       {student.weightCategoryLine}
                     </span>
                   </div>
-                </div>
-                <div onClick={(e) => e.stopPropagation()} className="text-left">
-                  <DashboardTechnicalStrip snapshot={snapshotsByStudentId.get(student.id)} />
                 </div>
               </button>
             ))}
