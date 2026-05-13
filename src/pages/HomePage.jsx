@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
 import DashboardTechnicalStrip from '../components/DashboardTechnicalStrip'
 import { getCoachStudents } from '../services/firebaseService'
@@ -213,14 +214,23 @@ function HomePage({ onSelectStudent, coachId }) {
                 Дашборд учеников
               </h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setAddModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-            >
-              <span className="text-base leading-none">+</span>
-              Добавить ученика
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/group-training"
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-50 dark:border-blue-500/40 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
+              >
+                <span aria-hidden className="text-base leading-none">⇉</span>
+                Групповая тренировка
+              </Link>
+              <button
+                type="button"
+                onClick={() => setAddModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                <span className="text-base leading-none">+</span>
+                Добавить ученика
+              </button>
+            </div>
           </div>
         </header>
 

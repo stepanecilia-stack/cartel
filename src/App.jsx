@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AddStudent from './pages/AddStudent'
+import GroupTrainingPage from './pages/GroupTrainingPage'
 import HomePage from './pages/HomePage'
 import MotorQualitiesIndexPage from './pages/MotorQualitiesIndexPage'
 import MotorQualityDetailPage from './pages/MotorQualityDetailPage'
@@ -114,6 +115,15 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         <Route
           path="/students/new"
           element={<ProtectedRoute user={authUser} element={<AddStudent />} />}
+        />
+        <Route
+          path="/group-training"
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={<GroupTrainingPage coachId={authUser?.uid} />}
+            />
+          }
         />
         <Route
           path="/qualities"
