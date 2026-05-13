@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AddStudentModal from '../components/AddStudentModal'
+import VoiceCoachAssistant from '../components/VoiceCoachAssistant'
 import DashboardTechnicalStrip from '../components/DashboardTechnicalStrip'
 import { getCoachStudents } from '../services/firebaseService'
 import { findGoldStandardRow, loadLegacyTechnicalAtoms } from '../utils/ksrUtils'
@@ -223,6 +224,10 @@ function HomePage({ onSelectStudent, coachId }) {
             </button>
           </div>
         </header>
+
+        {coachId && students.length > 0 && !isLoading && (
+          <VoiceCoachAssistant students={students} onRosterChanged={loadStudents} />
+        )}
 
         {loadError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

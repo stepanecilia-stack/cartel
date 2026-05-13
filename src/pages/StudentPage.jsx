@@ -596,6 +596,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [standardInfoOpen, setStandardInfoOpen] = useState(false)
+  const [historicalStandardExpanded, setHistoricalStandardExpanded] = useState(false)
   const [sensitivePeriodExpanded, setSensitivePeriodExpanded] = useState(false)
   const [coachGenDevPlan, setCoachGenDevPlan] = useState(null)
   const [coachGenDevNotice, setCoachGenDevNotice] = useState('')
@@ -641,6 +642,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setShareFlash(false)
     setShareUrl('')
     setStandardInfoOpen(false)
+    setHistoricalStandardExpanded(false)
     setSensitivePeriodExpanded(false)
     setOpenTechnicalVideoId(null)
     setSaveError('')
@@ -1840,59 +1842,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
         <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Тесты и техника</h2>
-          <div
-            className="mt-2 flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-950 shadow-sm sm:px-4"
-            role="note"
-          >
-            <span className="select-none text-lg leading-none text-amber-600" aria-hidden>
-              ⚠️
-            </span>
-            <p className="min-w-0 leading-snug">
-              Каждый норматив сохраняется отдельной кнопкой на карточке — это фиксирует результат и запись в истории для будущих графиков. Антропометрию и технику сохраняйте кнопкой внизу блока.
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Степень влияния на реализацию потенциала
-            </p>
-            <p className="mt-1 text-xs leading-snug text-slate-600">
-              Для этого спортсмена при расчёте балла сильнее всего тянет раздел с наибольшим процентом; остальные
-              разделы дают меньший вклад.
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {[...influenceItems]
-                .sort((a, b) => b.value - a.value)
-                .map((item) => {
-                  const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
-                  return (
-                    <div
-                      key={item.key}
-                      className={`rounded-lg border px-3 py-2.5 transition-shadow ${
-                        isTop
-                          ? 'border-emerald-300 bg-emerald-50 shadow-md ring-1 ring-emerald-200'
-                          : 'border-slate-200 bg-white shadow-sm'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-xs ${isTop ? 'font-semibold text-emerald-950' : 'font-medium text-slate-700'}`}>
-                          {item.label}
-                        </span>
-                        <span className={`shrink-0 text-sm font-bold tabular-nums ${isTop ? 'text-emerald-800' : 'text-slate-800'}`}>
-                          {item.value}%
-                        </span>
-                      </div>
-                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                        <div
-                          className={`h-full rounded-full transition-colors ${progressColorClass(item.value)}`}
-                          style={{ width: `${item.value}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
             {TAB_ITEMS.map((tab) => {
@@ -2244,8 +2193,48 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-8">
-          <div className="overflow-hidden rounded-xl border border-slate-200">
+        <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
+              Историческая модель эталона
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                setHistoricalStandardExpanded((prev) => {
+                  const next = !prev
+                  if (!next) setStandardInfoOpen(false)
+                  return next
+                })
+              }}
+              aria-expanded={historicalStandardExpanded}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-100"
+            >
+              <span>{historicalStandardExpanded ? 'Скрыть' : 'Показать'}</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform duration-500 ${historicalStandardExpanded ? 'rotate-180' : ''}`}
+                aria-hidden
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          </div>
+          <div
+            className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
+              historicalStandardExpanded ? 'max-h-[8000px] opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="border-t border-slate-100 pt-4 dark:border-slate-700">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600">
             <div className="flex flex-col gap-2 bg-slate-900 px-2.5 py-2.5 text-white sm:px-4 sm:py-3">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <span
@@ -2258,8 +2247,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     <circle cx="12" cy="12" r="1.4" fill="currentColor" />
                   </svg>
                 </span>
-                <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">
-                  Историческая модель эталона
+                <p className="min-w-0 flex-1 text-xs leading-snug text-slate-300 sm:text-sm">
+                  Сравнение с усреднённым эталоном вашей весовой и возрастной категории
                 </p>
                 <span className="group relative hidden shrink-0 sm:inline-flex">
                   <button
@@ -2520,6 +2509,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               )}
             </div>
           </div>
+            </div>
+          </div>
         </section>
 
         {normsError && (
@@ -2645,6 +2636,48 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <p className="mt-2 text-sm leading-snug text-slate-700">
             Среднее коэффициентов по уровням освоения элементов техники; на него умножается базовый КСР, чтобы получить эффективный КСР.
           </p>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Степень влияния на реализацию потенциала
+          </p>
+          <p className="mt-1 text-xs leading-snug text-slate-600">
+            Для этого спортсмена при расчёте балла сильнее всего тянет раздел с наибольшим процентом; остальные
+            разделы дают меньший вклад.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[...influenceItems]
+              .sort((a, b) => b.value - a.value)
+              .map((item) => {
+                const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
+                return (
+                  <div
+                    key={item.key}
+                    className={`rounded-lg border px-3 py-2.5 transition-shadow ${
+                      isTop
+                        ? 'border-emerald-300 bg-emerald-50 shadow-md ring-1 ring-emerald-200'
+                        : 'border-slate-200 bg-white shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs ${isTop ? 'font-semibold text-emerald-950' : 'font-medium text-slate-700'}`}>
+                        {item.label}
+                      </span>
+                      <span className={`shrink-0 text-sm font-bold tabular-nums ${isTop ? 'text-emerald-800' : 'text-slate-800'}`}>
+                        {item.value}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className={`h-full rounded-full transition-colors ${progressColorClass(item.value)}`}
+                        style={{ width: `${item.value}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
         </div>
       </div>
     </main>
