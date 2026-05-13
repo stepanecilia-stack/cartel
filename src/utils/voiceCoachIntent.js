@@ -15,7 +15,7 @@ const JSON_INTENT_SCHEMA = `Верни ТОЛЬКО JSON без markdown:
   "level_query": string | null
 }
 Правила:
-- generate_program: тренер просит план/программу тренировки для ученика (по имени).
+- generate_program: тренер просит план/программу/тренировку для ученика (по имени). Формулировки: «тренировочный план», «план тренировки», «программа», «составь на тренировку для …» и т.п.
 - update_technical_level: тренер говорит что ученик освоил элемент техники на уровень (имя + элемент + уровень).
 - unknown: если не уверен или речь не про эти сценарии.
 Заполни student_query/skill_query/level_query фразами как в речи (для последующего fuzzy match).`
@@ -59,10 +59,40 @@ export function heuristicVoiceIntent(raw) {
     }
   }
 
+  const genVerbs =
+    '(?:составь|составьте|сделай|сделайте|подготовь|подготовьте|нужна|нужен|дай|дайте|сгенерируй|сгенерируйте|сформируй|сформируйте|подбери|подберите|организуй|организуйте|запланируй|запланируйте|накидай|собери)'
+
+  /** «Составь [ … ] тренировочный план для ФИО» — между глаголом и «план» могут быть слова («пожалуйста», «быстрый»). */
+  const genPlanFor = new RegExp(
+    `${genVerbs}\\s+(?:мне\\s+)?(?:[а-яёa-z]+(?:\\s+[а-яёa-z]+){0,4}\\s+)?(?:тренировочн\\w*\\s+)?(?:план\\w*|программ\\w*|тренировк\\w+|заняти\\w*)(?:\\s+трениров\\w*)?\\s+(?:для|на|ученик\\w*)\\s+(.+)`,
+    'i',
+  ).exec(text)
+  if (genPlanFor) {
+    let rest = genPlanFor[1].trim().replace(/[.!?]$/g, '').trim()
+    rest = rest.replace(/^(для|на|ученик\w*)\s+/i, '').trim()
+    if (rest.length >= 2) {
+      return { type: 'generate_program', student_query: rest, skill_query: null, level_query: null }
+    }
+  }
+
+  /** «Составь план тренировки для ФИО» — сначала план/программа, потом «тренировочн… / тренировки». */
+  const genPlanTrainFor = new RegExp(
+    `${genVerbs}\\s+(?:мне\\s+)?(?:план\\w*|программ\\w*)\\s+(?:тренировочн\\w*|тренировк\\w+|на\\s+тренировку)(?:\\s+ещё)?\\s+(?:для|на|ученик\\w*)\\s+(.+)`,
+    'i',
+  ).exec(text)
+  if (genPlanTrainFor) {
+    let rest = genPlanTrainFor[1].trim().replace(/[.!?]$/g, '').trim()
+    rest = rest.replace(/^(для|на|ученик\w*)\s+/i, '').trim()
+    if (rest.length >= 2) {
+      return { type: 'generate_program', student_query: rest, skill_query: null, level_query: null }
+    }
+  }
+
   const gen =
-    /(?:составь|сделай|подготовь|нужна|дай|сгенерируй)\s+(?:мне\s+)?(?:программ\w*|план\w*)(?:\s+трениров\w*)?(?:\s+для|\s+ученик\w*)?\s+(.+)/i.exec(
-      text,
-    )
+    new RegExp(
+      `${genVerbs}\\s+(?:мне\\s+)?(?:программ\\w*|план\\w*)(?:\\s+трениров\\w*)?(?:\\s+для|\\s+ученик\\w*)?\\s+(.+)`,
+      'i',
+    ).exec(text)
   if (gen) {
     let rest = gen[1].trim()
     rest = rest.replace(/^(для|ученик\w*)\s+/i, '').trim()
@@ -77,7 +107,7 @@ export function heuristicVoiceIntent(raw) {
     }
   }
 
-  const gen2 = /программ\w*(?:\s+трениров\w*)?\s+(?:для|на)\s+(.+)/i.exec(text)
+  const gen2 = /(?:программ\w*|план\w*)(?:\s+трениров\w*)?\s+(?:для|на)\s+(.+)/i.exec(text)
   if (gen2) {
     const rest = gen2[1].replace(/[.!?]$/g, '').trim()
     if (rest.length >= 2) {
