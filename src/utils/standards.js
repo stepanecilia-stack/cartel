@@ -62,7 +62,7 @@ const M_17_22 = [
   { weightMin: 54, weightMax: 54, heightMin: 168, heightMax: 168, label: 'Техничный «игровик». Идеальный баланс рычагов.' },
   { weightMin: 57, weightMax: 57, heightMin: 171, heightMax: 171, label: 'Оформленный атлет. Плотный удар, широкие плечи.' },
   { weightMin: 60, weightMax: 60, heightMin: 174, heightMax: 174, label: 'Классика. Образцовый боксерский силуэт.' },
-  { weightMin: 63.25, weightMax: 63.75, heightMin: 176, heightMax: 176, label: 'Темповик. Мощный торс, готовый к высокой плотности боя.' },
+  { weightMin: 63.5, weightMax: 63.5, heightMin: 176, heightMax: 176, label: 'Темповик. Мощный торс, готовый к высокой плотности боя.' },
   { weightMin: 67, weightMax: 67, heightMin: 178, heightMax: 178, label: 'Силовик. Жесткая кость, тяжелый кулак.' },
   { weightMin: 71, weightMax: 71, heightMin: 181, heightMax: 181, label: 'Идеальный рычаг + мужская мощь.' },
   { weightMin: 75, weightMax: 75, heightMin: 183, heightMax: 183, label: 'Мощный средневес. Доминирование за счет физики.' },

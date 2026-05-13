@@ -126,7 +126,7 @@ function HomePage({ onSelectStudent, coachId }) {
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+    <main className="min-h-screen bg-slate-50 px-3 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
       <AddStudentModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
@@ -134,11 +134,11 @@ function HomePage({ onSelectStudent, coachId }) {
         studentIds={studentIds}
         onListChanged={loadStudents}
       />
-      <div className="mx-auto max-w-6xl space-y-10">
+      <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
         <header>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 md:text-5xl">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
                 Дашборд учеников
               </h1>
             </div>
@@ -169,20 +169,20 @@ function HomePage({ onSelectStudent, coachId }) {
         )}
 
         {isLoading && (
-          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-8 text-center text-slate-600 dark:text-slate-400 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:p-6">
             Загрузка данных...
           </div>
         )}
 
         {studentsWithKsr.length === 0 && !loadError && !isLoading && (
-          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-8 text-center text-slate-600 dark:text-slate-400 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:p-6">
             Пока нет ни одного ученика. Нажмите синюю кнопку «Добавить ученика» выше — откроется окно, куда можно
             вписать нового или ввести код от другого тренера.
           </div>
         )}
 
         {studentsWithKsr.length > 0 && !isLoading && (
-          <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-4">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <div className="md:col-span-2 lg:col-span-1">
                 <label htmlFor="dashboard-search" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -278,18 +278,18 @@ function HomePage({ onSelectStudent, coachId }) {
         )}
 
         {studentsWithKsr.length > 0 && filteredStudents.length === 0 && !isLoading && !loadError && (
-          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-6 text-center text-slate-600 dark:text-slate-400 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
             По выбранным фильтрам спортсмены не найдены.
           </div>
         )}
 
-        <section className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredStudents.map((student) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onSelectStudent?.(student)}
-                className="rounded-xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 text-left shadow-sm transition-shadow hover:shadow-md"
+                className="rounded-xl border border-slate-100 bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900 sm:p-4"
               >
                 <div className="flex min-w-0 items-start gap-2">
                   <h2 className="min-w-0 flex-1 text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100">
