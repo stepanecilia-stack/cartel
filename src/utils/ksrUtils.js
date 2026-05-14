@@ -101,6 +101,11 @@ const INTERNAL_TECHNICAL_ATOMS = [
     name: 'Нырок',
     embedUrl: 'https://kinescope.io/embed/jExABSf5iqH8ix9wpugktt',
   },
+  {
+    number: '19',
+    name: 'Разворот (в боевой стойке)',
+    embedUrl: '',
+  },
 ].map((item) => ({
   id: `atom_${item.number}`,
   number: item.number,
@@ -112,6 +117,31 @@ const INTERNAL_TECHNICAL_ATOMS = [
   videoLink: item.videoLink ?? '',
   embedUrl: item.embedUrl ?? '',
 }))
+
+/** Уровень 2 техники: контексты удара / защиты (фиксированный справочник). */
+const INTERNAL_TECHNIQUE_LEVEL2 = [
+  { number: '2.1', name: 'Передней сбоку' },
+  { number: '2.2', name: 'Сильной сбоку' },
+  { number: '2.3', name: 'Подставка (от боковых)' },
+  { number: '2.4', name: 'Передней снизу в корпус' },
+  { number: '2.5', name: 'Сильной снизу в корпус' },
+  { number: '2.6', name: 'Передней снизу в голову' },
+  { number: '2.7', name: 'Сильной снизу в голову' },
+  { number: '2.8', name: 'Передней сбоку (на выходе)' },
+].map((item, idx) => ({
+  id: `lvl2_${idx + 1}`,
+  number: item.number,
+  name: item.name,
+  howTo: '',
+  whyHowTo: '',
+  mistakes: '',
+  whyMistakes: '',
+  videoLink: '',
+  embedUrl: '',
+  techniqueTier: 2,
+}))
+
+export const TECHNIQUE_LEVEL2_ATOMS = INTERNAL_TECHNIQUE_LEVEL2
 
 /** Коэффициент доминантности по уровню освоения технического атома. */
 export const DOMINANCE_COEFFICIENTS = {
@@ -569,20 +599,32 @@ export const calculateLegacySectionScores = ({
   physicalResults = {},
   functionalResults = {},
   technicalData = {},
+  /** Если задан — балл техники как среднее по этим id (как у КД); иначе по всем ключам technicalData. */
+  technicalProgramAtoms = null,
 }) => {
   const averageNormScore = (norms, values) => {
     if (norms.length === 0) return 0
     const sum = norms.reduce((acc, norm) => acc + Number(values[norm.testId]?.normalizedScore ?? 0), 0)
     return Math.round(clamp(sum / norms.length, 0, 100))
   }
-  const technicalLevels = Object.values(technicalData)
-  const technicalScore =
-    technicalLevels.length === 0
-      ? 0
-      : Math.round(
-          technicalLevels.reduce((acc, item) => acc + dominanceCoeffForLevel(item.level) * 100, 0) /
-            technicalLevels.length,
-        )
+  let technicalScore = 0
+  if (Array.isArray(technicalProgramAtoms) && technicalProgramAtoms.length > 0) {
+    const coeffs = technicalProgramAtoms.map((atom) =>
+      dominanceCoeffForLevel(technicalData[atom.id]?.level),
+    )
+    technicalScore = Math.round(
+      coeffs.reduce((acc, c) => acc + c * 100, 0) / coeffs.length,
+    )
+  } else {
+    const technicalLevels = Object.values(technicalData)
+    technicalScore =
+      technicalLevels.length === 0
+        ? 0
+        : Math.round(
+            technicalLevels.reduce((acc, item) => acc + dominanceCoeffForLevel(item.level) * 100, 0) /
+              technicalLevels.length,
+          )
+  }
 
   return {
     физика: averageNormScore(physicalNorms, physicalResults),

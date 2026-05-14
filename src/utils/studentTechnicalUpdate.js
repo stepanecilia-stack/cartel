@@ -7,6 +7,7 @@ import {
   normalizeTechnicalDominanceKey,
 } from './ksrUtils.js'
 import { studentAthleteShape } from './studentModel.js'
+import { buildFullTechnicalProgramAtoms, mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
 
 /**
  * Нормализация technicalData к виду, который ждёт Firestore.
@@ -94,6 +95,8 @@ export function buildTechnicalOnlyUpdatePayload(student, technicalAtoms, newTech
   const physicalResults = tests.physical && typeof tests.physical === 'object' ? tests.physical : {}
   const functionalResults = tests.functional && typeof tests.functional === 'object' ? tests.functional : {}
   const technicalNormalized = normalizeTechnicalDataForSave(newTechnicalData)
+  const combos = mergeWithRequiredLevel3Combinations(student?.technicalCombinations)
+  const programAtoms = buildFullTechnicalProgramAtoms(technicalAtoms, combos)
 
   const baseScores = calculateLegacySectionScores({
     physicalNorms: [],
@@ -101,6 +104,7 @@ export function buildTechnicalOnlyUpdatePayload(student, technicalAtoms, newTech
     physicalResults,
     functionalResults,
     technicalData: technicalNormalized,
+    technicalProgramAtoms: programAtoms,
   })
   const prevScores = student?.scores && typeof student.scores === 'object' ? student.scores : {}
   const scores = {
@@ -111,7 +115,7 @@ export function buildTechnicalOnlyUpdatePayload(student, technicalAtoms, newTech
 
   const w = getWeights(shape)
   const kspBundle = calculateKsrAndKsp(shape, scores)
-  const kdStats = calculateKD(technicalAtoms, technicalNormalized)
+  const kdStats = calculateKD(programAtoms, technicalNormalized)
   const effective = calculateEffectiveKSR(kspBundle.baseKSR, kdStats.kd)
   const technicalScore = scores.техника / 100
 

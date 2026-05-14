@@ -769,6 +769,11 @@ export default function ShareProgressPage() {
                                 </a>
                               ) : null}
                             </div>
+                            {atom.comboChain ? (
+                              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                                Цепочка: <span className="font-medium text-slate-800 dark:text-slate-200">{atom.comboChain}</span>
+                              </p>
+                            ) : null}
                             <div className="mt-2 space-y-0.5">
                               <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                                 Уровень освоения

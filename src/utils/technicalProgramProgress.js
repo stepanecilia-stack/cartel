@@ -29,6 +29,7 @@ export const TECH_SEQUENCE_NAME_HINTS = [
   ['защита отбивом', 'внутрь', 'наружу'],
   ['сайд-степ', 'сайдстеп'],
   ['нырок'],
+  ['разворот', 'боевой стойке'],
 ]
 
 const normalizeTechName = (value) =>

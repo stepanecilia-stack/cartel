@@ -191,6 +191,10 @@ export function buildPublicSharePayload({
       id: String(atom.id ?? ''),
       number: atom.number != null ? String(atom.number) : '',
       name: String(atom.name ?? 'Элемент'),
+      comboChain:
+        typeof atom.chainPreview === 'string' && atom.chainPreview.trim() !== ''
+          ? atom.chainPreview.trim()
+          : '',
       levelKey: k,
       levelLabel,
       levelPercent,
