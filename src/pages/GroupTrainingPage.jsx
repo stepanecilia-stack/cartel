@@ -4,11 +4,12 @@ import {
   getCoachStudents,
   updateStudentData,
 } from '../services/firebaseService'
-import { loadLegacyTechnicalAtoms } from '../utils/ksrUtils'
+import { loadLegacyTechnicalAtoms, TECHNIQUE_LEVEL2_ATOMS } from '../utils/ksrUtils'
 import {
   orderTechnicalAtomsForProgram,
   normalizeStudentTechnicalData,
 } from '../utils/technicalProgramProgress.js'
+import { mergeWithRequiredLevel3Combinations } from '../utils/techniqueCatalog.js'
 import {
   applyProgressSliderToTechnicalData,
   buildTechnicalOnlyUpdatePayload,
@@ -150,23 +151,53 @@ function ComposePhase({
   )
 }
 
-function StudentProgressRow({ student, orderedAtoms, onChange, savingStatus }) {
-  const total = orderedAtoms.length
-
-  const initialValue = useMemo(
-    () => countLeadingMasteredAtoms(orderedAtoms, student.technicalData ?? {}),
-    [orderedAtoms, student.technicalData],
+function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
+  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
+  const orderedL3 = useMemo(
+    () => mergeWithRequiredLevel3Combinations(student.technicalCombinations),
+    [student.technicalCombinations],
   )
 
-  const [sliderValue, setSliderValue] = useState(initialValue)
-  const [knownInitial, setKnownInitial] = useState(initialValue)
-  if (knownInitial !== initialValue) {
-    setKnownInitial(initialValue)
-    setSliderValue(initialValue)
-  }
+  const total1 = orderedL1.length
+  const total2 = orderedL2.length
+  const total3 = orderedL3.length
 
-  const currentAtom = sliderValue >= 1 && sliderValue <= total ? orderedAtoms[sliderValue - 1] : null
-  const nextAtom = sliderValue < total ? orderedAtoms[sliderValue] : null
+  const data = student.technicalData ?? {}
+
+  const initial1 = useMemo(() => countLeadingMasteredAtoms(orderedL1, data), [orderedL1, data])
+  const initial2 = useMemo(() => countLeadingMasteredAtoms(orderedL2, data), [orderedL2, data])
+  const initial3 = useMemo(
+    () => countLeadingMasteredAtoms(orderedL3.map((c) => ({ id: c.id })), data),
+    [orderedL3, data],
+  )
+
+  const [slider1, setSlider1] = useState(initial1)
+  const [slider2, setSlider2] = useState(initial2)
+  const [slider3, setSlider3] = useState(initial3)
+  const [showTier2, setShowTier2] = useState(() => total1 > 0 && initial1 >= total1)
+  const [showTier3, setShowTier3] = useState(() => total2 > 0 && initial2 >= total2 && total3 > 0)
+
+  useEffect(() => {
+    setSlider1(initial1)
+  }, [student.id, initial1])
+  useEffect(() => {
+    setSlider2(initial2)
+  }, [student.id, initial2])
+  useEffect(() => {
+    setSlider3(initial3)
+  }, [student.id, initial3])
+
+  useEffect(() => {
+    if (total1 > 0 && slider1 >= total1) setShowTier2(true)
+  }, [slider1, total1])
+
+  useEffect(() => {
+    if (total2 > 0 && slider2 >= total2) setShowTier3(true)
+  }, [slider2, total2])
+
+  const emit = (next1, next2, next3) => {
+    onChange(student.id, { l1: next1, l2: next2, l3: next3 })
+  }
 
   const statusLine = (() => {
     if (savingStatus === 'saving') return 'Сохранение...'
@@ -175,22 +206,39 @@ function StudentProgressRow({ student, orderedAtoms, onChange, savingStatus }) {
     return null
   })()
 
-  const handleInput = (event) => {
-    const raw = Number(event.target.value)
-    const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total)
-    setSliderValue(next)
-    onChange(student.id, next)
+  const tierLabel = (n, total, value) => `Ур. ${n}: ${value} из ${total}`
+
+  const renderTierHint = (ordered, value, total) => {
+    const current = value >= 1 && value <= total ? ordered[value - 1] : null
+    const next = value < total ? ordered[value] : null
+    return (
+      <div className="mt-2 min-h-[2.5rem] rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        {current ? (
+          <p>
+            <span className="font-semibold text-blue-700 dark:text-blue-400">Шаг {value}.</span>{' '}
+            {current.name}
+          </p>
+        ) : (
+          <p className="text-slate-500 dark:text-slate-400">Не начато</p>
+        )}
+        {next ? (
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">Дальше: {next.name}</p>
+        ) : value === total && total > 0 ? (
+          <p className="mt-0.5 text-[11px] leading-snug text-emerald-700 dark:text-emerald-400">Уровень закрыт.</p>
+        ) : null}
+      </div>
+    )
   }
 
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-          {student.displayName}
-        </h2>
-        <div className="flex items-center gap-2 text-xs">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{student.displayName}</h2>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            Шаг {sliderValue} из {total}
+            {tierLabel(1, total1, slider1)}
+            {showTier2 ? ` · ${tierLabel(2, total2, slider2)}` : ''}
+            {showTier3 ? ` · ${tierLabel(3, total3, slider3)}` : ''}
           </span>
           {statusLine ? (
             <span
@@ -208,49 +256,90 @@ function StudentProgressRow({ student, orderedAtoms, onChange, savingStatus }) {
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 dark:border-slate-700">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Уровень 1</p>
         <input
           type="range"
           min={0}
-          max={total}
+          max={total1}
           step={1}
-          value={sliderValue}
-          onChange={handleInput}
-          aria-label={`Прогресс по программе: ${student.displayName}`}
+          value={slider1}
+          onChange={(e) => {
+            const raw = Number(e.target.value)
+            const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total1)
+            setSlider1(next)
+            emit(next, slider2, slider3)
+          }}
+          aria-label={`Уровень 1, прогресс: ${student.displayName}`}
           className="w-full cursor-pointer accent-blue-600"
         />
-        <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <div className="flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
           <span>0</span>
-          <span>{total}</span>
+          <span>{total1}</span>
         </div>
+        {renderTierHint(orderedL1, slider1, total1)}
       </div>
 
-      <div className="mt-2 min-h-[2.75rem] rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-        {currentAtom ? (
-          <p>
-            <span className="font-semibold text-blue-700 dark:text-blue-400">
-              Шаг {sliderValue}.
-            </span>{' '}
-            {currentAtom.name}
+      {showTier2 && total2 > 0 ? (
+        <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 dark:border-slate-700">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Уровень 2</p>
+          <input
+            type="range"
+            min={0}
+            max={total2}
+            step={1}
+            value={slider2}
+            onChange={(e) => {
+              const raw = Number(e.target.value)
+              const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total2)
+              setSlider2(next)
+              emit(slider1, next, slider3)
+            }}
+            aria-label={`Уровень 2, прогресс: ${student.displayName}`}
+            className="w-full cursor-pointer accent-blue-600"
+          />
+          <div className="flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <span>0</span>
+            <span>{total2}</span>
+          </div>
+          {renderTierHint(orderedL2, slider2, total2)}
+        </div>
+      ) : null}
+
+      {showTier3 && total3 > 0 ? (
+        <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 dark:border-slate-700">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Уровень 3 (комбинации)
           </p>
-        ) : (
-          <p className="text-slate-500 dark:text-slate-400">Программа ещё не начата</p>
-        )}
-        {nextAtom ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
-            Дальше: {nextAtom.name}
-          </p>
-        ) : sliderValue === total && total > 0 ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-emerald-700 dark:text-emerald-400">
-            Все шаги программы пройдены.
-          </p>
-        ) : null}
-      </div>
+          <input
+            type="range"
+            min={0}
+            max={total3}
+            step={1}
+            value={slider3}
+            onChange={(e) => {
+              const raw = Number(e.target.value)
+              const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total3)
+              setSlider3(next)
+              emit(slider1, slider2, next)
+            }}
+            aria-label={`Уровень 3, прогресс: ${student.displayName}`}
+            className="w-full cursor-pointer accent-violet-600"
+          />
+          <div className="flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <span>0</span>
+            <span>{total3}</span>
+          </div>
+          {renderTierHint(orderedL3, slider3, total3)}
+        </div>
+      ) : null}
     </li>
   )
 }
 
-function ProgressPhase({ studentsForSession, orderedAtoms, onBack, technicalAtoms }) {
+function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }) {
+  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
+  const pendingTiersRef = useRef(new Map())
   const [savingStatusById, setSavingStatusById] = useState({})
   const localDataRef = useRef(new Map())
   const debounceRef = useRef(new Map())
@@ -279,14 +368,16 @@ function ProgressPhase({ studentsForSession, orderedAtoms, onBack, technicalAtom
   }, [])
 
   const commitSliderChange = useCallback(
-    async (studentId, sliderValue) => {
+    async (studentId, tiers) => {
       const slot = localDataRef.current.get(studentId)
       if (!slot) return
-      const nextTechnical = applyProgressSliderToTechnicalData(
-        orderedAtoms,
-        slot.technicalData,
-        sliderValue,
-      )
+      const orderedL3 = mergeWithRequiredLevel3Combinations(slot.base.technicalCombinations).map((c) => ({
+        id: c.id,
+      }))
+      let nextTechnical = slot.technicalData
+      nextTechnical = applyProgressSliderToTechnicalData(orderedL1, nextTechnical, tiers.l1)
+      nextTechnical = applyProgressSliderToTechnicalData(orderedL2, nextTechnical, tiers.l2)
+      nextTechnical = applyProgressSliderToTechnicalData(orderedL3, nextTechnical, tiers.l3)
       slot.technicalData = nextTechnical
       try {
         setStatus(studentId, 'saving')
@@ -303,17 +394,19 @@ function ProgressPhase({ studentsForSession, orderedAtoms, onBack, technicalAtom
         setStatus(studentId, 'error')
       }
     },
-    [orderedAtoms, setStatus, technicalAtoms],
+    [orderedL1, orderedL2, setStatus, technicalAtoms],
   )
 
   const handleSliderChange = useCallback(
-    (studentId, value) => {
+    (studentId, tiers) => {
+      pendingTiersRef.current.set(studentId, tiers)
       setStatus(studentId, 'saving')
       const prevHandle = debounceRef.current.get(studentId)
       if (prevHandle) clearTimeout(prevHandle)
       const handle = setTimeout(() => {
         debounceRef.current.delete(studentId)
-        commitSliderChange(studentId, value)
+        const latest = pendingTiersRef.current.get(studentId)
+        if (latest) void commitSliderChange(studentId, latest)
       }, SAVE_DEBOUNCE_MS)
       debounceRef.current.set(studentId, handle)
     },
@@ -328,8 +421,9 @@ function ProgressPhase({ studentsForSession, orderedAtoms, onBack, technicalAtom
             Прогресс по шагам
           </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Шаг 2 из 2: тащите ползунок вправо — отметятся сразу несколько элементов. Данные
-            сохраняются автоматически.
+            Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
+            открываются сами, когда предыдущий доведён до конца. Перетягивание по-прежнему выставляет «Умение» на
+            пройденных шагах; данные сохраняются автоматически.
           </p>
         </div>
         <button
@@ -341,7 +435,7 @@ function ProgressPhase({ studentsForSession, orderedAtoms, onBack, technicalAtom
         </button>
       </header>
 
-      {orderedAtoms.length === 0 ? (
+      {orderedL1.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
           Программа техники не загружена — обновите страницу.
         </div>
@@ -352,7 +446,7 @@ function ProgressPhase({ studentsForSession, orderedAtoms, onBack, technicalAtom
           <StudentProgressRow
             key={student.id}
             student={student}
-            orderedAtoms={orderedAtoms}
+            orderedL1={orderedL1}
             onChange={handleSliderChange}
             savingStatus={savingStatusById[student.id] ?? 'idle'}
           />
@@ -504,7 +598,7 @@ export default function GroupTrainingPage({ coachId }) {
         ) : (
           <ProgressPhase
             studentsForSession={studentsForSession}
-            orderedAtoms={orderedAtoms}
+            orderedL1={orderedAtoms}
             technicalAtoms={technicalAtoms}
             onBack={handleBackToCompose}
           />
