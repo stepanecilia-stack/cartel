@@ -1,6 +1,6 @@
 /**
  * Золотые стандарты (идеальный рост по весу, полу и возрасту) + типаж.
- * Используется для КСП: KSP ≈ Z × H (в процентах после ×100).
+ * Используется для КБП: KSP ≈ Z × H (в процентах после ×100).
  */
 
 import { computeAthleteAgeYears, normalizeBirthYearNumber } from './studentModel.js'
@@ -305,7 +305,7 @@ export function calculateAnthropometricZ(reach, height, row, weightDistance) {
 }
 
 /**
- * КСП (потолок) в процентах 0–100: Z × H × 100
+ * КБП (потолок) в процентах 0–100: Z × H × 100
  */
 export function calculateKSPPercent(studentData = {}) {
   const height = Number(studentData.height ?? 0)

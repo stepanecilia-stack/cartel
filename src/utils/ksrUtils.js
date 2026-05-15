@@ -441,7 +441,7 @@ export const getWeights = (studentData = {}) => {
   }
 }
 
-/** Потолок КСП (0–100) по золотым стандартам и антропометрии. */
+/** Потолок КБП (0–100) по золотым стандартам и антропометрии. */
 export const calculateKSP = (studentData = {}) => calculateKSPPercent(studentData).ksp
 
 /** Базовый балл и «потолок по телу» (внутренние расчёты по антропометрии). */
@@ -483,7 +483,7 @@ export const calculateTrainingProgress = (studentData = {}, scores = {}) => {
 }
 
 /**
- * Base КСР = (TrainingProgress / 100) * КСП. При КСП = 0 множитель 100 (нет эталона потолка).
+ * Base КСР = (TrainingProgress / 100) * КБП. При КБП = 0 множитель 100 (нет эталона потолка).
  */
 export const calculateBaseKSR = (studentData = {}, scores = {}, kspCeiling = null) => {
   const trainingProgress = calculateTrainingProgress(studentData, scores)

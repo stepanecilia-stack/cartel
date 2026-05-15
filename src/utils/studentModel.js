@@ -65,6 +65,55 @@ export function birthYearToInputString(year) {
   return y ? String(y) : ''
 }
 
+/** YYYY-MM-DD для `input[type=date]` из Firestore / ISO / Date / Timestamp. */
+export function birthDateToInputString(val) {
+  if (val == null || val === '') return ''
+  let raw = val
+  if (typeof raw === 'object' && typeof raw.toDate === 'function') {
+    raw = raw.toDate()
+  }
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return ''
+    const y = raw.getFullYear()
+    const m = String(raw.getMonth() + 1).padStart(2, '0')
+    const d = String(raw.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+  const s = String(raw).trim()
+  if (!s) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const parsed = new Date(s)
+  if (Number.isNaN(parsed.getTime())) return ''
+  const y = parsed.getFullYear()
+  const m = String(parsed.getMonth() + 1).padStart(2, '0')
+  const d = String(parsed.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Дата рождения для хранения (YYYY-MM-DD) или `null`, если поле пустое / невалидное.
+ * @param {unknown} input
+ * @returns {string | null}
+ */
+export function normalizeBirthDateISO(input) {
+  const s = birthDateToInputString(input)
+  if (!s) return null
+  const [y, m, d] = s.split('-').map(Number)
+  const dt = new Date(y, m - 1, d, 0, 0, 0, 0)
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null
+  const now = new Date()
+  if (y < 1900 || y > now.getFullYear()) return null
+  if (dt.getTime() > now.getTime()) return null
+  return s
+}
+
+/** Совпадает ли год в полной дате с указанным годом рождения. */
+export function birthDateMatchesBirthYear(birthDateISO, birthYear) {
+  const y = normalizeBirthYearNumber(birthYear)
+  if (!y || !birthDateISO) return true
+  return Number(String(birthDateISO).slice(0, 4)) === y
+}
+
 /** Поля для расчёта весов / КСР с безопасными числами. */
 export function studentAthleteShape(s) {
   if (!s || typeof s !== 'object') {

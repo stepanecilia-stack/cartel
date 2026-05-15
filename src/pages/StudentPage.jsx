@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   TECH_DOMINANCE_OPTIONS,
   calculateEffectiveKSR,
@@ -18,11 +18,14 @@ import { buildTechnicalLocksById, orderTechnicalAtomsForProgram } from '../utils
 import { buildFullTechnicalProgramAtoms, normalizeTechnicalCombinations, buildAtomLookupById, buildComboChainPreview, mergeWithRequiredLevel3Combinations, isRequiredLevel3ComboId, REQUIRED_LEVEL3_COMBO_IDS } from '../utils/techniqueCatalog.js'
 import {
   anthropometryFieldToInputString,
+  birthDateMatchesBirthYear,
+  birthDateToInputString,
   birthYearToInputString,
   computeAthleteAgeYears,
   displayNameFromStudent,
   formatBirthYearRu,
   formatShortIdDisplay,
+  normalizeBirthDateISO,
   normalizeBirthYearNumber,
   studentAthleteShape,
   studentPhotoUrl,
@@ -47,322 +50,14 @@ import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
-import { getSensitiveMotorQualities, orderSensitiveQualitiesForBoxing } from '../utils/sensitivePeriods'
-import {
-  buildCoachRecommendations,
-  COACH_REC_ELEMENT_NAME_CLASS,
-  isCoachRecSessionFormula,
-} from '../utils/coachRecommendations'
-import { buildCoachDevelopmentExercisePlan, developmentExerciseSlotCountForAge } from '../utils/motorQualityWorkoutExercises'
-import { Link } from 'react-router-dom'
-import { getMotorQualitySlug } from '../data/motorQualitiesCatalog'
-
-const MOTOR_QUALITY_LINK_CLASS =
-  'font-medium text-blue-600 underline underline-offset-2 decoration-blue-400/70 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
-
-function MotorQualityInlineLink({ title, qualityReturnState }) {
-  const slug = getMotorQualitySlug(title)
-  if (!slug) {
-    return <span className="font-medium text-slate-800 dark:text-slate-200">{title}</span>
-  }
-  const to =
-    qualityReturnState != null
-      ? {
-          pathname: `/qualities/${slug}`,
-          state: { studentQualityReturn: qualityReturnState },
-        }
-      : `/qualities/${slug}`
-  return (
-    <Link to={to} className={MOTOR_QUALITY_LINK_CLASS}>
-      {title}
-    </Link>
-  )
-}
-
-/** Подпись этапа вида «… «название» …» — название ведёт на страницу качества. */
-function renderQuotedMotorQualityLabel(label, titles, qualityReturnState) {
-  if (!titles?.length) return <span className="leading-snug">{label}</span>
-  const parts = []
-  let rest = label
-  let key = 0
-  for (const title of titles) {
-    const needle = `«${title}»`
-    const i = rest.indexOf(needle)
-    if (i === -1) {
-      parts.push(<span key={`q-${key++}`}>{rest}</span>)
-      return <span className="leading-snug">{parts}</span>
-    }
-    if (i > 0) parts.push(<span key={`q-${key++}`}>{rest.slice(0, i)}</span>)
-    parts.push(
-      <span key={`q-${key++}`}>
-        «<MotorQualityInlineLink title={title} qualityReturnState={qualityReturnState} />»
-      </span>,
-    )
-    rest = rest.slice(i + needle.length)
-  }
-  if (rest) parts.push(<span key={`q-${key++}`}>{rest}</span>)
-  return <span className="leading-snug">{parts}</span>
-}
-
-/** Строка «сенситивный период — A, B» с кликабельными качествами из каталога. */
-function renderSensitivPeriodHintLabel(label, hintLinkTitles, qualityReturnState) {
-  const prefix = 'Упражнения на развитие (сенситивный период — '
-  const suffix = ')'
-  if (!label.startsWith(prefix) || !label.endsWith(suffix) || !hintLinkTitles?.length) {
-    return <span className="leading-snug">{label}</span>
-  }
-  const hint = label.slice(prefix.length, -suffix.length)
-  const segments = hint.split(', ').map((s) => s.trim())
-  const linkSet = new Set(hintLinkTitles)
-  return (
-    <span className="leading-snug">
-      {prefix}
-      {segments.map((segment, i) => (
-        <span key={`h-${segment}-${i}`}>
-          {i > 0 ? ', ' : ''}
-          {linkSet.has(segment) ? (
-            <MotorQualityInlineLink title={segment} qualityReturnState={qualityReturnState} />
-          ) : (
-            segment
-          )}
-        </span>
-      ))}
-      {suffix}
-    </span>
-  )
-}
-
-const COACH_TECH_NAME_BUTTON_CLASS = `${COACH_REC_ELEMENT_NAME_CLASS} rounded-sm text-left underline decoration-blue-400/60 decoration-2 underline-offset-2 hover:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-600`
-
-const COACH_NORM_NAME_BUTTON_CLASS = COACH_TECH_NAME_BUTTON_CLASS
-
-const COACH_NORM_TAB = { phys: 'physical', func: 'functional' }
-
+import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
+import SensitivePeriodTimer from '../components/SensitivePeriodTimer'
 /** Стабильный id карточки норматива на вкладке «Физика» / «Функционал». */
 function normCardDomId(category, testId) {
   const safe = String(testId ?? '').replace(/[^a-zA-Z0-9_-]/g, '_')
   return `norm-card-${category}-${safe}`
 }
 
-/** Таблица минут по тренировке 90 / 60 (данные из buildCoachRecommendations). */
-function CoachSessionPlanTable({
-  item,
-  qualityReturnState,
-  onGoToTechnicalAtom,
-  onGoToNormative,
-  developmentByRowKey,
-}) {
-  const [minutes, setMinutes] = useState(90)
-  const rows = item.rows ?? []
-  const total = rows.reduce((acc, row) => acc + (minutes === 90 ? row.m90 : row.m60), 0)
-
-  const rowsWithAbs = useMemo(() => {
-    let cum = 0
-    return rows.map((row) => {
-      const raw = minutes === 90 ? row.m90 : row.m60
-      const dur = Number(raw) || 0
-      let absLabel = '—'
-      let absTitle = 'Длительность этапа не задана'
-      if (dur > 0) {
-        const fromMin = cum + 1
-        cum += dur
-        const toMin = cum
-        absLabel = `${fromMin}–${toMin}`
-        absTitle = `С ${fromMin}-й по ${toMin}-ю минуту от начала тренировки (${dur} мин)`
-      }
-      return { row, d: dur, absLabel, absTitle }
-    })
-  }, [rows, minutes])
-
-  return (
-    <div className="mt-2 min-w-0 rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-2 shadow-sm sm:mt-3 sm:p-4">
-      <div
-        className="flex w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm font-semibold dark:border-slate-600 dark:bg-slate-800"
-        role="group"
-        aria-label="Длительность тренировки для расчёта минут"
-      >
-        <button
-          type="button"
-          onClick={() => setMinutes(90)}
-          aria-pressed={minutes === 90}
-          className={`min-w-0 flex-1 rounded-md py-2.5 transition sm:py-3 ${
-            minutes === 90
-              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-          }`}
-        >
-          1,5 ч
-        </button>
-        <button
-          type="button"
-          onClick={() => setMinutes(60)}
-          aria-pressed={minutes === 60}
-          className={`min-w-0 flex-1 rounded-md py-2.5 transition sm:py-3 ${
-            minutes === 60
-              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-          }`}
-        >
-          1 ч
-        </button>
-      </div>
-      {/* Flex-строки вместо table: на узком экране min-w-0 + shrink-0 гарантируют видимость минут */}
-      <div
-        className="mt-2 min-w-0 overflow-hidden rounded-md border border-slate-200 text-sm dark:border-slate-600"
-        role="table"
-        aria-label="Распределение минут по этапам"
-      >
-        <div
-          className="flex gap-1.5 border-b border-slate-200 bg-slate-100/90 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-400 sm:gap-3 sm:py-2 sm:text-xs"
-          role="row"
-        >
-          <div className="min-w-0 flex-1 px-1.5 sm:px-2.5" role="columnheader">
-            Этап
-          </div>
-          <div
-            className="w-[3.35rem] shrink-0 px-0.5 text-right tabular-nums sm:w-[4.75rem] sm:px-2"
-            role="columnheader"
-            title="Минута тренировки от начала (включительно)"
-          >
-            От старта
-          </div>
-          <div className="w-9 shrink-0 px-1 text-right tabular-nums sm:w-12 sm:px-2.5" role="columnheader">
-            Мин
-          </div>
-        </div>
-        <div className="text-slate-800 dark:text-slate-200" role="rowgroup">
-          {rowsWithAbs.map(({ row, d: m, absLabel, absTitle }, index) => {
-            let stageCell = null
-            if (row.kind === 'technical') {
-              stageCell =
-                row.technical != null ? (
-                  <span className="leading-snug">
-                    Техника по программе: «
-                    {row.technical.atomId && typeof onGoToTechnicalAtom === 'function' ? (
-                      <button
-                        type="button"
-                        className={COACH_TECH_NAME_BUTTON_CLASS}
-                        title="Перейти к элементу во вкладке «Техника»"
-                        onClick={() => onGoToTechnicalAtom(row.technical.atomId)}
-                      >
-                        {row.technical.name}
-                      </button>
-                    ) : (
-                      <span className={COACH_REC_ELEMENT_NAME_CLASS}>{row.technical.name}</span>
-                    )}
-                    »{row.technical.taskSuffix}
-                  </span>
-                ) : (
-                  <span className="text-slate-700">Техника по программе — без выделенного элемента в расчёте</span>
-                )
-            } else if (row.kind === 'norm') {
-              stageCell =
-                row.normative != null ? (
-                  <span className="leading-snug">
-                    Отстающий норматив: «
-                    {row.normative.testId &&
-                    row.normative.category &&
-                    COACH_NORM_TAB[row.normative.category] &&
-                    typeof onGoToNormative === 'function' ? (
-                      <button
-                        type="button"
-                        className={COACH_NORM_NAME_BUTTON_CLASS}
-                        title="Перейти к нормативу на вкладке «Физика» или «Функционал»"
-                        onClick={() =>
-                          onGoToNormative(COACH_NORM_TAB[row.normative.category], row.normative.testId)
-                        }
-                      >
-                        {row.normative.testName}
-                      </button>
-                    ) : (
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">{row.normative.testName}</span>
-                    )}
-                    »
-                  </span>
-                ) : (
-                  <span className="text-slate-600">Отстающий норматив — слот не активирован порогами расчёта</span>
-                )
-            } else if (row.kind === 'plain' && row.key === 'greenFallback' && row.hintLinkTitles?.length) {
-              stageCell = renderSensitivPeriodHintLabel(row.label, row.hintLinkTitles, qualityReturnState)
-            } else if (row.kind === 'plain' && row.linkableQuotedQualities?.length) {
-              stageCell = renderQuotedMotorQualityLabel(row.label, row.linkableQuotedQualities, qualityReturnState)
-            } else {
-              stageCell = <span className="leading-snug">{row.label}</span>
-            }
-            const zebra = index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'
-            const devBlock = developmentByRowKey?.[row.key]
-            return (
-              <div
-                key={row.key}
-                className={`flex gap-1.5 border-b border-slate-100 py-1.5 dark:border-slate-700 sm:gap-3 sm:py-2 ${zebra} px-1.5 sm:px-2.5`}
-                role="row"
-              >
-                <div className="min-w-0 flex-1 break-words text-[13px] leading-snug sm:text-sm" role="cell">
-                  {stageCell}
-                  {devBlock?.qualities?.length ? (
-                    <div className="mt-2 rounded-md border border-blue-100 bg-blue-50/90 px-2 py-2 dark:border-blue-900/50 dark:bg-blue-950/35">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">
-                        Подборка упражнений
-                      </p>
-                      <div className="mt-1.5 space-y-2">
-                        {devBlock.qualities.map((q) => (
-                          <div key={q.slug}>
-                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{q.title}</p>
-                            <ol className="mt-0.5 list-decimal space-y-1 pl-4 text-[12px] leading-snug text-slate-700 dark:text-slate-300">
-                              {q.exercises.map((ex) => (
-                                <li key={ex.id}>
-                                  <span className="font-medium text-slate-900 dark:text-slate-100">{ex.title}</span>
-                                  {ex.intent ? (
-                                    <span className="text-slate-600 dark:text-slate-400"> — {ex.intent}</span>
-                                  ) : null}
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-                <div
-                  className="w-[3.35rem] shrink-0 self-start px-0.5 pt-0.5 text-right text-[10px] font-medium tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
-                  role="cell"
-                  title={absTitle}
-                >
-                  {absLabel}
-                </div>
-                <div
-                  className="w-9 shrink-0 self-start px-0.5 pt-0.5 text-right text-xs font-medium tabular-nums text-slate-900 dark:text-slate-100 sm:w-12 sm:px-0 sm:text-sm"
-                  role="cell"
-                >
-                  {m}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <div
-          className="flex gap-1.5 border-t border-slate-200 bg-slate-100 px-1.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:gap-3 sm:px-2.5 sm:py-2 sm:text-sm"
-          role="row"
-        >
-          <div className="min-w-0 flex-1" role="cell">
-            Итого
-          </div>
-          <div
-            className="w-[3.35rem] shrink-0 px-0.5 text-right text-[10px] tabular-nums text-slate-700 dark:text-slate-300 sm:w-[4.75rem] sm:px-2 sm:text-xs"
-            role="cell"
-            title="Вся тренировка от первой до последней минуты"
-          >
-            {total > 0 ? `1–${total}` : '—'}
-          </div>
-          <div className="w-9 shrink-0 px-0.5 text-right tabular-nums sm:w-12 sm:px-0" role="cell">
-            {total}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Антропометрия' },
@@ -588,6 +283,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     reach: '',
     weight: '',
     birthYear: '',
+    birthDate: '',
     date: new Date().toISOString().slice(0, 10),
     gender: 'M',
   })
@@ -599,8 +295,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [normSavingKey, setNormSavingKey] = useState('')
   const [technicalSavingKey, setTechnicalSavingKey] = useState('')
   const [openTechnicalVideoId, setOpenTechnicalVideoId] = useState(null)
-  const [pendingTechnicalFocusId, setPendingTechnicalFocusId] = useState(null)
-  const [pendingNormFocus, setPendingNormFocus] = useState(null)
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -608,8 +302,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareUrl, setShareUrl] = useState('')
   const [historicalStandardExpanded, setHistoricalStandardExpanded] = useState(false)
   const [sensitivePeriodExpanded, setSensitivePeriodExpanded] = useState(false)
-  const [coachGenDevPlan, setCoachGenDevPlan] = useState(null)
-  const [coachGenDevNotice, setCoachGenDevNotice] = useState('')
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -640,6 +332,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       reach: anthropometryFieldToInputString(student.reach ?? sh.reach),
       weight: anthropometryFieldToInputString(student.weight ?? sh.weight),
       birthYear: birthYearToInputString(student.birthYear ?? student.birthYearLabel ?? sh.birthYear),
+      birthDate: birthDateToInputString(student.birthDate),
       date:
         typeof student.anthropometryDate === 'string' && student.anthropometryDate
           ? student.anthropometryDate
@@ -665,8 +358,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setSaveOk(false)
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
-    setCoachGenDevPlan(null)
-    setCoachGenDevNotice('')
   }, [student])
 
   useEffect(() => {
@@ -718,6 +409,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     if (fromForm) return fromForm
     return normalizeBirthYearNumber(safeStudent.birthYear) || 0
   }, [anthropometry.birthYear, safeStudent.birthYear])
+
+  const resolvedBirthDate = useMemo(() => {
+    const fromForm = normalizeBirthDateISO(anthropometry.birthDate)
+    if (fromForm) return fromForm
+    return normalizeBirthDateISO(safeStudent.birthDate)
+  }, [anthropometry.birthDate, safeStudent.birthDate])
 
   const athleteForNorms = useMemo(() => {
     const height = Number(anthropometry.height) || 0
@@ -1023,15 +720,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     () => getSensitiveMotorQualities(computeAthleteAgeYears(resolvedBirthYear)),
     [resolvedBirthYear],
   )
-  const orderedSensitiveQualities = useMemo(
-    () => orderSensitiveQualitiesForBoxing(sensitivePeriods.qualities),
-    [sensitivePeriods.qualities],
-  )
-  const orderedLowImpactQualities = useMemo(
-    () => orderSensitiveQualitiesForBoxing(sensitivePeriods.lowImpactQualities),
-    [sensitivePeriods.lowImpactQualities],
-  )
-
   const influenceItems = [
     {
       key: 'tech',
@@ -1234,6 +922,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     const birthYear =
       normalizeBirthYearNumber(anthropometry.birthYear) ||
       normalizeBirthYearNumber(safeStudent.birthYear)
+    const birthDate = normalizeBirthDateISO(anthropometry.birthDate)
     const mergedAthlete = {
       ...safeStudent,
       height,
@@ -1265,6 +954,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       gender,
       birthYear,
       birthYearLabel: formatBirthYearRu(birthYear),
+      birthDate,
       anthropometryDate: measureDate,
       weightHistory: weightHistoryArg,
       tests: {
@@ -1329,6 +1019,19 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
+    const birthDateNorm = normalizeBirthDateISO(anthropometry.birthDate)
+    if (String(anthropometry.birthDate ?? '').trim() && !birthDateNorm) {
+      setAnthropometrySaveError('Укажите корректную дату рождения или очистите поле.')
+      return
+    }
+    const birthYearForCheck =
+      normalizeBirthYearNumber(anthropometry.birthYear) ||
+      normalizeBirthYearNumber(safeStudent.birthYear)
+    if (birthDateNorm && !birthDateMatchesBirthYear(birthDateNorm, birthYearForCheck)) {
+      setAnthropometrySaveError('Год в дате рождения должен совпадать с указанным годом рождения.')
+      return
+    }
+
     setIsAnthropometrySaving(true)
     try {
       const fresh = await getStudentById(student.id)
@@ -1715,131 +1418,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [orderedTechnicalAtoms, technicalData],
   )
 
-  const coachRecommendations = useMemo(
-    () =>
-      buildCoachRecommendations({
-        ageInt: sensitivePeriods.ageInt ?? null,
-        sensitive: sensitivePeriods,
-        weights,
-        kd: kdBundle.kd,
-        baseKSR,
-        effectiveKSR,
-        orderedTechnicalAtoms,
-        technicalLocksById,
-        technicalData,
-        physicalNorms,
-        functionalNorms,
-        physicalResults,
-        functionalResults,
-      }),
-    [
-      sensitivePeriods,
-      weights,
-      kdBundle.kd,
-      baseKSR,
-      effectiveKSR,
-      orderedTechnicalAtoms,
-      technicalLocksById,
-      technicalData,
-      physicalNorms,
-      functionalNorms,
-      physicalResults,
-      functionalResults,
-    ],
-  )
-
-  const coachSessionPlanFingerprint = useMemo(() => {
-    const formula = coachRecommendations.find(isCoachRecSessionFormula)
-    const rows = formula?.rows
-    if (!Array.isArray(rows)) return ''
-    return JSON.stringify(
-      rows.map((r) => [r.key, r.label, r.linkableQuotedQualities ?? null, r.hintLinkTitles ?? null]),
-    )
-  }, [coachRecommendations])
-
-  const coachDevPlanByRowKey = useMemo(() => {
-    if (!coachGenDevPlan?.blocks?.length) return null
-    const rec = {}
-    for (const b of coachGenDevPlan.blocks) rec[b.rowKey] = b
-    return rec
-  }, [coachGenDevPlan])
-
-  useEffect(() => {
-    setCoachGenDevPlan(null)
-    setCoachGenDevNotice('')
-  }, [safeStudent?.id, coachSessionPlanFingerprint])
-
-  const handleGenerateCoachDevExercises = useCallback(() => {
-    setCoachGenDevNotice('')
-    const formula = coachRecommendations.find(isCoachRecSessionFormula)
-    if (!formula?.rows?.length) return
-    const ageInt = sensitivePeriods.ageInt ?? null
-    const blocks = buildCoachDevelopmentExercisePlan(formula.rows, ageInt)
-    if (!blocks.length) {
-      setCoachGenDevPlan(null)
-      setCoachGenDevNotice(
-        'В плане нет этапов «Упражнения на развитие» с привязкой к качеству — укажите год рождения или проверьте возраст (до 7 лет таблица сенситивных периодов не используется).',
-      )
-      return
-    }
-    setCoachGenDevPlan({ blocks })
-  }, [coachRecommendations, sensitivePeriods.ageInt])
-
-  const motorQualityReturnState = useMemo(() => {
-    if (!safeStudent?.id) return null
-    return {
-      returnPath: '/',
-      studentName: displayNameFromStudent(safeStudent) || undefined,
-    }
-  }, [safeStudent])
-
-  const goToCoachTechnicalElement = useCallback((atomId) => {
-    if (atomId == null || atomId === '') return
-    const id = String(atomId)
-    setActiveTab('technical')
-    setPendingNormFocus(null)
-    if (id.startsWith('combo_')) setTechnicalTierTab('combos')
-    else if (id.startsWith('lvl2_')) setTechnicalTierTab('level2')
-    else setTechnicalTierTab('level1')
-    setPendingTechnicalFocusId(id)
-  }, [])
-
-  const goToCoachNormative = useCallback((section, testId) => {
-    if (!section || testId == null || testId === '') return
-    if (section !== 'physical' && section !== 'functional') return
-    setPendingTechnicalFocusId(null)
-    setActiveTab(section)
-    setPendingNormFocus({ section, testId: String(testId) })
-  }, [])
-
-  useLayoutEffect(() => {
-    if (activeTab !== 'technical') {
-      setPendingTechnicalFocusId((p) => (p == null ? p : null))
-    } else if (pendingTechnicalFocusId != null) {
-      const atomId = pendingTechnicalFocusId
-      requestAnimationFrame(() => {
-        const el =
-          document.getElementById(`technical-atom-${atomId}`) ??
-          document.getElementById(`technical-combo-${atomId}`)
-        el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
-      setPendingTechnicalFocusId(null)
-    }
-  }, [activeTab, pendingTechnicalFocusId])
-
-  useLayoutEffect(() => {
-    if (activeTab !== 'physical' && activeTab !== 'functional') {
-      setPendingNormFocus((p) => (p == null ? p : null))
-      return
-    }
-    if (pendingNormFocus == null) return
-    if (pendingNormFocus.section !== activeTab) return
-    const { section, testId } = pendingNormFocus
-    requestAnimationFrame(() => {
-      document.getElementById(normCardDomId(section, testId))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-    setPendingNormFocus(null)
-  }, [activeTab, pendingNormFocus])
 
   return (
     <main className="min-h-screen bg-slate-50 px-2 py-5 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
@@ -1928,57 +1506,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               {shareUrl}
             </button>
           )}
-          {coachRecommendations.length > 0 &&
-            (() => {
-              const formula = coachRecommendations.find(isCoachRecSessionFormula)
-              if (!formula) return null
-              return (
-                <div className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2.5 sm:mt-4 sm:px-4 sm:py-3">
-                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Предложенная тренировка</p>
-                      {sensitivePeriods.ageInt != null && Number.isFinite(sensitivePeriods.ageInt) ? (
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          Подбор упражнений учитывает возраст:{' '}
-                          <span className="font-medium tabular-nums text-slate-800 dark:text-slate-200">
-                            {sensitivePeriods.ageInt} полных лет
-                          </span>
-                          {coachGenDevPlan?.blocks?.length ? (
-                            <span className="text-slate-500 dark:text-slate-500">
-                              {' '}
-                              (до {developmentExerciseSlotCountForAge(sensitivePeriods.ageInt)} на каждое качество)
-                            </span>
-                          ) : null}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          Без года рождения подбор идёт в режиме «до 2 упражнений на качество».
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleGenerateCoachDevExercises}
-                      className="shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-200 dark:hover:bg-slate-700 sm:text-sm"
-                    >
-                      Сгенерировать
-                    </button>
-                  </div>
-                  {coachGenDevNotice ? (
-                    <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
-                      {coachGenDevNotice}
-                    </p>
-                  ) : null}
-                  <CoachSessionPlanTable
-                    item={formula}
-                    qualityReturnState={motorQualityReturnState}
-                    onGoToTechnicalAtom={goToCoachTechnicalElement}
-                    onGoToNormative={goToCoachNormative}
-                    developmentByRowKey={coachDevPlanByRowKey}
-                  />
-                </div>
-              )
-            })()}
         </section>
 
         <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
@@ -2057,6 +1584,38 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     </div>
                     <span className="text-xs text-slate-500">
                       Возраст в расчётах: текущий год минус год рождения.
+                    </span>
+                  </label>
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm font-medium text-slate-700">
+                      Дата рождения{' '}
+                      <span className="font-normal text-slate-500">(необязательно)</span>
+                    </span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        type="date"
+                        min="1900-01-01"
+                        max={new Date().toISOString().slice(0, 10)}
+                        className="w-full max-w-[220px] rounded-lg border border-slate-200 px-3 py-2"
+                        value={anthropometry.birthDate}
+                        onChange={(e) =>
+                          setAnthropometry((prev) => ({ ...prev, birthDate: e.target.value }))
+                        }
+                      />
+                      {anthropometry.birthDate ? (
+                        <button
+                          type="button"
+                          className="text-sm text-slate-600 underline hover:text-slate-900"
+                          onClick={() =>
+                            setAnthropometry((prev) => ({ ...prev, birthDate: '' }))
+                          }
+                        >
+                          Очистить
+                        </button>
+                      ) : null}
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Уточняет таймер сенситивных периодов; на КСР, нормативы и возраст не влияет.
                     </span>
                   </label>
                   <label className="space-y-2">
@@ -2993,7 +2552,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <div className="mt-4 sm:mt-6">
             <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-3 sm:px-5 sm:py-4">
               <p className="text-sm font-medium leading-snug text-amber-900">
-                Спортивный биометрический потенциал на базе математических расчётов
+                Коэффициент биометрического потенциала на базе математических расчётов
               </p>
               <BiometricPotentialBar className="mt-4" kspPercent={kspPercent} basePercent={basePercent} />
               {(ksrKsp?.kspDetail?.heightDelta != null || ksrKsp?.kspDetail?.reachDelta != null) && (
@@ -3041,7 +2600,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
-              Сенситивный период для{' '}
+              Таймер сенситивных периодов для{' '}
               <span className="text-slate-800">
                 «{displayNameFromStudent(safeStudent) || safeStudent.name || 'Спортсмен'}»
               </span>
@@ -3075,129 +2634,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               sensitivePeriodExpanded ? 'max-h-[8000px] opacity-100' : 'max-h-0 opacity-0'
             }`}
           >
-            <div className="border-t border-slate-100 pt-4">
-              <p className="text-xs text-slate-600">
-                Ориентир по научным таблицам: в зелёном списке качества, которые в этом возрасте «лучше всего ложатся».
-                Красный список — всё остальное из таблицы: тренировать можно, но прирост обычно не такой быстрый.
-              </p>
-              {sensitivePeriods.reason === 'no_birth_year' && (
-                <p className="mt-3 text-sm text-slate-600">
-                  Укажите год рождения в разделе «Антропометрия» — тогда список сформируется автоматически.
-                </p>
-              )}
-              {sensitivePeriods.reason === 'below_table' && (
-                <p className="mt-3 text-sm text-slate-600">
-                  Таблица «что в каком возрасте лучше тренировать» начинается с 7 лет. Сейчас в расчётах:{' '}
-                  {sensitivePeriods.ageInt ?? '—'} {sensitivePeriods.ageInt != null ? 'полных лет' : ''}.
-                </p>
-              )}
-              {sensitivePeriods.reason === 'ok' && (
-                <>
-                  <p className="mt-3 text-sm text-slate-700">
-                    Возраст в расчётах:{' '}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{sensitivePeriods.ageInt} лет</span>
-                  </p>
-                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 p-4 shadow-sm ring-1 ring-emerald-100">
-                      <p className="text-sm font-semibold text-emerald-950">Сейчас удобнее всего развивать:</p>
-                      {sensitivePeriods.qualities.length === 0 ? (
-                        <p className="mt-3 text-sm text-emerald-900/80">
-                          Для этого возраста в таблице нет отдельной строки.
-                        </p>
-                      ) : (
-                        <ul className="mt-3 list-none space-y-2 text-sm text-emerald-950">
-                          {orderedSensitiveQualities.map((q) => (
-                            <li
-                              key={q}
-                              className="flex gap-2 rounded-lg border border-emerald-200/80 bg-white/70 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/40"
-                            >
-                              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                              <span>{q}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    <div className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm ring-1 ring-red-100">
-                      <p className="text-sm font-semibold text-red-950">
-                        Остальные качества из таблицы (прирост обычно слабее):
-                      </p>
-                      {sensitivePeriods.lowImpactQualities.length === 0 ? (
-                        <p className="mt-3 text-sm text-red-900/80">Все строки таблицы сейчас в «зелёной» зоне.</p>
-                      ) : (
-                        <ul className="mt-3 list-none space-y-2 text-sm text-red-950">
-                          {orderedLowImpactQualities.map((q) => (
-                            <li
-                              key={q}
-                              className="flex gap-2 rounded-lg border border-red-200/80 bg-white/70 px-3 py-2 dark:border-red-900/50 dark:bg-red-950/30"
-                            >
-                              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" aria-hidden />
-                              <span>{q}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
+            <div className="border-t border-slate-100 pt-4 dark:border-slate-700">
+              <SensitivePeriodTimer
+                birthYear={resolvedBirthYear}
+                birthDate={resolvedBirthDate}
+              />
             </div>
           </div>
         </section>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm sm:px-5 sm:py-5">
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Коэффициент доминантности техники (КД):{' '}
-            <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-              {(kdBundle.kd * 100).toFixed(1)}%
-            </span>
-          </p>
-          <p className="mt-2 text-sm leading-snug text-slate-700">
-            Среднее коэффициентов по уровням освоения элементов техники; на него умножается базовый КСР, чтобы получить эффективный КСР.
-          </p>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-            Степень влияния на реализацию потенциала
-          </p>
-          <p className="mt-1 text-xs leading-snug text-slate-600">
-            Для этого спортсмена при расчёте балла сильнее всего тянет раздел с наибольшим процентом; остальные
-            разделы дают меньший вклад.
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {[...influenceItems]
-              .sort((a, b) => b.value - a.value)
-              .map((item) => {
-                const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
-                return (
-                  <div
-                    key={item.key}
-                    className={`rounded-lg border px-3 py-2.5 transition-shadow ${
-                      isTop
-                        ? 'border-emerald-300 bg-emerald-50 shadow-md ring-1 ring-emerald-200'
-                        : 'border-slate-200 bg-white shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-xs ${isTop ? 'font-semibold text-emerald-950' : 'font-medium text-slate-700'}`}>
-                        {item.label}
-                      </span>
-                      <span className={`shrink-0 text-sm font-bold tabular-nums ${isTop ? 'text-emerald-800' : 'text-slate-800'}`}>
-                        {item.value}%
-                      </span>
-                    </div>
-                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className={`h-full rounded-full transition-colors ${progressColorClass(item.value)}`}
-                        style={{ width: `${item.value}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-          </div>
-        </div>
       </div>
     </main>
   )

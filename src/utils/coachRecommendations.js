@@ -4,7 +4,7 @@ import { ageToStandardsGroup } from './standards.js'
 import { orderSensitiveQualitiesForBoxing } from './sensitivePeriods.js'
 
 /**
- * Подпись к сетке эталонов КСП в строке плана. В `standards.js` для всех 19+ лет одна метка «19-22»;
+ * Подпись к сетке эталонов КБП в строке плана. В `standards.js` для всех 19+ лет одна метка «19-22»;
  * для возраста 23–40 лет в подписи строки: «Мужчины 19-40 лет» (та же сетка норм, другой текст).
  */
 function coachKspStandardsSuffix(ageInt, stdGroup) {
@@ -14,15 +14,15 @@ function coachKspStandardsSuffix(ageInt, stdGroup) {
     .map((s) => Number(s.trim()))
   if (parts.length === 2 && parts.every((n) => Number.isFinite(n))) {
     const [lo, hi] = parts
-    if (ageInt >= lo && ageInt <= hi) return ` (КСП ${stdGroup})`
+    if (ageInt >= lo && ageInt <= hi) return ` (КБП ${stdGroup})`
   }
   if (stdGroup === '19-22' && ageInt >= 23 && ageInt <= 40) {
     return ' (Мужчины 19-40 лет)'
   }
   if (stdGroup === '19-22' && ageInt > 22) {
-    return ' (КСП — взрослые эталоны, сетка от 19 лет)'
+    return ' (КБП — взрослые эталоны, сетка от 19 лет)'
   }
-  return ` (КСП ${stdGroup})`
+  return ` (КБП ${stdGroup})`
 }
 
 const LEVEL_RANK = {

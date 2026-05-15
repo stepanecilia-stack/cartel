@@ -1,5 +1,5 @@
 /**
- * Полоса «потенциал тела» (КСП) и реализованный базовый КСР — как на карточке ученика.
+ * Полоса «потенциал тела» (КБП) и реализованный базовый КСР — как на карточке ученика.
  * @param {{ compact?: boolean }} props — compact: плотнее для карточек списка.
  */
 export default function BiometricPotentialBar({ kspPercent, basePercent, className = '', compact = false }) {
@@ -16,7 +16,7 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
       <div
         className={`flex items-center justify-between ${compact ? 'mb-1 text-[10px] leading-tight text-slate-600 dark:text-slate-400' : 'mb-3 text-sm font-medium text-slate-800 dark:text-slate-200'}`}
       >
-        <span className={compact ? 'pr-1' : ''}>Коэффициент спортивного потенциала (КСП)</span>
+        <span className={compact ? 'pr-1' : ''}>Коэффициент биометрического потенциала (КБП)</span>
         <span className="shrink-0 font-bold tabular-nums text-amber-900">{k}%</span>
       </div>
       <div
@@ -25,7 +25,7 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
         <div
           className="absolute inset-y-0 left-0 bg-slate-200/90"
           style={{ width: `${k}%` }}
-          title="Предел тела (КСП)"
+          title="Предел тела (КБП)"
         />
         <div
           className="absolute inset-y-0 left-0 opacity-40"
@@ -56,7 +56,7 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
         </span>
         <span className="inline-flex items-center gap-2">
           <span className={`rounded-full bg-slate-400 ${compact ? 'h-2 w-2' : 'h-3 w-3'}`} aria-hidden />
-          Предел тела (КСП): {k}%
+          Предел тела (КБП): {k}%
         </span>
       </div>
     </div>
