@@ -81,6 +81,50 @@ function stickmanSize(staturePx) {
   }
 }
 
+/** Правая кисть (viewBox) → позиция от левого и нижнего края SVG в px. */
+export function stickmanRightHandPx(staturePx, bulk, reachCm, heightCm, spanScaleHeightCm) {
+  if (!Number.isFinite(staturePx) || staturePx < 40) return null
+  const b = Math.min(Math.max(bulk, 0.78), 1.35)
+  const shoulderHalf = 8 * b
+  const fullWingspan = fullWingspanUnits(reachCm, heightCm, spanScaleHeightCm)
+  const arms = armSegmentsRelaxed(shoulderHalf, fullWingspan)
+  const last = arms.right[arms.right.length - 1]
+  if (!last) return null
+  const unit = staturePx / STATURE_UNITS
+  return {
+    handLeftPx: last[2] * unit,
+    handBottomPx: (FLOOR_Y - last[3]) * unit,
+  }
+}
+
+/** Зелёный — выше эталона, красный — ниже, серый — как эталон. */
+function deltaToneClasses(deltaCm) {
+  if (!Number.isFinite(deltaCm) || deltaCm === 0) {
+    return 'border-slate-300 bg-white text-slate-700'
+  }
+  return deltaCm > 0
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+    : 'border-red-300 bg-red-50 text-red-800'
+}
+
+function ReachDeltaBadge({ deltaCm, handLeftPx, handBottomPx }) {
+  if (!Number.isFinite(deltaCm)) return null
+  return (
+    <span
+      className={`pointer-events-none absolute z-30 max-w-[5.5rem] whitespace-nowrap rounded border px-1 py-0.5 text-[9px] font-bold leading-tight tabular-nums shadow-sm sm:max-w-none sm:text-[10px] ${deltaToneClasses(deltaCm)}`}
+      style={{
+        left: `${handLeftPx}px`,
+        bottom: `${handBottomPx}px`,
+        transform: 'translate(8%, -55%)',
+      }}
+      title="Размах рук относительно эталона"
+    >
+      Δ размах {deltaCm >= 0 ? '+' : ''}
+      {deltaCm.toFixed(0)} см
+    </span>
+  )
+}
+
 function StickmanFigure({ staturePx, stroke, bulk, reachCm, heightCm, spanScaleHeightCm }) {
   if (!Number.isFinite(staturePx) || staturePx < 40) return null
 
@@ -212,6 +256,17 @@ export default function StandardDuelSilhouettes({
   }
 
   const deltaH = layout.ah - layout.rh
+  const deltaR = layout.ar - layout.rr
+  const athleteHand = stickmanRightHandPx(
+    layout.athletePx,
+    layout.bulkAthlete,
+    layout.ar,
+    layout.ah,
+    layout.spanScaleHeight,
+  )
+  const athleteSvgW = stickmanSize(layout.athletePx).width
+  const athleteHandLeft =
+    athleteHand != null ? (layout.athleteW - athleteSvgW) / 2 + athleteHand.handLeftPx : null
   const floorY = PAD_BOTTOM
   const athleteHeadY = floorY + layout.athletePx
   const refHeadY = floorY + layout.refPx
@@ -234,7 +289,7 @@ export default function StandardDuelSilhouettes({
         className="relative mx-auto mt-2 w-full max-w-lg"
         style={{ height: `${layout.chartH}px` }}
         role="img"
-        aria-label={`Сравнение роста: ${athleteLabel} ${Math.round(layout.ah)} см, ${referenceLabel} ${Math.round(layout.rh)} см`}
+        aria-label={`Сравнение: ${athleteLabel} рост ${Math.round(layout.ah)} см, размах ${Math.round(layout.ar)} см; ${referenceLabel} рост ${Math.round(layout.rh)} см, размах ${Math.round(layout.rr)} см`}
       >
         <HeightGuideLine
           bottomPx={floorY}
@@ -279,7 +334,10 @@ export default function StandardDuelSilhouettes({
             className="pointer-events-none absolute left-1/2 z-[15] -translate-x-1/2"
             style={{ bottom: `${deltaLabelBottom}px` }}
           >
-            <span className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold tabular-nums text-slate-800 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
+            <span
+              className={`whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-bold tabular-nums shadow-sm ${deltaToneClasses(deltaH)}`}
+              title="Рост относительно эталона"
+            >
               Δ рост {deltaH >= 0 ? '+' : ''}
               {deltaH.toFixed(0)} см
             </span>
@@ -290,7 +348,7 @@ export default function StandardDuelSilhouettes({
           className="absolute left-0 right-0 z-20 flex items-end justify-center gap-6 sm:gap-10"
           style={{ bottom: `${floorY}px` }}
         >
-          <div className="flex justify-center" style={{ width: layout.athleteW }}>
+          <div className="relative flex justify-center" style={{ width: layout.athleteW }}>
             <StickmanFigure
               staturePx={layout.athletePx}
               stroke="#2563eb"
@@ -299,6 +357,13 @@ export default function StandardDuelSilhouettes({
               heightCm={layout.ah}
               spanScaleHeightCm={layout.spanScaleHeight}
             />
+            {athleteHand != null && athleteHandLeft != null && Number.isFinite(deltaR) ? (
+              <ReachDeltaBadge
+                deltaCm={deltaR}
+                handLeftPx={athleteHandLeft}
+                handBottomPx={athleteHand.handBottomPx}
+              />
+            ) : null}
           </div>
           <div className="flex justify-center" style={{ width: layout.refW }}>
             <StickmanFigure
