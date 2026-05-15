@@ -60,14 +60,13 @@ function normCardDomId(category, testId) {
 
 
 const TAB_ITEMS = [
-  { id: 'anthropometry', label: 'Антропометрия' },
+  { id: 'anthropometry', label: 'Карта спортсмена' },
   { id: 'physical', label: 'Физическое развитие' },
   { id: 'functional', label: 'Функциональная готовность' },
   { id: 'technical', label: 'Техника' },
 ]
 
 const TAB_PROGRESS_LABELS = {
-  anthropometry: 'Антропометрия',
   physical: 'Физика',
   functional: 'Функционал',
   technical: 'Техника',
@@ -760,16 +759,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         : smartStyleDisplay
 
   const tabProgress = useMemo(() => {
-    const anthropometryFilled = [
-      anthropometry.birthYear,
-      anthropometry.height,
-      anthropometry.weight,
-      anthropometry.reach,
-      anthropometry.gender,
-      anthropometry.date,
-    ].filter((v) => String(v ?? '').trim() !== '').length
-    const anthropometryPercent = Math.round((anthropometryFilled / 6) * 100)
-
     const normPercent = (norm, row) => {
       const result = Number(row?.result)
       if (!Number.isFinite(result)) return 0
@@ -824,12 +813,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           })()
 
     return {
-      anthropometry: Math.max(0, Math.min(100, anthropometryPercent)),
       physical: Math.max(0, Math.min(100, physicalPercent)),
       functional: Math.max(0, Math.min(100, functionalPercent)),
       technical: Math.max(0, Math.min(100, technicalPercent)),
     }
-  }, [anthropometry, functionalNorms, functionalResults, physicalNorms, physicalResults, programAtomsFull, technicalData])
+  }, [functionalNorms, functionalResults, physicalNorms, physicalResults, programAtomsFull, technicalData])
 
   const progressColorClass = (value) => {
     if (value <= 30) return 'bg-red-500'
@@ -1308,7 +1296,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     if (norms.length === 0) {
       return (
         <p className="text-sm text-slate-500">
-          Нет нормативов для возраста и пола. Укажите год рождения и пол в разделе «Антропометрия».
+          Нет нормативов для возраста и пола. Укажите год рождения и пол в «Карте спортсмена».
         </p>
       )
     }
@@ -1520,40 +1508,52 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`group relative min-h-[116px] rounded-xl border bg-[#1A1A1A] px-3 py-3 text-left text-[#E8E8E8] transition-all duration-300 sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
+                className={`group relative min-h-[116px] overflow-hidden rounded-xl border px-3 py-3 text-left transition-all duration-300 ease-out will-change-transform sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
                   activeTab === tab.id
-                    ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
-                    : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
+                    ? 'z-[1] -translate-y-0.5 border-blue-400 bg-blue-50/60 text-slate-900 shadow-md shadow-blue-100/80 ring-1 ring-blue-200/80 dark:border-blue-500 dark:bg-blue-950/40 dark:text-slate-100 dark:shadow-blue-950/30 dark:ring-blue-800/50'
+                    : 'border-slate-200 bg-white text-slate-900 shadow-sm hover:-translate-y-1 hover:border-slate-300 hover:bg-slate-50 hover:shadow-lg hover:shadow-slate-200/80 active:translate-y-0 active:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800 dark:hover:shadow-slate-950/50'
                 } ${
                   isTopInfluenceTab
-                    ? 'ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-white md:min-h-[138px]'
+                    ? 'ring-2 ring-emerald-500/70 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-900 md:min-h-[138px]'
                     : ''
                 }`}
               >
                 <span
-                  className={`absolute inset-x-0 bottom-0 h-1 rounded-b-xl transition-all duration-300 ${
-                    activeTab === tab.id ? 'bg-[#E8E8E8]' : 'bg-transparent'
+                  className={`pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left rounded-b-xl transition-all duration-500 ease-out ${
+                    activeTab === tab.id
+                      ? 'scale-x-100 bg-blue-500 dark:bg-blue-400'
+                      : 'scale-x-0 bg-transparent group-hover:scale-x-100 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'
                   }`}
                   aria-hidden
                 />
-                <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10">
+                <span
+                  className={`relative mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-300 ease-out group-hover:scale-110 sm:mb-3 sm:h-10 sm:w-10 ${
+                    activeTab === tab.id
+                      ? 'border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 group-hover:border-slate-300 group-hover:bg-white group-hover:text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:border-slate-500 dark:group-hover:bg-slate-700'
+                  }`}
+                >
                   {TAB_ICONS[tab.id]}
                 </span>
                 <span
-                  className="block text-[14px] uppercase leading-tight tracking-normal sm:text-[16px] md:text-[18px] md:tracking-wide"
+                  className="relative block text-[14px] uppercase leading-tight tracking-normal text-slate-900 transition-colors duration-300 group-hover:text-slate-950 sm:text-[16px] md:text-[18px] md:tracking-wide dark:text-slate-100 dark:group-hover:text-white"
                   style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
                 >
                   {tab.label}
                 </span>
-                <span className="mt-2 block text-[11px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
-                  {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
-                </span>
-                <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
-                  <span
-                    className={`block h-full transition-all duration-300 ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
-                    style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
-                  />
-                </span>
+                {tab.id !== 'anthropometry' ? (
+                  <>
+                    <span className="relative mt-2 block text-[11px] text-slate-500 transition-colors duration-300 group-hover:text-slate-600 sm:mt-3 sm:text-xs dark:text-slate-400 dark:group-hover:text-slate-300">
+                      {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
+                    </span>
+                    <span className="relative mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden>
+                      <span
+                        className={`block h-full rounded-full transition-all duration-500 ease-out ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
+                        style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
+                      />
+                    </span>
+                  </>
+                ) : null}
               </button>
               )
             })}
@@ -1562,7 +1562,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <div className="mt-6 space-y-6">
             {activeTab === 'anthropometry' && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Антропометрия</h3>
+                <h3 className="text-sm font-semibold text-slate-800">Карта спортсмена</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2 md:col-span-2">
                     <span className="text-sm font-medium text-slate-700">Год рождения</span>
@@ -1614,9 +1614,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         </button>
                       ) : null}
                     </div>
-                    <span className="text-xs text-slate-500">
-                      Уточняет таймер сенситивных периодов; на КСР, нормативы и возраст не влияет.
-                    </span>
                   </label>
                   <label className="space-y-2">
                     <span className="text-sm font-medium text-slate-700">Рост (см)</span>
@@ -1685,7 +1682,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   )}
                   {anthropometrySaveOk && !anthropometrySaveError && (
                     <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                      Антропометрия и расчётные поля сохранены в облаке.
+                      Данные сохранены в облаке.
                     </div>
                   )}
                   <button
@@ -1694,7 +1691,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     onClick={handleSaveProfile}
                     className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
                   >
-                    {isAnthropometrySaving ? 'Сохранение…' : 'Сохранить антропометрию'}
+                    {isAnthropometrySaving ? 'Сохранение…' : 'Сохранить'}
                   </button>
                 </div>
               </div>

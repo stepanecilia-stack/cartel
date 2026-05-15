@@ -37,7 +37,7 @@ export default function SensitivePeriodTimer({ birthYear, birthDate, className =
   if (!timer.ready) {
     return (
       <p className={`rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-400 ${className}`}>
-        Укажите год рождения в разделе «Антропометрия». Для точных окон можно дополнительно указать полную дату рождения.
+        Укажите год рождения в «Карте спортсмена». Для точных окон можно дополнительно указать полную дату рождения.
       </p>
     )
   }
