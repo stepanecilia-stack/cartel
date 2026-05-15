@@ -4,7 +4,6 @@ import { subscribePublicStudentShareByToken } from '../services/firebaseService'
 import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
 import { buildShareAutoRecommendations } from '../utils/shareAutoRecommendations'
-import ThemeToggleButton from '../components/ThemeToggleButton'
 import StandardDuelSilhouettes from '../components/StandardDuelSilhouettes'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
@@ -321,10 +320,7 @@ export default function ShareProgressPage() {
   }, [p])
 
   return (
-    <main className="relative min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-10">
-      <div className="absolute right-0 top-0 z-50 pr-3 pt-3 sm:pr-6 sm:pt-6">
-        <ThemeToggleButton />
-      </div>
+    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
         <header className="text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cartel Academy</p>

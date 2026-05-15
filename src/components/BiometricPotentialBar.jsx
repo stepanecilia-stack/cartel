@@ -8,16 +8,16 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
   const realized = Math.min(b, k)
 
   const box = compact
-    ? `rounded-md border border-amber-200 bg-white/90 px-2 py-2 dark:border-amber-800/70 dark:bg-slate-900/90 ${className}`
-    : `rounded-lg border border-amber-200 bg-white/90 px-3 py-3 dark:border-amber-800/70 dark:bg-slate-900/90 ${className}`
+    ? `rounded-md border border-slate-200 bg-white px-2 py-2 ${className}`
+    : `rounded-lg border border-slate-200 bg-white px-3 py-3 ${className}`
 
   return (
     <div className={box}>
       <div
-        className={`flex items-center justify-between ${compact ? 'mb-1 text-[10px] leading-tight text-slate-600 dark:text-slate-400' : 'mb-3 text-sm font-medium text-slate-800 dark:text-slate-200'}`}
+        className={`flex items-center justify-between ${compact ? 'mb-1 text-[10px] leading-tight text-slate-600' : 'mb-3 text-sm font-medium text-slate-800'}`}
       >
         <span className={compact ? 'pr-1' : ''}>Коэффициент биометрического потенциала (КБП)</span>
-        <span className="shrink-0 font-bold tabular-nums text-amber-900">{k}%</span>
+        <span className="shrink-0 font-bold tabular-nums text-slate-900">{k}%</span>
       </div>
       <div
         className={`relative w-full overflow-hidden rounded-full bg-slate-300 ${compact ? 'h-2.5' : 'h-11 sm:h-12'}`}
@@ -42,13 +42,13 @@ export default function BiometricPotentialBar({ kspPercent, basePercent, classNa
           title="Реализовано из доступного потенциала"
         />
         <div
-          className={`absolute bg-amber-700/80 ${compact ? 'inset-y-[-2px] w-[3px]' : 'inset-y-0 w-1'}`}
+          className={`absolute bg-slate-600/80 ${compact ? 'inset-y-[-2px] w-[3px]' : 'inset-y-0 w-1'}`}
           style={{ left: `${k}%` }}
           aria-hidden
         />
       </div>
       <div
-        className={`flex flex-wrap items-center ${compact ? 'mt-1.5 gap-2 text-[9px] leading-tight text-slate-600 dark:text-slate-400' : 'mt-4 gap-4 text-sm font-semibold text-slate-900 dark:text-slate-100'}`}
+        className={`flex flex-wrap items-center ${compact ? 'mt-1.5 gap-2 text-[9px] leading-tight text-slate-600' : 'mt-4 gap-4 text-sm font-semibold text-slate-900'}`}
       >
         <span className="inline-flex items-center gap-2">
           <span className={`rounded-full bg-blue-600 ${compact ? 'h-2 w-2' : 'h-3 w-3'}`} aria-hidden />

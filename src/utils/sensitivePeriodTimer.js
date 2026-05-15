@@ -13,6 +13,11 @@ const MS_DAY = 86400000
  *   endDate: Date,
  *   sortKey: number,
  *   progressPercent: number,
+ *   remainingPercent: number,
+ *   daysLeft: number,
+ *   daysUntilStart: number,
+ *   spanDays: number,
+ *   urgencyTone: 'missed' | 'comfort' | 'warn' | 'critical',
  *   counterLabel: string,
  *   windowLabel: string,
  * }} SensitivePeriodTimerItem
@@ -143,6 +148,25 @@ export function classifyPeriod(now, start, end) {
  * @param {Date} start
  * @param {Date} end
  */
+/**
+ * Зелёный — времени много, красный — вот-вот закроется окно, серый — пропущено.
+ * @param {SensitivePeriodStatus} status
+ * @param {{ daysLeft: number, daysUntilStart: number, spanDays: number }} timing
+ * @returns {'missed' | 'comfort' | 'warn' | 'critical'}
+ */
+export function getSensitivePeriodUrgencyTone(status, { daysLeft, daysUntilStart, spanDays }) {
+  if (status === 'missed') return 'missed'
+  if (status === 'active') {
+    const ratio = spanDays > 0 ? daysLeft / spanDays : 0
+    if (ratio >= 0.45) return 'comfort'
+    if (ratio <= 0.2) return 'critical'
+    return 'warn'
+  }
+  if (daysUntilStart > 120) return 'comfort'
+  if (daysUntilStart <= 30) return 'critical'
+  return 'warn'
+}
+
 function buildCounterLabel(status, now, start, end) {
   if (status === 'active') {
     const left = daysBetween(now, end)
@@ -182,8 +206,13 @@ export function buildSensitivePeriodTimer({
     const status = classifyPeriod(now, startDate, endDate)
     const spanDays = Math.max(1, daysBetween(startDate, endDate))
     const elapsedDays = daysBetween(startDate, now)
+    const daysLeft = status === 'active' ? Math.max(0, daysBetween(now, endDate)) : 0
+    const daysUntilStart = status === 'future' ? Math.max(0, daysBetween(now, startDate)) : 0
     const progressPercent =
       status === 'active' ? Math.min(100, Math.max(0, Math.round((elapsedDays / spanDays) * 100))) : 0
+    const remainingPercent =
+      status === 'active' ? Math.min(100, Math.max(0, Math.round((daysLeft / spanDays) * 100))) : 0
+    const urgencyTone = getSensitivePeriodUrgencyTone(status, { daysLeft, daysUntilStart, spanDays })
 
     return {
       id: def.id,
@@ -193,6 +222,11 @@ export function buildSensitivePeriodTimer({
       endDate,
       sortKey: agePointToMonths(def.start),
       progressPercent,
+      remainingPercent,
+      daysLeft,
+      daysUntilStart,
+      spanDays,
+      urgencyTone,
       counterLabel: buildCounterLabel(status, now, startDate, endDate),
       windowLabel: formatWindowLabel(def.start, def.end),
     }

@@ -1,10 +1,20 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { isFirebaseConfigured } from './services/firebaseService'
-import { ThemeProvider } from './themeContext.jsx'
+function StripDarkTheme() {
+  useEffect(() => {
+    document.documentElement.classList.remove('dark')
+    try {
+      window.localStorage.removeItem('cartel-theme')
+    } catch {
+      /* ignore */
+    }
+  }, [])
+  return null
+}
 
 function FirebaseNotConfigured() {
   return (
@@ -34,7 +44,8 @@ function FirebaseNotConfigured() {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <ThemeProvider>{isFirebaseConfigured ? <App /> : <FirebaseNotConfigured />}</ThemeProvider>
+      <StripDarkTheme />
+      {isFirebaseConfigured ? <App /> : <FirebaseNotConfigured />}
     </BrowserRouter>
   </StrictMode>,
 )

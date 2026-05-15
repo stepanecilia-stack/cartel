@@ -16,8 +16,6 @@ import {
   logoutCoach,
   subscribeToAuth,
 } from './services/firebaseService'
-import ThemeToggleButton from './components/ThemeToggleButton'
-
 function Navbar({ user, coachProfile }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
@@ -56,7 +54,6 @@ function Navbar({ user, coachProfile }) {
           ) : null}
         </div>
         <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-1.5 sm:gap-3">
-          <ThemeToggleButton />
           {user ? (
             <>
               <span className="min-w-0 max-w-[40vw] truncate text-right text-[11px] text-slate-600 dark:text-slate-400 sm:max-w-none sm:text-sm">

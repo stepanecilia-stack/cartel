@@ -299,8 +299,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareFlash, setShareFlash] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
-  const [historicalStandardExpanded, setHistoricalStandardExpanded] = useState(false)
-  const [sensitivePeriodExpanded, setSensitivePeriodExpanded] = useState(false)
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -350,8 +348,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setTechnicalTierTab('level1')
     setShareFlash(false)
     setShareUrl('')
-    setHistoricalStandardExpanded(false)
-    setSensitivePeriodExpanded(false)
     setOpenTechnicalVideoId(null)
     setSaveError('')
     setSaveOk(false)
@@ -542,24 +538,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const athleteReach = Number(anthropometry.reach || 0)
   const athleteWeight = Number(anthropometry.weight || 0)
   const referenceWeightKg = referenceWeightFromStandardRow(standardRow)
-  const duelRows = [
-    {
-      key: 'height',
-      label: 'Рост',
-      athleteValue: athleteHeight,
-      referenceValue: referenceHeight,
-      delta: athleteHeight - referenceHeight,
-      unit: 'см',
-    },
-    {
-      key: 'reach',
-      label: 'Размах',
-      athleteValue: athleteReach,
-      referenceValue: referenceReach,
-      delta: athleteReach - referenceReach,
-      unit: 'см',
-    },
-  ]
   const basePercent = Math.max(0, Math.min(100, Number(baseKSR) || 0))
   const kspPercent = Math.max(0, Math.min(100, Number(ksrKsp.ksp) || 0))
 
@@ -2319,60 +2297,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
-              Историческая модель эталона
-            </h2>
-            <button
-              type="button"
-              onClick={() => setHistoricalStandardExpanded((prev) => !prev)}
-              aria-expanded={historicalStandardExpanded}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-100"
-            >
-              <span>{historicalStandardExpanded ? 'Скрыть' : 'Показать'}</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-transform duration-500 ${historicalStandardExpanded ? 'rotate-180' : ''}`}
-                aria-hidden
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-          </div>
-          <div
-            className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
-              historicalStandardExpanded ? 'max-h-[8000px] opacity-100' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className="border-t border-slate-100 pt-4 dark:border-slate-700">
-              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600">
-            <div className="flex flex-col gap-2 bg-slate-900 px-2.5 py-2.5 text-white sm:px-4 sm:py-3">
-              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                <span
-                  className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-500 bg-slate-800 sm:inline-flex"
-                  aria-hidden
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-                    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-                    <circle cx="12" cy="12" r="1.4" fill="currentColor" />
-                  </svg>
-                </span>
-                <p className="min-w-0 flex-1 text-xs leading-snug text-slate-300 sm:text-sm">
-                  Сравнение с усреднённым эталоном вашей весовой и возрастной категории
-                </p>
-              </div>
-
-            </div>
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
+            Историческая модель эталона
+          </h2>
+          <p className="mt-2 text-sm leading-snug text-slate-600">
+            Сравнение с усреднённым эталоном в возрастной и весовой категории
+          </p>
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
             <div className="bg-white px-2 py-3 sm:px-4 sm:py-4">
               <div className="flex flex-col gap-3">
                 <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
@@ -2386,100 +2318,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   referenceReachCm={referenceReach}
                   referenceWeightKg={referenceWeightKg}
                 />
-                <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
-                <div className="mt-2 overflow-hidden rounded-md border border-slate-200 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:text-[10px] sm:uppercase sm:tracking-wide">
-                  <div className="flex flex-col sm:hidden">
-                    <div className="bg-blue-100 px-2 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-900/90">Спортсмен</p>
-                      <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-blue-950">
-                        {safeStudent.name || 'Спортсмен'}
-                      </p>
-                    </div>
-                    <div className="flex justify-center bg-slate-800 py-1.5 text-xs font-bold tracking-widest text-white">
-                      VS
-                    </div>
-                    <div className="bg-red-100 px-2 py-2 text-center">
-                      <p className="text-sm font-semibold text-red-900">Эталон</p>
-                    </div>
-                  </div>
-                  <div className="hidden min-w-0 bg-blue-100 px-2 py-2 font-semibold text-blue-900 sm:block sm:px-3 sm:py-1">
-                    <span className="break-words">{safeStudent.name || 'Спортсмен'}</span>
-                  </div>
-                  <div className="hidden bg-slate-800 px-2 py-1 text-center font-semibold text-white sm:block">VS</div>
-                  <div className="hidden bg-red-100 px-2 py-1 text-right font-semibold text-red-900 sm:block sm:px-3">
-                    Эталон
-                  </div>
-                </div>
-                <div className="mt-2 space-y-2">
-                  {duelRows.map((row) => {
-                    const tone =
-                      !Number.isFinite(row.delta) || row.delta === 0
-                        ? 'text-slate-700'
-                        : row.delta > 0
-                          ? 'text-emerald-700'
-                          : 'text-red-700'
-                    const toneOnDark =
-                      !Number.isFinite(row.delta) || row.delta === 0
-                        ? 'text-white'
-                        : row.delta > 0
-                          ? 'text-emerald-300'
-                          : 'text-red-300'
-                    const athleteStr =
-                      Number.isFinite(row.athleteValue) && row.athleteValue > 0
-                        ? `${row.athleteValue} ${row.unit}`
-                        : '—'
-                    const refStr =
-                      Number.isFinite(row.referenceValue) && row.referenceValue > 0
-                        ? `${row.referenceValue} ${row.unit}`
-                        : '—'
-                    const deltaStr = Number.isFinite(row.delta)
-                      ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)} ${row.unit}`
-                      : '—'
-                    return (
-                      <div key={row.key} className="overflow-hidden rounded-md border border-slate-200 text-xs">
-                        <div className="p-2.5 sm:hidden">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{row.label}</p>
-                          <div className="mt-2 flex justify-between gap-3 border-b border-slate-100 pb-2">
-                            <span className="shrink-0 text-slate-600">Спортсмен</span>
-                            <span className="min-w-0 text-right font-semibold tabular-nums text-blue-900">{athleteStr}</span>
-                          </div>
-                          <div className="mt-2 flex justify-between gap-3 border-b border-slate-100 pb-2">
-                            <span className="shrink-0 text-slate-600">Эталон</span>
-                            <span className="min-w-0 text-right font-semibold tabular-nums text-red-900">{refStr}</span>
-                          </div>
-                          <div className="mt-3 rounded-md bg-slate-900 px-2 py-2.5 text-center">
-                            <span className="text-[10px] uppercase tracking-wider text-slate-400">Разница</span>
-                            <p className={`mt-0.5 text-sm font-semibold tabular-nums ${toneOnDark}`}>{deltaStr}</p>
-                          </div>
-                        </div>
-                        <div className="hidden min-w-0 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-stretch sm:text-xs">
-                          <div className="min-w-0 bg-blue-50 px-2 py-2 text-blue-900 sm:px-3">
-                            <p className="font-medium text-slate-700">{row.label}</p>
-                            <p className="mt-0.5 font-semibold tabular-nums">
-                              {Number.isFinite(row.athleteValue) && row.athleteValue > 0 ? row.athleteValue : '—'}{' '}
-                              {row.unit}
-                            </p>
-                          </div>
-                          <div className="flex min-w-[4.25rem] flex-col items-center justify-center bg-slate-900 px-1.5 text-white sm:min-w-[4.5rem] sm:px-2">
-                            <span className="text-[9px] uppercase tracking-wider text-slate-300 sm:text-[10px]">
-                              delta
-                            </span>
-                            <span className={`text-center text-[11px] font-semibold tabular-nums leading-tight sm:text-xs ${tone}`}>
-                              {Number.isFinite(row.delta) ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)} ${row.unit}` : '—'}
-                            </span>
-                          </div>
-                          <div className="min-w-0 bg-red-50 px-2 py-2 text-right text-red-900 sm:px-3">
-                            <p className="font-medium text-slate-700">{row.label}</p>
-                            <p className="mt-0.5 font-semibold tabular-nums">
-                              {Number.isFinite(row.referenceValue) && row.referenceValue > 0 ? row.referenceValue : '—'}{' '}
-                              {row.unit}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
               </div>
                 <div className="order-2 grid gap-2 sm:gap-3 md:order-1 md:grid-cols-3">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:hidden">
@@ -2547,43 +2385,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             </div>
           )}
           <div className="mt-4 sm:mt-6">
-            <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-3 sm:px-5 sm:py-4">
-              <p className="text-sm font-medium leading-snug text-amber-900">
-                Коэффициент биометрического потенциала на базе математических расчётов
-              </p>
-              <BiometricPotentialBar className="mt-4" kspPercent={kspPercent} basePercent={basePercent} />
-              {(ksrKsp?.kspDetail?.heightDelta != null || ksrKsp?.kspDetail?.reachDelta != null) && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div
-                    className={`rounded-lg border px-3 py-2 text-xs ${
-                      Number(ksrKsp?.kspDetail?.heightDelta ?? 0) >= 0
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                        : 'border-red-200 bg-red-50 text-red-900'
-                    }`}
-                  >
-                    <p className="font-semibold">Рост vs эталон</p>
-                    <p>
-                      {Number(ksrKsp?.kspDetail?.heightDelta ?? 0) >= 0 ? '+' : ''}
-                      {Number(ksrKsp?.kspDetail?.heightDelta ?? 0).toFixed(1)} см
-                    </p>
-                  </div>
-                  <div
-                    className={`rounded-lg border px-3 py-2 text-xs ${
-                      Number(ksrKsp?.kspDetail?.reachDelta ?? 0) >= 0
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                        : 'border-red-200 bg-red-50 text-red-900'
-                    }`}
-                  >
-                    <p className="font-semibold">Размах vs эталон</p>
-                    <p>
-                      {Number(ksrKsp?.kspDetail?.reachDelta ?? 0) >= 0 ? '+' : ''}
-                      {Number(ksrKsp?.kspDetail?.reachDelta ?? 0).toFixed(1)} см
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-5 sm:py-4">
+              <BiometricPotentialBar kspPercent={kspPercent} basePercent={basePercent} />
             </div>
           </div>
         </section>
@@ -2594,49 +2397,18 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </div>
         )}
 
-        <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
-              Таймер сенситивных периодов для{' '}
-              <span className="text-slate-800">
-                «{displayNameFromStudent(safeStudent) || safeStudent.name || 'Спортсмен'}»
-              </span>
-            </h2>
-            <button
-              type="button"
-              onClick={() => setSensitivePeriodExpanded((prev) => !prev)}
-              aria-expanded={sensitivePeriodExpanded}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-100"
-            >
-              <span>{sensitivePeriodExpanded ? 'Скрыть' : 'Показать'}</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-transform duration-500 ${sensitivePeriodExpanded ? 'rotate-180' : ''}`}
-                aria-hidden
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-          </div>
-          <div
-            className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
-              sensitivePeriodExpanded ? 'max-h-[8000px] opacity-100' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className="border-t border-slate-100 pt-4 dark:border-slate-700">
-              <SensitivePeriodTimer
-                birthYear={resolvedBirthYear}
-                birthDate={resolvedBirthDate}
-              />
-            </div>
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
+            Таймер сенситивных периодов для{' '}
+            <span className="text-slate-800">
+              «{displayNameFromStudent(safeStudent) || safeStudent.name || 'Спортсмен'}»
+            </span>
+          </h2>
+          <div className="mt-4">
+            <SensitivePeriodTimer
+              birthYear={resolvedBirthYear}
+              birthDate={resolvedBirthDate}
+            />
           </div>
         </section>
 
