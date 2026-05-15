@@ -8,7 +8,9 @@ const VIEW_H = 100
 const FLOOR_Y = 100
 const CROWN_Y = 3
 const STATURE_UNITS = FLOOR_Y - CROWN_Y
-const BASE_HALF_WINGSPAN = 22
+/** При размах ≈ росту: fingertip–fingertip ~98% высоты фигуры в viewBox. */
+const WINGSPAN_TO_STATURE = 0.98
+const HIP_Y = 56
 const SHOULDER_Y = 24
 const CX = VIEW_W / 2
 
@@ -29,38 +31,44 @@ export function computeBulkScale(athleteWeightKg, referenceWeightKg) {
   return Math.min(Math.max(Math.sqrt(aw / rw), 0.78), 1.35)
 }
 
-function halfWingspanFromCm(reachCm, heightCm, spanScaleHeightCm) {
+/** Полный размах (средний палец — средний палец) в единицах viewBox. */
+function fullWingspanUnits(reachCm, heightCm, spanScaleHeightCm) {
   const scaleH = Number(spanScaleHeightCm) || Number(heightCm)
   const h = Number(heightCm)
   const r = Number(reachCm)
-  if (!Number.isFinite(scaleH) || scaleH < 80) return BASE_HALF_WINGSPAN
+  if (!Number.isFinite(scaleH) || scaleH < 80) return STATURE_UNITS * WINGSPAN_TO_STATURE
   const reach = Number.isFinite(r) && r > 0 ? r : Number.isFinite(h) && h > 0 ? h : scaleH
-  const ratio = reach / scaleH
-  return Math.min(Math.max(BASE_HALF_WINGSPAN * ratio, 17), 26)
+  const ratio = Math.min(Math.max(reach / scaleH, 0.88), 1.16)
+  return STATURE_UNITS * WINGSPAN_TO_STATURE * ratio
 }
 
-function armSegments(shoulderHalf, halfWingspan) {
-  const handY = SHOULDER_Y + 10
-  const elbowY = SHOULDER_Y + 5
-  const leftShoulderX = CX - shoulderHalf
-  const rightShoulderX = CX + shoulderHalf
-  const leftElbowX = CX - halfWingspan * 0.55
-  const rightElbowX = CX + halfWingspan * 0.55
-  const leftHandX = CX - halfWingspan
-  const rightHandX = CX + halfWingspan
+/** Руки опущены вдоль корпуса; длина плечо→локоть→кисть ≈ (размах − плечи) / 2. */
+function armSegmentsRelaxed(shoulderHalf, fullWingspan) {
+  const shoulderBreadth = shoulderHalf * 2
+  const armPath = Math.max((fullWingspan - shoulderBreadth) / 2, 28)
+  const upperLen = armPath * 0.46
+  const foreLen = armPath * 0.54
 
+  const buildSide = (sign) => {
+    const sx = CX + sign * shoulderHalf
+    const sy = SHOULDER_Y
+    const ex = sx + sign * upperLen * 0.32
+    const ey = sy + upperLen * 0.93
+    const hx = ex + sign * foreLen * 0.3
+    const hy = ey + foreLen * 0.88
+    return {
+      segments: [
+        [sx, sy, ex, ey],
+        [ex, ey, hx, hy],
+      ],
+    }
+  }
+
+  const left = buildSide(-1)
+  const right = buildSide(1)
   return {
-    left: [
-      [leftShoulderX, SHOULDER_Y, leftElbowX, elbowY],
-      [leftElbowX, elbowY, leftHandX, handY],
-    ],
-    right: [
-      [rightShoulderX, SHOULDER_Y, rightElbowX, elbowY],
-      [rightElbowX, elbowY, rightHandX, handY],
-    ],
-    leftHandX,
-    rightHandX,
-    handY,
+    left: left.segments,
+    right: right.segments,
   }
 }
 
@@ -79,8 +87,8 @@ function StickmanFigure({ staturePx, stroke, bulk, reachCm, heightCm, spanScaleH
   const b = Math.min(Math.max(bulk, 0.78), 1.35)
   const shoulderHalf = 8 * b
   const hip = 6 * b
-  const halfWingspan = halfWingspanFromCm(reachCm, heightCm, spanScaleHeightCm)
-  const arms = armSegments(shoulderHalf, halfWingspan)
+  const fullWingspan = fullWingspanUnits(reachCm, heightCm, spanScaleHeightCm)
+  const arms = armSegmentsRelaxed(shoulderHalf, fullWingspan)
   const { width, height } = stickmanSize(staturePx)
 
   return (
