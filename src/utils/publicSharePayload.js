@@ -8,6 +8,7 @@ import { formatNormAcceptedMeta } from './normAcceptanceHistory'
 import { formatBirthYearRu } from './studentModel.js'
 import { findGoldStandardRow, referenceIdealHeightCm, shortTypageLabel } from './standards.js'
 import { buildShareAutoRecommendations } from './shareAutoRecommendations.js'
+import { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes.jsx'
 
 /** Подпись уровня освоения атома — те же названия, что у тренера в карточке. */
 export function technicalDominancePublicLabel(level) {
@@ -261,6 +262,7 @@ export function buildPublicSharePayload({
     weightCategory: standardRow ? formatStandardWeightCategory(standardRow) : '—',
     ageGroup: standardRow?.ageGroup ?? '—',
     archetype: shortTypageLabel(standardRow?.label) || '—',
+    referenceWeightKg: referenceWeightFromStandardRow(standardRow),
   }
 
   const anthropometryPct =

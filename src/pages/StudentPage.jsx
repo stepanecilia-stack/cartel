@@ -44,6 +44,7 @@ import {
   updateStudentData,
 } from '../services/firebaseService'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
+import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 import { getSensitiveMotorQualities, orderSensitiveQualitiesForBoxing } from '../utils/sensitivePeriods'
@@ -845,6 +846,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const referenceReach = Number(ksrKsp?.kspDetail?.referenceReach ?? referenceHeight ?? 0)
   const athleteHeight = Number(anthropometry.height || 0)
   const athleteReach = Number(anthropometry.reach || 0)
+  const athleteWeight = Number(anthropometry.weight || 0)
+  const referenceWeightKg = referenceWeightFromStandardRow(standardRow)
   const duelRows = [
     {
       key: 'height',
@@ -2880,7 +2883,17 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             <div className="bg-white px-2 py-3 sm:px-4 sm:py-4">
               <div className="flex flex-col gap-3">
                 <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
+                <StandardDuelSilhouettes
+                  athleteLabel={displayNameFromStudent(safeStudent) || 'Спортсмен'}
+                  referenceLabel="Эталон"
+                  athleteHeightCm={athleteHeight}
+                  athleteReachCm={athleteReach}
+                  athleteWeightKg={athleteWeight}
+                  referenceHeightCm={referenceHeight}
+                  referenceReachCm={referenceReach}
+                  referenceWeightKg={referenceWeightKg}
+                />
+                <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
                 <div className="mt-2 overflow-hidden rounded-md border border-slate-200 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:text-[10px] sm:uppercase sm:tracking-wide">
                   <div className="flex flex-col sm:hidden">
                     <div className="bg-blue-100 px-2 py-2">

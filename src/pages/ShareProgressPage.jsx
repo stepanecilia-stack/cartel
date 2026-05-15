@@ -5,6 +5,7 @@ import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
 import { buildShareAutoRecommendations } from '../utils/shareAutoRecommendations'
 import ThemeToggleButton from '../components/ThemeToggleButton'
+import StandardDuelSilhouettes from '../components/StandardDuelSilhouettes'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 
@@ -484,7 +485,17 @@ export default function ShareProgressPage() {
                   <div className="bg-white dark:bg-slate-900 px-2 py-3 sm:px-4 sm:py-4">
                     <div className="flex flex-col gap-3">
                       <div className="order-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
-                        <p className="text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
+                        <StandardDuelSilhouettes
+                          athleteLabel={p.displayName || 'Спортсмен'}
+                          referenceLabel="Эталон"
+                          athleteHeightCm={athlete?.height ?? 0}
+                          athleteReachCm={athlete?.reach ?? 0}
+                          athleteWeightKg={athlete?.weight ?? 0}
+                          referenceHeightCm={duelRows?.[0]?.referenceValue ?? 0}
+                          referenceReachCm={duelRows?.[1]?.referenceValue ?? duelRows?.[0]?.referenceValue ?? 0}
+                          referenceWeightKg={standardPassport?.referenceWeightKg ?? null}
+                        />
+                        <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
                         <div className="mt-2 space-y-2">
                           {duelRows.map((row) => {
                             const tone =
