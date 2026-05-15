@@ -150,6 +150,12 @@ function HomePage({ onSelectStudent, coachId }) {
                 <span aria-hidden className="text-base leading-none">⇉</span>
                 Групповая тренировка
               </Link>
+              <Link
+                to="/bulk-norms"
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50"
+              >
+                Сдать норматив
+              </Link>
               <button
                 type="button"
                 onClick={() => setAddModalOpen(true)}

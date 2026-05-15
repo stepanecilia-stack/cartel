@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AddStudent from './pages/AddStudent'
+import BulkNormSessionPage from './pages/BulkNormSessionPage'
 import GroupTrainingPage from './pages/GroupTrainingPage'
 import HomePage from './pages/HomePage'
 import MotorQualitiesIndexPage from './pages/MotorQualitiesIndexPage'
@@ -30,13 +31,28 @@ function Navbar({ user, coachProfile }) {
             Cartel
           </Link>
           {user ? (
-            <Link
-              to="/qualities"
-              className="shrink-0 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 sm:text-sm"
-            >
-              <span className="sm:hidden">Качества</span>
-              <span className="hidden sm:inline">База качеств</span>
-            </Link>
+            <>
+              <Link
+                to="/qualities"
+                className="shrink-0 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 sm:text-sm"
+              >
+                <span className="sm:hidden">Качества</span>
+                <span className="hidden sm:inline">База качеств</span>
+              </Link>
+              <Link
+                to="/bulk-norms"
+                className="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-900/50 sm:px-2.5 sm:py-1.5 sm:text-xs"
+              >
+                <span className="sm:hidden">Норматив</span>
+                <span className="hidden sm:inline">Сдать норматив</span>
+              </Link>
+              <Link
+                to="/group-training"
+                className="hidden shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900/50 md:inline-block"
+              >
+                Групповая
+              </Link>
+            </>
           ) : null}
         </div>
         <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-1.5 sm:gap-3">
@@ -122,6 +138,15 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
             <ProtectedRoute
               user={authUser}
               element={<GroupTrainingPage coachId={authUser?.uid} />}
+            />
+          }
+        />
+        <Route
+          path="/bulk-norms"
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={<BulkNormSessionPage coachId={authUser?.uid} />}
             />
           }
         />
