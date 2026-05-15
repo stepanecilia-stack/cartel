@@ -217,8 +217,10 @@ export default function StandardDuelSilhouettes({
   const refHeadY = floorY + layout.refPx
   const gapPx = Math.abs(athleteHeadY - refHeadY)
   const lowerHead = Math.min(athleteHeadY, refHeadY)
+  const higherHead = Math.max(athleteHeadY, refHeadY)
   const headsClose = gapPx > 0 && gapPx < 22
   const athleteIsTaller = layout.ah > layout.rh
+  const deltaLabelBottom = higherHead + 18
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-2 py-3 dark:border-slate-600 dark:bg-slate-900 sm:px-3 sm:py-4">
@@ -247,12 +249,8 @@ export default function StandardDuelSilhouettes({
           <div
             className="pointer-events-none absolute left-[8%] right-[8%] z-[5] border-x border-dotted border-slate-300 bg-slate-50/80 dark:border-slate-600 dark:bg-slate-800/40"
             style={{ bottom: `${lowerHead}px`, height: `${gapPx}px` }}
-          >
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-              Δ {deltaH >= 0 ? '+' : ''}
-              {deltaH.toFixed(0)} см
-            </span>
-          </div>
+            aria-hidden
+          />
         ) : null}
 
         <HeightGuideLine
@@ -274,6 +272,18 @@ export default function StandardDuelSilhouettes({
             align="right"
             labelLift={headsClose && !athleteIsTaller ? -14 : 0}
           />
+        ) : null}
+
+        {gapPx >= 2 ? (
+          <div
+            className="pointer-events-none absolute left-1/2 z-[15] -translate-x-1/2"
+            style={{ bottom: `${deltaLabelBottom}px` }}
+          >
+            <span className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold tabular-nums text-slate-800 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
+              Δ рост {deltaH >= 0 ? '+' : ''}
+              {deltaH.toFixed(0)} см
+            </span>
+          </div>
         ) : null}
 
         <div

@@ -211,7 +211,6 @@ export default function ShareProgressPage() {
   const [doc, setDoc] = useState(null)
   const [live, setLive] = useState(false)
   const [activeTab, setActiveTab] = useState('anthropometry')
-  const [standardInfoOpen, setStandardInfoOpen] = useState(false)
 
   useEffect(() => {
     if (!token) {
@@ -423,63 +422,8 @@ export default function ShareProgressPage() {
                         </svg>
                       </span>
                       <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">Историческая модель эталона</p>
-                      <span className="group relative hidden shrink-0 sm:inline-flex">
-                        <button
-                          type="button"
-                          onClick={() => setStandardInfoOpen((prev) => !prev)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-blue-300 bg-blue-500/20 text-sm font-bold leading-none text-blue-100 hover:bg-blue-500/30"
-                          aria-label="Информация"
-                          aria-expanded={standardInfoOpen}
-                        >
-                          i
-                        </button>
-                        <span
-                          className={`absolute left-1/2 top-[calc(100%+8px)] z-20 w-[min(calc(100vw-2rem),290px)] -translate-x-1/2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ${
-                            standardInfoOpen ? 'block' : 'hidden group-hover:block'
-                          }`}
-                        >
-                          В этой весовой и возрастной категории спортсмены именно с такой антропометрией чаще всего
-                          становились победителями в соревнованиях высокой квалификации (усредн.).
-                        </span>
-                      </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setStandardInfoOpen((prev) => !prev)}
-                      aria-expanded={standardInfoOpen}
-                      className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-lg border border-blue-400/50 bg-blue-500/25 py-3.5 text-lg font-bold tracking-[0.2em] text-blue-50 transition hover:bg-blue-500/35 sm:hidden"
-                    >
-                      <span aria-hidden>i</span>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`shrink-0 transition-transform duration-300 ${standardInfoOpen ? 'rotate-180' : ''}`}
-                        aria-hidden
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
-                    </button>
-
-                    <div
-                      className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-out sm:hidden ${
-                        standardInfoOpen ? 'max-h-[min(320px,55vh)] opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                    >
-                      <div className="border-t border-slate-600/80 pt-3">
-                        <p className="text-xs leading-relaxed text-slate-300">
-                          В этой весовой и возрастной категории спортсмены именно с такой антропометрией чаще всего
-                          становились победителями в соревнованиях высокой квалификации (усредн.).
-                        </p>
-                      </div>
-                    </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-900 px-2 py-3 sm:px-4 sm:py-4">
