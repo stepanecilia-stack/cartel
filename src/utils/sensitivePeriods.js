@@ -77,6 +77,19 @@ function ageHitsBucket(ageInt, bucket) {
 }
 
 /**
+ * Сенситивен ли возраст для конкретного качества (по таблице QUALITY_SENSITIVE_AGES).
+ * @param {string} qualityTitle — подпись как в QUALITY_ORDER
+ * @param {number | null | undefined} ageYears
+ */
+export function isMotorQualitySensitiveForAge(qualityTitle, ageYears) {
+  if (!qualityTitle || ageYears == null || !Number.isFinite(ageYears)) return false
+  const buckets = QUALITY_SENSITIVE_AGES[qualityTitle]
+  if (!buckets?.length) return false
+  const ageInt = Math.floor(ageYears)
+  return buckets.some((b) => ageHitsBucket(ageInt, b))
+}
+
+/**
  * @param {number | null} ageYears — полные годы (как в computeAthleteAgeYears)
  * @returns {{
  *   qualities: string[],

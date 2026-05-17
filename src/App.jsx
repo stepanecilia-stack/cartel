@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import AddStudent from './pages/AddStudent'
 import BulkNormSessionPage from './pages/BulkNormSessionPage'
 import GroupTrainingPage from './pages/GroupTrainingPage'
@@ -97,7 +97,14 @@ function ProtectedRoute({ user, element }) {
 
 function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const isShareRoute = location.pathname.startsWith('/share/')
+
+  const openStudentFromQualityPage = (student) => {
+    if (!student) return
+    setSelectedStudent(student)
+    navigate('/')
+  }
 
   return (
     <>
@@ -154,7 +161,17 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         />
         <Route
           path="/qualities/:slug"
-          element={<ProtectedRoute user={authUser} element={<MotorQualityDetailPage />} />}
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={
+                <MotorQualityDetailPage
+                  coachId={authUser?.uid}
+                  onOpenStudent={openStudentFromQualityPage}
+                />
+              }
+            />
+          }
         />
         <Route
           path="/login"

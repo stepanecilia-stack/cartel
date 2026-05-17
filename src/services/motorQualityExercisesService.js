@@ -24,6 +24,9 @@ const COLLECTION_ID = 'motor_quality_exercises'
 /** @type {'firestore' | 'local'} */
 let storageMode = 'firestore'
 
+/** true только после ошибки прав Firestore — не путать с пустой коллекцией */
+let firestoreExercisesBlocked = false
+
 export function getMotorQualityExercisesStorageMode() {
   return storageMode
 }
@@ -79,6 +82,9 @@ function docToExercise(id, data) {
     avoid: trimOrNull(data.avoid) ?? undefined,
     minAge: data.minAge != null && Number.isFinite(data.minAge) ? data.minAge : undefined,
     maxAge: data.maxAge != null && Number.isFinite(data.maxAge) ? data.maxAge : undefined,
+    doseUnder12: trimOrNull(data.doseUnder12) ?? undefined,
+    dose13to15: trimOrNull(data.dose13to15) ?? undefined,
+    dose16Plus: trimOrNull(data.dose16Plus) ?? undefined,
     media: {
       gifSrc: trimOrNull(media.gifSrc),
       webmSrc: trimOrNull(media.webmSrc),
@@ -114,10 +120,12 @@ function mergeDocSnapshots(...docLists) {
   return [...byId.values()]
 }
 
-function loadFromLocalStorage(firestoreDocs = []) {
-  const merged = mergeDocSnapshots(firestoreDocs, loadLocalExerciseDocs())
-  storageMode = firestoreDocs.length > 0 ? 'firestore' : 'local'
-  if (firestoreDocs.length === 0 && merged.length > 0) storageMode = 'local'
+function applyExercisesCache(firestoreDocs = [], { blocked = firestoreExercisesBlocked } = {}) {
+  firestoreExercisesBlocked = blocked
+  storageMode = blocked ? 'local' : 'firestore'
+  const merged = blocked
+    ? mergeDocSnapshots([], loadLocalExerciseDocs())
+    : mergeDocSnapshots(firestoreDocs, loadLocalExerciseDocs())
   groupDocsToCache(merged)
 }
 
@@ -128,7 +136,7 @@ let unsubscribeSnapshot = null
  */
 export function subscribeMotorQualityExercises() {
   if (!isFirebaseConfigured) {
-    loadFromLocalStorage()
+    applyExercisesCache([], { blocked: true })
     return () => setMotorQualityExercisesCache({})
   }
 
@@ -137,18 +145,19 @@ export function subscribeMotorQualityExercises() {
     unsubscribeSnapshot = null
   }
 
+  firestoreExercisesBlocked = false
   storageMode = 'firestore'
 
   const q = query(exercisesCollection())
   unsubscribeSnapshot = onSnapshot(
     q,
     (snapshot) => {
-      loadFromLocalStorage(snapshot.docs)
+      applyExercisesCache(snapshot.docs, { blocked: false })
     },
     (err) => {
       console.error('subscribeMotorQualityExercises', err)
       if (isPermissionError(err)) {
-        loadFromLocalStorage([])
+        applyExercisesCache([], { blocked: true })
         return
       }
       setMotorQualityExercisesCache({})
@@ -166,14 +175,14 @@ export function subscribeMotorQualityExercises() {
 
 export async function loadMotorQualityExercisesOnce() {
   if (!isFirebaseConfigured) {
-    loadFromLocalStorage()
+    applyExercisesCache([], { blocked: true })
     return
   }
   try {
     const snapshot = await getDocs(query(exercisesCollection()))
-    loadFromLocalStorage(snapshot.docs)
+    applyExercisesCache(snapshot.docs, { blocked: false })
   } catch (err) {
-    if (isPermissionError(err)) loadFromLocalStorage([])
+    if (isPermissionError(err)) applyExercisesCache([], { blocked: true })
     else throw err
   }
 }
@@ -205,6 +214,9 @@ function buildExerciseFields(qualitySlug, payload) {
     avoid: trimOrNull(payload?.avoid),
     minAge,
     maxAge,
+    doseUnder12: trimOrNull(payload?.doseUnder12),
+    dose13to15: trimOrNull(payload?.dose13to15),
+    dose16Plus: trimOrNull(payload?.dose16Plus),
     media: {
       gifSrc: trimOrNull(payload?.gifSrc),
       webmSrc: trimOrNull(payload?.webmSrc),
@@ -229,14 +241,14 @@ export async function addMotorQualityExercise(qualitySlug, payload) {
     updatedAt: serverTimestamp(),
   }
 
-  if (!isFirebaseConfigured || storageMode === 'local') {
+  if (!isFirebaseConfigured || firestoreExercisesBlocked) {
     const id = addLocalExercise({
       ...fields,
       sortOrder: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     })
-    loadFromLocalStorage([])
+    applyExercisesCache([], { blocked: true })
     return id
   }
 
@@ -245,6 +257,7 @@ export async function addMotorQualityExercise(qualitySlug, payload) {
     return ref.id
   } catch (err) {
     if (isPermissionError(err)) {
+      firestoreExercisesBlocked = true
       const id = addLocalExercise({
         ...fields,
         sortOrder: Date.now(),
@@ -253,9 +266,9 @@ export async function addMotorQualityExercise(qualitySlug, payload) {
       })
       try {
         const snapshot = await getDocs(query(exercisesCollection()))
-        loadFromLocalStorage(snapshot.docs)
+        applyExercisesCache(snapshot.docs, { blocked: true })
       } catch {
-        loadFromLocalStorage([])
+        applyExercisesCache([], { blocked: true })
       }
       return id
     }
@@ -274,9 +287,9 @@ export async function updateMotorQualityExercise(exerciseId, qualitySlug, payloa
   }
   const fields = buildExerciseFields(qualitySlug, payload)
 
-  if (!isFirebaseConfigured || storageMode === 'local' || exerciseId.startsWith('local-')) {
+  if (!isFirebaseConfigured || firestoreExercisesBlocked || exerciseId.startsWith('local-')) {
     updateLocalExercise(exerciseId, { ...fields, updatedAt: Date.now() })
-    loadFromLocalStorage([])
+    applyExercisesCache([], { blocked: true })
     return
   }
 
@@ -290,8 +303,9 @@ export async function updateMotorQualityExercise(exerciseId, qualitySlug, payloa
     )
   } catch (err) {
     if (isPermissionError(err)) {
+      firestoreExercisesBlocked = true
       updateLocalExercise(exerciseId, { ...fields, updatedAt: Date.now() })
-      loadFromLocalStorage([])
+      applyExercisesCache([], { blocked: true })
       return
     }
     throw err
@@ -304,9 +318,9 @@ export async function deleteMotorQualityExercise(exerciseId) {
     throw new Error('Некорректный идентификатор упражнения')
   }
 
-  if (!isFirebaseConfigured || storageMode === 'local' || exerciseId.startsWith('local-')) {
+  if (!isFirebaseConfigured || firestoreExercisesBlocked || exerciseId.startsWith('local-')) {
     deleteLocalExercise(exerciseId)
-    loadFromLocalStorage([])
+    applyExercisesCache([], { blocked: true })
     return
   }
 
@@ -314,8 +328,9 @@ export async function deleteMotorQualityExercise(exerciseId) {
     await deleteDoc(doc(ensureDb(), COLLECTION_ID, exerciseId))
   } catch (err) {
     if (isPermissionError(err)) {
+      firestoreExercisesBlocked = true
       deleteLocalExercise(exerciseId)
-      loadFromLocalStorage([])
+      applyExercisesCache([], { blocked: true })
       return
     }
     throw err

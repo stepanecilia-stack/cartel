@@ -3,6 +3,7 @@ import {
   QUALITY_SENSITIVE_AGES,
   orderSensitiveQualitiesForBoxing,
 } from '../utils/sensitivePeriods.js'
+import { bucketsToSensitiveAgeSet } from '../utils/sensitiveAgeScale.js'
 
 /** Стабильные URL-сегменты (латиница) ↔ точные подписи качеств из справочника сенситивных периодов. */
 export const MOTOR_QUALITY_SLUG_BY_TITLE = {
@@ -35,7 +36,7 @@ function formatSensitiveBuckets(buckets) {
 
 /**
  * Каталог страниц качеств: порядок — «боксерский» приоритет отображения, затем остальные из общего списка.
- * @returns {{ title: string, slug: string, sensitiveAgesLabel: string | null }[]}
+ * @returns {{ title: string, slug: string, sensitiveAgesLabel: string | null, sensitiveAgeSet: Set<number> }[]}
  */
 export function getMotorQualitiesCatalog() {
   const boxingOrdered = orderSensitiveQualitiesForBoxing([...QUALITY_ORDER])
@@ -54,6 +55,7 @@ export function getMotorQualitiesCatalog() {
         title,
         slug,
         sensitiveAgesLabel: formatSensitiveBuckets(buckets),
+        sensitiveAgeSet: bucketsToSensitiveAgeSet(buckets),
       }
     })
     .filter(Boolean)
@@ -74,5 +76,6 @@ export function getMotorQualityBySlug(slug) {
     title,
     slug,
     sensitiveAgesLabel: formatSensitiveBuckets(buckets),
+    sensitiveAgeSet: bucketsToSensitiveAgeSet(buckets),
   }
 }

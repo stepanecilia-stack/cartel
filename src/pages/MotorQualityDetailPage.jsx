@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
+import QualitySensitiveStudentsPanel from '../components/QualitySensitiveStudentsPanel'
+import SensitiveAgeScale from '../components/SensitiveAgeScale'
+import { useStudentsInSensitivePeriodForQuality } from '../hooks/useStudentsInSensitivePeriodForQuality'
 import { getMotorQualityBySlug, getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
 import { useMotorQualityExercisesForSlug } from '../hooks/useMotorQualityExercises'
 import {
@@ -28,6 +31,9 @@ const EMPTY_FORM = {
   avoid: '',
   minAge: '',
   maxAge: '',
+  doseUnder12: '',
+  dose13to15: '',
+  dose16Plus: '',
   gifSrc: '',
   webmSrc: '',
 }
@@ -40,6 +46,9 @@ function exerciseToForm(ex) {
     avoid: ex.avoid ?? '',
     minAge: ex.minAge != null ? String(ex.minAge) : '',
     maxAge: ex.maxAge != null ? String(ex.maxAge) : '',
+    doseUnder12: ex.doseUnder12 ?? '',
+    dose13to15: ex.dose13to15 ?? '',
+    dose16Plus: ex.dose16Plus ?? '',
     gifSrc: ex.media?.gifSrc ?? '',
     webmSrc: ex.media?.webmSrc ?? '',
   }
@@ -90,6 +99,39 @@ function ExerciseForm({ title, form, formError, saving, onFieldChange, onSubmit,
           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
         />
       </label>
+      <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Объём по возрасту</p>
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">До 12 лет</span>
+          <input
+            type="text"
+            value={form.doseUnder12}
+            onChange={(e) => onFieldChange('doseUnder12', e.target.value)}
+            placeholder="например: 2×5, отдых 1–2 мин"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">13–15 лет</span>
+          <input
+            type="text"
+            value={form.dose13to15}
+            onChange={(e) => onFieldChange('dose13to15', e.target.value)}
+            placeholder="например: 3×6–8"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">16+ лет</span>
+          <input
+            type="text"
+            value={form.dose16Plus}
+            onChange={(e) => onFieldChange('dose16Plus', e.target.value)}
+            placeholder="например: 4×6"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+          />
+        </label>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Возраст от (лет)</span>
@@ -159,11 +201,16 @@ function ExerciseForm({ title, form, formError, saving, onFieldChange, onSubmit,
   )
 }
 
-function MotorQualityDetailPage() {
+function MotorQualityDetailPage({ coachId, onOpenStudent }) {
   const { slug } = useParams()
   const location = useLocation()
   const item = getMotorQualityBySlug(slug ?? '')
   const exercises = useMotorQualityExercisesForSlug(item?.slug)
+  const {
+    students: sensitiveStudents,
+    loading: sensitiveStudentsLoading,
+    error: sensitiveStudentsError,
+  } = useStudentsInSensitivePeriodForQuality(coachId, item?.title)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -171,12 +218,17 @@ function MotorQualityDetailPage() {
   const [deletingId, setDeletingId] = useState(null)
   const [formError, setFormError] = useState(null)
   const [saveNotice, setSaveNotice] = useState(null)
+  const [selectedExerciseId, setSelectedExerciseId] = useState(null)
+
+  const catalog = getMotorQualitiesCatalog()
+  const selectedExercise =
+    selectedExerciseId != null
+      ? exercises.find((ex) => ex.id === selectedExerciseId) ?? null
+      : null
 
   if (!item) {
     return <Navigate to="/qualities" replace />
   }
-
-  const catalog = getMotorQualitiesCatalog()
   const studentReturn = parseStudentQualityReturn(location.state)
   const linkState = location.state && Object.keys(location.state).length > 0 ? location.state : undefined
   const canPersist = isFirebaseConfigured || typeof localStorage !== 'undefined'
@@ -293,13 +345,19 @@ function MotorQualityDetailPage() {
 
         <header className="space-y-3">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{item.title}</h1>
-          {item.sensitiveAgesLabel ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              <span className="font-medium text-slate-800 dark:text-slate-200">Сенситивные возрасты (таблица): </span>
-              {item.sensitiveAgesLabel}
-            </p>
+          {item.sensitiveAgeSet?.size > 0 ? (
+            <SensitiveAgeScale sensitiveAges={item.sensitiveAgeSet} className="max-w-xl" />
           ) : null}
         </header>
+
+        <QualitySensitiveStudentsPanel
+          qualityTitle={item.title}
+          students={sensitiveStudents}
+          loading={sensitiveStudentsLoading}
+          error={sensitiveStudentsError}
+          selectedExercise={selectedExercise}
+          onOpenStudent={onOpenStudent}
+        />
 
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -308,7 +366,7 @@ function MotorQualityDetailPage() {
                 Банк упражнений
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Общий каталог в облаке; при ошибке прав — резерв на этом браузере. Медиа по ссылкам WebM или GIF.
+                Нажмите на карточку упражнения — в списке спортсменов выше подсветится объём по возрасту.
               </p>
             </div>
             {canPersist ? (
@@ -369,15 +427,25 @@ function MotorQualityDetailPage() {
                         .join(' ')
                     : null
                 const isEditingThis = editingId === ex.id
+                const isSelected = selectedExerciseId === ex.id
                 return (
-                  <li
-                    key={ex.id}
-                    className={`overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
-                      isEditingThis
-                        ? 'border-blue-400 ring-2 ring-blue-200 dark:border-blue-500 dark:ring-blue-900/50'
-                        : 'border-slate-200 dark:border-slate-600'
-                    }`}
-                  >
+                  <li key={ex.id}>
+                    <div
+                      className={`overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
+                        isEditingThis
+                          ? 'border-blue-400 ring-2 ring-blue-200 dark:border-blue-500 dark:ring-blue-900/50'
+                          : isSelected
+                            ? 'border-emerald-500 ring-2 ring-emerald-200 dark:border-emerald-500 dark:ring-emerald-900/50'
+                            : 'border-slate-200 dark:border-slate-600'
+                      }`}
+                    >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedExerciseId((prev) => (prev === ex.id ? null : ex.id))
+                      }
+                      className="block w-full text-left"
+                    >
                     <div className="aspect-video w-full border-b border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                       {hasVideo ? (
                         <video
@@ -406,32 +474,18 @@ function MotorQualityDetailPage() {
                       )}
                     </div>
                     <div className="space-y-2 p-4 sm:p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{ex.title}</h3>
-                        {canPersist ? (
-                          <div className="flex shrink-0 gap-3">
-                            <button
-                              type="button"
-                              onClick={() => openEditForm(ex)}
-                              className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                              Изменить
-                            </button>
-                            <button
-                              type="button"
-                              disabled={deletingId === ex.id}
-                              onClick={() => handleDeleteExercise(ex.id, ex.title)}
-                              className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              {deletingId === ex.id ? 'Удаление…' : 'Удалить'}
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{ex.title}</h3>
                       {ageLabel ? (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Возраст: {ageLabel} лет</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Возраст упражнения: {ageLabel} лет</p>
                       ) : null}
                       <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{ex.intent}</p>
+                      {ex.doseUnder12 || ex.dose13to15 || ex.dose16Plus ? (
+                        <div className="space-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          {ex.doseUnder12 ? <p>до 12: {ex.doseUnder12}</p> : null}
+                          {ex.dose13to15 ? <p>13–15: {ex.dose13to15}</p> : null}
+                          {ex.dose16Plus ? <p>16+: {ex.dose16Plus}</p> : null}
+                        </div>
+                      ) : null}
                       {ex.cues ? (
                         <p className="text-sm text-slate-700 dark:text-slate-300">
                           <span className="font-medium text-slate-800 dark:text-slate-200">Подсказки: </span>
@@ -444,6 +498,33 @@ function MotorQualityDetailPage() {
                           {ex.avoid}
                         </p>
                       ) : null}
+                    </div>
+                    </button>
+                    {canPersist ? (
+                      <div className="flex gap-3 border-t border-slate-100 px-4 py-2 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditForm(ex)
+                          }}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Изменить
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === ex.id}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteExercise(ex.id, ex.title)
+                          }}
+                          className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          {deletingId === ex.id ? 'Удаление…' : 'Удалить'}
+                        </button>
+                      </div>
+                    ) : null}
                     </div>
                   </li>
                 )

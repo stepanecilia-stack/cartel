@@ -8,6 +8,9 @@
  *   avoid?: string,
  *   minAge?: number,
  *   maxAge?: number,
+ *   doseUnder12?: string,
+ *   dose13to15?: string,
+ *   dose16Plus?: string,
  *   media: { gifSrc: string | null; webmSrc: string | null },
  *   sortOrder?: number,
  * }} MotorQualityExercise
