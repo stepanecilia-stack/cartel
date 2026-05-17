@@ -162,12 +162,33 @@ const deepOmitUndefined = (value) => {
   return out
 }
 
+async function resolveCurrentCoachAuditFields() {
+  const safeAuth = ensureAuth()
+  const uid = safeAuth.currentUser?.uid
+  if (!uid) return {}
+  try {
+    const profile = await getCoachProfile(uid)
+    const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()
+    return {
+      lastUpdatedByCoachId: uid,
+      lastUpdatedByCoachName: name || safeAuth.currentUser?.email || 'Тренер',
+    }
+  } catch {
+    return {
+      lastUpdatedByCoachId: uid,
+      lastUpdatedByCoachName: safeAuth.currentUser?.email || 'Тренер',
+    }
+  }
+}
+
 /** Обновление полей ученика (без вложенных undefined — совместимо с Firestore). */
 export const updateStudentData = async (studentId, updatedData) => {
   const payload = deepOmitUndefined(updatedData)
   if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) return
+  const audit = await resolveCurrentCoachAuditFields()
   await updateDoc(doc(ensureDb(), 'students', studentId), {
     ...payload,
+    ...audit,
     updatedAt: serverTimestamp(),
   })
 }

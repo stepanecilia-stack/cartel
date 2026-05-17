@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
 import { getCoachStudents } from '../services/firebaseService'
 import { findGoldStandardRow } from '../utils/ksrUtils'
+import { resolveStudentLastChange } from '../utils/studentLastChange.js'
 import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
 
 function normalizeSearchText(value) {
@@ -75,6 +76,7 @@ function HomePage({ onSelectStudent, coachId }) {
           birthYearNum,
           birthYearLabel,
           weightCategoryLine,
+          lastChange: resolveStudentLastChange(raw),
         }
       }),
     [students],
@@ -91,7 +93,12 @@ function HomePage({ onSelectStudent, coachId }) {
       const byWeight = weightFilter === 'all' || student.weightCategoryLine === weightFilter
       return byQuery && byGender && byBirthYear && byWeight
     })
-    return [...list].sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
+    return [...list].sort((a, b) => {
+      const aMs = a.lastChange?.ms ?? 0
+      const bMs = b.lastChange?.ms ?? 0
+      if (bMs !== aMs) return bMs - aMs
+      return a.nameSearch.localeCompare(b.nameSearch, 'ru')
+    })
   }, [studentsWithKsr, searchQuery, genderFilter, birthYearFilter, weightFilter])
 
   const birthYearOptions = useMemo(
@@ -298,9 +305,36 @@ function HomePage({ onSelectStudent, coachId }) {
                 className="rounded-xl border border-slate-100 bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900 sm:p-4"
               >
                 <div className="flex min-w-0 items-start gap-2">
-                  <h2 className="min-w-0 flex-1 text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100">
-                    {student.name}
-                  </h2>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                      {student.name}
+                    </h2>
+                    {student.lastChange ? (
+                      <p
+                        className={`mt-0.5 truncate text-[10px] leading-tight sm:text-[11px] ${
+                          student.lastChange.isStale ? 'text-amber-800' : 'text-slate-500 dark:text-slate-400'
+                        }`}
+                        title={
+                          student.lastChange.coachName
+                            ? `Изменил: ${student.lastChange.coachName}, ${student.lastChange.dateLabel}`
+                            : student.lastChange.dateLabel
+                        }
+                      >
+                        {student.lastChange.isStale ? (
+                          <span className="mr-0.5" aria-hidden>
+                            ⚠️
+                          </span>
+                        ) : null}
+                        {student.lastChange.coachName ? (
+                          <span className="font-medium">{student.lastChange.coachName}</span>
+                        ) : (
+                          <span>Изменение</span>
+                        )}
+                        <span className="text-slate-400"> · </span>
+                        <span className="tabular-nums">{student.lastChange.dateLabel}</span>
+                      </p>
+                    ) : null}
+                  </div>
                   <span
                     className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-xs font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                     title={student.genderLabel}
@@ -309,7 +343,7 @@ function HomePage({ onSelectStudent, coachId }) {
                     {student.gender === 'F' ? 'Ж' : 'М'}
                   </span>
                 </div>
-                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="flex min-w-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/90 px-2 py-2 text-center shadow-sm">
                     <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">{student.birthYearLabel}</span>
                   </div>
