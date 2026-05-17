@@ -1,8 +1,16 @@
+import { useState } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import { getMotorQualityBySlug, getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
-import { getMotorQualityExercisesBySlug } from '../data/motorQualityExercises'
+import { useMotorQualityExercisesForSlug } from '../hooks/useMotorQualityExercises'
+import {
+  addMotorQualityExercise,
+  deleteMotorQualityExercise,
+  getMotorQualityExercisesStorageMode,
+  updateMotorQualityExercise,
+} from '../services/motorQualityExercisesService'
+import { isFirebaseConfigured } from '../services/firebaseService'
+import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage'
 
-/** Безопасный разбор state после перехода с карточки ученика (только «/»). */
 function parseStudentQualityReturn(state) {
   const raw = state?.studentQualityReturn
   if (!raw || typeof raw !== 'object') return null
@@ -13,11 +21,156 @@ function parseStudentQualityReturn(state) {
   return { to: '/', studentName }
 }
 
+const EMPTY_FORM = {
+  title: '',
+  intent: '',
+  cues: '',
+  avoid: '',
+  minAge: '',
+  maxAge: '',
+  gifSrc: '',
+  webmSrc: '',
+}
+
+function exerciseToForm(ex) {
+  return {
+    title: ex.title ?? '',
+    intent: ex.intent ?? '',
+    cues: ex.cues ?? '',
+    avoid: ex.avoid ?? '',
+    minAge: ex.minAge != null ? String(ex.minAge) : '',
+    maxAge: ex.maxAge != null ? String(ex.maxAge) : '',
+    gifSrc: ex.media?.gifSrc ?? '',
+    webmSrc: ex.media?.webmSrc ?? '',
+  }
+}
+
+function ExerciseForm({ title, form, formError, saving, onFieldChange, onSubmit, onCancel }) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-600 dark:bg-slate-900 sm:p-5"
+    >
+      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h3>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Название *</span>
+        <input
+          type="text"
+          required
+          value={form.title}
+          onChange={(e) => onFieldChange('title', e.target.value)}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Цель / смысл *</span>
+        <textarea
+          required
+          rows={2}
+          value={form.intent}
+          onChange={(e) => onFieldChange('intent', e.target.value)}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Подсказки</span>
+        <textarea
+          rows={2}
+          value={form.cues}
+          onChange={(e) => onFieldChange('cues', e.target.value)}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Избегать</span>
+        <textarea
+          rows={2}
+          value={form.avoid}
+          onChange={(e) => onFieldChange('avoid', e.target.value)}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+        />
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Возраст от (лет)</span>
+          <input
+            type="number"
+            min={0}
+            max={99}
+            value={form.minAge}
+            onChange={(e) => onFieldChange('minAge', e.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Возраст до (лет)</span>
+          <input
+            type="number"
+            min={0}
+            max={99}
+            value={form.maxAge}
+            onChange={(e) => onFieldChange('maxAge', e.target.value)}
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+          />
+        </label>
+      </div>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Ссылка WebM</span>
+        <input
+          type="url"
+          value={form.webmSrc}
+          onChange={(e) => onFieldChange('webmSrc', e.target.value)}
+          placeholder="https://..."
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Ссылка GIF</span>
+        <input
+          type="url"
+          value={form.gifSrc}
+          onChange={(e) => onFieldChange('gifSrc', e.target.value)}
+          placeholder="https://..."
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+        />
+      </label>
+      {formError ? (
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          {formError}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+        >
+          {saving ? 'Сохранение…' : 'Сохранить'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          Отмена
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function MotorQualityDetailPage() {
   const { slug } = useParams()
   const location = useLocation()
   const item = getMotorQualityBySlug(slug ?? '')
-  const exercises = item ? getMotorQualityExercisesBySlug(item.slug) : []
+  const exercises = useMotorQualityExercisesForSlug(item?.slug)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [editingId, setEditingId] = useState(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const [formError, setFormError] = useState(null)
+  const [saveNotice, setSaveNotice] = useState(null)
 
   if (!item) {
     return <Navigate to="/qualities" replace />
@@ -26,6 +179,81 @@ function MotorQualityDetailPage() {
   const catalog = getMotorQualitiesCatalog()
   const studentReturn = parseStudentQualityReturn(location.state)
   const linkState = location.state && Object.keys(location.state).length > 0 ? location.state : undefined
+  const canPersist = isFirebaseConfigured || typeof localStorage !== 'undefined'
+  const storageMode = getMotorQualityExercisesStorageMode()
+
+  const closeForm = () => {
+    setForm(EMPTY_FORM)
+    setEditingId(null)
+    setFormOpen(false)
+    setFormError(null)
+  }
+
+  const openAddForm = () => {
+    setForm(EMPTY_FORM)
+    setEditingId(null)
+    setFormOpen(true)
+    setFormError(null)
+    setSaveNotice(null)
+  }
+
+  const openEditForm = (ex) => {
+    setForm(exerciseToForm(ex))
+    setEditingId(ex.id)
+    setFormOpen(true)
+    setFormError(null)
+    setSaveNotice(null)
+  }
+
+  const updateField = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setFormError(null)
+  }
+
+  const handleSaveExercise = async (e) => {
+    e.preventDefault()
+    if (!canPersist) {
+      setFormError('Сохранение недоступно: нет Firebase и localStorage.')
+      return
+    }
+    setSaving(true)
+    setFormError(null)
+    setSaveNotice(null)
+    try {
+      if (editingId) {
+        await updateMotorQualityExercise(editingId, item.slug, form)
+        setSaveNotice('Изменения сохранены.')
+      } else {
+        await addMotorQualityExercise(item.slug, form)
+        setSaveNotice('Упражнение добавлено.')
+      }
+      if (getMotorQualityExercisesStorageMode() === 'local') {
+        setSaveNotice(
+          (prev) =>
+            `${prev ?? ''} Данные сохранены на этом устройстве (облако недоступно). Опубликуйте правила Firestore для общего банка.`,
+        )
+      }
+      closeForm()
+    } catch (err) {
+      setFormError(formatFirestoreErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteExercise = async (exerciseId, title) => {
+    if (!canPersist) return
+    const ok = window.confirm(`Удалить упражнение «${title}»?`)
+    if (!ok) return
+    setDeletingId(exerciseId)
+    try {
+      await deleteMotorQualityExercise(exerciseId)
+    } catch (err) {
+      window.alert(formatFirestoreErrorMessage(err))
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-3 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-12">
@@ -74,74 +302,154 @@ function MotorQualityDetailPage() {
         </header>
 
         <section className="space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Банк упражнений
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Подборка для этого качества; каждое упражнение в каталоге привязано только к одной странице качества. К
-              карточке позже можно добавить демонстрацию: поля <span className="font-mono text-xs">media.webmSrc</span>{' '}
-              или <span className="font-mono text-xs">media.gifSrc</span> в данных.
-            </p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Банк упражнений
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                Общий каталог в облаке; при ошибке прав — резерв на этом браузере. Медиа по ссылкам WebM или GIF.
+              </p>
+            </div>
+            {canPersist ? (
+              <button
+                type="button"
+                onClick={() => (formOpen && !editingId ? closeForm() : openAddForm())}
+                className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                {formOpen && !editingId ? 'Скрыть форму' : 'Добавить упражнение'}
+              </button>
+            ) : null}
           </div>
-          <ul className="space-y-4">
-            {exercises.map((ex) => {
-              const webm = ex.media?.webmSrc
-              const gif = ex.media?.gifSrc
-              const hasVideo = typeof webm === 'string' && webm.trim().length > 0
-              const hasGif = typeof gif === 'string' && gif.trim().length > 0
-              return (
-                <li
-                  key={ex.id}
-                  className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900"
-                >
-                  <div className="aspect-video w-full border-b border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-                    {hasVideo ? (
-                      <video
-                        className="h-full w-full object-cover"
-                        controls
-                        playsInline
-                        preload="metadata"
-                        src={webm.trim()}
-                      >
-                        Ваш браузер не поддерживает воспроизведение WebM.
-                      </video>
-                    ) : hasGif ? (
-                      <img
-                        src={gif.trim()}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                        <span className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-medium uppercase tracking-wide dark:border-slate-500">
-                          Демонстрация
-                        </span>
-                        <span>Заглушка под GIF или WebM (пока нет файла в данных).</span>
+
+          {storageMode === 'local' ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200">
+              Облако недоступно: упражнения сохраняются только в этом браузере. Опубликуйте правила Firestore
+              (коллекция <span className="font-mono">motor_quality_exercises</span>) — см. файл{' '}
+              <span className="font-mono">firestore.rules</span> в проекте.
+            </p>
+          ) : null}
+
+          {saveNotice ? (
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-200">
+              {saveNotice}
+            </p>
+          ) : null}
+
+          {formOpen && canPersist ? (
+            <ExerciseForm
+              title={editingId ? 'Редактирование упражнения' : 'Новое упражнение'}
+              form={form}
+              formError={formError}
+              saving={saving}
+              onFieldChange={updateField}
+              onSubmit={handleSaveExercise}
+              onCancel={closeForm}
+            />
+          ) : null}
+
+          {exercises.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
+              Пока нет упражнений для этого качества. Нажмите «Добавить упражнение», чтобы создать первое.
+            </p>
+          ) : (
+            <ul className="space-y-4">
+              {exercises.map((ex) => {
+                const webm = ex.media?.webmSrc
+                const gif = ex.media?.gifSrc
+                const hasVideo = typeof webm === 'string' && webm.trim().length > 0
+                const hasGif = typeof gif === 'string' && gif.trim().length > 0
+                const ageLabel =
+                  ex.minAge != null || ex.maxAge != null
+                    ? [
+                        ex.minAge != null ? `от ${ex.minAge}` : null,
+                        ex.maxAge != null ? `до ${ex.maxAge}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')
+                    : null
+                const isEditingThis = editingId === ex.id
+                return (
+                  <li
+                    key={ex.id}
+                    className={`overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
+                      isEditingThis
+                        ? 'border-blue-400 ring-2 ring-blue-200 dark:border-blue-500 dark:ring-blue-900/50'
+                        : 'border-slate-200 dark:border-slate-600'
+                    }`}
+                  >
+                    <div className="aspect-video w-full border-b border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                      {hasVideo ? (
+                        <video
+                          className="h-full w-full object-cover"
+                          controls
+                          playsInline
+                          preload="metadata"
+                          src={webm.trim()}
+                        >
+                          Ваш браузер не поддерживает воспроизведение WebM.
+                        </video>
+                      ) : hasGif ? (
+                        <img
+                          src={gif.trim()}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                          <span className="rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-medium uppercase tracking-wide dark:border-slate-500">
+                            Демонстрация
+                          </span>
+                          <span>Добавьте ссылку WebM или GIF в режиме редактирования.</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2 p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{ex.title}</h3>
+                        {canPersist ? (
+                          <div className="flex shrink-0 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => openEditForm(ex)}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deletingId === ex.id}
+                              onClick={() => handleDeleteExercise(ex.id, ex.title)}
+                              className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              {deletingId === ex.id ? 'Удаление…' : 'Удалить'}
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                    )}
-                  </div>
-                  <div className="space-y-2 p-4 sm:p-5">
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{ex.title}</h3>
-                    <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{ex.intent}</p>
-                    {ex.cues ? (
-                      <p className="text-sm text-slate-700 dark:text-slate-300">
-                        <span className="font-medium text-slate-800 dark:text-slate-200">Подсказки: </span>
-                        {ex.cues}
-                      </p>
-                    ) : null}
-                    {ex.avoid ? (
-                      <p className="text-sm text-amber-800 dark:text-amber-200/90">
-                        <span className="font-medium">Избегать: </span>
-                        {ex.avoid}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+                      {ageLabel ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Возраст: {ageLabel} лет</p>
+                      ) : null}
+                      <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{ex.intent}</p>
+                      {ex.cues ? (
+                        <p className="text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-medium text-slate-800 dark:text-slate-200">Подсказки: </span>
+                          {ex.cues}
+                        </p>
+                      ) : null}
+                      {ex.avoid ? (
+                        <p className="text-sm text-amber-800 dark:text-amber-200/90">
+                          <span className="font-medium">Избегать: </span>
+                          {ex.avoid}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </section>
 
         <section>

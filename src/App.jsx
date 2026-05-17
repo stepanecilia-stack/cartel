@@ -16,6 +16,7 @@ import {
   logoutCoach,
   subscribeToAuth,
 } from './services/firebaseService'
+import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
 function Navbar({ user, coachProfile }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
@@ -195,6 +196,11 @@ function App() {
     })
     return () => unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!authUser) return undefined
+    return subscribeMotorQualityExercises()
+  }, [authUser])
 
   if (authUser === undefined) {
     return (
