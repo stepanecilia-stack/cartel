@@ -1,10 +1,14 @@
 import {
   ageToStandardsGroup,
+  CALENDAR_COMPETITION_MIN_AGE,
   calculateKSPPercent,
   findGoldStandardRow,
+  findGoldStandardRowForAthlete,
   GOLD_STANDARDS,
   referenceIdealHeightCm,
   shortTypageLabel,
+  YOUNG_ATHLETE_MIN_AGE,
+  YOUNG_ATHLETE_REFERENCE_AGE_GROUP,
 } from './standards.js'
 import { computeAthleteAgeYears, normalizeBirthYearNumber } from './studentModel.js'
 
@@ -261,7 +265,11 @@ export function resolveWeightFirstHeightDiff(studentData = {}) {
   const gender = studentData.gender === 'F' || studentData.gender === 'Ж' ? 'F' : 'M'
   const y = normalizeBirthYearNumber(studentData.birthYear)
   const age = computeAthleteAgeYears(y)
-  const ageGroup = age != null ? ageToStandardsGroup(age) : null
+  const calendarAgeGroup = age != null ? ageToStandardsGroup(age) : null
+  const lookupAgeGroup =
+    age != null && age < CALENDAR_COMPETITION_MIN_AGE && age >= YOUNG_ATHLETE_MIN_AGE
+      ? YOUNG_ATHLETE_REFERENCE_AGE_GROUP
+      : calendarAgeGroup
 
   const base = {
     standardHeight: null,
@@ -270,15 +278,16 @@ export function resolveWeightFirstHeightDiff(studentData = {}) {
     categoryDisplayCm: null,
     tacticMode: 'none',
     lookupWeight: null,
-    ageGroup,
+    ageGroup: calendarAgeGroup,
+    lookupAgeGroup,
     gender,
   }
 
-  if (!ageGroup || !weight || weight < 20 || !studentHeight || studentHeight < 100) {
+  if (!lookupAgeGroup || !weight || weight < 20 || !studentHeight || studentHeight < 100) {
     return base
   }
 
-  const map = WEIGHT_STANDARDS[gender]?.[ageGroup]
+  const map = WEIGHT_STANDARDS[gender]?.[lookupAgeGroup]
   if (!map || !Object.keys(map).length) return base
 
   const keys = Object.keys(map)
@@ -324,7 +333,8 @@ export function resolveWeightFirstHeightDiff(studentData = {}) {
     categoryDisplayCm,
     tacticMode,
     lookupWeight,
-    ageGroup,
+    ageGroup: calendarAgeGroup,
+    lookupAgeGroup,
     gender,
   }
 }
@@ -423,7 +433,7 @@ export const getWeights = (studentData = {}) => {
     P = isFemale ? 0.35 : 0.4
   }
 
-  const table = findGoldStandardRow(studentData)
+  const table = findGoldStandardRowForAthlete(studentData)
   const useTable = Boolean(table && table.weightDistance <= 6)
   const archetype = useTable ? shortTypageLabel(table.row.label) : archetypeSmart
 
@@ -463,10 +473,15 @@ export const calculateKsrAndKsp = (studentData = {}, scores = {}) => {
 
 export {
   analyzeGeometricHeightDeficit,
+  CALENDAR_COMPETITION_MIN_AGE,
   findGoldStandardRow,
+  findGoldStandardRowForAthlete,
+  findNearestGoldStandardByWeight,
   calculateKSPPercent,
   referenceIdealHeightCm,
   shortTypageLabel,
+  YOUNG_ATHLETE_MIN_AGE,
+  YOUNG_ATHLETE_REFERENCE_AGE_GROUP,
 } from './standards.js'
 
 /**

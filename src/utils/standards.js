@@ -7,6 +7,13 @@ import { computeAthleteAgeYears, normalizeBirthYearNumber } from './studentModel
 
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b)
 
+/** Минимальный возраст для превью-эталона по весу (группа 13–14). */
+export const YOUNG_ATHLETE_MIN_AGE = 7
+/** Возраст допуска к календарным соревнованиям (ориентир в UI). */
+export const CALENDAR_COMPETITION_MIN_AGE = 13
+/** Возрастная группа эталона для спортсменов младше 13 лет. */
+export const YOUNG_ATHLETE_REFERENCE_AGE_GROUP = '13-14'
+
 /** @typedef {{ gender: 'M'|'F', ageGroup: string, weightMin: number, weightMax: number, heightMin: number, heightMax: number, openTop?: boolean, label: string }} GoldRow */
 
 /** @param {number} age */
@@ -161,22 +168,12 @@ function intervalDistance(weight, row) {
 }
 
 /**
- * @param {{ gender?: string, birthYear?: number, weight?: number }} athlete
+ * @param {GoldRow[]} pool
+ * @param {number} weight
  * @returns {{ row: GoldRow, weightDistance: number } | null}
  */
-export function findGoldStandardRow(athlete) {
-  const birthYear = normalizeBirthYearNumber(athlete.birthYear)
-  if (!birthYear) return null
-  const age = computeAthleteAgeYears(birthYear)
-  if (age == null) return null
-  const ageGroup = ageToStandardsGroup(age)
-  if (!ageGroup) return null
-  const gender = athlete.gender === 'F' || athlete.gender === 'Ж' ? 'F' : 'M'
-  const weight = Number(athlete.weight ?? 0)
-  if (!weight || weight < 20) return null
-
-  const pool = GOLD_STANDARDS.filter((r) => r.gender === gender && r.ageGroup === ageGroup)
-  if (!pool.length) return null
+function findNearestInWeightPool(pool, weight) {
+  if (!pool.length || !weight || weight < 20) return null
 
   const inside = pool.filter((r) => weight >= r.weightMin && weight <= r.weightMax)
   if (inside.length) {
@@ -194,6 +191,79 @@ export function findGoldStandardRow(athlete) {
     }
   }
   return best ? { row: best, weightDistance: bestDist } : null
+}
+
+/**
+ * Ближайший эталон по весу в заданной возрастной группе (для малышей — обычно 13–14).
+ * @param {{ gender?: string, weight?: number }} athlete
+ * @param {string} [ageGroup]
+ */
+export function findNearestGoldStandardByWeight(athlete, ageGroup = YOUNG_ATHLETE_REFERENCE_AGE_GROUP) {
+  const gender = athlete.gender === 'F' || athlete.gender === 'Ж' ? 'F' : 'M'
+  const weight = Number(athlete.weight ?? 0)
+  const pool = GOLD_STANDARDS.filter((r) => r.gender === gender && r.ageGroup === ageGroup)
+  return findNearestInWeightPool(pool, weight)
+}
+
+/**
+ * @param {{ gender?: string, birthYear?: number, weight?: number }} athlete
+ * @returns {{ row: GoldRow, weightDistance: number } | null}
+ */
+export function findGoldStandardRow(athlete) {
+  const birthYear = normalizeBirthYearNumber(athlete.birthYear)
+  if (!birthYear) return null
+  const age = computeAthleteAgeYears(birthYear)
+  if (age == null) return null
+  const ageGroup = ageToStandardsGroup(age)
+  if (!ageGroup) return null
+  const gender = athlete.gender === 'F' || athlete.gender === 'Ж' ? 'F' : 'M'
+  const weight = Number(athlete.weight ?? 0)
+  const pool = GOLD_STANDARDS.filter((r) => r.gender === gender && r.ageGroup === ageGroup)
+  return findNearestInWeightPool(pool, weight)
+}
+
+/**
+ * Эталон для карточки: с 13 лет — по возрасту и весу; 7–12 — ближайший по весу из 13–14.
+ * @param {{ gender?: string, birthYear?: number, weight?: number }} athlete
+ * @returns {{
+ *   row: GoldRow,
+ *   weightDistance: number,
+ *   mode: 'calendar' | 'young_preview',
+ *   athleteAge: number,
+ *   referenceAgeGroup: string,
+ * } | null}
+ */
+export function findGoldStandardRowForAthlete(athlete) {
+  const birthYear = normalizeBirthYearNumber(athlete.birthYear)
+  if (!birthYear) return null
+  const age = computeAthleteAgeYears(birthYear)
+  if (age == null) return null
+  const weight = Number(athlete.weight ?? 0)
+  if (!weight || weight < 20) return null
+
+  if (age >= CALENDAR_COMPETITION_MIN_AGE) {
+    const match = findGoldStandardRow(athlete)
+    if (!match) return null
+    return {
+      ...match,
+      mode: 'calendar',
+      athleteAge: age,
+      referenceAgeGroup: match.row.ageGroup,
+    }
+  }
+
+  if (age >= YOUNG_ATHLETE_MIN_AGE) {
+    const match = findNearestGoldStandardByWeight(athlete, YOUNG_ATHLETE_REFERENCE_AGE_GROUP)
+    if (!match) return null
+    return {
+      ...match,
+      mode: 'young_preview',
+      athleteAge: age,
+      referenceAgeGroup: YOUNG_ATHLETE_REFERENCE_AGE_GROUP,
+    }
+  }
+
+  return null
 }
 
 /**
@@ -310,7 +380,7 @@ export function calculateAnthropometricZ(reach, height, row, weightDistance) {
 export function calculateKSPPercent(studentData = {}) {
   const height = Number(studentData.height ?? 0)
   const reach = Number(studentData.reach ?? 0)
-  const match = findGoldStandardRow(studentData)
+  const match = findGoldStandardRowForAthlete(studentData)
   if (!match) {
     return {
       ksp: 0,
@@ -321,9 +391,12 @@ export function calculateKSPPercent(studentData = {}) {
       idealHeightRange: null,
       weightDistance: null,
       apeIndex: reach - height,
+      standardMode: null,
+      athleteAge: null,
+      referenceAgeGroup: null,
     }
   }
-  const { row, weightDistance } = match
+  const { row, weightDistance, mode, athleteAge, referenceAgeGroup } = match
   const h = calculateHeightFactorH(height, row)
   const {
     z,
@@ -369,6 +442,9 @@ export function calculateKSPPercent(studentData = {}) {
     reachDelta,
     apeIndex,
     targetApe,
+    standardMode: mode,
+    athleteAge,
+    referenceAgeGroup,
   }
 }
 

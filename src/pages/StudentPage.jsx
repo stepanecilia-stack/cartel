@@ -521,6 +521,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [baseKSR, kdBundle.kd],
   )
   const standardRow = ksrKsp?.kspDetail?.row ?? null
+  const historicalStandardMode = ksrKsp?.kspDetail?.standardMode ?? null
+  const historicalAthleteAge = ksrKsp?.kspDetail?.athleteAge ?? null
+  const isYoungHistoricalPreview = historicalStandardMode === 'young_preview'
+  const historicalReferenceAgeGroup =
+    ksrKsp?.kspDetail?.referenceAgeGroup ?? standardRow?.ageGroup ?? '—'
   const standardWeightCategory = useMemo(() => {
     if (!standardRow) return '—'
     const wMin = Number(standardRow.weightMin)
@@ -530,7 +535,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     if (wMin === wMax) return String(wMin)
     return `${wMin}-${wMax}`
   }, [standardRow])
-  const standardAgeGroup = standardRow?.ageGroup ?? '—'
+  const standardAgeGroup = isYoungHistoricalPreview
+    ? `${historicalReferenceAgeGroup} (ориентир)`
+    : standardRow?.ageGroup ?? '—'
+  const historicalReferenceLabel = isYoungHistoricalPreview ? 'Эталон 13–14 лет' : 'Эталон'
   const standardArchetype = shortTypageLabel(standardRow?.label) || '—'
   const referenceHeight = Number(ksrKsp?.kspDetail?.referenceHeight ?? 0)
   const referenceReach = Number(ksrKsp?.kspDetail?.referenceReach ?? referenceHeight ?? 0)
@@ -1386,10 +1394,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
 
   return (
-    <main className="min-h-screen bg-slate-50 px-2 py-5 text-slate-900 dark:text-slate-100 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
-      <div className="mx-auto min-w-0 max-w-4xl space-y-3 sm:space-y-6">
+    <main className="min-h-screen bg-slate-50 px-2 pt-2 pb-4 text-slate-900 sm:px-6 sm:pt-3 sm:pb-6">
+      <div className="mx-auto min-w-0 max-w-4xl space-y-2 sm:space-y-4">
         <div
-          className="sticky top-14 z-30 -mx-2 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2.5 pr-2 pl-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 dark:border-slate-600 dark:bg-slate-900/95 sm:top-[72px] sm:-mx-6 sm:gap-3 sm:px-6"
+          className="sticky top-14 z-30 -mx-2 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2 pr-2 pl-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:top-[4.5rem] sm:-mx-6 sm:gap-3 sm:px-6"
           aria-label="Карточка ученика — закреплённая строка"
         >
           <button
@@ -2302,15 +2310,36 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             Историческая модель эталона
           </h2>
           <p className="mt-2 text-sm leading-snug text-slate-600">
-            Сравнение с усреднённым эталоном в возрастной и весовой категории
+            {isYoungHistoricalPreview
+              ? 'Сравнение текущих параметров с ближайшим эталоном по весу из группы 13–14 лет'
+              : 'Сравнение с усреднённым эталоном в возрастной и весовой категории'}
           </p>
+          {isYoungHistoricalPreview ? (
+            <div
+              className="mt-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-sm leading-snug text-violet-950"
+              role="note"
+            >
+              <p>
+                Спортсмену{' '}
+                <span className="font-semibold tabular-nums">
+                  {Number.isFinite(historicalAthleteAge) ? historicalAthleteAge : '—'} лет
+                </span>
+                : эталон подобран по ближайшей весовой категории для возраста{' '}
+                <span className="font-semibold">13–14</span>, чтобы было видно, сколько ещё «до выхода» на
+                этот ориентир по росту и размаху.
+              </p>
+              <p className="mt-1.5 text-xs text-violet-900/90">
+                К участию в календарных соревнованиях допускаются спортсмены от 13 лет.
+              </p>
+            </div>
+          ) : null}
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
             <div className="bg-white px-2 py-3 sm:px-4 sm:py-4">
               <div className="flex flex-col gap-3">
                 <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
                 <StandardDuelSilhouettes
                   athleteLabel={displayNameFromStudent(safeStudent) || 'Спортсмен'}
-                  referenceLabel="Эталон"
+                  referenceLabel={historicalReferenceLabel}
                   athleteHeightCm={athleteHeight}
                   athleteReachCm={athleteReach}
                   athleteWeightKg={athleteWeight}
