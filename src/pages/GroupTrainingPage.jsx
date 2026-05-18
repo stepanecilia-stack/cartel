@@ -207,15 +207,15 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
     return null
   })()
 
-  const tierLabel = (n, total, value) => `Ур. ${n}: ${value} из ${total}`
+  const tierLabel = (n, total, value) => `Ур.${n}: ${value}/${total}`
 
   const renderTierHint = (ordered, value, total) => {
     const current = value >= 1 && value <= total ? ordered[value - 1] : null
     const next = value < total ? ordered[value] : null
     return (
-      <div className="mt-1.5 min-h-[2rem] rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:mt-2 sm:min-h-[2.5rem] sm:px-3 sm:py-2 sm:text-sm dark:bg-slate-800 dark:text-slate-200">
+      <div className="mt-1 rounded-md bg-slate-50 px-2 py-1.5 text-[11px] leading-snug text-slate-700 sm:mt-1.5 sm:px-2.5 sm:py-2 sm:text-xs dark:bg-slate-800 dark:text-slate-200">
         {current ? (
-          <p>
+          <p className="line-clamp-2">
             <span className="font-semibold text-blue-700 dark:text-blue-400">Шаг {value}.</span>{' '}
             {current.name}
           </p>
@@ -223,121 +223,111 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
           <p className="text-slate-500 dark:text-slate-400">Не начато</p>
         )}
         {next ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">Дальше: {next.name}</p>
+          <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-500 dark:text-slate-400" title={next.name}>
+            Дальше: {next.name}
+          </p>
         ) : value === total && total > 0 ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-emerald-700 dark:text-emerald-400">Уровень закрыт.</p>
+          <p className="mt-0.5 text-[10px] text-emerald-700 dark:text-emerald-400">Уровень закрыт</p>
         ) : null}
       </div>
     )
   }
 
+  const renderTierBlock = (tierNum, total, value, ordered, accentClass, onValueChange) => {
+    if (total <= 0) return null
+    const label =
+      tierNum === 3 ? 'Уровень 3' : tierNum === 2 ? 'Уровень 2' : 'Уровень 1'
+    return (
+      <div className="border-t border-slate-100 pt-2.5 first:border-t-0 first:pt-0 dark:border-slate-700">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:text-[11px] dark:text-slate-400">
+            {label}
+          </p>
+          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+            {value}/{total}
+          </span>
+        </div>
+        <div className="touch-manipulation py-2">
+          <input
+            type="range"
+            min={0}
+            max={total}
+            step={1}
+            value={value}
+            onChange={(e) => {
+              const raw = Number(e.target.value)
+              const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total)
+              onValueChange(next)
+            }}
+            aria-label={`${label}, ${student.displayName}`}
+            className={`h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 ${accentClass} sm:h-1.5`}
+          />
+        </div>
+        <div className="mt-0.5 flex justify-between text-[9px] tabular-nums text-slate-400 sm:text-[10px] dark:text-slate-500">
+          <span>0</span>
+          <span>{total}</span>
+        </div>
+        {renderTierHint(ordered, value, total)}
+      </div>
+    )
+  }
+
   return (
-    <li className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-2">
-        <h2 className="text-sm font-semibold leading-tight text-slate-900 sm:text-base dark:text-slate-100">
+    <li className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-3 md:p-4">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-slate-900 sm:text-base dark:text-slate-100">
           {student.displayName}
         </h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            {tierLabel(1, total1, slider1)}
-            {showTier2 ? ` · ${tierLabel(2, total2, slider2)}` : ''}
-            {showTier3 ? ` · ${tierLabel(3, total3, slider3)}` : ''}
+        {statusLine ? (
+          <span
+            className={`shrink-0 text-[10px] font-medium sm:text-xs ${
+              savingStatus === 'error'
+                ? 'text-red-600 dark:text-red-400'
+                : savingStatus === 'saved'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            {statusLine}
           </span>
-          {statusLine ? (
-            <span
-              className={
-                savingStatus === 'error'
-                  ? 'text-red-600 dark:text-red-400'
-                  : savingStatus === 'saved'
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-slate-500 dark:text-slate-400'
-              }
-            >
-              {statusLine}
-            </span>
-          ) : null}
-        </div>
+        ) : null}
       </div>
 
-      <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 sm:mt-4 sm:pt-4 dark:border-slate-700">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:text-[11px] dark:text-slate-400">
-          Уровень 1
-        </p>
-        <input
-          type="range"
-          min={0}
-          max={total1}
-          step={1}
-          value={slider1}
-          onChange={(e) => {
-            const raw = Number(e.target.value)
-            const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total1)
-            setSlider1(next)
-            emit(next, slider2, slider3)
-          }}
-          aria-label={`Уровень 1, прогресс: ${student.displayName}`}
-          className="w-full cursor-pointer accent-blue-600"
-        />
-        <div className="flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          <span>0</span>
-          <span>{total1}</span>
-        </div>
-        {renderTierHint(orderedL1, slider1, total1)}
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">
+          {tierLabel(1, total1, slider1)}
+        </span>
+        {showTier2 && total2 > 0 ? (
+          <span className="rounded-md bg-blue-50/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+            {tierLabel(2, total2, slider2)}
+          </span>
+        ) : null}
+        {showTier3 && total3 > 0 ? (
+          <span className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
+            {tierLabel(3, total3, slider3)}
+          </span>
+        ) : null}
       </div>
 
-      {showTier2 && total2 > 0 ? (
-        <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 dark:border-slate-700">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Уровень 2</p>
-          <input
-            type="range"
-            min={0}
-            max={total2}
-            step={1}
-            value={slider2}
-            onChange={(e) => {
-              const raw = Number(e.target.value)
-              const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total2)
+      <div className="mt-2.5 space-y-2.5 sm:mt-3 sm:space-y-3">
+        {renderTierBlock(1, total1, slider1, orderedL1, 'accent-blue-600', (next) => {
+          setSlider1(next)
+          emit(next, slider2, slider3)
+        })}
+
+        {showTier2 && total2 > 0
+          ? renderTierBlock(2, total2, slider2, orderedL2, 'accent-blue-600', (next) => {
               setSlider2(next)
               emit(slider1, next, slider3)
-            }}
-            aria-label={`Уровень 2, прогресс: ${student.displayName}`}
-            className="w-full cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            <span>0</span>
-            <span>{total2}</span>
-          </div>
-          {renderTierHint(orderedL2, slider2, total2)}
-        </div>
-      ) : null}
-
-      {showTier3 && total3 > 0 ? (
-        <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 dark:border-slate-700">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Уровень 3 (комбинации)
-          </p>
-          <input
-            type="range"
-            min={0}
-            max={total3}
-            step={1}
-            value={slider3}
-            onChange={(e) => {
-              const raw = Number(e.target.value)
-              const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total3)
+            })
+          : null}
+        {showTier3 && total3 > 0
+          ? renderTierBlock(3, total3, slider3, orderedL3, 'accent-violet-600', (next) => {
               setSlider3(next)
               emit(slider1, slider2, next)
-            }}
-            aria-label={`Уровень 3, прогресс: ${student.displayName}`}
-            className="w-full cursor-pointer accent-violet-600"
-          />
-          <div className="flex justify-between text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            <span>0</span>
-            <span>{total3}</span>
-          </div>
-          {renderTierHint(orderedL3, slider3, total3)}
-        </div>
-      ) : null}
+            })
+          : null}
+      </div>
     </li>
   )
 }
@@ -419,19 +409,24 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
   )
 
   return (
-    <div className="space-y-3 sm:space-y-5">
-      <header className="space-y-2.5">
-        <div>
-          <h1 className="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
-            Прогресс по шагам
-          </h1>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-400">
-            <span className="sm:hidden">Шаг 2: ползунки по уровням 1–3. Сохранение автоматически.</span>
-            <span className="hidden sm:inline">
-              Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
-              открываются сами, когда предыдущий доведён до конца. Данные сохраняются автоматически.
-            </span>
-          </p>
+    <div className="space-y-3 pb-2 sm:space-y-5 sm:pb-0">
+      <header className="sticky top-14 z-20 -mx-1 space-y-2 rounded-lg border border-slate-200/80 bg-slate-50/95 p-2.5 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-950/95 sm:static sm:mx-0 sm:space-y-2.5 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
+              Прогресс по шагам
+            </h1>
+            <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:mt-1 sm:text-sm dark:text-slate-400">
+              <span className="sm:hidden">Шаг 2 · уровни 1–3 · автосохранение</span>
+              <span className="hidden sm:inline">
+                Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
+                открываются сами, когда предыдущий доведён до конца. Данные сохраняются автоматически.
+              </span>
+            </p>
+          </div>
+          <span className="shrink-0 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200 sm:hidden">
+            {studentsForSession.length}
+          </span>
         </div>
         <button
           type="button"
