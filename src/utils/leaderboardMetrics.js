@@ -146,7 +146,7 @@ export function buildLeaderboardMetric(student, allNorms, technicalAtoms, catego
         sortValue: tech.sortScore,
         primaryLabel: `${tech.studiedCount}/${tech.totalAtoms}`,
         primarySuffix: 'приёмов',
-        secondary: `КД ${tech.kdPercent}% · автоматизм ${tech.automatedCount}`,
+        secondary: null,
         tech,
       }
     }

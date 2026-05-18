@@ -92,24 +92,122 @@ export function LeaderboardRowMetrics({ row, categoryId, rawById, publicMode = f
   if (categoryId === 'physical' || categoryId === 'functional') {
     return row.medals ? <MedalChips medals={row.medals} stacked={mobileStacked} /> : null
   }
-  if (categoryId === 'technical' && row.tech) {
-    return (
-      <div
-        className={`w-full text-[10px] leading-snug text-slate-500 sm:text-xs dark:text-slate-400 ${
-          mobileStacked ? 'text-left' : 'text-right'
-        }`}
-      >
-        <p>КД {row.tech.kdPercent}%</p>
-        <p>автоматизм {row.tech.automatedCount}</p>
-        {row.tech.effectiveKSR > 0 ? (
-          <p className="font-medium text-slate-700 dark:text-slate-300">КСР {row.tech.effectiveKSR}</p>
-        ) : null}
-      </div>
-    )
+  if (categoryId === 'technical') {
+    return null
   }
   return row.secondary ? (
     <span className="text-[10px] text-slate-500 sm:text-[11px] dark:text-slate-400">{row.secondary}</span>
   ) : null
+}
+
+/** Порядок колонок: 2-е | 1-е | 3-е (пустые ячейки сохраняют центр для чемпиона). */
+function getPodiumSlots(topThree) {
+  const byRank = Object.fromEntries(topThree.map((r) => [r.rank, r]))
+  return [2, 1, 3].map((rank) => ({ row: byRank[rank] ?? null, rank }))
+}
+
+/**
+ * @param {{
+ *   slot: { row: object, rank: number },
+ *   displayNameKey: string,
+ *   categoryId: string,
+ *   rawById?: Map<string, object>,
+ *   publicMode: boolean,
+ *   canOpenStudent: boolean,
+ *   onOpenStudent?: (row: object) => void,
+ *   rowPrimary: (row: object, large?: boolean) => JSX.Element,
+ * }} props
+ */
+function PodiumSlot({
+  slot,
+  displayNameKey,
+  categoryId,
+  rawById,
+  publicMode,
+  canOpenStudent,
+  onOpenStudent,
+  rowPrimary,
+}) {
+  const { row, rank } = slot
+  const isFirst = rank === 1
+  const isSecond = rank === 2
+
+  const stepHeight = isFirst ? 'h-10' : isSecond ? 'h-6' : 'h-4'
+  const stepColor = isFirst
+    ? 'bg-gradient-to-t from-amber-500 to-amber-400'
+    : isSecond
+      ? 'bg-gradient-to-t from-slate-400 to-slate-300'
+      : 'bg-gradient-to-t from-orange-500 to-orange-400'
+
+  const cardShell = isFirst
+    ? 'z-10 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white shadow-lg ring-2 ring-amber-400/70 dark:border-amber-600 dark:from-amber-950/50 dark:via-slate-900 dark:to-slate-900 dark:ring-amber-500/50'
+    : isSecond
+      ? 'mt-5 border-slate-300 bg-white shadow-sm dark:border-slate-500 dark:bg-slate-900'
+      : 'mt-7 border-orange-200 bg-white shadow-sm dark:border-orange-700 dark:bg-slate-900'
+
+  const inner = (
+    <>
+      {isFirst ? (
+        <span className="mb-0.5 text-base leading-none" aria-hidden>
+          👑
+        </span>
+      ) : null}
+      <RankBadge rank={rank} compact />
+      <span
+        className={`mt-1 line-clamp-2 w-full font-bold leading-tight text-slate-900 dark:text-slate-100 ${
+          isFirst ? 'text-xs' : 'text-[10px]'
+        }`}
+      >
+        {row[displayNameKey]}
+      </span>
+      <div className="mt-1 w-full">{rowPrimary(row, isFirst)}</div>
+      {categoryId !== 'technical' ? (!isFirst ? (
+        <div className="mt-1.5 w-full border-t border-slate-100 pt-1.5 dark:border-slate-700">
+          <LeaderboardRowMetrics
+            row={row}
+            categoryId={categoryId}
+            rawById={rawById}
+            publicMode={publicMode}
+            mobileStacked
+          />
+        </div>
+      ) : (
+        <div className="mt-2 w-full border-t border-amber-200/80 pt-2 dark:border-amber-800/50">
+          <LeaderboardRowMetrics
+            row={row}
+            categoryId={categoryId}
+            rawById={rawById}
+            publicMode={publicMode}
+            mobileStacked
+          />
+        </div>
+      )) : null}
+    </>
+  )
+
+  return (
+    <li className="flex min-w-0 flex-1 flex-col">
+      {canOpenStudent ? (
+        <button
+          type="button"
+          onClick={() => onOpenStudent?.(row)}
+          className={`flex flex-1 flex-col items-center rounded-t-xl border-x border-t px-1.5 pb-2 pt-2.5 text-center touch-manipulation active:opacity-95 sm:px-2 ${cardShell}`}
+        >
+          {inner}
+        </button>
+      ) : (
+        <div
+          className={`flex flex-1 flex-col items-center rounded-t-xl border-x border-t px-1.5 pb-2 pt-2.5 text-center sm:px-2 ${cardShell}`}
+        >
+          {inner}
+        </div>
+      )}
+      <div
+        className={`${stepHeight} ${stepColor} w-full rounded-b-md shadow-inner`}
+        aria-hidden
+      />
+    </li>
+  )
 }
 
 /**
@@ -165,39 +263,30 @@ export default function LeaderboardTable({
     <>
       {topThree.length > 0 && !showCheckboxes ? (
         <>
-          {/* Мобильный пьедестал: горизонтальная прокрутка */}
-          <ol
-            className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden"
-            aria-label="Топ-3"
-          >
-            {topThree.map((row) => (
-              <li key={row.id ?? `${row.rank}-${row[displayNameKey]}`} className="w-[min(88vw,280px)] shrink-0 snap-center">
-                <button
-                  type="button"
-                  disabled={!canOpenStudent}
-                  onClick={() => onOpenStudent?.(row)}
-                  className={`flex h-full w-full flex-col items-center rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm touch-manipulation dark:border-slate-600 dark:bg-slate-900 ${
-                    canOpenStudent ? 'active:border-blue-300 dark:active:border-blue-600' : 'cursor-default'
-                  }`}
-                >
-                  <RankBadge rank={row.rank} compact />
-                  <span className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug text-slate-900 dark:text-slate-100">
-                    {row[displayNameKey]}
-                  </span>
-                  <div className="mt-1.5">{rowPrimary(row, true)}</div>
-                  <div className="mt-2 w-full border-t border-slate-100 pt-2 dark:border-slate-700">
-                    <LeaderboardRowMetrics
-                      row={row}
-                      categoryId={categoryId}
-                      rawById={rawById}
-                      publicMode={publicMode}
-                      mobileStacked
-                    />
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ol>
+          <div className="sm:hidden">
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Пьедестал
+            </p>
+            <ol className="grid grid-cols-3 items-end gap-1.5" aria-label="Топ-3">
+              {getPodiumSlots(topThree).map((slot) =>
+                slot.row ? (
+                  <PodiumSlot
+                    key={slot.row.id ?? `${slot.rank}-${slot.row[displayNameKey]}`}
+                    slot={slot}
+                    displayNameKey={displayNameKey}
+                    categoryId={categoryId}
+                    rawById={rawById}
+                    publicMode={publicMode}
+                    canOpenStudent={canOpenStudent}
+                    onOpenStudent={onOpenStudent}
+                    rowPrimary={rowPrimary}
+                  />
+                ) : (
+                  <li key={`empty-${slot.rank}`} className="min-h-[4rem] flex-1" aria-hidden />
+                ),
+              )}
+            </ol>
+          </div>
 
           {/* Планшет и десктоп: сетка */}
           <ol className="hidden gap-3 sm:grid sm:grid-cols-3" aria-label="Топ-3">
@@ -218,14 +307,16 @@ export default function LeaderboardTable({
                     {row[displayNameKey]}
                   </span>
                   <div className="mt-2">{rowPrimary(row, true)}</div>
-                  <div className="mt-2 w-full">
-                    <LeaderboardRowMetrics
-                      row={row}
-                      categoryId={categoryId}
-                      rawById={rawById}
-                      publicMode={publicMode}
-                    />
-                  </div>
+                  {categoryId !== 'technical' ? (
+                    <div className="mt-2 w-full">
+                      <LeaderboardRowMetrics
+                        row={row}
+                        categoryId={categoryId}
+                        rawById={rawById}
+                        publicMode={publicMode}
+                      />
+                    </div>
+                  ) : null}
                 </button>
               </li>
             ))}
@@ -280,15 +371,17 @@ export default function LeaderboardTable({
 
                 <div className="hidden sm:block sm:shrink-0">{rowPrimary(row)}</div>
 
-                <div className="w-full border-t border-slate-100 pt-2 sm:w-auto sm:border-0 sm:pt-0 sm:shrink-0 dark:border-slate-700">
-                  <LeaderboardRowMetrics
-                    row={row}
-                    categoryId={categoryId}
-                    rawById={rawById}
-                    publicMode={publicMode}
-                    mobileStacked
-                  />
-                </div>
+                {categoryId !== 'technical' ? (
+                  <div className="w-full border-t border-slate-100 pt-2 sm:w-auto sm:border-0 sm:pt-0 sm:shrink-0 dark:border-slate-700">
+                    <LeaderboardRowMetrics
+                      row={row}
+                      categoryId={categoryId}
+                      rawById={rawById}
+                      publicMode={publicMode}
+                      mobileStacked
+                    />
+                  </div>
+                ) : null}
               </button>
             </li>
           )

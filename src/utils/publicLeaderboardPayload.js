@@ -44,15 +44,6 @@ function rowToPublicRow(row, raw, categoryId) {
       }
     }
   }
-  if (categoryId === 'technical' && row.tech) {
-    out.tech = {
-      kdPercent: row.tech.kdPercent,
-      automatedCount: row.tech.automatedCount,
-      effectiveKSR: row.tech.effectiveKSR,
-      studiedCount: row.tech.studiedCount,
-      totalAtoms: row.tech.totalAtoms,
-    }
-  }
   if (categoryId === 'motor' && raw) {
     out.motorSquares = serializeMotorSquaresForShare(raw.motorQualityWorkLog)
   }
