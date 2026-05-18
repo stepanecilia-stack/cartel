@@ -41,19 +41,19 @@ function ComposePhase({
   const totalInView = filteredStudents.length
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3 pb-24 sm:space-y-5 sm:pb-0">
+      <header className="space-y-2.5">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+          <h1 className="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
             Групповой прогресс техники
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-1 text-xs text-slate-600 sm:text-sm dark:text-slate-400">
             Шаг 1 из 2: отметьте, кто пришёл на тренировку.
           </p>
         </div>
         <Link
           to="/"
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto sm:text-sm"
         >
           Назад на дашборд
         </Link>
@@ -65,8 +65,8 @@ function ComposePhase({
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-5">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4 md:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
             <label htmlFor="group-training-search" className="sr-only">
               Поиск ученика
@@ -77,19 +77,19 @@ function ComposePhase({
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Поиск по имени..."
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900"
+              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:px-3"
             />
           </div>
           <button
             type="button"
             onClick={() => toggleAll(!allSelectedInView)}
             disabled={totalInView === 0}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="w-full shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto sm:text-sm"
           >
             {allSelectedInView ? 'Снять выбор' : 'Выбрать всех'}
           </button>
         </div>
-        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-[11px] text-slate-500 sm:mt-3 sm:text-xs dark:text-slate-400">
           Отмечено: {selectedCount} из {students.length}
         </p>
       </div>
@@ -107,13 +107,13 @@ function ComposePhase({
           По запросу никто не найден.
         </div>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2 lg:grid-cols-3">
           {filteredStudents.map((student) => {
             const checked = selectedIds.has(student.id)
             return (
               <li key={student.id}>
                 <label
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition-colors ${
+                  className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2.5 transition-colors active:opacity-90 sm:gap-3 sm:rounded-xl sm:px-3 sm:py-3 ${
                     checked
                       ? 'border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-500/10'
                       : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800'
@@ -123,9 +123,9 @@ function ComposePhase({
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleStudent(student.id)}
-                    className="h-5 w-5 shrink-0 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 sm:h-5 sm:w-5"
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-tight text-slate-900 sm:text-sm dark:text-slate-100">
                     {student.displayName}
                   </span>
                 </label>
@@ -135,12 +135,12 @@ function ComposePhase({
         </ul>
       )}
 
-      <div className="sticky bottom-3 z-30 flex justify-end">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-slate-50/95 p-2 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-950/95 sm:static sm:inset-auto sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <button
           type="button"
           onClick={onStartTraining}
           disabled={selectedCount === 0}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 sm:inline-flex sm:w-auto sm:px-5"
         >
           Начать тренировку
           <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold tabular-nums">
@@ -213,7 +213,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
     const current = value >= 1 && value <= total ? ordered[value - 1] : null
     const next = value < total ? ordered[value] : null
     return (
-      <div className="mt-2 min-h-[2.5rem] rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+      <div className="mt-1.5 min-h-[2rem] rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:mt-2 sm:min-h-[2.5rem] sm:px-3 sm:py-2 sm:text-sm dark:bg-slate-800 dark:text-slate-200">
         {current ? (
           <p>
             <span className="font-semibold text-blue-700 dark:text-blue-400">Шаг {value}.</span>{' '}
@@ -232,9 +232,11 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
   }
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{student.displayName}</h2>
+    <li className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-2">
+        <h2 className="text-sm font-semibold leading-tight text-slate-900 sm:text-base dark:text-slate-100">
+          {student.displayName}
+        </h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
             {tierLabel(1, total1, slider1)}
@@ -257,8 +259,10 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
         </div>
       </div>
 
-      <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 dark:border-slate-700">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Уровень 1</p>
+      <div className="mt-3 space-y-1 border-t border-slate-100 pt-3 sm:mt-4 sm:pt-4 dark:border-slate-700">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:text-[11px] dark:text-slate-400">
+          Уровень 1
+        </p>
         <input
           type="range"
           min={0}
@@ -415,22 +419,24 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
   )
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3 sm:space-y-5">
+      <header className="space-y-2.5">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
+          <h1 className="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
             Прогресс по шагам
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
-            открываются сами, когда предыдущий доведён до конца. Перетягивание по-прежнему выставляет «Умение» на
-            пройденных шагах; данные сохраняются автоматически.
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-400">
+            <span className="sm:hidden">Шаг 2: ползунки по уровням 1–3. Сохранение автоматически.</span>
+            <span className="hidden sm:inline">
+              Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
+              открываются сами, когда предыдущий доведён до конца. Данные сохраняются автоматически.
+            </span>
           </p>
         </div>
         <button
           type="button"
           onClick={onBack}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto sm:text-sm"
         >
           Изменить состав
         </button>
@@ -442,7 +448,7 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
         </div>
       ) : null}
 
-      <ul className="grid gap-3 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
         {studentsForSession.map((student) => (
           <StudentProgressRow
             key={student.id}
@@ -562,8 +568,8 @@ export default function GroupTrainingPage({ coachId }) {
 
   if (!coachId) {
     return (
-      <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
-        <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
+      <main className="min-h-screen bg-slate-50 px-2 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+        <div className="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-5 text-center text-sm text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:rounded-xl sm:p-6">
           Войдите в аккаунт тренера, чтобы запустить групповую тренировку.
           <div className="mt-4">
             <button
@@ -580,7 +586,7 @@ export default function GroupTrainingPage({ coachId }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+    <main className="min-h-screen bg-slate-50 px-2 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-10 md:py-12">
       <div className="mx-auto max-w-5xl">
         {phase === 'compose' ? (
           <ComposePhase
