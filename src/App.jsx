@@ -4,11 +4,13 @@ import AddStudent from './pages/AddStudent'
 import BulkNormSessionPage from './pages/BulkNormSessionPage'
 import GroupTrainingPage from './pages/GroupTrainingPage'
 import HomePage from './pages/HomePage'
+import LeaderboardPage from './pages/LeaderboardPage'
 import MotorQualitiesIndexPage from './pages/MotorQualitiesIndexPage'
 import MotorQualityDetailPage from './pages/MotorQualityDetailPage'
 import LoginCoach from './pages/LoginCoach'
 import RegisterCoach from './pages/RegisterCoach'
 import ShareProgressPage from './pages/ShareProgressPage'
+import ShareLeaderboardPage from './pages/ShareLeaderboardPage'
 import StudentPage from './pages/StudentPage'
 import WelcomePage from './pages/WelcomePage'
 import {
@@ -50,6 +52,13 @@ function Navbar({ user, coachProfile }) {
                 className="hidden shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900/50 md:inline-block"
               >
                 Групповая
+              </Link>
+              <Link
+                to="/leaderboard"
+                className="shrink-0 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 sm:text-sm"
+              >
+                <span className="sm:hidden">Рейтинг</span>
+                <span className="hidden sm:inline">Рейтинг</span>
               </Link>
             </>
           ) : null}
@@ -98,9 +107,16 @@ function ProtectedRoute({ user, element }) {
 function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const isShareRoute = location.pathname.startsWith('/share/')
+  const isShareRoute =
+    location.pathname.startsWith('/share/') || location.pathname.startsWith('/leaderboard/share/')
 
   const openStudentFromQualityPage = (student) => {
+    if (!student) return
+    setSelectedStudent(student)
+    navigate('/')
+  }
+
+  const openStudentFromLeaderboard = (student) => {
     if (!student) return
     setSelectedStudent(student)
     navigate('/')
@@ -111,6 +127,7 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
       {!isShareRoute && <Navbar user={authUser} coachProfile={coachProfile} />}
       <Routes>
         <Route path="/share/:student_hash" element={<ShareProgressPage />} />
+        <Route path="/leaderboard/share/:token" element={<ShareLeaderboardPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
         <Route
           path="/"
@@ -170,6 +187,30 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
                   onOpenStudent={openStudentFromQualityPage}
                 />
               }
+            />
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={
+                <LeaderboardPage
+                  scope="coach"
+                  coachId={authUser?.uid}
+                  onSelectStudent={openStudentFromLeaderboard}
+                />
+              }
+            />
+          }
+        />
+        <Route
+          path="/leaderboard/school"
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={<LeaderboardPage scope="school" />}
             />
           }
         />

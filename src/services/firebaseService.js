@@ -131,6 +131,120 @@ export const setPublicStudentShareDocument = async (token, { payload, ownerCoach
   )
 }
 
+/** Публичный рейтинг тренера (чтение без входа). */
+export const subscribePublicLeaderboardShareByToken = (token, onData, onError) => {
+  if (!db || !token || typeof token !== 'string' || token.length < 16) {
+    onData?.(null)
+    return () => {}
+  }
+  const ref = doc(ensureDb(), 'public_leaderboard_shares', token)
+  return onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists()) {
+        onData?.(null)
+        return
+      }
+      onData?.({ id: snap.id, ...snap.data() })
+    },
+    (err) => {
+      console.error('subscribePublicLeaderboardShareByToken', err)
+      onError?.(err)
+    },
+  )
+}
+
+export const setPublicLeaderboardShareDocument = async (token, { payload, ownerCoachId }) => {
+  if (!token || typeof token !== 'string') throw new Error('Некорректный токен ссылки')
+  const safePayload = deepOmitUndefined(payload)
+  if (safePayload === undefined) throw new Error('Пустой payload для публичного рейтинга')
+  await setDoc(
+    doc(ensureDb(), 'public_leaderboard_shares', token),
+    {
+      payload: safePayload,
+      ownerCoachId: typeof ownerCoachId === 'string' ? ownerCoachId : '',
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  )
+}
+
+export const subscribeCoachProfile = (coachId, onData, onError) => {
+  if (!db || !coachId) {
+    onData?.(null)
+    return () => {}
+  }
+  const ref = doc(ensureDb(), 'coaches', coachId)
+  return onSnapshot(
+    ref,
+    (snap) => {
+      onData?.(snap.exists() ? { id: snap.id, ...snap.data() } : null)
+    },
+    (err) => {
+      console.error('subscribeCoachProfile', err)
+      onError?.(err)
+    },
+  )
+}
+
+export const updateCoachLeaderboardSettings = async (coachId, settings) => {
+  if (!coachId) throw new Error('Не указан тренер')
+  const payload = deepOmitUndefined(settings)
+  if (!payload || Object.keys(payload).length === 0) return
+  await setDoc(
+    doc(ensureDb(), 'coaches', coachId),
+    { ...payload, updatedAt: serverTimestamp() },
+    { merge: true },
+  )
+}
+
+/**
+ * Подписка на учеников тренера (realtime, coach_ids + legacy coachId).
+ * @returns {() => void}
+ */
+export const subscribeCoachStudents = (coachId, onData, onError) => {
+  if (!studentsCollection || !coachId) {
+    onData?.([])
+    return () => {}
+  }
+  const col = collection(ensureDb(), 'students')
+  let arrayDocs = []
+  let legacyDocs = []
+
+  const emit = () => {
+    onData?.(mergeCoachStudentsDocs([...arrayDocs, ...legacyDocs]))
+  }
+
+  const unsubArray = onSnapshot(
+    query(col, where('coach_ids', 'array-contains', coachId)),
+    (snap) => {
+      arrayDocs = snap.docs
+      emit()
+    },
+    (err) => {
+      console.error('subscribeCoachStudents coach_ids', err)
+      onError?.(err)
+    },
+  )
+
+  const unsubLegacy = onSnapshot(
+    query(col, where('coachId', '==', coachId)),
+    (snap) => {
+      legacyDocs = snap.docs
+      emit()
+    },
+    (err) => {
+      console.error('subscribeCoachStudents coachId', err)
+      onError?.(err)
+    },
+  )
+
+  return () => {
+    unsubArray()
+    unsubLegacy()
+  }
+}
+
 export const getStudents = async () => {
   if (!studentsCollection) return []
   const snapshot = await getDocs(studentsCollection)
@@ -197,6 +311,13 @@ export const updateStudentData = async (studentId, updatedData, meta = {}) => {
     lastUpdatedSection: section,
     updatedAt: serverTimestamp(),
   })
+
+  const coachId = audit.lastUpdatedByCoachId
+  if (coachId) {
+    import('./leaderboardShareService.js')
+      .then(({ scheduleLeaderboardShareSync }) => scheduleLeaderboardShareSync(coachId))
+      .catch(() => {})
+  }
 }
 
 export const getStudentById = async (studentId) => {
