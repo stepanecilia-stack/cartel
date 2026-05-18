@@ -20,30 +20,33 @@ import { displayNameFromStudent } from '../utils/studentModel'
 
 const SAVE_DEBOUNCE_MS = 350
 
-const TRAINING_RANGE_TRACK = '#e2e8f0'
-
 function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = 'blue' }) {
   const fillPercent = max > 0 ? (value / max) * 100 : 0
-  const fillColor = variant === 'violet' ? '#7c3aed' : '#2563eb'
+  const fillClass = variant === 'violet' ? 'bg-violet-600' : 'bg-blue-600'
   const thumbBorderClass =
     variant === 'violet'
-      ? '[&::-webkit-slider-thumb]:border-violet-600 [&::-moz-range-progress]:bg-violet-600'
-      : '[&::-webkit-slider-thumb]:border-blue-600 [&::-moz-range-progress]:bg-blue-600'
+      ? '[&::-moz-range-thumb]:border-violet-600 [&::-webkit-slider-thumb]:border-violet-600'
+      : '[&::-moz-range-thumb]:border-blue-600 [&::-webkit-slider-thumb]:border-blue-600'
 
   return (
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={1}
-      value={value}
-      onChange={onChange}
-      aria-label={ariaLabel}
-      className={`h-2 w-full cursor-pointer appearance-none rounded-full sm:h-1.5 ${thumbBorderClass} [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-slate-200 [&::-moz-range-progress]:h-2 [&::-moz-range-progress]:rounded-full [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow`}
-      style={{
-        background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${fillPercent}%, ${TRAINING_RANGE_TRACK} ${fillPercent}%, ${TRAINING_RANGE_TRACK} 100%)`,
-      }}
-    />
+    <div className="relative flex h-11 items-center sm:h-9">
+      <div
+        className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+        aria-hidden
+      >
+        <div className={`h-full ${fillClass}`} style={{ width: `${fillPercent}%` }} />
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={value}
+        onChange={onChange}
+        aria-label={ariaLabel}
+        className={`relative z-10 h-11 w-full cursor-pointer appearance-none bg-transparent sm:h-9 ${thumbBorderClass} [&::-moz-range-progress]:bg-transparent [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-md sm:[&::-moz-range-thumb]:h-6 sm:[&::-moz-range-thumb]:w-6 [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.75rem)/2)] [&::-webkit-slider-thumb]:box-border [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md sm:[&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.5rem)/2)] sm:[&::-webkit-slider-thumb]:h-6 sm:[&::-webkit-slider-thumb]:w-6`}
+      />
+    </div>
   )
 }
 
@@ -274,7 +277,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
             {value}/{total}
           </span>
         </div>
-        <div className="touch-manipulation py-2">
+        <div className="touch-manipulation">
           <TrainingRangeSlider
             min={0}
             max={total}
