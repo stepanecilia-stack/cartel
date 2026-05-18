@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom'
 import { subscribePublicStudentShareByToken } from '../services/firebaseService'
 import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
-import { buildShareAutoRecommendations } from '../utils/shareAutoRecommendations'
 import StandardDuelSilhouettes from '../components/StandardDuelSilhouettes'
+import ShareSensitivePeriodsMap from '../components/ShareSensitivePeriodsMap'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 
@@ -90,14 +90,14 @@ function WeightLineChartLight({ points }) {
 
   if (sorted.length === 0) {
     return (
-      <div className="flex h-52 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 text-sm text-slate-500">
+      <div className="flex h-36 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 sm:h-52 sm:rounded-xl sm:text-sm dark:border-slate-600 dark:bg-slate-800/85">
         Пока нет записей веса для графика.
       </div>
     )
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 p-4 shadow-sm">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm sm:rounded-xl sm:p-4 dark:border-slate-600 dark:bg-slate-900">
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mx-auto max-w-full text-blue-600">
         <defs>
           <linearGradient id="share-w-lg" x1="0" y1="0" x2="1" y2="0">
@@ -144,7 +144,7 @@ function ShareReadonlyNormCard({ item }) {
         : '—'
 
   return (
-    <div className={`flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}>
+    <div className={`flex flex-col gap-1.5 rounded-lg border p-2.5 transition-colors sm:gap-2 sm:rounded-xl sm:p-4 ${cardTone}`}>
       <div className="text-center">
         <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{item.name}</span>
         {item.description ? (
@@ -307,26 +307,18 @@ export default function ShareProgressPage() {
   const duelRows = p?.duelRows
   const standardPassport = p?.standardPassport
 
-  const autoRecommendations = useMemo(() => {
-    if (!p) return null
-    const embedded = p.autoRecommendations
-    if (embedded && Array.isArray(embedded.bullets) && embedded.bullets.length > 0) return embedded
-    return buildShareAutoRecommendations({
-      physicalItems: p.physical?.items ?? [],
-      functionalItems: p.functional?.items ?? [],
-      technicalItems: p.technical?.atoms ?? [],
-      duelRows: p.duelRows ?? [],
-    })
-  }, [p])
-
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+    <main className="min-h-screen bg-slate-50 px-2 py-4 text-slate-900 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-4xl space-y-2.5 sm:space-y-6">
         <header className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cartel Academy</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">Карточка спортсмена</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">
+            Cartel Academy
+          </p>
+          <h1 className="mt-0.5 text-xl font-bold text-slate-900 dark:text-slate-100 sm:mt-1 sm:text-3xl">
+            Карточка спортсмена
+          </h1>
           {live && !error && p ? (
-            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-800 sm:mt-3 sm:gap-2 sm:px-3 sm:py-1 sm:text-xs">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -348,9 +340,9 @@ export default function ShareProgressPage() {
 
         {!loading && p && (
           <>
-            <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
-              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100">
+            <section className="rounded-xl bg-white p-2.5 shadow-sm dark:bg-slate-900 sm:p-6">
+              <div className="flex items-center gap-3 sm:flex-row sm:items-start sm:gap-4">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-24 sm:w-24 sm:rounded-xl dark:border-slate-600">
                   {p.photoURL ? (
                     <img src={p.photoURL} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -362,14 +354,14 @@ export default function ShareProgressPage() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{p.displayName}</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  <h2 className="text-lg font-bold leading-tight text-slate-900 sm:text-2xl dark:text-slate-100">{p.displayName}</h2>
+                  <p className="mt-1 text-xs text-slate-600 sm:mt-2 sm:text-sm dark:text-slate-400">
                     Текущий вес:{' '}
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {p.currentWeight > 0 ? `${p.currentWeight} кг` : '—'}
                     </span>
                   </p>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  <p className="mt-0.5 text-xs text-slate-600 sm:text-sm dark:text-slate-400">
                     Следующая аттестация:{' '}
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
                       {p.nextAttestationDate
@@ -384,23 +376,13 @@ export default function ShareProgressPage() {
                 </div>
               </div>
 
-              <div className="mt-6">
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">Динамика веса</h3>
+              <div className="mt-3 sm:mt-6">
+                <h3 className="mb-1.5 text-xs font-semibold text-slate-800 sm:mb-2 sm:text-sm">Динамика веса</h3>
                 <WeightLineChartLight points={p.weightHistory || []} />
               </div>
             </section>
 
-            {autoRecommendations ? (
-              <section className="rounded-xl border border-sky-200 bg-sky-50/90 p-4 shadow-sm dark:border-sky-800 dark:bg-sky-950/40 sm:p-6">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Ориентиры и зоны роста</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{autoRecommendations.intro}</p>
-                <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
-                  {autoRecommendations.bullets.map((line, idx) => (
-                    <li key={idx}>{line}</li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
+            <ShareSensitivePeriodsMap birthYear={athlete?.birthYear} />
 
             {duelRows?.length > 0 && standardPassport && (
               <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-8">
@@ -538,14 +520,13 @@ export default function ShareProgressPage() {
               </section>
             )}
 
-            <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Тесты и техника</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Разделы и оформление совпадают с кабинетом тренера. Нормативы с отметкой фиксации синхронизируются сразу после
-                сохранения тренером.
+            <section className="rounded-xl bg-white p-2.5 shadow-sm dark:bg-slate-900 sm:p-6">
+              <h2 className="text-base font-semibold text-slate-900 sm:text-lg dark:text-slate-100">Тесты и техника</h2>
+              <p className="mt-1 hidden text-sm text-slate-600 sm:block dark:text-slate-400">
+                Нормативы обновляются после сохранения тренером.
               </p>
 
-              <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 sm:px-4">
+              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 sm:mt-4 sm:rounded-xl sm:px-4 sm:py-3 dark:border-slate-600 dark:bg-slate-800/85">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                   Степень влияния на реализацию потенциала
                 </p>
@@ -579,7 +560,7 @@ export default function ShareProgressPage() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
+              <div className="-mx-0.5 mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:mx-0 sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pb-0 md:flex md:flex-nowrap md:gap-4">
                 {TAB_ITEMS.map((tab) => {
                   const infKey = tabIdToInfluenceKey[tab.id]
                   const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
@@ -588,7 +569,7 @@ export default function ShareProgressPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`group relative min-h-[116px] rounded-xl border bg-[#1A1A1A] px-3 py-3 text-left text-[#E8E8E8] transition-all duration-300 sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
+                      className={`group relative min-w-[7.5rem] shrink-0 min-h-[4.25rem] rounded-lg border bg-[#1A1A1A] px-2 py-2 text-left text-[#E8E8E8] transition-all sm:min-w-0 sm:min-h-[124px] sm:rounded-xl sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
                         activeTab === tab.id
                           ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
                           : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
@@ -602,19 +583,19 @@ export default function ShareProgressPage() {
                         }`}
                         aria-hidden
                       />
-                      <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10">
+                      <span className="mb-1 inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10 sm:rounded-lg">
                         {TAB_ICONS[tab.id]}
                       </span>
                       <span
-                        className="block text-[14px] uppercase leading-tight tracking-normal sm:text-[16px] md:text-[18px] md:tracking-wide"
+                        className="block text-[11px] uppercase leading-tight sm:text-[16px] md:text-[18px] md:tracking-wide"
                         style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
                       >
                         {tab.label}
                       </span>
-                      <span className="mt-2 block text-[11px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
+                      <span className="mt-0.5 block text-[10px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
                         {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
                       </span>
-                      <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A]" aria-hidden>
+                      <span className="mt-1 hidden h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A] sm:mt-2 sm:block" aria-hidden>
                         <span
                           className={`block h-full transition-all duration-300 ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
                           style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
@@ -625,7 +606,7 @@ export default function ShareProgressPage() {
                 })}
               </div>
 
-              <div className="mt-6 space-y-6">
+              <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-6">
                 {activeTab === 'anthropometry' && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-slate-800">Антропометрия</h3>
@@ -779,9 +760,8 @@ export default function ShareProgressPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 text-center shadow-sm sm:p-8">
-              <p className="text-lg font-semibold text-emerald-900">Цель — уверенный прогресс по всем разделам</p>
-              <p className="mt-2 text-sm text-emerald-800/90">Вопросы по цифрам и плану — к тренеру в зале.</p>
+            <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-center shadow-sm sm:p-6">
+              <p className="text-sm font-semibold text-emerald-900 sm:text-lg">Вопросы по прогрессу — к тренеру в зале</p>
             </section>
           </>
         )}
