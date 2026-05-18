@@ -64,7 +64,7 @@ function ExerciseForm({ title, form, formError, saving, onFieldChange, onSubmit,
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-600 dark:bg-slate-900 sm:p-5"
+      className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-900 sm:space-y-4 sm:rounded-xl sm:p-5"
     >
       <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h3>
       <label className="block space-y-1">
@@ -356,13 +356,13 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
   }
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-3 py-8 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-12">
-      <div className="mx-auto max-w-3xl space-y-8">
+    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-2 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-10 md:py-12">
+      <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6 md:space-y-8">
         {studentReturn ? (
-          <div className="rounded-xl border border-blue-200 bg-blue-50/90 px-4 py-3 dark:border-blue-900/60 dark:bg-blue-950/40">
+          <div className="rounded-lg border border-blue-200 bg-blue-50/90 px-3 py-2.5 dark:border-blue-900/60 dark:bg-blue-950/40 sm:rounded-xl sm:px-4 sm:py-3">
             <Link
               to={studentReturn.to}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-blue-800 hover:text-blue-950 dark:text-blue-200 dark:hover:text-blue-100"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 hover:text-blue-950 sm:gap-2 sm:text-sm dark:text-blue-200 dark:hover:text-blue-100"
             >
               <span className="text-base leading-none" aria-hidden>
                 ←
@@ -379,7 +379,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
           </div>
         ) : null}
 
-        <nav className="text-sm text-slate-600 dark:text-slate-400">
+        <nav className="text-xs text-slate-600 sm:text-sm dark:text-slate-400">
           <Link
             to="/qualities"
             state={linkState}
@@ -391,12 +391,30 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
           <span className="text-slate-900 dark:text-slate-200">{item.title}</span>
         </nav>
 
-        <header className="space-y-3">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{item.title}</h1>
+        <header className="space-y-2 sm:space-y-3">
+          <h1 className="text-xl font-bold leading-tight tracking-tight sm:text-3xl md:text-4xl">{item.title}</h1>
           {item.sensitiveAgeSet?.size > 0 ? (
-            <SensitiveAgeScale sensitiveAges={item.sensitiveAgeSet} className="max-w-xl" />
+            <SensitiveAgeScale sensitiveAges={item.sensitiveAgeSet} className="w-full max-w-xl" />
           ) : null}
         </header>
+
+        {selectedExercise ? (
+          <div className="sticky top-14 z-20 -mx-0.5 rounded-lg border border-emerald-300 bg-emerald-50/95 px-2.5 py-2 shadow-sm backdrop-blur-sm dark:border-emerald-800 dark:bg-emerald-950/90 sm:static sm:mx-0 sm:border-emerald-200 sm:bg-emerald-50/60 sm:px-3 sm:py-2.5 sm:shadow-none">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+              Выбрано упражнение
+            </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+              {selectedExercise.title}
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedExerciseId(null)}
+              className="mt-1.5 text-[11px] font-medium text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-300"
+            >
+              Снять выбор
+            </button>
+          </div>
+        ) : null}
 
         <QualitySensitiveStudentsPanel
           qualityTitle={item.title}
@@ -426,21 +444,21 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
           />
         ) : null}
 
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <section className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:text-sm dark:text-slate-400">
                 Банк упражнений
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                Нажмите на карточку упражнения — в списке спортсменов выше подсветится объём по возрасту.
+              <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:mt-2 sm:text-sm dark:text-slate-400">
+                Нажмите карточку — в списке выше появится объём и «Отметить».
               </p>
             </div>
             {canPersist ? (
               <button
                 type="button"
                 onClick={() => (formOpen && !editingId ? closeForm() : openAddForm())}
-                className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                className="w-full shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-600 sm:w-auto sm:px-4 sm:text-sm"
               >
                 {formOpen && !editingId ? 'Скрыть форму' : 'Добавить упражнение'}
               </button>
@@ -478,7 +496,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
               Пока нет упражнений для этого качества. Нажмите «Добавить упражнение», чтобы создать первое.
             </p>
           ) : (
-            <ul className="space-y-4">
+            <ul className="space-y-3 sm:space-y-4">
               {exercises.map((ex) => {
                 const webm = ex.media?.webmSrc
                 const gif = ex.media?.gifSrc
@@ -498,7 +516,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
                 return (
                   <li key={ex.id}>
                     <div
-                      className={`overflow-hidden rounded-xl border bg-white dark:bg-slate-900 ${
+                      className={`overflow-hidden rounded-lg border bg-white dark:bg-slate-900 sm:rounded-xl ${
                         isEditingThis
                           ? 'border-blue-400 ring-2 ring-blue-200 dark:border-blue-500 dark:ring-blue-900/50'
                           : isSelected
@@ -513,7 +531,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
                       }
                       className="block w-full text-left"
                     >
-                    <div className="aspect-video w-full border-b border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                    <div className="aspect-[16/10] max-h-44 w-full border-b border-slate-100 bg-slate-100 sm:aspect-video sm:max-h-none dark:border-slate-700 dark:bg-slate-800">
                       {hasVideo ? (
                         <video
                           className="h-full w-full object-cover"
@@ -540,12 +558,18 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
                         </div>
                       )}
                     </div>
-                    <div className="space-y-2 p-4 sm:p-5">
-                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{ex.title}</h3>
+                    <div className="space-y-1.5 p-2.5 sm:space-y-2 sm:p-4 md:p-5">
+                      <h3 className="text-sm font-semibold leading-snug text-slate-900 sm:text-base dark:text-slate-100">
+                        {ex.title}
+                      </h3>
                       {ageLabel ? (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Возраст упражнения: {ageLabel} лет</p>
+                        <p className="text-[10px] text-slate-500 sm:text-xs dark:text-slate-400">
+                          Возраст: {ageLabel} лет
+                        </p>
                       ) : null}
-                      <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{ex.intent}</p>
+                      <p className="line-clamp-3 text-xs leading-relaxed text-slate-600 sm:line-clamp-none sm:text-sm dark:text-slate-400">
+                        {ex.intent}
+                      </p>
                       {ex.doseUnder12 || ex.dose13to15 || ex.dose16Plus ? (
                         <div className="space-y-0.5 text-xs text-slate-500 dark:text-slate-400">
                           {ex.doseUnder12 ? <p>до 12: {ex.doseUnder12}</p> : null}
@@ -554,13 +578,13 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
                         </div>
                       ) : null}
                       {ex.cues ? (
-                        <p className="text-sm text-slate-700 dark:text-slate-300">
+                        <p className="line-clamp-2 text-xs text-slate-700 sm:line-clamp-none sm:text-sm dark:text-slate-300">
                           <span className="font-medium text-slate-800 dark:text-slate-200">Подсказки: </span>
                           {ex.cues}
                         </p>
                       ) : null}
                       {ex.avoid ? (
-                        <p className="text-sm text-amber-800 dark:text-amber-200/90">
+                        <p className="line-clamp-2 text-xs text-amber-800 sm:line-clamp-none sm:text-sm dark:text-amber-200/90">
                           <span className="font-medium">Избегать: </span>
                           {ex.avoid}
                         </p>
@@ -568,7 +592,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
                     </div>
                     </button>
                     {canPersist ? (
-                      <div className="flex gap-3 border-t border-slate-100 px-4 py-2 dark:border-slate-700">
+                      <div className="flex gap-4 border-t border-slate-100 px-2.5 py-2 sm:px-4 dark:border-slate-700">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -601,7 +625,9 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Другие качества</h2>
+          <h2 className="mb-2 text-xs font-semibold text-slate-800 sm:mb-3 sm:text-sm dark:text-slate-200">
+            Другие качества
+          </h2>
           <ul className="flex flex-wrap gap-2">
             {catalog
               .filter((q) => q.slug !== item.slug)
