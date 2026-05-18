@@ -136,7 +136,7 @@ export function buildLeaderboardMetric(student, allNorms, technicalAtoms, catego
         sortValue: medals.points,
         primaryLabel: `${medals.gold}`,
         primarySuffix: 'золото',
-        secondary: `🥈 ${medals.silver} · 🥉 ${medals.bronze}${medals.red ? ` · зона роста ${medals.red}` : ''}`,
+        secondary: `🥈 ${medals.silver} · 🥉 ${medals.bronze}`,
         medals,
       }
     }

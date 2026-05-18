@@ -29,7 +29,7 @@ export function MedalChips({ medals, stacked = false }) {
   return (
     <div
       className={`flex flex-wrap gap-1 text-[10px] sm:gap-1.5 sm:text-xs ${
-        stacked ? 'justify-start' : 'items-center justify-end sm:justify-end'
+        stacked ? 'justify-center' : 'items-center justify-end sm:justify-end'
       }`}
     >
       <span className="rounded-full bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 sm:px-2">
@@ -41,11 +41,6 @@ export function MedalChips({ medals, stacked = false }) {
       <span className="rounded-full bg-orange-50 px-1.5 py-0.5 font-medium text-orange-900 dark:bg-orange-950/40 dark:text-orange-200 sm:px-2">
         🥉 {medals.bronze}
       </span>
-      {medals.red > 0 ? (
-        <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200 sm:px-2">
-          зона роста {medals.red}
-        </span>
-      ) : null}
     </div>
   )
 }
@@ -132,7 +127,7 @@ function PodiumSlot({
   const isFirst = rank === 1
   const isSecond = rank === 2
 
-  const stepHeight = isFirst ? 'h-10' : isSecond ? 'h-6' : 'h-4'
+  const stepHeight = isFirst ? 'h-10 sm:h-14' : isSecond ? 'h-6 sm:h-9' : 'h-4 sm:h-7'
   const stepColor = isFirst
     ? 'bg-gradient-to-t from-amber-500 to-amber-400'
     : isSecond
@@ -142,20 +137,20 @@ function PodiumSlot({
   const cardShell = isFirst
     ? 'z-10 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white shadow-lg ring-2 ring-amber-400/70 dark:border-amber-600 dark:from-amber-950/50 dark:via-slate-900 dark:to-slate-900 dark:ring-amber-500/50'
     : isSecond
-      ? 'mt-5 border-slate-300 bg-white shadow-sm dark:border-slate-500 dark:bg-slate-900'
-      : 'mt-7 border-orange-200 bg-white shadow-sm dark:border-orange-700 dark:bg-slate-900'
+      ? 'mt-5 border-slate-300 bg-white shadow-sm sm:mt-8 dark:border-slate-500 dark:bg-slate-900'
+      : 'mt-7 border-orange-200 bg-white shadow-sm sm:mt-10 dark:border-orange-700 dark:bg-slate-900'
 
   const inner = (
     <>
       {isFirst ? (
-        <span className="mb-0.5 text-base leading-none" aria-hidden>
+        <span className="mb-0.5 text-base leading-none sm:mb-1 sm:text-xl" aria-hidden>
           👑
         </span>
       ) : null}
       <RankBadge rank={rank} compact />
       <span
         className={`mt-1 line-clamp-2 w-full font-bold leading-tight text-slate-900 dark:text-slate-100 ${
-          isFirst ? 'text-xs' : 'text-[10px]'
+          isFirst ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-xs'
         }`}
       >
         {row[displayNameKey]}
@@ -191,13 +186,13 @@ function PodiumSlot({
         <button
           type="button"
           onClick={() => onOpenStudent?.(row)}
-          className={`flex flex-1 flex-col items-center rounded-t-xl border-x border-t px-1.5 pb-2 pt-2.5 text-center touch-manipulation active:opacity-95 sm:px-2 ${cardShell}`}
+          className={`flex flex-1 flex-col items-center rounded-t-xl border-x border-t px-1.5 pb-2 pt-2.5 text-center touch-manipulation active:opacity-95 sm:px-3 sm:pb-3 sm:pt-3.5 ${canOpenStudent ? 'sm:hover:brightness-[0.98]' : ''} ${cardShell}`}
         >
           {inner}
         </button>
       ) : (
         <div
-          className={`flex flex-1 flex-col items-center rounded-t-xl border-x border-t px-1.5 pb-2 pt-2.5 text-center sm:px-2 ${cardShell}`}
+          className={`flex flex-1 flex-col items-center rounded-t-xl border-x border-t px-1.5 pb-2 pt-2.5 text-center sm:px-3 sm:pb-3 sm:pt-3.5 ${cardShell}`}
         >
           {inner}
         </div>
@@ -263,11 +258,14 @@ export default function LeaderboardTable({
     <>
       {topThree.length > 0 && !showCheckboxes ? (
         <>
-          <div className="sm:hidden">
-            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <div>
+            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:mb-3 sm:text-xs dark:text-slate-400">
               Пьедестал
             </p>
-            <ol className="grid grid-cols-3 items-end gap-1.5" aria-label="Топ-3">
+            <ol
+              className="mx-auto grid max-w-3xl grid-cols-3 items-end gap-1.5 sm:max-w-4xl sm:gap-4 md:max-w-5xl md:gap-6"
+              aria-label="Топ-3"
+            >
               {getPodiumSlots(topThree).map((slot) =>
                 slot.row ? (
                   <PodiumSlot
@@ -282,45 +280,12 @@ export default function LeaderboardTable({
                     rowPrimary={rowPrimary}
                   />
                 ) : (
-                  <li key={`empty-${slot.rank}`} className="min-h-[4rem] flex-1" aria-hidden />
+                  <li key={`empty-${slot.rank}`} className="min-h-[4rem] flex-1 sm:min-h-[5rem]" aria-hidden />
                 ),
               )}
             </ol>
           </div>
 
-          {/* Планшет и десктоп: сетка */}
-          <ol className="hidden gap-3 sm:grid sm:grid-cols-3" aria-label="Топ-3">
-            {topThree.map((row) => (
-              <li key={`desktop-${row.id ?? row.rank}`}>
-                <button
-                  type="button"
-                  disabled={!canOpenStudent}
-                  onClick={() => onOpenStudent?.(row)}
-                  className={`flex h-full w-full flex-col items-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition dark:border-slate-600 dark:bg-slate-900 ${
-                    canOpenStudent
-                      ? 'hover:border-blue-300 hover:shadow-md dark:hover:border-blue-600'
-                      : 'cursor-default'
-                  }`}
-                >
-                  <RankBadge rank={row.rank} />
-                  <span className="mt-2 line-clamp-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {row[displayNameKey]}
-                  </span>
-                  <div className="mt-2">{rowPrimary(row, true)}</div>
-                  {categoryId !== 'technical' ? (
-                    <div className="mt-2 w-full">
-                      <LeaderboardRowMetrics
-                        row={row}
-                        categoryId={categoryId}
-                        rawById={rawById}
-                        publicMode={publicMode}
-                      />
-                    </div>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ol>
         </>
       ) : null}
 
