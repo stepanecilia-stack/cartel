@@ -10,6 +10,7 @@ import {
   normalizeStudentTechnicalData,
 } from '../utils/technicalProgramProgress.js'
 import { mergeWithRequiredLevel3Combinations } from '../utils/techniqueCatalog.js'
+import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
 import {
   applyProgressSliderToTechnicalData,
   buildTechnicalOnlyUpdatePayload,
@@ -386,7 +387,7 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
           technicalAtoms,
           nextTechnical,
         )
-        await updateStudentData(studentId, patch)
+        await updateStudentData(studentId, patch, { section: STUDENT_UPDATE_SECTION.groupTraining })
         slot.base = { ...slot.base, ...patch }
         setStatus(studentId, 'saved')
       } catch (error) {

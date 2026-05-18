@@ -314,11 +314,17 @@ function HomePage({ onSelectStudent, coachId }) {
                         className={`mt-0.5 truncate text-[10px] leading-tight sm:text-[11px] ${
                           student.lastChange.isStale ? 'text-amber-800' : 'text-slate-500 dark:text-slate-400'
                         }`}
-                        title={
+                        title={[
                           student.lastChange.coachName
-                            ? `Изменил: ${student.lastChange.coachName}, ${student.lastChange.dateLabel}`
-                            : student.lastChange.dateLabel
-                        }
+                            ? `Изменил: ${student.lastChange.coachName}`
+                            : null,
+                          student.lastChange.sectionLabel
+                            ? `Раздел: ${student.lastChange.sectionLabel}`
+                            : null,
+                          student.lastChange.dateLabel,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       >
                         {student.lastChange.isStale ? (
                           <span className="mr-0.5" aria-hidden>
@@ -330,6 +336,12 @@ function HomePage({ onSelectStudent, coachId }) {
                         ) : (
                           <span>Изменение</span>
                         )}
+                        {student.lastChange.sectionLabel ? (
+                          <>
+                            <span className="text-slate-400"> · </span>
+                            <span>{student.lastChange.sectionLabel}</span>
+                          </>
+                        ) : null}
                         <span className="text-slate-400"> · </span>
                         <span className="tabular-nums">{student.lastChange.dateLabel}</span>
                       </p>

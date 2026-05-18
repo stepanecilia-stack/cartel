@@ -28,20 +28,47 @@ function formatDateRu(ms) {
   })
 }
 
-function pushCandidate(candidates, ms, coachName) {
-  if (ms == null || !Number.isFinite(ms)) return
-  const name = typeof coachName === 'string' ? coachName.trim() : ''
-  candidates.push({ ms, coachName: name || null })
+function trimSection(value) {
+  const s = typeof value === 'string' ? value.trim() : ''
+  return s.length ? s : null
 }
 
-function collectFromTestsBucket(candidates, bucket) {
+function pushCandidate(candidates, ms, coachName, sectionLabel) {
+  if (ms == null || !Number.isFinite(ms)) return
+  const name = typeof coachName === 'string' ? coachName.trim() : ''
+  candidates.push({
+    ms,
+    coachName: name || null,
+    sectionLabel: trimSection(sectionLabel),
+  })
+}
+
+function normRowSection(categoryLabel, row) {
+  const name =
+    typeof row?.normNameSnapshot === 'string' && row.normNameSnapshot.trim()
+      ? row.normNameSnapshot.trim()
+      : null
+  return name ? `${categoryLabel}: ${name}` : categoryLabel
+}
+
+function collectFromTestsBucket(candidates, bucket, categoryLabel) {
   if (!bucket || typeof bucket !== 'object') return
   for (const row of Object.values(bucket)) {
     if (!row || typeof row !== 'object') continue
-    pushCandidate(candidates, instantToMs(row.acceptedAt), row.acceptedByCoachName)
+    pushCandidate(
+      candidates,
+      instantToMs(row.acceptedAt),
+      row.acceptedByCoachName,
+      normRowSection(categoryLabel, row),
+    )
     if (Array.isArray(row.acceptanceHistory)) {
       for (const entry of row.acceptanceHistory) {
-        pushCandidate(candidates, instantToMs(entry?.recordedAt), entry?.coachName)
+        pushCandidate(
+          candidates,
+          instantToMs(entry?.recordedAt),
+          entry?.coachName,
+          normRowSection(categoryLabel, entry),
+        )
       }
     }
   }
@@ -53,6 +80,7 @@ function collectFromTestsBucket(candidates, bucket) {
  *   ms: number,
  *   dateLabel: string,
  *   coachName: string | null,
+ *   sectionLabel: string | null,
  *   daysSince: number,
  *   isStale: boolean,
  * } | null}
@@ -63,16 +91,16 @@ export function resolveStudentLastChange(student) {
   const candidates = []
   const docMs = instantToMs(student.updatedAt)
   if (docMs != null) {
-    pushCandidate(candidates, docMs, student.lastUpdatedByCoachName)
+    pushCandidate(candidates, docMs, student.lastUpdatedByCoachName, student.lastUpdatedSection)
   }
 
   const tests = student.tests && typeof student.tests === 'object' ? student.tests : {}
-  collectFromTestsBucket(candidates, tests.physical)
-  collectFromTestsBucket(candidates, tests.functional)
+  collectFromTestsBucket(candidates, tests.physical, 'Норматив · физика')
+  collectFromTestsBucket(candidates, tests.functional, 'Норматив · функционал')
 
   const createdMs = instantToMs(student.createdAt)
   if (createdMs != null) {
-    pushCandidate(candidates, createdMs, student.lastUpdatedByCoachName)
+    pushCandidate(candidates, createdMs, student.lastUpdatedByCoachName, 'Создание карточки')
   }
 
   if (candidates.length === 0) return null
@@ -85,6 +113,7 @@ export function resolveStudentLastChange(student) {
     ms: latest.ms,
     dateLabel: formatDateRu(latest.ms),
     coachName: latest.coachName,
+    sectionLabel: latest.sectionLabel,
     daysSince,
     isStale: daysSince > 5,
   }

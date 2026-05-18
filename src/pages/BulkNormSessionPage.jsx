@@ -18,6 +18,7 @@ import {
   isMinuteSecondNorm,
 } from '../utils/normTestsStorage.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
+import { normAcceptanceSectionLabel } from '../utils/studentUpdateSections.js'
 import {
   buildStudentTestsUpdatePayload,
   getStoredNormRow,
@@ -247,7 +248,9 @@ export default function BulkNormSessionPage({ coachId }) {
           functionalMerged,
         })
 
-        await updateStudentData(athlete.id, payload)
+        await updateStudentData(athlete.id, payload, {
+          section: normAcceptanceSectionLabel(category, norm),
+        })
         nextSaved[athlete.id] = acceptedRow
         setStudents((prev) =>
           prev.map((s) => (s.id === athlete.id ? { ...s, ...payload } : s)),

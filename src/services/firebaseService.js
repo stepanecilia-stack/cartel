@@ -21,6 +21,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
+import { inferUpdateSectionFromPayload } from '../utils/studentUpdateSections.js'
 
 const trimEnv = (value) => (typeof value === 'string' ? value.trim() : value)
 
@@ -162,7 +163,7 @@ const deepOmitUndefined = (value) => {
   return out
 }
 
-async function resolveCurrentCoachAuditFields() {
+export async function resolveCurrentCoachAuditFields() {
   const safeAuth = ensureAuth()
   const uid = safeAuth.currentUser?.uid
   if (!uid) return {}
@@ -182,13 +183,18 @@ async function resolveCurrentCoachAuditFields() {
 }
 
 /** Обновление полей ученика (без вложенных undefined — совместимо с Firestore). */
-export const updateStudentData = async (studentId, updatedData) => {
+export const updateStudentData = async (studentId, updatedData, meta = {}) => {
   const payload = deepOmitUndefined(updatedData)
   if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) return
   const audit = await resolveCurrentCoachAuditFields()
+  const section =
+    typeof meta.section === 'string' && meta.section.trim()
+      ? meta.section.trim()
+      : inferUpdateSectionFromPayload(payload)
   await updateDoc(doc(ensureDb(), 'students', studentId), {
     ...payload,
     ...audit,
+    lastUpdatedSection: section,
     updatedAt: serverTimestamp(),
   })
 }

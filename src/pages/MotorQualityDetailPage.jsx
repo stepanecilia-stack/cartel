@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import QualitySensitiveStudentsPanel from '../components/QualitySensitiveStudentsPanel'
 import SensitiveAgeScale from '../components/SensitiveAgeScale'
@@ -13,6 +13,12 @@ import {
 } from '../services/motorQualityExercisesService'
 import { isFirebaseConfigured } from '../services/firebaseService'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage'
+import { pickDoseForAge } from '../utils/exerciseDoseByAge.js'
+import { isMotorQualitySensitiveForAge } from '../utils/sensitivePeriods.js'
+import {
+  clearTodayMotorQualityWorkCompletion,
+  recordMotorQualityWorkCompletion,
+} from '../services/motorQualityWorkLogService.js'
 
 function parseStudentQualityReturn(state) {
   const raw = state?.studentQualityReturn
@@ -210,6 +216,8 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
     students: sensitiveStudents,
     loading: sensitiveStudentsLoading,
     error: sensitiveStudentsError,
+    otherStudents,
+    patchStudent,
   } = useStudentsInSensitivePeriodForQuality(coachId, item?.title)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
@@ -219,12 +227,52 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
   const [formError, setFormError] = useState(null)
   const [saveNotice, setSaveNotice] = useState(null)
   const [selectedExerciseId, setSelectedExerciseId] = useState(null)
+  const [completionBusyId, setCompletionBusyId] = useState(null)
+  const [completionError, setCompletionError] = useState('')
 
   const catalog = getMotorQualitiesCatalog()
   const selectedExercise =
     selectedExerciseId != null
       ? exercises.find((ex) => ex.id === selectedExerciseId) ?? null
       : null
+
+  const handleToggleCompletion = useCallback(
+    async (student, checked) => {
+      if (!item?.slug || !selectedExercise || !student?.id) return false
+      if (!isFirebaseConfigured) {
+        setCompletionError('Отметка выполнения доступна только при подключённой базе Firebase.')
+        return false
+      }
+      setCompletionError('')
+      setCompletionBusyId(student.id)
+      try {
+        const inSensitive = isMotorQualitySensitiveForAge(item.title, student.ageInt)
+        const dose = pickDoseForAge(student.ageInt, selectedExercise)
+        const nextLog = checked
+          ? await recordMotorQualityWorkCompletion(student.id, {
+              qualitySlug: item.slug,
+              exerciseId: selectedExercise.id,
+              exerciseTitle: selectedExercise.title,
+              doseText: dose?.text ?? null,
+              inSensitivePeriod: inSensitive,
+            })
+          : await clearTodayMotorQualityWorkCompletion(
+              student.id,
+              item.slug,
+              selectedExercise.id,
+            )
+        patchStudent(student.id, { motorQualityWorkLog: nextLog })
+        return true
+      } catch (err) {
+        console.error(err)
+        setCompletionError(formatFirestoreErrorMessage(err))
+        return false
+      } finally {
+        setCompletionBusyId(null)
+      }
+    },
+    [item?.slug, item?.title, selectedExercise, patchStudent],
+  )
 
   if (!item) {
     return <Navigate to="/qualities" replace />
@@ -352,12 +400,31 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
 
         <QualitySensitiveStudentsPanel
           qualityTitle={item.title}
+          qualitySlug={item.slug}
           students={sensitiveStudents}
           loading={sensitiveStudentsLoading}
           error={sensitiveStudentsError}
           selectedExercise={selectedExercise}
+          completionBusyId={completionBusyId}
+          completionError={completionError}
           onOpenStudent={onOpenStudent}
+          onToggleCompletion={isFirebaseConfigured ? handleToggleCompletion : undefined}
         />
+
+        {selectedExercise && otherStudents.length > 0 ? (
+          <QualitySensitiveStudentsPanel
+            variant="others"
+            qualityTitle={item.title}
+            qualitySlug={item.slug}
+            students={otherStudents}
+            loading={sensitiveStudentsLoading}
+            error=""
+            selectedExercise={selectedExercise}
+            completionBusyId={completionBusyId}
+            onOpenStudent={onOpenStudent}
+            onToggleCompletion={isFirebaseConfigured ? handleToggleCompletion : undefined}
+          />
+        ) : null}
 
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">

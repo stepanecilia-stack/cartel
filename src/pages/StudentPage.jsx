@@ -36,6 +36,7 @@ import {
   formatNormAcceptedMeta,
   mergeNormAcceptanceHistory,
 } from '../utils/normAcceptanceHistory'
+import { normAcceptanceSectionLabel, STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections'
 import {
   ensureStudentShortId,
   generateOpaqueShareToken,
@@ -52,6 +53,7 @@ import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
 import SensitivePeriodTimer from '../components/SensitivePeriodTimer'
+import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
 /** Стабильный id карточки норматива на вкладке «Физика» / «Функционал». */
 function normCardDomId(category, testId) {
   const safe = String(testId ?? '').replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -618,7 +620,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       let token = typeof student.progressShareToken === 'string' ? student.progressShareToken : ''
       if (!isValidProgressShareToken(token)) {
         token = generateOpaqueShareToken()
-        await updateStudentData(student.id, { progressShareToken: token })
+        await updateStudentData(
+          student.id,
+          { progressShareToken: token },
+          { section: STUDENT_UPDATE_SECTION.publicShare },
+        )
         onStudentUpdated?.({ progressShareToken: token })
       }
       const prevHistory = Array.isArray(student.weightHistory) ? [...student.weightHistory] : []
@@ -1032,7 +1038,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         }
       }
       const payload = buildStudentUpdatePayload(physicalMerged, functionalMerged, weightHistory)
-      await updateStudentData(student.id, payload)
+      await updateStudentData(student.id, payload, { section: STUDENT_UPDATE_SECTION.profile })
       setPhysicalResults(physicalMerged)
       setFunctionalResults(functionalMerged)
       setAnthropometrySaveOk(true)
@@ -1119,7 +1125,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       }
 
       const payload = buildStudentUpdatePayload(physicalMerged, functionalMerged, weightHistory)
-      await updateStudentData(student.id, payload)
+      await updateStudentData(student.id, payload, {
+        section: normAcceptanceSectionLabel(category, norm),
+      })
       if (category === 'physical') setPhysicalResults(physicalMerged)
       else setFunctionalResults(functionalMerged)
       setSaveOk(true)
@@ -1175,7 +1183,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         technicalMerged,
         combinationsList,
       )
-      await updateStudentData(student.id, payload)
+      await updateStudentData(student.id, payload, { section: STUDENT_UPDATE_SECTION.technique })
       setTechnicalData(technicalMerged)
       setTechnicalCombinations(mergeWithRequiredLevel3Combinations(combinationsList))
       setSaveOk(true)
@@ -2425,6 +2433,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             {normsError}
           </div>
         )}
+
+        <MotorQualityWorkLogPanel workLog={student?.motorQualityWorkLog ?? safeStudent?.motorQualityWorkLog} />
 
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
