@@ -12,29 +12,40 @@ const SEGMENTS = Array.from(
 
 /**
  * Шкала 7–18 лет: сенситивные возрасты — зелёные сегменты с подписью, остальное — серое.
- * @param {{ sensitiveAges: Set<number> | number[], className?: string, showCaption?: boolean }} props
+ * @param {{ sensitiveAges: Set<number> | number[], className?: string, showCaption?: boolean, compact?: boolean }} props
  */
-export default function SensitiveAgeScale({ sensitiveAges, className = '', showCaption = true }) {
+export default function SensitiveAgeScale({
+  sensitiveAges,
+  className = '',
+  showCaption = true,
+  compact = false,
+}) {
   const active = sensitiveAges instanceof Set ? sensitiveAges : new Set(sensitiveAges ?? [])
   const ranges = groupSensitiveAgeRanges(active)
 
   return (
     <div className={className}>
       {showCaption ? (
-        <p className="mb-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+        <p
+          className={`font-medium text-slate-500 dark:text-slate-400 ${
+            compact ? 'mb-1 text-[10px]' : 'mb-1.5 text-[11px]'
+          }`}
+        >
           Сенситивные периоды ({SENSITIVE_AGE_SCALE_MIN}–{SENSITIVE_AGE_SCALE_MAX} лет)
         </p>
       ) : null}
 
       <div className="relative">
         {ranges.length > 0 ? (
-          <div className="relative mb-1 h-5 w-full">
+          <div className={`relative w-full ${compact ? 'mb-0.5 h-3.5' : 'mb-1 h-5'}`}>
             {ranges.map(({ start, end, label }) => {
               const { leftPct, widthPct } = sensitiveRangePositionPercent(start, end)
               return (
                 <span
                   key={`${start}-${end}`}
-                  className="absolute top-0 flex items-end justify-center text-[10px] font-semibold leading-none tabular-nums text-emerald-700 dark:text-emerald-400"
+                  className={`absolute top-0 flex items-end justify-center font-semibold leading-none tabular-nums text-emerald-700 dark:text-emerald-400 ${
+                    compact ? 'text-[8px] sm:text-[9px]' : 'text-[10px]'
+                  }`}
                   style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
                 >
                   {label}
@@ -43,11 +54,13 @@ export default function SensitiveAgeScale({ sensitiveAges, className = '', showC
             })}
           </div>
         ) : (
-          <div className="mb-1 h-5" aria-hidden />
+          <div className={compact ? 'mb-0.5 h-3.5' : 'mb-1 h-5'} aria-hidden />
         )}
 
         <div
-          className="flex h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+          className={`flex w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 ${
+            compact ? 'h-2 sm:h-2.5' : 'h-3'
+          }`}
           role="img"
           aria-label={`Шкала возраста ${SENSITIVE_AGE_SCALE_MIN}–${SENSITIVE_AGE_SCALE_MAX} лет, сенситивные годы: ${ranges.map((r) => r.label).join(', ') || 'нет'}`}
         >
@@ -65,7 +78,11 @@ export default function SensitiveAgeScale({ sensitiveAges, className = '', showC
         </div>
       </div>
 
-      <div className="mt-0.5 flex justify-between text-[10px] tabular-nums text-slate-400 dark:text-slate-500">
+      <div
+        className={`mt-0.5 flex justify-between tabular-nums text-slate-400 dark:text-slate-500 ${
+          compact ? 'text-[8px] sm:text-[9px]' : 'text-[10px]'
+        }`}
+      >
         <span>{SENSITIVE_AGE_SCALE_MIN}</span>
         <span>{SENSITIVE_AGE_SCALE_MAX}</span>
       </div>
