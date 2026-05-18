@@ -29,7 +29,7 @@ function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = '
       : '[&::-moz-range-thumb]:border-blue-600 [&::-webkit-slider-thumb]:border-blue-600'
 
   return (
-    <div className="relative flex h-11 items-center sm:h-9">
+    <div className="relative flex h-9 items-center sm:h-8">
       <div
         className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
         aria-hidden
@@ -44,7 +44,7 @@ function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = '
         value={value}
         onChange={onChange}
         aria-label={ariaLabel}
-        className={`relative z-10 h-11 w-full cursor-pointer appearance-none bg-transparent sm:h-9 ${thumbBorderClass} [&::-moz-range-progress]:bg-transparent [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-md sm:[&::-moz-range-thumb]:h-6 sm:[&::-moz-range-thumb]:w-6 [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.75rem)/2)] [&::-webkit-slider-thumb]:box-border [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md sm:[&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.5rem)/2)] sm:[&::-webkit-slider-thumb]:h-6 sm:[&::-webkit-slider-thumb]:w-6`}
+        className={`relative z-10 h-9 w-full cursor-pointer appearance-none bg-transparent sm:h-8 ${thumbBorderClass} [&::-moz-range-progress]:bg-transparent [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-md sm:[&::-moz-range-thumb]:h-5 sm:[&::-moz-range-thumb]:w-5 [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.5rem)/2)] [&::-webkit-slider-thumb]:box-border [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md sm:[&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.25rem)/2)] sm:[&::-webkit-slider-thumb]:h-5 sm:[&::-webkit-slider-thumb]:w-5`}
       />
     </div>
   )
@@ -242,22 +242,22 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
   const renderTierHint = (ordered, value, total) => {
     const current = value >= 1 && value <= total ? ordered[value - 1] : null
     const next = value < total ? ordered[value] : null
+    if (!current && !(value === total && total > 0)) {
+      return <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">Не начато</p>
+    }
     return (
-      <div className="mt-1 rounded-md bg-slate-50 px-2 py-1.5 text-[11px] leading-snug text-slate-700 sm:mt-1.5 sm:px-2.5 sm:py-2 sm:text-xs dark:bg-slate-800 dark:text-slate-200">
+      <div className="mt-0.5 text-[10px] leading-snug text-slate-700 sm:text-[11px] dark:text-slate-200">
         {current ? (
-          <p className="line-clamp-2">
-            <span className="font-semibold text-blue-700 dark:text-blue-400">Шаг {value}.</span>{' '}
-            {current.name}
+          <p className="line-clamp-1 sm:line-clamp-2" title={current.name}>
+            <span className="font-semibold text-blue-700 dark:text-blue-400">Шаг {value}.</span> {current.name}
           </p>
-        ) : (
-          <p className="text-slate-500 dark:text-slate-400">Не начато</p>
-        )}
+        ) : null}
         {next ? (
-          <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-500 dark:text-slate-400" title={next.name}>
+          <p className="mt-0.5 hidden line-clamp-1 text-slate-500 sm:block dark:text-slate-400" title={next.name}>
             Дальше: {next.name}
           </p>
         ) : value === total && total > 0 ? (
-          <p className="mt-0.5 text-[10px] text-emerald-700 dark:text-emerald-400">Уровень закрыт</p>
+          <p className="mt-0.5 font-medium text-emerald-700 dark:text-emerald-400">Уровень закрыт</p>
         ) : null}
       </div>
     )
@@ -266,10 +266,10 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
   const renderTierBlock = (tierNum, total, value, ordered, variant, onValueChange) => {
     if (total <= 0) return null
     const label =
-      tierNum === 3 ? 'Уровень 3' : tierNum === 2 ? 'Уровень 2' : 'Уровень 1'
+      tierNum === 3 ? 'Ур.3' : tierNum === 2 ? 'Ур.2' : 'Ур.1'
     return (
-      <div className="border-t border-slate-100 pt-2.5 first:border-t-0 first:pt-0 dark:border-slate-700">
-        <div className="mb-1 flex items-center justify-between gap-2">
+      <div className="border-t border-slate-100 pt-1.5 first:border-t-0 first:pt-0 sm:pt-2 dark:border-slate-700">
+        <div className="mb-0.5 flex items-center justify-between gap-2">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:text-[11px] dark:text-slate-400">
             {label}
           </p>
@@ -277,38 +277,45 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
             {value}/{total}
           </span>
         </div>
-        <div className="touch-manipulation">
-          <TrainingRangeSlider
-            min={0}
-            max={total}
-            value={value}
-            variant={variant}
-            ariaLabel={`${label}, ${student.displayName}`}
-            onChange={(e) => {
-              const raw = Number(e.target.value)
-              const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total)
-              onValueChange(next)
-            }}
-          />
-        </div>
-        <div className="mt-0.5 flex justify-between text-[9px] tabular-nums text-slate-400 sm:text-[10px] dark:text-slate-500">
-          <span>0</span>
-          <span>{total}</span>
-        </div>
+        <TrainingRangeSlider
+          min={0}
+          max={total}
+          value={value}
+          variant={variant}
+          ariaLabel={`${label}, ${student.displayName}`}
+          onChange={(e) => {
+            const raw = Number(e.target.value)
+            const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total)
+            onValueChange(next)
+          }}
+        />
         {renderTierHint(ordered, value, total)}
       </div>
     )
   }
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-3 md:p-4">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight text-slate-900 sm:text-base dark:text-slate-100">
+    <li className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-3">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
           {student.displayName}
         </h2>
+        <span className="rounded bg-blue-50 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">
+          {tierLabel(1, total1, slider1)}
+        </span>
+        {showTier2 && total2 > 0 ? (
+          <span className="rounded bg-blue-50/80 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+            {tierLabel(2, total2, slider2)}
+          </span>
+        ) : null}
+        {showTier3 && total3 > 0 ? (
+          <span className="rounded bg-violet-50 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
+            {tierLabel(3, total3, slider3)}
+          </span>
+        ) : null}
         {statusLine ? (
           <span
-            className={`shrink-0 text-[10px] font-medium sm:text-xs ${
+            className={`text-[9px] font-medium sm:text-[10px] ${
               savingStatus === 'error'
                 ? 'text-red-600 dark:text-red-400'
                 : savingStatus === 'saved'
@@ -321,23 +328,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
         ) : null}
       </div>
 
-      <div className="mt-1.5 flex flex-wrap gap-1">
-        <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">
-          {tierLabel(1, total1, slider1)}
-        </span>
-        {showTier2 && total2 > 0 ? (
-          <span className="rounded-md bg-blue-50/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-            {tierLabel(2, total2, slider2)}
-          </span>
-        ) : null}
-        {showTier3 && total3 > 0 ? (
-          <span className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
-            {tierLabel(3, total3, slider3)}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-2.5 space-y-2.5 sm:mt-3 sm:space-y-3">
+      <div className="mt-1 space-y-1 sm:mt-1.5 sm:space-y-1.5">
         {renderTierBlock(1, total1, slider1, orderedL1, 'blue', (next) => {
           setSlider1(next)
           emit(next, slider2, slider3)
@@ -438,30 +429,28 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
 
   return (
     <div className="space-y-3 pb-2 sm:space-y-5 sm:pb-0">
-      <header className="sticky top-14 z-20 -mx-1 space-y-2 rounded-lg border border-slate-200/80 bg-slate-50/95 p-2.5 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-950/95 sm:static sm:mx-0 sm:space-y-2.5 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
-              Прогресс по шагам
-            </h1>
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:mt-1 sm:text-sm dark:text-slate-400">
-              <span className="sm:hidden">Шаг 2 · уровни 1–3 · автосохранение</span>
-              <span className="hidden sm:inline">
-                Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
-                открываются сами, когда предыдущий доведён до конца. Данные сохраняются автоматически.
-              </span>
-            </p>
-          </div>
-          <span className="shrink-0 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200 sm:hidden">
-            {studentsForSession.length}
-          </span>
+      <header className="sticky top-14 z-20 -mx-1 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/95 p-2 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-950/95 sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base font-bold leading-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
+            Прогресс по шагам
+          </h1>
+          <p className="text-[10px] leading-snug text-slate-600 sm:mt-1 sm:text-sm dark:text-slate-400">
+            <span className="sm:hidden">Шаг 2 · автосохранение</span>
+            <span className="hidden sm:inline">
+              Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
+              открываются сами, когда предыдущий доведён до конца. Данные сохраняются автоматически.
+            </span>
+          </p>
         </div>
+        <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200 sm:hidden">
+          {studentsForSession.length}
+        </span>
         <button
           type="button"
           onClick={onBack}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto sm:text-sm"
+          className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-3 sm:py-2 sm:text-sm"
         >
-          Изменить состав
+          Состав
         </button>
       </header>
 

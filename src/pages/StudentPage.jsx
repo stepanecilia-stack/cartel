@@ -1320,7 +1320,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         <div
           key={norm.testId}
           id={normCardDomId(category, norm.testId)}
-          className={`scroll-mt-40 flex flex-col gap-2 rounded-xl border p-4 transition-colors ${cardTone}`}
+          className={`scroll-mt-40 flex flex-col gap-1.5 rounded-lg border p-2.5 transition-colors sm:gap-2 sm:rounded-xl sm:p-4 ${cardTone}`}
         >
           <div className="text-center">
             <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{norm.testName}</span>
@@ -1420,15 +1420,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </p>
         </div>
 
-        <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl sm:tracking-normal">
+        <section className="rounded-xl bg-white p-2 shadow-sm dark:bg-slate-900 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="hidden text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:block sm:text-3xl sm:tracking-normal">
               {safeStudent.name}
             </h1>
             {student?.id && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                <span className="text-slate-500">Личный код:</span>
-                <span className="font-mono text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+              <div className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:ml-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-sm">
+                <span className="text-slate-500">Код:</span>
+                <span className="font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 sm:text-base">
                   {shortIdDigits ? formatShortIdDisplay(shortIdDigits) : '—'}
                 </span>
                 <button
@@ -1437,7 +1437,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   onClick={copyShortId}
                   title="Скопировать шесть цифр без пробелов — чтобы передать другому тренеру"
                   aria-label="Скопировать личный код ученика"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 sm:h-9 sm:w-9"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -1450,7 +1450,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   onClick={handleShareProgress}
                   title="Поделиться прогрессом"
                   aria-label="Поделиться прогрессом"
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-md border bg-white hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 ${
                     shareFlash
                       ? 'border-emerald-300 text-emerald-700'
                       : 'border-slate-200 text-slate-600'
@@ -1490,10 +1490,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl bg-white dark:bg-slate-900 p-2.5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Тесты и техника</h2>
+        <section className="rounded-xl bg-white p-2 shadow-sm dark:bg-slate-900 sm:p-6">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">Тесты и техника</h2>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 md:flex md:flex-nowrap md:gap-4">
+          <div className="-mx-2 mt-2 flex gap-1.5 overflow-x-auto px-2 pb-1 sm:mx-0 sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:flex md:flex-nowrap md:gap-4">
             {TAB_ITEMS.map((tab) => {
               const infKey = tabIdToInfluenceKey[tab.id]
               const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
@@ -1502,13 +1502,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`group relative min-h-[116px] overflow-hidden rounded-xl border px-3 py-3 text-left transition-all duration-300 ease-out will-change-transform sm:min-h-[124px] sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
+                className={`group relative min-w-[7.25rem] shrink-0 min-h-[4.25rem] overflow-hidden rounded-lg border px-2 py-2 text-left transition-all sm:min-w-0 sm:min-h-[124px] sm:rounded-xl sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
                   activeTab === tab.id
-                    ? 'z-[1] -translate-y-0.5 border-blue-400 bg-blue-50/60 text-slate-900 shadow-md shadow-blue-100/80 ring-1 ring-blue-200/80 dark:border-blue-500 dark:bg-blue-950/40 dark:text-slate-100 dark:shadow-blue-950/30 dark:ring-blue-800/50'
-                    : 'border-slate-200 bg-white text-slate-900 shadow-sm hover:-translate-y-1 hover:border-slate-300 hover:bg-slate-50 hover:shadow-lg hover:shadow-slate-200/80 active:translate-y-0 active:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800 dark:hover:shadow-slate-950/50'
+                    ? 'z-[1] border-blue-400 bg-blue-50/60 text-slate-900 shadow-sm ring-1 ring-blue-200/80 sm:-translate-y-0.5 sm:shadow-md sm:shadow-blue-100/80 dark:border-blue-500 dark:bg-blue-950/40 dark:text-slate-100 dark:shadow-blue-950/30 dark:ring-blue-800/50'
+                    : 'border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 sm:hover:-translate-y-1 sm:hover:border-slate-300 sm:hover:bg-slate-50 sm:hover:shadow-lg'
                 } ${
                   isTopInfluenceTab
-                    ? 'ring-2 ring-emerald-500/70 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-900 md:min-h-[138px]'
+                    ? 'ring-2 ring-emerald-500/70 ring-offset-1 ring-offset-slate-50 dark:ring-offset-slate-900 sm:ring-offset-2 md:min-h-[138px]'
                     : ''
                 }`}
               >
@@ -1521,7 +1521,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   aria-hidden
                 />
                 <span
-                  className={`relative mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-300 ease-out group-hover:scale-110 sm:mb-3 sm:h-10 sm:w-10 ${
+                  className={`relative mb-1 inline-flex h-6 w-6 items-center justify-center rounded-md border sm:mb-3 sm:h-10 sm:w-10 sm:rounded-lg sm:group-hover:scale-110 ${
                     activeTab === tab.id
                       ? 'border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
                       : 'border-slate-200 bg-slate-50 text-slate-600 group-hover:border-slate-300 group-hover:bg-white group-hover:text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:border-slate-500 dark:group-hover:bg-slate-700'
@@ -1530,17 +1530,17 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   {TAB_ICONS[tab.id]}
                 </span>
                 <span
-                  className="relative block text-[14px] uppercase leading-tight tracking-normal text-slate-900 transition-colors duration-300 group-hover:text-slate-950 sm:text-[16px] md:text-[18px] md:tracking-wide dark:text-slate-100 dark:group-hover:text-white"
+                  className="relative block text-[11px] uppercase leading-tight text-slate-900 sm:text-[16px] md:text-[18px] md:tracking-wide dark:text-slate-100"
                   style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
                 >
                   {tab.label}
                 </span>
                 {tab.id !== 'anthropometry' ? (
                   <>
-                    <span className="relative mt-2 block text-[11px] text-slate-500 transition-colors duration-300 group-hover:text-slate-600 sm:mt-3 sm:text-xs dark:text-slate-400 dark:group-hover:text-slate-300">
+                    <span className="relative mt-0.5 block text-[10px] text-slate-500 sm:mt-3 sm:text-xs dark:text-slate-400">
                       {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
                     </span>
-                    <span className="relative mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden>
+                    <span className="relative mt-1 hidden h-1.5 w-full overflow-hidden rounded-full bg-slate-200 sm:mt-2 sm:block dark:bg-slate-700" aria-hidden>
                       <span
                         className={`block h-full rounded-full transition-all duration-500 ease-out ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
                         style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
@@ -1553,7 +1553,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             })}
           </div>
 
-          <div className="mt-6 space-y-6">
+          <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-6">
             {activeTab === 'anthropometry' && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-slate-800">Карта спортсмена</h3>
@@ -2436,14 +2436,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
         <MotorQualityWorkLogPanel workLog={student?.motorQualityWorkLog ?? safeStudent?.motorQualityWorkLog} />
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
-            Таймер сенситивных периодов для{' '}
-            <span className="text-slate-800">
-              «{displayNameFromStudent(safeStudent) || safeStudent.name || 'Спортсмен'}»
-            </span>
+        <section className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-5">
+          <h2 className="text-sm font-semibold leading-snug text-slate-900 sm:text-lg">
+            Сенситивные периоды
           </h2>
-          <div className="mt-4">
+          <div className="mt-2 sm:mt-4">
             <SensitivePeriodTimer
               birthYear={resolvedBirthYear}
               birthDate={resolvedBirthDate}
