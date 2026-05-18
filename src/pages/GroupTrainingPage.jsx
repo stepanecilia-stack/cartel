@@ -20,6 +20,33 @@ import { displayNameFromStudent } from '../utils/studentModel'
 
 const SAVE_DEBOUNCE_MS = 350
 
+const TRAINING_RANGE_TRACK = '#e2e8f0'
+
+function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = 'blue' }) {
+  const fillPercent = max > 0 ? (value / max) * 100 : 0
+  const fillColor = variant === 'violet' ? '#7c3aed' : '#2563eb'
+  const thumbBorderClass =
+    variant === 'violet'
+      ? '[&::-webkit-slider-thumb]:border-violet-600 [&::-moz-range-progress]:bg-violet-600'
+      : '[&::-webkit-slider-thumb]:border-blue-600 [&::-moz-range-progress]:bg-blue-600'
+
+  return (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={1}
+      value={value}
+      onChange={onChange}
+      aria-label={ariaLabel}
+      className={`h-2 w-full cursor-pointer appearance-none rounded-full sm:h-1.5 ${thumbBorderClass} [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-slate-200 [&::-moz-range-progress]:h-2 [&::-moz-range-progress]:rounded-full [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow`}
+      style={{
+        background: `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${fillPercent}%, ${TRAINING_RANGE_TRACK} ${fillPercent}%, ${TRAINING_RANGE_TRACK} 100%)`,
+      }}
+    />
+  )
+}
+
 function normalizeSearchText(value) {
   return String(value ?? '').toLowerCase().trim()
 }
@@ -233,7 +260,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
     )
   }
 
-  const renderTierBlock = (tierNum, total, value, ordered, accentClass, onValueChange) => {
+  const renderTierBlock = (tierNum, total, value, ordered, variant, onValueChange) => {
     if (total <= 0) return null
     const label =
       tierNum === 3 ? 'Уровень 3' : tierNum === 2 ? 'Уровень 2' : 'Уровень 1'
@@ -248,19 +275,17 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
           </span>
         </div>
         <div className="touch-manipulation py-2">
-          <input
-            type="range"
+          <TrainingRangeSlider
             min={0}
             max={total}
-            step={1}
             value={value}
+            variant={variant}
+            ariaLabel={`${label}, ${student.displayName}`}
             onChange={(e) => {
               const raw = Number(e.target.value)
               const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total)
               onValueChange(next)
             }}
-            aria-label={`${label}, ${student.displayName}`}
-            className={`h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 ${accentClass} sm:h-1.5`}
           />
         </div>
         <div className="mt-0.5 flex justify-between text-[9px] tabular-nums text-slate-400 sm:text-[10px] dark:text-slate-500">
@@ -310,19 +335,19 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
       </div>
 
       <div className="mt-2.5 space-y-2.5 sm:mt-3 sm:space-y-3">
-        {renderTierBlock(1, total1, slider1, orderedL1, 'accent-blue-600', (next) => {
+        {renderTierBlock(1, total1, slider1, orderedL1, 'blue', (next) => {
           setSlider1(next)
           emit(next, slider2, slider3)
         })}
 
         {showTier2 && total2 > 0
-          ? renderTierBlock(2, total2, slider2, orderedL2, 'accent-blue-600', (next) => {
+          ? renderTierBlock(2, total2, slider2, orderedL2, 'blue', (next) => {
               setSlider2(next)
               emit(slider1, next, slider3)
             })
           : null}
         {showTier3 && total3 > 0
-          ? renderTierBlock(3, total3, slider3, orderedL3, 'accent-violet-600', (next) => {
+          ? renderTierBlock(3, total3, slider3, orderedL3, 'violet', (next) => {
               setSlider3(next)
               emit(slider1, slider2, next)
             })
