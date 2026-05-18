@@ -24,6 +24,12 @@ function formatDashboardWeightCategory(athleteShaped) {
   return `${row.weightMin}–${row.weightMax} кг`
 }
 
+/** Короткая подпись веса для узких экранов. */
+function formatDashboardWeightCategoryShort(fullLine) {
+  if (!fullLine || fullLine === '—') return fullLine
+  return fullLine.replace(/\s*\(вес из анкеты\)/i, '').trim()
+}
+
 function HomePage({ onSelectStudent, coachId }) {
   const [students, setStudents] = useState([])
   const [loadError, setLoadError] = useState('')
@@ -66,6 +72,7 @@ function HomePage({ onSelectStudent, coachId }) {
         const birthYearNum = Number(shaped.birthYear) || null
         const birthYearLabel = formatBirthYearRu(shaped.birthYear) || 'не указан'
         const weightCategoryLine = formatDashboardWeightCategory(shaped)
+        const weightCategoryShort = formatDashboardWeightCategoryShort(weightCategoryLine)
         const gender = shaped.gender === 'F' ? 'F' : 'M'
         return {
           ...raw,
@@ -76,6 +83,7 @@ function HomePage({ onSelectStudent, coachId }) {
           birthYearNum,
           birthYearLabel,
           weightCategoryLine,
+          weightCategoryShort,
           lastChange: resolveStudentLastChange(raw),
         }
       }),
@@ -133,7 +141,7 @@ function HomePage({ onSelectStudent, coachId }) {
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
+    <main className="min-h-screen bg-slate-50 px-2 py-3 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
       <AddStudentModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
@@ -141,37 +149,33 @@ function HomePage({ onSelectStudent, coachId }) {
         studentIds={studentIds}
         onListChanged={loadStudents}
       />
-      <div className="mx-auto max-w-6xl space-y-3 sm:space-y-4">
-        <header>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
-                Дашборд учеников
-              </h1>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                to="/group-training"
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-50 dark:border-blue-500/40 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
-              >
-                <span aria-hidden className="text-base leading-none">⇉</span>
-                Групповая тренировка
-              </Link>
-              <Link
-                to="/bulk-norms"
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50"
-              >
-                Сдать норматив
-              </Link>
-              <button
-                type="button"
-                onClick={() => setAddModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-              >
-                <span className="text-base leading-none">+</span>
-                Добавить ученика
-              </button>
-            </div>
+      <div className="mx-auto max-w-6xl space-y-2.5 sm:space-y-4">
+        <header className="space-y-2.5">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
+            Дашборд учеников
+          </h1>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Link
+              to="/group-training"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 active:bg-blue-100 dark:border-blue-500/40 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:w-auto sm:px-4 sm:text-sm"
+            >
+              <span aria-hidden className="text-sm leading-none">⇉</span>
+              Групповая тренировка
+            </Link>
+            <Link
+              to="/bulk-norms"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 active:bg-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50 sm:w-auto sm:px-4 sm:text-sm"
+            >
+              Сдать норматив
+            </Link>
+            <button
+              type="button"
+              onClick={() => setAddModalOpen(true)}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-600 sm:w-auto sm:px-4 sm:text-sm"
+            >
+              <span className="text-sm leading-none">+</span>
+              Добавить ученика
+            </button>
           </div>
         </header>
 
@@ -195,8 +199,8 @@ function HomePage({ onSelectStudent, coachId }) {
         )}
 
         {studentsWithKsr.length > 0 && !isLoading && (
-          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-4">
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <section className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4">
+            <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
               <div className="md:col-span-2 lg:col-span-1">
                 <label htmlFor="dashboard-search" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
                   Поиск по ФИО
@@ -209,12 +213,12 @@ function HomePage({ onSelectStudent, coachId }) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Начните вводить имя..."
-                    className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:px-3 sm:py-2"
                   />
                   <button
                     type="button"
                     onClick={() => setFiltersExpanded((prev) => !prev)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 md:hidden"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 md:hidden"
                     aria-expanded={filtersExpanded}
                     aria-controls="dashboard-mobile-filters"
                   >
@@ -296,23 +300,25 @@ function HomePage({ onSelectStudent, coachId }) {
           </div>
         )}
 
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
           {filteredStudents.map((student) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onSelectStudent?.(student)}
-                className="rounded-xl border border-slate-100 bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900 sm:p-4"
+                className="rounded-lg border border-slate-100 bg-white p-2.5 text-left shadow-sm transition-shadow active:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:active:bg-slate-800 sm:rounded-xl sm:p-4"
               >
-                <div className="flex min-w-0 items-start gap-2">
+                <div className="flex min-w-0 items-start gap-1.5 sm:gap-2">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                    <h2 className="text-[15px] font-semibold leading-tight text-slate-900 dark:text-slate-100 sm:text-lg sm:leading-snug">
                       {student.name}
                     </h2>
                     {student.lastChange ? (
                       <p
-                        className={`mt-0.5 truncate text-[10px] leading-tight sm:text-[11px] ${
-                          student.lastChange.isStale ? 'text-amber-800' : 'text-slate-500 dark:text-slate-400'
+                        className={`mt-0.5 line-clamp-2 text-[10px] leading-snug sm:line-clamp-1 sm:truncate sm:text-[11px] ${
+                          student.lastChange.isStale
+                            ? 'text-amber-800 dark:text-amber-300'
+                            : 'text-slate-500 dark:text-slate-400'
                         }`}
                         title={[
                           student.lastChange.coachName
@@ -346,24 +352,29 @@ function HomePage({ onSelectStudent, coachId }) {
                         <span className="tabular-nums">{student.lastChange.dateLabel}</span>
                       </p>
                     ) : null}
+                    <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1 sm:mt-2 sm:gap-1.5">
+                      <span
+                        className="inline-flex shrink-0 rounded border border-blue-100 bg-blue-50/90 px-1.5 py-0.5 text-[10px] font-medium tabular-nums leading-none text-slate-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-slate-200 sm:text-xs"
+                        title={`Год рождения: ${student.birthYearLabel}`}
+                      >
+                        {student.birthYearLabel}
+                      </span>
+                      <span
+                        className="inline-flex min-w-0 max-w-[10.5rem] truncate rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-800 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 sm:max-w-none sm:text-xs"
+                        title={student.weightCategoryLine}
+                      >
+                        <span className="truncate sm:hidden">{student.weightCategoryShort}</span>
+                        <span className="hidden truncate sm:inline">{student.weightCategoryLine}</span>
+                      </span>
+                    </div>
                   </div>
                   <span
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-xs font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-200 bg-slate-100 text-[10px] font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:h-7 sm:w-7 sm:rounded-md sm:text-xs"
                     title={student.genderLabel}
                     aria-label={`Пол: ${student.genderLabel}`}
                   >
                     {student.gender === 'F' ? 'Ж' : 'М'}
                   </span>
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <div className="flex min-w-0 items-center justify-center rounded-lg border border-blue-100 bg-blue-50/90 px-2 py-2 text-center shadow-sm">
-                    <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">{student.birthYearLabel}</span>
-                  </div>
-                  <div className="flex min-w-0 items-center justify-center rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-2 py-2 text-center shadow-sm">
-                    <span className="break-words text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
-                      {student.weightCategoryLine}
-                    </span>
-                  </div>
                 </div>
               </button>
             ))}
