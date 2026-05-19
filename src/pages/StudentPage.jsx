@@ -64,10 +64,10 @@ function normCardDomId(category, testId) {
 
 
 const TAB_ITEMS = [
-  { id: 'anthropometry', label: 'Карта спортсмена' },
-  { id: 'physical', label: 'Физическое развитие' },
-  { id: 'functional', label: 'Функциональная готовность' },
-  { id: 'technical', label: 'Техника' },
+  { id: 'anthropometry', label: 'Карта спортсмена', shortLabel: 'Карта' },
+  { id: 'physical', label: 'Физическое развитие', shortLabel: 'Физика' },
+  { id: 'functional', label: 'Функциональная готовность', shortLabel: 'Функционал' },
+  { id: 'technical', label: 'Техника', shortLabel: 'Техника' },
 ]
 
 const TAB_PROGRESS_LABELS = {
@@ -1474,7 +1474,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         <section className={vk.cardPadded}>
           <h2 className={vk.h2}>Тесты и техника</h2>
 
-          <div className="-mx-2 mt-2 flex gap-1.5 overflow-x-auto px-2 pb-1 sm:mx-0 sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:flex md:flex-nowrap md:gap-4">
+          <div className={vk.studentTabGrid}>
             {TAB_ITEMS.map((tab) => {
               const infKey = tabIdToInfluenceKey[tab.id]
               const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
@@ -1485,7 +1485,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`${vk.studentTab} ${
                   activeTab === tab.id ? vk.studentTabActive : vk.studentTabIdle
-                } ${isTopInfluenceTab ? 'ring-2 ring-[#4bb34b]/60 ring-offset-1 ring-offset-white' : ''}`}
+                } ${isTopInfluenceTab ? 'ring-2 ring-[#4bb34b]/50 ring-offset-1 ring-offset-white' : ''}`}
               >
                 <span
                   className={`${vk.studentTabIcon} ${
@@ -1494,12 +1494,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 >
                   {TAB_ICONS[tab.id]}
                 </span>
-                <span className={vk.studentTabLabel}>{tab.label}</span>
+                <span className={vk.studentTabLabel}>{tab.shortLabel}</span>
                 {tab.id !== 'anthropometry' ? (
                   <>
-                    <span className={`relative mt-0.5 block ${vk.mutedXs}`}>
-                      {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
-                    </span>
+                    <span className={vk.studentTabProgress}>{tabProgress[tab.id] ?? 0}%</span>
                     <span className={vk.progressTrack} aria-hidden>
                       <span
                         className={`block h-full rounded-full transition-all duration-500 ease-out ${progressColorClass(tabProgress[tab.id] ?? 0)}`}

@@ -73,16 +73,18 @@ export const vk = {
   segmentBtnInactive: 'text-[#818c99] active:bg-[#ebedf0]',
   previewCard: 'rounded-[10px] bg-[#f0f2f5] p-3',
 
+  studentTabGrid: 'mt-2 grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-1.5',
   studentTab:
-    'group relative min-w-[7rem] shrink-0 min-h-[4rem] overflow-hidden rounded-[10px] border px-2 py-2 text-left transition-colors sm:min-w-0 sm:min-h-[100px] sm:px-3 sm:py-2.5 md:flex-1',
-  studentTabActive: 'border-[#2d81e0] bg-[#ecf3fc] text-[#2c2d2e] shadow-sm',
+    'flex min-h-[3.25rem] touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[10px] border px-1 py-1.5 text-center sm:min-h-[4.5rem] sm:gap-1 sm:px-2 sm:py-2',
+  studentTabActive: 'border-[#2d81e0] bg-[#ecf3fc] text-[#2c2d2e]',
   studentTabIdle: 'border-[#e7e8ec] bg-white text-[#2c2d2e] active:bg-[#f5f6f8]',
   studentTabIcon:
-    'relative mb-1 inline-flex h-7 w-7 items-center justify-center rounded-lg border sm:mb-1.5 sm:h-8 sm:w-8',
-  studentTabIconActive: 'border-[#aec8e8] bg-white text-[#2d81e0]',
-  studentTabIconIdle: 'border-[#e7e8ec] bg-[#f0f2f5] text-[#818c99]',
-  studentTabLabel: 'relative block text-[12px] font-medium leading-[14px] text-[#2c2d2e] sm:text-[13px] sm:leading-4',
-  progressTrack: 'relative mt-1 hidden h-1 w-full overflow-hidden rounded-full bg-[#e7e8ec] sm:block',
+    'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full sm:h-7 sm:w-7',
+  studentTabIconActive: 'bg-white text-[#2d81e0] ring-1 ring-[#aec8e8]',
+  studentTabIconIdle: 'bg-[#f0f2f5] text-[#818c99]',
+  studentTabLabel: 'line-clamp-2 text-[11px] font-medium leading-[13px] text-[#2c2d2e] sm:text-[12px] sm:leading-4',
+  studentTabProgress: 'text-[10px] font-medium tabular-nums leading-none text-[#818c99] sm:text-[11px]',
+  progressTrack: 'mt-0.5 hidden h-1 w-full max-w-[5.5rem] overflow-hidden rounded-full bg-[#e7e8ec] sm:block',
   chipBar: 'flex w-full flex-wrap items-center gap-1.5 rounded-[10px] bg-[#f0f2f5] px-2 py-1.5 text-[13px] text-[#2c2d2e] sm:ml-auto sm:w-auto sm:px-3 sm:py-2',
   iconBtn:
     'inline-flex h-8 w-8 touch-manipulation items-center justify-center rounded-lg bg-white text-[#818c99] active:bg-[#ebedf0] disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9',
