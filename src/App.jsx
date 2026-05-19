@@ -19,76 +19,52 @@ import {
   subscribeToAuth,
 } from './services/firebaseService'
 import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
+import { vk } from './utils/vkUi.js'
 function Navbar({ user, coachProfile }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
-      <div className="mx-auto flex h-14 max-w-6xl flex-nowrap items-center justify-between gap-1.5 px-2 sm:h-[72px] sm:gap-3 sm:px-6">
-        <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
+    <header className={vk.navBar}>
+      <div className={vk.navBarInner}>
+        <div className="flex min-w-0 shrink-0 items-center gap-3">
           <Link
             to={user ? '/' : '/welcome'}
-            className="shrink-0 text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg"
+            className="shrink-0 text-[15px] font-semibold text-[#2c2d2e]"
             aria-label="Cartel — на главную"
           >
             Cartel
           </Link>
           {user ? (
             <>
-              <Link
-                to="/qualities"
-                className="shrink-0 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 sm:text-sm"
-              >
-                <span className="sm:hidden">Качества</span>
-                <span className="hidden sm:inline">База качеств</span>
+              <Link to="/qualities" className={`hidden shrink-0 sm:inline ${vk.linkNav}`}>
+                Качества
               </Link>
-              <Link
-                to="/bulk-norms"
-                className="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-900/50 sm:px-2.5 sm:py-1.5 sm:text-xs"
-              >
-                <span className="sm:hidden">Норматив</span>
-                <span className="hidden sm:inline">Сдать норматив</span>
+              <Link to="/bulk-norms" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
+                Норматив
               </Link>
-              <Link
-                to="/group-training"
-                className="hidden shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900/50 md:inline-block"
-              >
+              <Link to="/group-training" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
                 Групповая
               </Link>
-              <Link
-                to="/leaderboard"
-                className="shrink-0 text-[11px] font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 sm:text-sm"
-              >
-                <span className="sm:hidden">Рейтинг</span>
-                <span className="hidden sm:inline">Рейтинг</span>
+              <Link to="/leaderboard" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
+                Рейтинг
               </Link>
             </>
           ) : null}
         </div>
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-1.5 sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {user ? (
             <>
-              <span className="min-w-0 max-w-[40vw] truncate text-right text-[11px] text-slate-600 dark:text-slate-400 sm:max-w-none sm:text-sm">
+              <span className="min-w-0 max-w-[42vw] truncate text-right text-[13px] text-[#818c99] sm:max-w-none">
                 {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
               </span>
-              <button
-                type="button"
-                onClick={() => logoutCoach()}
-                className="shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-3 sm:py-2 sm:text-sm"
-              >
+              <button type="button" onClick={() => logoutCoach()} className={vk.btnGhost}>
                 Выйти
               </button>
             </>
           ) : (
-            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-              <Link
-                to="/login"
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-3 sm:py-2 sm:text-sm"
-              >
+            <div className="flex shrink-0 items-center gap-1">
+              <Link to="/login" className={vk.btnGhost}>
                 Вход
               </Link>
-              <Link
-                to="/register"
-                className="rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:px-3 sm:py-2 sm:text-sm"
-              >
+              <Link to="/register" className={vk.btnPrimary}>
                 Регистрация
               </Link>
             </div>
@@ -123,7 +99,7 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
   }
 
   return (
-    <>
+    <div className="vk-app">
       {!isShareRoute && <Navbar user={authUser} coachProfile={coachProfile} />}
       <Routes>
         <Route path="/share/:student_hash" element={<ShareProgressPage />} />
@@ -227,7 +203,7 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
           element={<Navigate to={authUser ? '/' : '/welcome'} replace />}
         />
       </Routes>
-    </>
+    </div>
   )
 }
 
@@ -262,8 +238,8 @@ function App() {
 
   if (authUser === undefined) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <p className="rounded-xl bg-white px-5 py-3 shadow-sm dark:bg-slate-900 dark:text-slate-200">
+      <main className="flex min-h-screen items-center justify-center bg-[#edeef0] text-[#2c2d2e]">
+        <p className="rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#818c99]">
           Проверка авторизации...
         </p>
       </main>

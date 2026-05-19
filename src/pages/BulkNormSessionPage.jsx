@@ -275,11 +275,11 @@ export default function BulkNormSessionPage({ coachId }) {
     filteredEligible.length > 0 && filteredEligible.every((s) => selectedIds.has(s.id))
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
+    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-4xl space-y-4 sm:space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+            <h1 className="text-[17px] font-semibold leading-5 text-slate-900 dark:text-slate-100 sm:text-3xl">
               Сдать норматив
             </h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">

@@ -61,7 +61,7 @@ export default function ShareLeaderboardPage() {
   }, [categories])
 
   return (
-    <main className="min-h-screen bg-slate-50 px-2 py-3 pb-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-8">
+    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-3xl space-y-3 sm:space-y-6">
         <header className="space-y-1.5 sm:space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">

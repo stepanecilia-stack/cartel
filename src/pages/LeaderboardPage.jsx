@@ -118,12 +118,12 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
   ])
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-2 py-3 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-8">
+    <main className="min-h-[calc(100vh-48px)] bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-3xl space-y-3 sm:space-y-6">
         <header className="space-y-2 sm:space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight sm:text-3xl">Рейтинг спортсменов</h1>
+              <h1 className="text-[17px] font-semibold leading-5 sm:text-xl">Рейтинг спортсменов</h1>
               <p className="mt-0.5 text-xs leading-snug text-slate-600 sm:mt-1 sm:text-sm dark:text-slate-400">
                 {isSchool ? (
                   'Все ученики школы.'
@@ -245,7 +245,7 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
         <p className="text-center text-xs text-slate-500 sm:text-sm dark:text-slate-400">
           <Link
             to="/"
-            className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            className="font-medium text-[#2d81e0] hover:opacity-90 dark:text-blue-400 dark:hover:text-blue-300"
           >
             ← На дашборд
           </Link>

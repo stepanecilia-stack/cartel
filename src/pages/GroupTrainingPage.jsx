@@ -95,7 +95,7 @@ function ComposePhase({
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4 md:p-5">
+      <div className="rounded-[10px] bg-white p-2.5 dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4 md:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
             <label htmlFor="group-training-search" className="sr-only">
@@ -580,7 +580,7 @@ export default function GroupTrainingPage({ coachId }) {
 
   if (!coachId) {
     return (
-      <main className="min-h-screen bg-slate-50 px-2 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-12">
+      <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
         <div className="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-5 text-center text-sm text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:rounded-xl sm:p-6">
           Войдите в аккаунт тренера, чтобы запустить групповую тренировку.
           <div className="mt-4">
@@ -598,7 +598,7 @@ export default function GroupTrainingPage({ coachId }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-2 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-10 md:py-12">
+    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-5xl">
         {phase === 'compose' ? (
           <ComposePhase

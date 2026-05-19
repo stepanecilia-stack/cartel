@@ -356,7 +356,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
   }
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-50 px-2 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:min-h-[calc(100vh-72px)] sm:px-6 sm:py-10 md:py-12">
+    <main className="min-h-[calc(100vh-48px)] bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6 md:space-y-8">
         {studentReturn ? (
           <div className="rounded-lg border border-blue-200 bg-blue-50/90 px-3 py-2.5 dark:border-blue-900/60 dark:bg-blue-950/40 sm:rounded-xl sm:px-4 sm:py-3">
@@ -383,7 +383,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
           <Link
             to="/qualities"
             state={linkState}
-            className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            className="font-medium text-[#2d81e0] hover:opacity-90 dark:text-blue-400"
           >
             Двигательные качества
           </Link>
@@ -645,7 +645,7 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
         </section>
 
         <p className="text-center text-sm">
-          <Link to="/" className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+          <Link to="/" className="font-medium text-[#2d81e0] hover:opacity-90 dark:text-blue-400 dark:hover:text-blue-300">
             На дашборд
           </Link>
         </p>

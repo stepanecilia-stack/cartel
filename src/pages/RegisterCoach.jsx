@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerCoach } from '../services/firebaseService'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages'
+import { vk } from '../utils/vkUi.js'
 
 const initialForm = {
   firstName: '',
@@ -58,86 +59,42 @@ function RegisterCoach() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm dark:bg-slate-900">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Регистрация тренера</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+    <main className={`${vk.pageWithNav} flex items-center justify-center px-4 py-6`}>
+      <div className={`w-full max-w-md ${vk.cardPadded}`}>
+        <h1 className={vk.h1Lg}>Регистрация тренера</h1>
+        <p className={`mt-1 ${vk.muted}`}>
           Заполните поля — программа создаст ваш аккаунт и сохранит имя и город в облаке.
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Имя</span>
-            <input
-              name="firstName"
-              type="text"
-              value={formData.firstName}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <span className={vk.label}>Имя</span>
+            <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} className={vk.input} />
           </label>
-
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Фамилия</span>
-            <input
-              name="lastName"
-              type="text"
-              value={formData.lastName}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <span className={vk.label}>Фамилия</span>
+            <input name="lastName" type="text" value={formData.lastName} onChange={handleChange} className={vk.input} />
           </label>
-
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Город</span>
-            <input
-              name="city"
-              type="text"
-              value={formData.city}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <span className={vk.label}>Город</span>
+            <input name="city" type="text" value={formData.city} onChange={handleChange} className={vk.input} />
           </label>
-
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Электронная почта (будет логином)</span>
-            <input
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <span className={vk.label}>Электронная почта (будет логином)</span>
+            <input name="email" type="email" value={formData.email} onChange={handleChange} className={vk.input} />
           </label>
-
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Пароль</span>
-            <input
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            />
+            <span className={vk.label}>Пароль</span>
+            <input name="password" type="password" value={formData.password} onChange={handleChange} className={vk.input} />
           </label>
-
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-          >
+          {error && <div className={vk.error}>{error}</div>}
+          <button type="submit" disabled={isSubmitting} className={`w-full ${vk.btnPrimary}`}>
             {isSubmitting ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>
         </form>
-        <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+        <p className={`mt-3 ${vk.muted}`}>
           Уже есть аккаунт?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+          <Link to="/login" className={vk.link}>
             Войти
           </Link>
         </p>

@@ -1,0 +1,25 @@
+/* Глобальная тема ВК — только внутри .vk-app */
+
+.vk-app {
+  background-color: #edeef0;
+  color: #2c2d2e;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+/* Блок эталона: не трогаем внутреннюю вёрстку дуэли и человечков */
+.vk-app .etalon-model-panel,
+.vk-app .etalon-model-panel * {
+  /* наследование только шрифта; размеры/цвета SVG и силуэтов — как в компоненте */
+}
+
+.vk-app .etalon-model-panel .standard-duel-silhouettes {
+  /* якорь для StandardDuelSilhouettes root */
+}

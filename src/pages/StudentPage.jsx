@@ -1402,16 +1402,16 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
 
   return (
-    <main className="min-h-screen bg-slate-50 px-2 pt-2 pb-4 text-slate-900 sm:px-6 sm:pt-3 sm:pb-6">
+    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto min-w-0 max-w-4xl space-y-2 sm:space-y-4">
         <div
-          className="sticky top-14 z-30 -mx-2 flex min-w-0 items-center gap-2 border-b border-slate-200 bg-white/95 py-2 pr-2 pl-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:top-[4.5rem] sm:-mx-6 sm:gap-3 sm:px-6"
+          className="sticky top-12 z-30 -mx-2 flex min-w-0 items-center gap-2 border-b border-[#e7e8ec] bg-white/95 py-1.5 pr-2 pl-2 backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:-mx-4 sm:gap-2 sm:px-4"
           aria-label="Карточка ученика — закреплённая строка"
         >
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 rounded-lg border border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-blue-600 shadow-sm hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
+            className="shrink-0 rounded-lg bg-[#f0f2f5] px-3 py-1.5 text-[13px] font-medium text-[#2d81e0] active:bg-[#ebedf0]"
           >
             Назад к дашборду
           </button>
@@ -1420,9 +1420,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </p>
         </div>
 
-        <section className="rounded-xl bg-white p-2 shadow-sm dark:bg-slate-900 sm:p-6">
+        <section className="rounded-[10px] bg-white p-2.5 dark:bg-slate-900 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="hidden text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:block sm:text-3xl sm:tracking-normal">
+            <h1 className="hidden text-[17px] font-semibold leading-5 text-slate-900 dark:text-slate-100 sm:block sm:text-3xl sm:tracking-normal">
               {safeStudent.name}
             </h1>
             {student?.id && (
@@ -1490,7 +1490,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl bg-white p-2 shadow-sm dark:bg-slate-900 sm:p-6">
+        <section className="rounded-[10px] bg-white p-2.5 dark:bg-slate-900 sm:p-6">
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">Тесты и техника</h2>
 
           <div className="-mx-2 mt-2 flex gap-1.5 overflow-x-auto px-2 pb-1 sm:mx-0 sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:flex md:flex-nowrap md:gap-4">
@@ -2313,7 +2313,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="etalon-model-panel rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
             Историческая модель эталона
           </h2>

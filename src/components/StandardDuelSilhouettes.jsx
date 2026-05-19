@@ -278,7 +278,7 @@ export default function StandardDuelSilhouettes({
   const deltaLabelBottom = higherHead + 18
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-2 py-3 dark:border-slate-600 dark:bg-slate-900 sm:px-3 sm:py-4">
+    <div className="standard-duel-silhouettes rounded-lg border border-slate-200 bg-white px-2 py-3 sm:px-3 sm:py-4">
       {layout.scaled ? (
         <p className="text-center text-[10px] text-slate-500 dark:text-slate-400">
           Масштаб уменьшен под экран, пропорции сохранены.

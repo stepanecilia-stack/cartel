@@ -308,7 +308,7 @@ export default function ShareProgressPage() {
   const standardPassport = p?.standardPassport
 
   return (
-    <main className="min-h-screen bg-slate-50 px-2 py-4 text-slate-900 sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-4xl space-y-2.5 sm:space-y-6">
         <header className="text-center">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">
@@ -404,9 +404,9 @@ export default function ShareProgressPage() {
 
                   </div>
 
-                  <div className="bg-white dark:bg-slate-900 px-2 py-3 sm:px-4 sm:py-4">
+                  <div className="etalon-model-panel bg-white px-2 py-3 sm:px-4 sm:py-4">
                     <div className="flex flex-col gap-3">
-                      <div className="order-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
+                      <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
                         <StandardDuelSilhouettes
                           athleteLabel={p.displayName || 'Спортсмен'}
                           referenceLabel="Эталон"
