@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import LeaderboardCategoryTabs from '../components/LeaderboardCategoryTabs.jsx'
 import LeaderboardCuratorPanel from '../components/LeaderboardCuratorPanel.jsx'
 import LeaderboardTable from '../components/LeaderboardTable.jsx'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { useCoachLeaderboard } from '../hooks/useCoachLeaderboard.js'
 import { getStudents } from '../services/firebaseService.js'
 import {
@@ -119,7 +120,8 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
 
   return (
     <main className="min-h-[calc(100vh-48px)] bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-3xl space-y-3 sm:space-y-6">
+      <div className="mx-auto max-w-3xl space-y-2 sm:space-y-3">
+        <BackToHomeBar />
         <header className="space-y-2 sm:space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -242,14 +244,6 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
           />
         )}
 
-        <p className="text-center text-xs text-slate-500 sm:text-sm dark:text-slate-400">
-          <Link
-            to="/"
-            className="font-medium text-[#2d81e0] hover:opacity-90 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            ← На дашборд
-          </Link>
-        </p>
       </div>
     </main>
   )

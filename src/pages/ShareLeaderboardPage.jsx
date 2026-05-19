@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import LeaderboardCategoryTabs from '../components/LeaderboardCategoryTabs.jsx'
 import LeaderboardTable from '../components/LeaderboardTable.jsx'
 import { subscribePublicLeaderboardShareByToken } from '../services/firebaseService.js'
@@ -63,6 +64,7 @@ export default function ShareLeaderboardPage() {
   return (
     <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-3xl space-y-3 sm:space-y-6">
+        <BackToHomeBar to="/welcome" />
         <header className="space-y-1.5 sm:space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">
             Публичный рейтинг

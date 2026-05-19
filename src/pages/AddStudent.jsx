@@ -1,21 +1,24 @@
 import { useNavigate } from 'react-router-dom'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import NewStudentForm from '../components/NewStudentForm'
+import { vk } from '../utils/vkUi.js'
 
 function AddStudent() {
   const navigate = useNavigate()
 
   return (
-    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-2xl rounded-xl bg-white p-8 shadow-sm dark:bg-slate-900">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Добавить ученика</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          После сохранения программа сама посчитает рекомендуемую дистанцию боя по антропометрии, «потолок по телу» и
-          стартовые баллы.
-          Возраст берётся как текущий год минус год рождения. Ту же анкету можно открыть с главной кнопкой «Добавить
-          ученика».
-        </p>
+    <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
+      <div className={`${vk.containerNarrow} max-w-2xl`}>
+        <BackToHomeBar />
+        <div className={vk.cardPadded}>
+          <h1 className={vk.h1Lg}>Добавить ученика</h1>
+          <p className={`mt-1.5 ${vk.muted}`}>
+            После сохранения программа сама посчитает рекомендуемую дистанцию боя по антропометрии, «потолок по телу» и
+            стартовые баллы. Возраст — текущий год минус год рождения.
+          </p>
 
-        <NewStudentForm onSuccess={() => navigate('/')} onCancel={() => navigate('/')} />
+          <NewStudentForm onSuccess={() => navigate('/')} onCancel={() => navigate('/')} />
+        </div>
       </div>
     </main>
   )

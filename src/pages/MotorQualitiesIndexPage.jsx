@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import SensitiveAgeScale from '../components/SensitiveAgeScale'
 import { getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
 
@@ -7,7 +8,8 @@ function MotorQualitiesIndexPage() {
 
   return (
     <main className="min-h-[calc(100vh-48px)] bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-4xl space-y-3 sm:space-y-6">
+      <div className="mx-auto max-w-4xl space-y-2 sm:space-y-3">
+        <BackToHomeBar />
         <header>
           <h1 className="text-[17px] font-semibold leading-5 sm:text-xl">Двигательные качества</h1>
         </header>
@@ -34,15 +36,6 @@ function MotorQualitiesIndexPage() {
             </li>
           ))}
         </ul>
-
-        <p className="pt-1 text-center text-xs text-slate-500 sm:text-sm dark:text-slate-400">
-          <Link
-            to="/"
-            className="font-medium text-[#2d81e0] hover:opacity-90 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            ← На дашборд
-          </Link>
-        </p>
       </div>
     </main>
   )

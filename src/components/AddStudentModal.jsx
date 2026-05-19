@@ -9,6 +9,7 @@ import {
   studentInitials,
   studentPhotoUrl,
 } from '../utils/studentModel'
+import { vk } from '../utils/vkUi.js'
 import NewStudentForm from './NewStudentForm'
 
 function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
@@ -72,7 +73,7 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
       onAttached?.()
     } catch (e) {
       console.error(e)
-        setAttachError('Не удалось добавить ученика: база данных не разрешила запись. Попросите администратора.')
+      setAttachError('Не удалось добавить ученика: база данных не разрешила запись. Попросите администратора.')
     } finally {
       setIsAttaching(false)
     }
@@ -81,10 +82,18 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
   const photo = preview ? studentPhotoUrl(preview) : ''
   const name = preview ? displayNameFromStudent(preview) : ''
 
+  const codeInputClass = [
+    vk.input,
+    'max-w-[10rem] font-mono text-[17px] tracking-[0.2em]',
+    showLengthError || searchError ? 'ring-1 ring-[#e64646] bg-[#fff5f5]' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className="mt-4 space-y-4">
-      <label className="block space-y-1">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Шесть цифр личного кода (без пробелов)</span>
+    <div className="mt-3 space-y-3">
+      <label className="block">
+        <span className={vk.label}>Шесть цифр личного кода (без пробелов)</span>
         <input
           type="text"
           inputMode="numeric"
@@ -97,15 +106,11 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
             setTouched(true)
           }}
           onBlur={() => setTouched(true)}
-          className={`w-full max-w-xs rounded-lg border px-3 py-2 font-mono text-lg tracking-widest outline-none focus:ring-2 focus:ring-blue-200 ${
-            showLengthError || searchError
-              ? 'border-red-400 bg-red-50/50 dark:border-red-500 dark:bg-red-950/40'
-              : 'border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
-          }`}
+          className={codeInputClass}
         />
-        {showLengthError && (
-          <span className="text-xs font-medium text-red-600">Нужно 6 цифр (сейчас {code.length}).</span>
-        )}
+        {showLengthError ? (
+          <span className="mt-1 block text-[12px] text-[#e64646]">Нужно 6 цифр (сейчас {code.length}).</span>
+        ) : null}
       </label>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -113,58 +118,45 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
           type="button"
           disabled={isSearching || code.length !== 6}
           onClick={runSearch}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className={vk.btnPrimary}
         >
           {isSearching ? 'Поиск…' : 'Найти и добавить'}
         </button>
-        <button
-          type="button"
-          onClick={() => onCancel?.()}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-        >
+        <button type="button" onClick={() => onCancel?.()} className={vk.btnSecondary}>
           Отмена
         </button>
-        <p className="text-xs text-slate-500 dark:text-slate-400 sm:ml-1 sm:flex-1 sm:self-center">
+        <p className={`${vk.mutedXs} sm:ml-1 sm:flex-1 sm:self-center`}>
           Сначала нажмите кнопку — программа найдёт ученика. Потом проверьте фото и имя и подтвердите.
         </p>
       </div>
 
-      {searchError && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{searchError}</p>
-      )}
+      {searchError ? <p className={vk.error}>{searchError}</p> : null}
 
-      {preview && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-800/80">
-          <div className="flex flex-wrap items-center gap-4">
+      {preview ? (
+        <div className={vk.previewCard}>
+          <div className="flex flex-wrap items-center gap-3">
             {photo ? (
               <img
                 src={photo}
                 alt=""
-                className="h-16 w-16 shrink-0 rounded-full border border-slate-200 object-cover"
+                className="h-14 w-14 shrink-0 rounded-full border border-[#e7e8ec] object-cover"
               />
             ) : (
               <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold text-slate-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#e7e8ec] bg-white text-[15px] font-semibold text-[#818c99]"
                 aria-hidden
               >
                 {studentInitials(preview)}
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Подтвердите добавление в свой список:</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Добавить {name}?</p>
+              <p className={vk.mutedXs}>Подтвердите добавление в свой список:</p>
+              <p className="mt-0.5 text-[15px] font-semibold leading-5 text-[#2c2d2e]">Добавить {name}?</p>
             </div>
           </div>
-          {attachError && (
-            <p className="mt-3 text-sm font-medium text-red-700">{attachError}</p>
-          )}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={isAttaching}
-              onClick={confirmAttach}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-300"
-            >
+          {attachError ? <p className="mt-2 text-[13px] font-medium text-[#e64646]">{attachError}</p> : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" disabled={isAttaching} onClick={confirmAttach} className={vk.btnPrimary}>
               {isAttaching ? 'Добавляем…' : 'Да, добавить'}
             </button>
             <button
@@ -173,13 +165,13 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
                 setPreview(null)
                 setSearchError('')
               }}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              className={vk.btnSecondary}
             >
               Отмена
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -197,62 +189,41 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
 
   const knownStudentIds = new Set(studentIds || [])
 
+  const segmentClass = (active) =>
+    [vk.segmentBtn, active ? vk.segmentBtnActive : vk.segmentBtnInactive].join(' ')
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
+      className={vk.modalOverlay}
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-student-modal-title"
       onClick={onClose}
     >
-      <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-600 dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h2 id="add-student-modal-title" className="text-xl font-bold text-slate-900 dark:text-slate-100">
+      <div className={vk.modalPanel} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-2">
+          <h2 id="add-student-modal-title" className={vk.h1Lg}>
             Добавить ученика
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            aria-label="Закрыть"
-          >
+          <button type="button" onClick={onClose} className={vk.btnGhost} aria-label="Закрыть">
             ✕
           </button>
         </div>
 
-        <div className="mt-4 flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-600 dark:bg-slate-800">
-          <button
-            type="button"
-            onClick={() => setMode('create')}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${
-              mode === 'create'
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-            }`}
-          >
+        <div className={`mt-3 ${vk.segmentBar}`}>
+          <button type="button" onClick={() => setMode('create')} className={segmentClass(mode === 'create')}>
             Новый ученик
           </button>
-          <button
-            type="button"
-            onClick={() => setMode('join')}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${
-              mode === 'join'
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-            }`}
-          >
-            Присоединить существующего
+          <button type="button" onClick={() => setMode('join')} className={segmentClass(mode === 'join')}>
+            Присоединить
           </button>
         </div>
 
-        {mode === 'create' && (
+        {mode === 'create' ? (
           <>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-              Заполните анкету — появится карточка ученика и <strong>личный шестизначный код</strong>. Этот код можно
-              дать другому тренеру, чтобы он добавил того же человека к себе в список.
+            <p className={`mt-2.5 ${vk.muted}`}>
+              Заполните анкету — появится карточка ученика и <strong className="font-medium text-[#2c2d2e]">личный шестизначный код</strong>.
+              Его можно дать другому тренеру, чтобы добавить того же человека к себе.
             </p>
             <NewStudentForm
               compact
@@ -263,13 +234,11 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
               }}
             />
           </>
-        )}
-
-        {mode === 'join' && (
+        ) : (
           <>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-              Введите шесть цифр подряд — такой код показан в карточке ученика у другого тренера (кнопка «скопировать»).
-              Буквы и пробелы не нужны, только цифры.
+            <p className={`mt-2.5 ${vk.muted}`}>
+              Введите шесть цифр подряд — такой код показан в карточке ученика у другого тренера. Только цифры, без
+              пробелов.
             </p>
             <JoinByCodePanel
               coachId={coachId}

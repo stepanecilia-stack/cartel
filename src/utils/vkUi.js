@@ -58,6 +58,39 @@ export const vk = {
     'flex min-h-[4.25rem] w-full touch-manipulation flex-col items-center justify-start gap-1 rounded-md px-0.5 py-1.5 text-center active:bg-[#f5f6f8] sm:min-h-[4.5rem]',
   serviceIcon: 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg leading-none',
   serviceLabel: 'line-clamp-2 text-[11px] font-medium leading-[13px] text-[#2c2d2e]',
+
+  backToHome:
+    'inline-flex touch-manipulation items-center gap-1.5 rounded-lg bg-[#f0f2f5] px-3 py-2 text-[13px] font-medium leading-5 text-[#2d81e0] active:bg-[#ebedf0]',
+  backToHomeBar: 'mb-2 sm:mb-2.5',
+
+  modalOverlay:
+    'fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-2 sm:items-center sm:p-4',
+  modalPanel: 'max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-[10px] bg-white p-3 shadow-lg sm:p-4',
+  segmentBar: 'flex rounded-lg bg-[#f0f2f5] p-0.5',
+  segmentBtn:
+    'flex-1 touch-manipulation rounded-md px-2 py-2 text-[13px] font-medium leading-4 transition-colors sm:px-3',
+  segmentBtnActive: 'bg-white text-[#2c2d2e] shadow-sm',
+  segmentBtnInactive: 'text-[#818c99] active:bg-[#ebedf0]',
+  previewCard: 'rounded-[10px] bg-[#f0f2f5] p-3',
+
+  studentTab:
+    'group relative min-w-[7rem] shrink-0 min-h-[4rem] overflow-hidden rounded-[10px] border px-2 py-2 text-left transition-colors sm:min-w-0 sm:min-h-[100px] sm:px-3 sm:py-2.5 md:flex-1',
+  studentTabActive: 'border-[#2d81e0] bg-[#ecf3fc] text-[#2c2d2e] shadow-sm',
+  studentTabIdle: 'border-[#e7e8ec] bg-white text-[#2c2d2e] active:bg-[#f5f6f8]',
+  studentTabIcon:
+    'relative mb-1 inline-flex h-7 w-7 items-center justify-center rounded-lg border sm:mb-1.5 sm:h-8 sm:w-8',
+  studentTabIconActive: 'border-[#aec8e8] bg-white text-[#2d81e0]',
+  studentTabIconIdle: 'border-[#e7e8ec] bg-[#f0f2f5] text-[#818c99]',
+  studentTabLabel: 'relative block text-[12px] font-medium leading-[14px] text-[#2c2d2e] sm:text-[13px] sm:leading-4',
+  progressTrack: 'relative mt-1 hidden h-1 w-full overflow-hidden rounded-full bg-[#e7e8ec] sm:block',
+  chipBar: 'flex w-full flex-wrap items-center gap-1.5 rounded-[10px] bg-[#f0f2f5] px-2 py-1.5 text-[13px] text-[#2c2d2e] sm:ml-auto sm:w-auto sm:px-3 sm:py-2',
+  iconBtn:
+    'inline-flex h-8 w-8 touch-manipulation items-center justify-center rounded-lg bg-white text-[#818c99] active:bg-[#ebedf0] disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9',
+  notice: 'rounded-[10px] bg-[#f0f2f5] px-3 py-2.5 text-[13px] leading-[18px] text-[#2c2d2e]',
+  noticeInfo: 'rounded-[10px] bg-[#ecf3fc] px-3 py-2.5 text-[13px] leading-[18px] text-[#2c2d2e]',
+  noticeWarn: 'rounded-[10px] bg-[#fff8e6] px-3 py-2.5 text-[13px] leading-[18px] text-[#2c2d2e]',
+  article: 'scroll-mt-40 rounded-[10px] border border-[#e7e8ec] bg-white p-3',
+  articleLocked: 'scroll-mt-40 rounded-[10px] border border-[#f4e4a6] bg-[#fffbeb] p-3',
 }
 
 /** Маркер: внутри не менять вёрстку дуэли эталона (человечки). */

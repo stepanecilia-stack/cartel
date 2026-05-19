@@ -30,6 +30,8 @@ import {
   studentAthleteShape,
   studentPhotoUrl,
 } from '../utils/studentModel'
+import BackToHomeLink from '../components/layout/BackToHomeLink.jsx'
+import { ETALON_MODEL_PANEL_CLASS, vk } from '../utils/vkUi.js'
 import { buildPublicSharePayload, isValidProgressShareToken } from '../utils/publicSharePayload'
 import {
   buildNormAcceptanceHistoryEntry,
@@ -1323,7 +1325,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           className={`scroll-mt-40 flex flex-col gap-1.5 rounded-lg border p-2.5 transition-colors sm:gap-2 sm:rounded-xl sm:p-4 ${cardTone}`}
         >
           <div className="text-center">
-            <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{norm.testName}</span>
+            <span className="block text-base font-bold leading-snug text-slate-900 sm:text-lg">{norm.testName}</span>
             {norm.description ? (
               <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:text-xs">{norm.description}</p>
             ) : null}
@@ -1334,7 +1336,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               <NormGoldGoalIcon />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/85">Цель</p>
-                <p className="truncate text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                <p className="truncate text-sm font-bold tabular-nums text-slate-900">
                   {goalLabel}{' '}
                   <span className="text-xs font-semibold text-slate-600">{norm.unit}</span>
                 </p>
@@ -1355,7 +1357,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 type={inputType}
                 inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
                 step={inputType === 'number' ? 'any' : undefined}
-                className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                className={vk.input}
                 value={displayVal}
                 onChange={(e) => updateNormResult(category, norm, e.target.value)}
               />
@@ -1377,7 +1379,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 type="button"
                 disabled={!student?.id || normBusy || !row || !Number.isFinite(row.result)}
                 onClick={() => handleSaveNormAcceptance(category, norm)}
-                className="rounded-lg border border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45"
+                className={`${vk.btnSecondary} text-[13px] disabled:opacity-45`}
               >
                 {normBusy ? 'Сохранение…' : 'Сохранить норматив'}
               </button>
@@ -1404,31 +1406,18 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   return (
     <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto min-w-0 max-w-4xl space-y-2 sm:space-y-4">
-        <div
-          className="sticky top-12 z-30 -mx-2 flex min-w-0 items-center gap-2 border-b border-[#e7e8ec] bg-white/95 py-1.5 pr-2 pl-2 backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:-mx-4 sm:gap-2 sm:px-4"
-          aria-label="Карточка ученика — закреплённая строка"
-        >
-          <button
-            type="button"
-            onClick={onBack}
-            className="shrink-0 rounded-lg bg-[#f0f2f5] px-3 py-1.5 text-[13px] font-medium text-[#2d81e0] active:bg-[#ebedf0]"
-          >
-            Назад к дашборду
-          </button>
-          <p className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
-            {safeStudent.name}
-          </p>
+        <div className={`${vk.navSubBar} min-w-0`} aria-label="Карточка ученика — закреплённая строка">
+          <BackToHomeLink onClick={onBack} className="shrink-0" />
+          <p className={`min-w-0 flex-1 truncate ${vk.h2}`}>{safeStudent.name}</p>
         </div>
 
-        <section className="rounded-[10px] bg-white p-2.5 dark:bg-slate-900 sm:p-6">
+        <section className={vk.cardPadded}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="hidden text-[17px] font-semibold leading-5 text-slate-900 dark:text-slate-100 sm:block sm:text-3xl sm:tracking-normal">
-              {safeStudent.name}
-            </h1>
+            <h1 className={`hidden sm:block ${vk.h1Lg}`}>{safeStudent.name}</h1>
             {student?.id && (
-              <div className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:ml-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 sm:text-sm">
-                <span className="text-slate-500">Код:</span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 sm:text-base">
+              <div className={vk.chipBar}>
+                <span className="text-[#818c99]">Код:</span>
+                <span className="font-mono text-[15px] font-semibold tabular-nums text-[#2c2d2e]">
                   {shortIdDigits ? formatShortIdDisplay(shortIdDigits) : '—'}
                 </span>
                 <button
@@ -1437,7 +1426,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   onClick={copyShortId}
                   title="Скопировать шесть цифр без пробелов — чтобы передать другому тренеру"
                   aria-label="Скопировать личный код ученика"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 sm:h-9 sm:w-9"
+                  className={vk.iconBtn}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -1450,11 +1439,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   onClick={handleShareProgress}
                   title="Поделиться прогрессом"
                   aria-label="Поделиться прогрессом"
-                  className={`inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 ${
-                    shareFlash
-                      ? 'border-emerald-300 text-emerald-700'
-                      : 'border-slate-200 text-slate-600'
-                  }`}
+                  className={`${vk.iconBtn} ${shareFlash ? 'text-[#4bb34b]' : ''}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
@@ -1469,9 +1454,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             )}
           </div>
           {shortIdAssignError && (
-            <p className="mt-2 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              {shortIdAssignError}
-            </p>
+            <p className={`mt-2 max-w-2xl ${vk.noticeWarn}`}>{shortIdAssignError}</p>
           )}
           {shareUrl && (
             <button
@@ -1479,10 +1462,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               onClick={copyShareUrl}
               title="Нажмите, чтобы скопировать ссылку"
               aria-label="Скопировать ссылку прогресса"
-              className={`mt-3 w-full rounded-lg border px-3 py-2 text-left text-xs break-all transition ${
-                shareFlash
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+              className={`mt-3 w-full rounded-[10px] px-3 py-2 text-left text-[13px] break-all transition active:opacity-90 ${
+                shareFlash ? 'bg-[#e8f7e8] text-[#4bb34b]' : vk.notice
               }`}
             >
               {shareUrl}
@@ -1490,8 +1471,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="rounded-[10px] bg-white p-2.5 dark:bg-slate-900 sm:p-6">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">Тесты и техника</h2>
+        <section className={vk.cardPadded}>
+          <h2 className={vk.h2}>Тесты и техника</h2>
 
           <div className="-mx-2 mt-2 flex gap-1.5 overflow-x-auto px-2 pb-1 sm:mx-0 sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:flex md:flex-nowrap md:gap-4">
             {TAB_ITEMS.map((tab) => {
@@ -1502,45 +1483,24 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`group relative min-w-[7.25rem] shrink-0 min-h-[4.25rem] overflow-hidden rounded-lg border px-2 py-2 text-left transition-all sm:min-w-0 sm:min-h-[124px] sm:rounded-xl sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
-                  activeTab === tab.id
-                    ? 'z-[1] border-blue-400 bg-blue-50/60 text-slate-900 shadow-sm ring-1 ring-blue-200/80 sm:-translate-y-0.5 sm:shadow-md sm:shadow-blue-100/80 dark:border-blue-500 dark:bg-blue-950/40 dark:text-slate-100 dark:shadow-blue-950/30 dark:ring-blue-800/50'
-                    : 'border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 sm:hover:-translate-y-1 sm:hover:border-slate-300 sm:hover:bg-slate-50 sm:hover:shadow-lg'
-                } ${
-                  isTopInfluenceTab
-                    ? 'ring-2 ring-emerald-500/70 ring-offset-1 ring-offset-slate-50 dark:ring-offset-slate-900 sm:ring-offset-2 md:min-h-[138px]'
-                    : ''
-                }`}
+                className={`${vk.studentTab} ${
+                  activeTab === tab.id ? vk.studentTabActive : vk.studentTabIdle
+                } ${isTopInfluenceTab ? 'ring-2 ring-[#4bb34b]/60 ring-offset-1 ring-offset-white' : ''}`}
               >
                 <span
-                  className={`pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left rounded-b-xl transition-all duration-500 ease-out ${
-                    activeTab === tab.id
-                      ? 'scale-x-100 bg-blue-500 dark:bg-blue-400'
-                      : 'scale-x-0 bg-transparent group-hover:scale-x-100 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'
-                  }`}
-                  aria-hidden
-                />
-                <span
-                  className={`relative mb-1 inline-flex h-6 w-6 items-center justify-center rounded-md border sm:mb-3 sm:h-10 sm:w-10 sm:rounded-lg sm:group-hover:scale-110 ${
-                    activeTab === tab.id
-                      ? 'border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 group-hover:border-slate-300 group-hover:bg-white group-hover:text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:border-slate-500 dark:group-hover:bg-slate-700'
+                  className={`${vk.studentTabIcon} ${
+                    activeTab === tab.id ? vk.studentTabIconActive : vk.studentTabIconIdle
                   }`}
                 >
                   {TAB_ICONS[tab.id]}
                 </span>
-                <span
-                  className="relative block text-[11px] uppercase leading-tight text-slate-900 sm:text-[16px] md:text-[18px] md:tracking-wide dark:text-slate-100"
-                  style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
-                >
-                  {tab.label}
-                </span>
+                <span className={vk.studentTabLabel}>{tab.label}</span>
                 {tab.id !== 'anthropometry' ? (
                   <>
-                    <span className="relative mt-0.5 block text-[10px] text-slate-500 sm:mt-3 sm:text-xs dark:text-slate-400">
+                    <span className={`relative mt-0.5 block ${vk.mutedXs}`}>
                       {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
                     </span>
-                    <span className="relative mt-1 hidden h-1.5 w-full overflow-hidden rounded-full bg-slate-200 sm:mt-2 sm:block dark:bg-slate-700" aria-hidden>
+                    <span className={vk.progressTrack} aria-hidden>
                       <span
                         className={`block h-full rounded-full transition-all duration-500 ease-out ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
                         style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
@@ -1556,41 +1516,41 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-6">
             {activeTab === 'anthropometry' && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Карта спортсмена</h3>
+                <h3 className={vk.h2}>Карта спортсмена</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm font-medium text-slate-700">Год рождения</span>
+                    <span className={vk.label}>Год рождения</span>
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="number"
                         min={1900}
                         max={new Date().getFullYear()}
                         placeholder="например, 2012"
-                        className="w-full max-w-[200px] rounded-lg border border-slate-200 px-3 py-2"
+                        className={`${vk.input} max-w-[200px]`}
                         value={anthropometry.birthYear}
                         onChange={(e) =>
                           setAnthropometry((prev) => ({ ...prev, birthYear: e.target.value }))
                         }
                       />
-                      <span className="text-sm text-slate-600">
+                      <span className={vk.muted}>
                         {formatBirthYearRu(anthropometry.birthYear) || '—'}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-500">
+                    <span className={vk.mutedXs}>
                       Возраст в расчётах: текущий год минус год рождения.
                     </span>
                   </label>
                   <label className="space-y-2 md:col-span-2">
-                    <span className="text-sm font-medium text-slate-700">
+                    <span className={vk.label}>
                       Дата рождения{' '}
-                      <span className="font-normal text-slate-500">(необязательно)</span>
+                      <span className="font-normal text-[#818c99]">(необязательно)</span>
                     </span>
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="date"
                         min="1900-01-01"
                         max={new Date().toISOString().slice(0, 10)}
-                        className="w-full max-w-[220px] rounded-lg border border-slate-200 px-3 py-2"
+                        className={`${vk.input} max-w-[220px]`}
                         value={anthropometry.birthDate}
                         onChange={(e) =>
                           setAnthropometry((prev) => ({ ...prev, birthDate: e.target.value }))
@@ -1599,7 +1559,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                       {anthropometry.birthDate ? (
                         <button
                           type="button"
-                          className="text-sm text-slate-600 underline hover:text-slate-900"
+                          className={vk.link}
                           onClick={() =>
                             setAnthropometry((prev) => ({ ...prev, birthDate: '' }))
                           }
@@ -1610,10 +1570,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     </div>
                   </label>
                   <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Рост (см)</span>
+                    <span className={vk.label}>Рост (см)</span>
                     <input
                       type="number"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      className={vk.input}
                       value={anthropometry.height}
                       onChange={(e) =>
                         setAnthropometry((prev) => ({ ...prev, height: e.target.value }))
@@ -1621,10 +1581,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Вес (кг)</span>
+                    <span className={vk.label}>Вес (кг)</span>
                     <input
                       type="number"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      className={vk.input}
                       value={anthropometry.weight}
                       onChange={(e) =>
                         setAnthropometry((prev) => ({ ...prev, weight: e.target.value }))
@@ -1632,10 +1592,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Размах рук (см)</span>
+                    <span className={vk.label}>Размах рук (см)</span>
                     <input
                       type="number"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      className={vk.input}
                       value={anthropometry.reach}
                       onChange={(e) =>
                         setAnthropometry((prev) => ({ ...prev, reach: e.target.value }))
@@ -1643,9 +1603,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     />
                   </label>
                   <label className="space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Пол (для подбора норм тестов)</span>
+                    <span className={vk.label}>Пол (для подбора норм тестов)</span>
                     <select
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      className={vk.input}
                       value={anthropometry.gender}
                       onChange={(e) =>
                         setAnthropometry((prev) => ({ ...prev, gender: e.target.value }))
@@ -1656,10 +1616,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     </select>
                   </label>
                   <label className="md:col-span-2 space-y-2">
-                    <span className="text-sm font-medium text-slate-700">Дата измерения</span>
+                    <span className={vk.label}>Дата измерения</span>
                     <input
                       type="date"
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      className={vk.input}
                       value={anthropometry.date}
                       onChange={(e) =>
                         setAnthropometry((prev) => ({ ...prev, date: e.target.value }))
@@ -1668,22 +1628,20 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   </label>
                 </div>
 
-                <div className="mt-6 border-t border-slate-200 pt-5">
+                <div className="mt-4 border-t border-[#e7e8ec] pt-4">
                   {anthropometrySaveError && (
-                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <div className={`mb-3 ${vk.error}`} role="alert">
                       {anthropometrySaveError}
                     </div>
                   )}
                   {anthropometrySaveOk && !anthropometrySaveError && (
-                    <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                      Данные сохранены в облаке.
-                    </div>
+                    <div className={`mb-3 ${vk.success}`}>Данные сохранены в облаке.</div>
                   )}
                   <button
                     type="button"
                     disabled={isAnthropometrySaving || !student?.id}
                     onClick={handleSaveProfile}
-                    className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:py-2.5"
+                    className={`w-full sm:w-auto ${vk.btnPrimary}`}
                   >
                     {isAnthropometrySaving ? 'Сохранение…' : 'Сохранить'}
                   </button>
@@ -1693,14 +1651,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
             {activeTab === 'physical' && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Физическое развитие</h3>
+                <h3 className={vk.h2}>Физическое развитие</h3>
                 <div className="grid gap-4">{renderNormInputs('physical', physicalNorms, physicalResults)}</div>
               </div>
             )}
 
             {activeTab === 'functional' && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-800">Функциональная готовность</h3>
+                <h3 className={vk.h2}>Функциональная готовность</h3>
                 <div className="grid gap-4">{renderNormInputs('functional', functionalNorms, functionalResults)}</div>
               </div>
             )}
@@ -1708,13 +1666,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             {activeTab === 'technical' && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Техника</h3>
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  <h3 className={vk.h2}>Техника</h3>
+                  <p className={`mt-1 ${vk.mutedXs}`}>
                     Три уровня: базовые элементы, контексты удара/защиты и индивидуальные комбинации. Шкала освоения для
                     всех уровней одинаковая.
                   </p>
                 </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-900">
                   Предложенные технические элементы и видеоматериалы носят рекомендательный методический характер и
                   не являются единственно верным стандартом исполнения. В зависимости от школы бокса допустимы
                   различия в технике и акцентах обучения. Приоритетным является соблюдение последовательности
@@ -1727,18 +1685,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   </p>
                 ) : (
                   <>
-                    <nav
-                      className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-100 p-1.5 shadow-sm dark:border-slate-600 dark:bg-slate-800/90 sm:flex-row sm:items-stretch"
-                      aria-label="Разделы техники"
-                    >
+                    <nav className={`flex flex-col gap-2 sm:flex-row sm:items-stretch ${vk.segmentBar}`} aria-label="Разделы техники">
                       <button
                         type="button"
                         onClick={() => setTechnicalTierTab('level1')}
                         aria-current={technicalTierTab === 'level1' ? 'page' : undefined}
-                        className={`flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-semibold transition-colors sm:py-3 ${
+                        className={`${vk.segmentBtn} flex-1 text-center sm:py-2.5 ${
                           technicalTierTab === 'level1'
-                            ? 'bg-white text-slate-900 shadow ring-1 ring-slate-200/80 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-600'
-                            : 'text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-slate-700/80'
+                            ? vk.segmentBtnActive
+                            : vk.segmentBtnInactive
                         }`}
                       >
                         Уровень 1
@@ -1748,10 +1703,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         type="button"
                         onClick={() => setTechnicalTierTab('level2')}
                         aria-current={technicalTierTab === 'level2' ? 'page' : undefined}
-                        className={`flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-semibold transition-colors sm:py-3 ${
+                        className={`${vk.segmentBtn} flex-1 text-center sm:py-2.5 ${
                           technicalTierTab === 'level2'
-                            ? 'bg-white text-slate-900 shadow ring-1 ring-slate-200/80 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-600'
-                            : 'text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-slate-700/80'
+                            ? vk.segmentBtnActive
+                            : vk.segmentBtnInactive
                         }`}
                       >
                         Уровень 2
@@ -1761,10 +1716,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         type="button"
                         onClick={() => setTechnicalTierTab('combos')}
                         aria-current={technicalTierTab === 'combos' ? 'page' : undefined}
-                        className={`flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-semibold transition-colors sm:py-3 ${
+                        className={`${vk.segmentBtn} flex-1 text-center sm:py-2.5 ${
                           technicalTierTab === 'combos'
-                            ? 'bg-white text-slate-900 shadow ring-1 ring-violet-300/80 dark:bg-slate-900 dark:text-slate-100 dark:ring-violet-700/60'
-                            : 'text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-slate-700/80'
+                            ? vk.segmentBtnActive
+                            : vk.segmentBtnInactive
                         }`}
                       >
                         Комбинации
@@ -1778,7 +1733,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
                     {technicalTierTab === 'level1' && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">
                         Уровень 1 — базовые элементы
                       </h4>
                       {orderedTechnicalAtoms.map((atom) => {
@@ -1788,17 +1743,17 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           <article
                             key={atom.id}
                             id={`technical-atom-${atom.id}`}
-                            className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm dark:bg-slate-900 ${
-                              isLockedBySequence ? 'border-amber-300 bg-amber-50/40 dark:border-amber-700/50' : 'border-slate-200 dark:border-slate-600'
+                            className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm ${
+                              isLockedBySequence ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'
                             }`}
                           >
-                            <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2 dark:border-slate-700">
-                              <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                            <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2">
+                              <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900">
                                 <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
                               </h3>
                               {isLockedBySequence && (
                                 <span
-                                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-sm text-amber-800 dark:border-amber-600 dark:bg-amber-900/80 dark:text-amber-200"
+                                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-sm text-amber-800"
                                   title="Элемент закрыт до уровня «Умение» на предыдущем"
                                   aria-label="Элемент закрыт"
                                 >
@@ -1808,10 +1763,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               {atom.embedUrl && (
                                 <button
                                   type="button"
-                                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-slate-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-200 dark:text-slate-300 ${
+                                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-slate-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-200 ${
                                     openTechnicalVideoId === atom.id
-                                      ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-200'
-                                      : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700'
+                                      ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                      : `${vk.iconBtn} border border-[#e7e8ec]`
                                   }`}
                                   title="Видеоматериал (опционально)"
                                   aria-label="Показать или скрыть видео"
@@ -1827,7 +1782,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               )}
                             </div>
                             {atom.embedUrl && openTechnicalVideoId === atom.id && (
-                              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-950 p-2 dark:border-slate-600">
+                              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-950 p-2">
                                 <div className="relative w-full pt-[177.78%]">
                                   <iframe
                                     src={atom.embedUrl}
@@ -1847,7 +1802,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                   Уровень освоения
                                 </span>
                                 <select
-                                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800"
+                                  className={`${vk.select} disabled:cursor-not-allowed disabled:opacity-50`}
                                   value={atomLevelKey}
                                   disabled={isLockedBySequence}
                                   onChange={(event) =>
@@ -1874,7 +1829,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               </span>
                               <textarea
                                 rows={2}
-                                className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800"
+                                className={`${vk.input} min-h-[4.5rem] resize-y disabled:cursor-not-allowed disabled:opacity-50`}
                                 placeholder="Заметки по элементу…"
                                 value={technicalData[atom.id]?.comment ?? ''}
                                 disabled={isLockedBySequence}
@@ -1889,23 +1844,23 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               />
                             </label>
                             {isLockedBySequence && (
-                              <p className="mt-2 rounded-md border border-amber-200 bg-amber-100/70 px-2.5 py-1.5 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100">
+                              <p className="mt-2 rounded-md border border-amber-200 bg-amber-100/70 px-2.5 py-1.5 text-xs font-medium text-amber-900">
                                 Элемент под замком. Чтобы открыть его, предыдущий элемент должен быть на уровне «Умение».
                               </p>
                             )}
-                            <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-700">
+                            <div className="mt-2 border-t border-slate-100 pt-2">
                               <button
                                 type="button"
                                 disabled={!student?.id || isLockedBySequence || technicalSavingKey === `technical:${atom.id}`}
                                 onClick={() => handleSaveTechnicalAtom(atom)}
-                                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:bg-slate-700"
+                                className={`w-full ${vk.btnSecondary} text-[13px] disabled:opacity-45`}
                               >
                                 {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
                               </button>
                             </div>
 
-                            <details className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">
-                              <summary className="cursor-pointer font-medium text-blue-600 dark:text-blue-400">Подсказка и детали</summary>
+                            <details className="mt-1.5 text-xs text-slate-600">
+                              <summary className="cursor-pointer font-medium text-blue-600">Подсказка и детали</summary>
                               <p className="mt-2">
                                 <strong>Как надо:</strong> {atom.howTo}
                               </p>
@@ -1927,10 +1882,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
                     {technicalTierTab === 'level2' && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">
                         Уровень 2
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                      <p className="text-xs text-slate-600">
                         Фиксированный набор контекстов; освоение по той же шкале, что и уровень 1. На программу «под
                         замок» уровень 2 не влияет.
                       </p>
@@ -1940,10 +1895,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           <article
                             key={atom.id}
                             id={`technical-atom-${atom.id}`}
-                            className="scroll-mt-40 rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-600 dark:bg-slate-900"
+                            className="scroll-mt-40 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
                           >
-                            <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2 dark:border-slate-700">
-                              <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                            <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2">
+                              <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900">
                                 <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
                               </h3>
                             </div>
@@ -1953,7 +1908,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                   Уровень освоения
                                 </span>
                                 <select
-                                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
                                   value={atomLevelKey}
                                   onChange={(event) =>
                                     setTechnicalData((prev) => ({
@@ -1976,7 +1931,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               </span>
                               <textarea
                                 rows={2}
-                                className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                                className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
                                 placeholder="Заметки по элементу…"
                                 value={technicalData[atom.id]?.comment ?? ''}
                                 onChange={(event) =>
@@ -1987,12 +1942,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                 }
                               />
                             </label>
-                            <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-700">
+                            <div className="mt-2 border-t border-slate-100 pt-2">
                               <button
                                 type="button"
                                 disabled={!student?.id || technicalSavingKey === `technical:${atom.id}`}
                                 onClick={() => handleSaveTechnicalAtom(atom)}
-                                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:bg-slate-700"
+                                className={`w-full ${vk.btnSecondary} text-[13px] disabled:opacity-45`}
                               >
                                 {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
                               </button>
@@ -2006,7 +1961,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     {technicalTierTab === 'combos' && (
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-end justify-between gap-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">
                           Уровень 3
                         </h4>
                         <button
@@ -2019,18 +1974,18 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                             setComboPickAtomId('')
                             setComboModalOpen(true)
                           }}
-                          className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 shadow-sm hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-violet-700 dark:bg-violet-950/50 dark:text-violet-200 dark:hover:bg-violet-900/60"
+                          className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 shadow-sm hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-45:bg-violet-900/60"
                         >
                           Добавить комбинацию
                         </button>
                       </div>
-                      <p className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                      <p className="text-xs font-medium text-slate-800">
                         Обязательные к изучению:{' '}
-                        <span className="text-violet-700 dark:text-violet-300">1. Двойка подшаг</span>,{' '}
-                        <span className="text-violet-700 dark:text-violet-300">2. Двойка толчок</span> — всегда в начале
+                        <span className="text-violet-700">1. Двойка подшаг</span>,{' '}
+                        <span className="text-violet-700">2. Двойка толчок</span> — всегда в начале
                         списка, удалить их нельзя.
                       </p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                      <p className="text-xs text-slate-600">
                         Соберите цепочку из атомов уровней 1 и 2 (конструктор). У каждой комбинации свой уровень освоения
                         и комментарий.
                       </p>
@@ -2043,22 +1998,22 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                             <article
                               key={combo.id}
                               id={`technical-combo-${combo.id}`}
-                              className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm dark:bg-slate-900 ${
+                              className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm ${
                                 isRequiredCombo
-                                  ? 'border-amber-200 ring-1 ring-amber-100/80 dark:border-amber-800/60 dark:ring-amber-900/40'
-                                  : 'border-violet-200 dark:border-violet-800/60'
+                                  ? 'border-amber-200 ring-1 ring-amber-100/80'
+                                  : 'border-violet-200'
                               }`}
                             >
-                              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-700">
+                              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-2">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
                                     {isRequiredCombo ? (
-                                      <span className="inline-flex shrink-0 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
+                                      <span className="inline-flex shrink-0 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
                                         Обязательная {reqNum + 1}
                                       </span>
                                     ) : null}
-                                    <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
-                                      <span className="tabular-nums text-violet-600 dark:text-violet-400">∑</span>{' '}
+                                    <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900">
+                                      <span className="tabular-nums text-violet-600">∑</span>{' '}
                                       {combo.name}
                                     </h3>
                                   </div>
@@ -2068,14 +2023,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                     type="button"
                                     disabled={!student?.id || Boolean(technicalSavingKey)}
                                     onClick={() => handleDeleteCombination(combo.id)}
-                                    className="shrink-0 rounded-md border border-red-200 px-2 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
+                                    className="shrink-0 rounded-md border border-red-200 px-2 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40:bg-red-950/40"
                                   >
                                     Удалить
                                   </button>
                                 ) : null}
                               </div>
-                              <p className="mt-2 text-xs leading-snug text-slate-600 dark:text-slate-400">
-                                Цепочка: <span className="font-medium text-slate-800 dark:text-slate-200">{chain}</span>
+                              <p className="mt-2 text-xs leading-snug text-slate-600">
+                                Цепочка: <span className="font-medium text-slate-800">{chain}</span>
                               </p>
                               <div className="mt-2">
                                 <label className="min-w-0 space-y-0.5">
@@ -2083,7 +2038,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                     Уровень освоения
                                   </span>
                                   <select
-                                    className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                                    className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
                                     value={atomLevelKey}
                                     onChange={(event) =>
                                       setTechnicalData((prev) => ({
@@ -2106,7 +2061,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                 </span>
                                 <textarea
                                   rows={2}
-                                  className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                                  className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
                                   placeholder="Заметки по комбинации…"
                                   value={technicalData[combo.id]?.comment ?? ''}
                                   onChange={(event) =>
@@ -2117,7 +2072,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                   }
                                 />
                               </label>
-                              <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-700">
+                              <div className="mt-2 border-t border-slate-100 pt-2">
                                 <button
                                   type="button"
                                   disabled={!student?.id || technicalSavingKey === `technical:${combo.id}`}
@@ -2133,7 +2088,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                       whyMistakes: '',
                                     })
                                   }
-                                  className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:bg-slate-700"
+                                  className={`w-full ${vk.btnSecondary} text-[13px] disabled:opacity-45`}
                                 >
                                   {technicalSavingKey === `technical:${combo.id}` ? 'Сохранение…' : 'Сохранить комбинацию'}
                                 </button>
@@ -2156,26 +2111,26 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                       role="dialog"
                       aria-modal="true"
                       aria-labelledby="combo-modal-title"
-                      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-600 dark:bg-slate-900 sm:p-5"
+                      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl sm:p-5"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <h4 id="combo-modal-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                      <h4 id="combo-modal-title" className="text-base font-semibold text-slate-900">
                         Новая комбинация
                       </h4>
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-slate-600">
                         Выберите атомы уровня 1 или 2 и выстройте цепочку слева направо, как на тренировке.
                       </p>
                       <label className="mt-4 block space-y-1">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Название</span>
+                        <span className="text-xs font-semibold text-slate-700">Название</span>
                         <input
                           type="text"
                           value={comboDraftName}
                           onChange={(e) => setComboDraftName(e.target.value)}
                           placeholder="Например: двойка подшаг"
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-200"
                         />
                       </label>
-                      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800/80">
+                      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Конструктор</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <select
@@ -2184,7 +2139,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               setComboPickTier(e.target.value)
                               setComboPickAtomId('')
                             }}
-                            className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
                           >
                             <option value="1">Уровень 1</option>
                             <option value="2">Уровень 2</option>
@@ -2192,7 +2147,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                           <select
                             value={comboPickAtomId}
                             onChange={(e) => setComboPickAtomId(e.target.value)}
-                            className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
                           >
                             <option value="">— выберите блок —</option>
                             {comboPickOptions.map((o) => (
@@ -2220,14 +2175,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               return (
                                 <li
                                   key={`${stepId}-${idx}`}
-                                  className="inline-flex items-center gap-0.5 rounded-md border border-violet-200 bg-white px-1.5 py-1 text-[11px] dark:border-violet-800 dark:bg-slate-900"
+                                  className="inline-flex items-center gap-0.5 rounded-md border border-violet-200 bg-white px-1.5 py-1 text-[11px]"
                                 >
                                   <span className="max-w-[140px] truncate" title={label}>
                                     {label}
                                   </span>
                                   <button
                                     type="button"
-                                    className="rounded px-0.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                                    className="rounded px-0.5 text-slate-500 hover:text-slate-800:text-slate-200"
                                     aria-label="Выше"
                                     disabled={idx === 0}
                                     onClick={() =>
@@ -2243,7 +2198,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                   </button>
                                   <button
                                     type="button"
-                                    className="rounded px-0.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                                    className="rounded px-0.5 text-slate-500 hover:text-slate-800:text-slate-200"
                                     aria-label="Ниже"
                                     disabled={idx >= comboDraftSteps.length - 1}
                                     onClick={() =>
@@ -2277,7 +2232,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                         <button
                           type="button"
                           onClick={() => setComboModalOpen(false)}
-                          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          className={vk.btnSecondary}
                         >
                           Отмена
                         </button>
@@ -2313,20 +2268,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className="etalon-model-panel rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
-            Историческая модель эталона
-          </h2>
-          <p className="mt-2 text-sm leading-snug text-slate-600">
+        <section className={`${ETALON_MODEL_PANEL_CLASS} ${vk.cardPadded}`}>
+          <h2 className={vk.h2}>Историческая модель эталона</h2>
+          <p className={`mt-2 ${vk.muted}`}>
             {isYoungHistoricalPreview
               ? 'Сравнение текущих параметров с ближайшим эталоном по весу из группы 13–14 лет'
               : 'Сравнение с усреднённым эталоном в возрастной и весовой категории'}
           </p>
           {isYoungHistoricalPreview ? (
-            <div
-              className="mt-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 text-sm leading-snug text-violet-950"
-              role="note"
-            >
+            <div className={`mt-3 ${vk.noticeInfo}`} role="note">
               <p>
                 Спортсмену{' '}
                 <span className="font-semibold tabular-nums">
@@ -2336,7 +2286,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 <span className="font-semibold">13–14</span>, чтобы было видно, сколько ещё «до выхода» на
                 этот ориентир по росту и размаху.
               </p>
-              <p className="mt-1.5 text-xs text-violet-900/90">
+              <p className={`mt-1.5 ${vk.mutedXs}`}>
                 К участию в календарных соревнованиях допускаются спортсмены от 13 лет.
               </p>
             </div>
@@ -2344,7 +2294,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
             <div className="bg-white px-2 py-3 sm:px-4 sm:py-4">
               <div className="flex flex-col gap-3">
-                <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
+                <div className="standard-duel-stage order-1 md:order-2">
                 <StandardDuelSilhouettes
                   athleteLabel={displayNameFromStudent(safeStudent) || 'Спортсмен'}
                   referenceLabel={historicalReferenceLabel}
@@ -2357,49 +2307,49 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 />
               </div>
                 <div className="order-2 grid gap-2 sm:gap-3 md:order-1 md:grid-cols-3">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:hidden">
+                  <div className={`${vk.previewCard} md:hidden`}>
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Весовая: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardWeightCategory} кг</span>
+                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Возрастная: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardAgeGroup}</span>
+                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Архетип эталона: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardArchetype}</span>
+                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
                     </p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Рост: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceHeight || '—'} см</span>
+                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Размах: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceReach || '—'} см</span>
+                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
                     </p>
                   </div>
-                  <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:block">
+                  <div className={`hidden ${vk.previewCard} md:block`}>
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Весовая: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardWeightCategory} кг</span>
+                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Возрастная: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardAgeGroup}</span>
+                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Архетип эталона: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardArchetype}</span>
+                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
                     </p>
                   </div>
-                  <div className="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 md:block">
+                  <div className={`hidden ${vk.previewCard} md:block`}>
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Эталонные параметры</p>
                     <p className="mt-1 text-xs text-slate-700">
-                      Рост: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceHeight || '—'} см</span>
+                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
                     </p>
                     <p className="text-xs text-slate-700">
-                      Размах: <span className="font-semibold text-slate-900 dark:text-slate-100">{referenceReach || '—'} см</span>
+                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
                     </p>
                   </div>
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-2 sm:px-3">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Рекомендация для спортсмена</p>
-                    <p className="mt-1 text-sm font-semibold text-blue-700">{tacticDistanceDisplay || '—'}</p>
-                    <p className="text-[11px] text-slate-600">Эффективная дистанция боя</p>
+                  <div className={vk.noticeInfo}>
+                    <p className={vk.mutedXs}>Рекомендация для спортсмена</p>
+                    <p className="mt-1 text-[15px] font-semibold text-[#2d81e0]">{tacticDistanceDisplay || '—'}</p>
+                    <p className={vk.mutedXs}>Эффективная дистанция боя</p>
                   </div>
                 </div>
               </div>
@@ -2436,10 +2386,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
         <MotorQualityWorkLogPanel workLog={student?.motorQualityWorkLog ?? safeStudent?.motorQualityWorkLog} />
 
-        <section className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-5">
-          <h2 className="text-sm font-semibold leading-snug text-slate-900 sm:text-lg">
-            Сенситивные периоды
-          </h2>
+        <section className={vk.cardPadded}>
+          <h2 className={vk.h2}>Сенситивные периоды</h2>
           <div className="mt-2 sm:mt-4">
             <SensitivePeriodTimer
               birthYear={resolvedBirthYear}

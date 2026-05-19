@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { addStudent } from '../services/firebaseService'
 import { calculateEffectiveKSR, calculateKsrAndKsp, getWeights } from '../utils/ksrUtils'
 import { formatBirthYearRu, normalizeBirthYearNumber } from '../utils/studentModel'
+import { vk } from '../utils/vkUi.js'
 
 const initialForm = {
   fullName: '',
@@ -99,24 +100,21 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
     }
   }
 
-  const gridClass = compact ? 'mt-4 grid max-h-[min(60vh,520px)] gap-3 overflow-y-auto pr-1 sm:grid-cols-2' : 'mt-6 grid gap-4 md:grid-cols-2'
+  const span2 = compact ? 'sm:col-span-2' : 'md:col-span-2'
+  const gridClass = compact
+    ? 'mt-3 grid max-h-[min(60vh,520px)] gap-2.5 overflow-y-auto pr-0.5 sm:grid-cols-2'
+    : 'mt-4 grid gap-2.5 md:grid-cols-2'
 
   return (
     <form className={gridClass} onSubmit={onSubmit}>
-      <label className={compact ? 'sm:col-span-2' : 'md:col-span-2'}>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">ФИО</span>
-        <input
-          name="fullName"
-          type="text"
-          value={formData.fullName}
-          onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        />
+      <label className={span2}>
+        <span className={vk.label}>ФИО</span>
+        <input name="fullName" type="text" value={formData.fullName} onChange={onChange} className={vk.input} />
       </label>
 
-      <label className={compact ? 'sm:col-span-2' : 'md:col-span-2'}>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Год рождения</span>
-        <div className="flex flex-wrap items-center gap-3">
+      <label className={span2}>
+        <span className={vk.label}>Год рождения</span>
+        <div className="flex flex-wrap items-center gap-2">
           <input
             name="birthYear"
             type="number"
@@ -125,79 +123,46 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
             placeholder="2012"
             value={formData.birthYear}
             onChange={onChange}
-            className="w-full max-w-[200px] rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            className={`${vk.input} max-w-[140px]`}
           />
-          <span className="text-sm text-slate-600 dark:text-slate-400">{formatBirthYearRu(formData.birthYear) || '—'}</span>
+          <span className={vk.muted}>{formatBirthYearRu(formData.birthYear) || '—'}</span>
         </div>
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Пол (чтобы подобрать нормы тестов)</span>
-        <select
-          name="gender"
-          value={formData.gender}
-          onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        >
+        <span className={vk.label}>Пол (для норм тестов)</span>
+        <select name="gender" value={formData.gender} onChange={onChange} className={vk.select}>
           <option value="M">Мужской</option>
           <option value="F">Женский</option>
         </select>
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Рост (см)</span>
-        <input
-          name="height"
-          type="number"
-          value={formData.height}
-          onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        />
+        <span className={vk.label}>Рост (см)</span>
+        <input name="height" type="number" value={formData.height} onChange={onChange} className={vk.input} />
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Размах рук (см)</span>
-        <input
-          name="reach"
-          type="number"
-          value={formData.reach}
-          onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        />
+        <span className={vk.label}>Размах рук (см)</span>
+        <input name="reach" type="number" value={formData.reach} onChange={onChange} className={vk.input} />
       </label>
 
       <label>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Вес (кг)</span>
-        <input
-          name="weight"
-          type="number"
-          value={formData.weight}
-          onChange={onChange}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-        />
+        <span className={vk.label}>Вес (кг)</span>
+        <input name="weight" type="number" value={formData.weight} onChange={onChange} className={vk.input} />
       </label>
 
-      {error && (
-        <div
-          className={`rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 ${compact ? 'sm:col-span-2' : 'md:col-span-2'}`}
-        >
+      {error ? (
+        <div className={`${vk.error} ${span2}`} role="alert">
           {error}
         </div>
-      )}
+      ) : null}
 
-      <div className={`flex justify-end gap-3 ${compact ? 'sm:col-span-2' : 'md:col-span-2'}`}>
-        <button
-          type="button"
-          onClick={() => onCancel?.()}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-        >
+      <div className={`flex justify-end gap-2 ${span2}`}>
+        <button type="button" onClick={() => onCancel?.()} className={vk.btnSecondary}>
           Отмена
         </button>
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600"
-        >
+        <button type="submit" disabled={isSaving} className={vk.btnPrimary}>
           {isSaving ? 'Сохранение...' : 'Сохранить'}
         </button>
       </div>

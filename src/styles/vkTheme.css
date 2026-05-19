@@ -23,3 +23,8 @@
 .vk-app .etalon-model-panel .standard-duel-silhouettes {
   /* якорь для StandardDuelSilhouettes root */
 }
+
+/* Обёртка дуэли: не менять внутренние SVG/человечков */
+.vk-app .standard-duel-stage {
+  min-width: 0;
+}

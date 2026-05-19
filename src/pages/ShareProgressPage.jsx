@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { subscribePublicStudentShareByToken } from '../services/firebaseService'
 import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
@@ -310,6 +311,7 @@ export default function ShareProgressPage() {
   return (
     <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
       <div className="mx-auto max-w-4xl space-y-2.5 sm:space-y-6">
+        <BackToHomeBar to="/welcome" />
         <header className="text-center">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">
             Cartel Academy

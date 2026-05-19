@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerCoach } from '../services/firebaseService'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { vk } from '../utils/vkUi.js'
 
 const initialForm = {
@@ -59,8 +60,10 @@ function RegisterCoach() {
   }
 
   return (
-    <main className={`${vk.pageWithNav} flex items-center justify-center px-4 py-6`}>
-      <div className={`w-full max-w-md ${vk.cardPadded}`}>
+    <main className={`${vk.pageWithNav} px-4 py-6`}>
+      <div className="mx-auto w-full max-w-md space-y-3">
+        <BackToHomeBar to="/welcome" />
+        <div className={vk.cardPadded}>
         <h1 className={vk.h1Lg}>Регистрация тренера</h1>
         <p className={`mt-1 ${vk.muted}`}>
           Заполните поля — программа создаст ваш аккаунт и сохранит имя и город в облаке.
@@ -98,6 +101,7 @@ function RegisterCoach() {
             Войти
           </Link>
         </p>
+        </div>
       </div>
     </main>
   )

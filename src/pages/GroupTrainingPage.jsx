@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import {
   getCoachStudents,
   updateStudentData,
@@ -72,21 +73,13 @@ function ComposePhase({
 
   return (
     <div className="space-y-3 pb-24 sm:space-y-5 sm:pb-0">
-      <header className="space-y-2.5">
+      <header className="space-y-2">
         <div>
-          <h1 className="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
-            Групповой прогресс техники
-          </h1>
-          <p className="mt-1 text-xs text-slate-600 sm:text-sm dark:text-slate-400">
+          <h1 className="text-[17px] font-semibold leading-5 text-[#2c2d2e] sm:text-xl">Групповой прогресс техники</h1>
+          <p className="mt-1 text-[13px] leading-[18px] text-[#818c99]">
             Шаг 1 из 2: отметьте, кто пришёл на тренировку.
           </p>
         </div>
-        <Link
-          to="/"
-          className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto sm:text-sm"
-        >
-          Назад на дашборд
-        </Link>
       </header>
 
       {loadError ? (
@@ -429,7 +422,7 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
 
   return (
     <div className="space-y-3 pb-2 sm:space-y-5 sm:pb-0">
-      <header className="sticky top-14 z-20 -mx-1 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/95 p-2 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-950/95 sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      <header className="sticky top-12 z-20 -mx-1 flex flex-wrap items-center gap-2 rounded-lg border border-[#e7e8ec]/80 bg-white/95 p-2 backdrop-blur-sm sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <div className="min-w-0 flex-1">
           <h1 className="text-base font-bold leading-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
             Прогресс по шагам
@@ -581,16 +574,19 @@ export default function GroupTrainingPage({ coachId }) {
   if (!coachId) {
     return (
       <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-        <div className="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-5 text-center text-sm text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:rounded-xl sm:p-6">
-          Войдите в аккаунт тренера, чтобы запустить групповую тренировку.
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-            >
-              Войти
-            </button>
+        <div className="mx-auto max-w-md space-y-2">
+          <BackToHomeBar />
+          <div className="rounded-[10px] bg-white p-4 text-center text-[13px] text-[#818c99]">
+            Войдите в аккаунт тренера, чтобы запустить групповую тренировку.
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="rounded-lg bg-[#2d81e0] px-4 py-2 text-[14px] font-medium text-white active:bg-[#2875cc]"
+              >
+                Войти
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -599,7 +595,8 @@ export default function GroupTrainingPage({ coachId }) {
 
   return (
     <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-5xl space-y-2">
+        <BackToHomeBar />
         {phase === 'compose' ? (
           <ComposePhase
             students={students}

@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import {
   getCoachProfile,
@@ -276,22 +277,13 @@ export default function BulkNormSessionPage({ coachId }) {
 
   return (
     <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-5">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-[17px] font-semibold leading-5 text-slate-900 dark:text-slate-100 sm:text-3xl">
-              Сдать норматив
-            </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Один норматив — несколько спортсменов. В списке только те, у кого он есть по возрасту и полу.
-            </p>
-          </div>
-          <Link
-            to="/"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            Назад на дашборд
-          </Link>
+      <div className="mx-auto max-w-4xl space-y-2 sm:space-y-3">
+        <BackToHomeBar />
+        <header>
+          <h1 className="text-[17px] font-semibold leading-5 text-[#2c2d2e] sm:text-xl">Сдать норматив</h1>
+          <p className="mt-1 text-[13px] leading-[18px] text-[#818c99]">
+            Один норматив — несколько спортсменов. В списке только те, у кого он есть по возрасту и полу.
+          </p>
         </header>
 
         {loadError ? (
