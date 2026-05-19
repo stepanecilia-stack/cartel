@@ -140,8 +140,46 @@ function HomePage({ onSelectStudent, coachId }) {
 
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
+  const dashboardActions = [
+    {
+      key: 'add',
+      label: 'Добавить ученика',
+      icon: '+',
+      className:
+        'border-blue-600 bg-blue-600 text-white shadow-md hover:bg-blue-700 active:bg-blue-800 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600',
+      onClick: () => setAddModalOpen(true),
+    },
+    {
+      key: 'group',
+      label: 'Прогресс техники',
+      icon: '⇉',
+      to: '/group-training',
+      className:
+        'border-blue-200 bg-white text-blue-800 shadow-sm hover:bg-blue-50 active:bg-blue-100 dark:border-blue-500/40 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-slate-800',
+    },
+    {
+      key: 'norms',
+      label: 'Сдать норматив',
+      icon: '✓',
+      to: '/bulk-norms',
+      className:
+        'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm hover:bg-emerald-100 active:bg-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/50',
+    },
+    {
+      key: 'qualities',
+      label: 'База упражнений',
+      icon: '◎',
+      to: '/qualities',
+      className:
+        'border-violet-200 bg-violet-50 text-violet-900 shadow-sm hover:bg-violet-100 active:bg-violet-200/80 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/50',
+    },
+  ]
+
+  const actionButtonClass = (className) =>
+    `inline-flex min-h-[4rem] w-full touch-manipulation flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-center text-[13px] font-semibold leading-snug sm:min-h-[3.5rem] sm:flex-row sm:gap-2 sm:px-4 sm:py-4 sm:text-base ${className}`
+
   return (
-    <main className="min-h-screen bg-slate-50 px-2 py-3 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
+    <main className="min-h-screen bg-slate-50 px-3 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
       <AddStudentModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
@@ -149,34 +187,40 @@ function HomePage({ onSelectStudent, coachId }) {
         studentIds={studentIds}
         onListChanged={loadStudents}
       />
-      <div className="mx-auto max-w-6xl space-y-2.5 sm:space-y-4">
-        <header className="space-y-2.5">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
+      <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
+        <header className="space-y-4">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
             Дашборд учеников
           </h1>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Link
-              to="/group-training"
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 active:bg-blue-100 dark:border-blue-500/40 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800 sm:w-auto sm:px-4 sm:text-sm"
-            >
-              <span aria-hidden className="text-sm leading-none">⇉</span>
-              Групповая тренировка
-            </Link>
-            <Link
-              to="/bulk-norms"
-              className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 active:bg-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/50 sm:w-auto sm:px-4 sm:text-sm"
-            >
-              Сдать норматив
-            </Link>
-            <button
-              type="button"
-              onClick={() => setAddModalOpen(true)}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-600 sm:w-auto sm:px-4 sm:text-sm"
-            >
-              <span className="text-sm leading-none">+</span>
-              Добавить ученика
-            </button>
-          </div>
+          <nav className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4" aria-label="Быстрые действия">
+            {dashboardActions.map((action) => {
+              const content = (
+                <>
+                  <span aria-hidden className="text-lg leading-none sm:text-xl">
+                    {action.icon}
+                  </span>
+                  <span>{action.label}</span>
+                </>
+              )
+              if (action.to) {
+                return (
+                  <Link key={action.key} to={action.to} className={actionButtonClass(action.className)}>
+                    {content}
+                  </Link>
+                )
+              }
+              return (
+                <button
+                  key={action.key}
+                  type="button"
+                  onClick={action.onClick}
+                  className={actionButtonClass(action.className)}
+                >
+                  {content}
+                </button>
+              )
+            })}
+          </nav>
         </header>
 
         {loadError && (
@@ -199,10 +243,10 @@ function HomePage({ onSelectStudent, coachId }) {
         )}
 
         {studentsWithKsr.length > 0 && !isLoading && (
-          <section className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4">
-            <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-4">
+            <div className="grid gap-3 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
               <div className="md:col-span-2 lg:col-span-1">
-                <label htmlFor="dashboard-search" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                <label htmlFor="dashboard-search" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-400">
                   Поиск по ФИО
                 </label>
                 <div className="flex gap-2 md:block">
@@ -213,12 +257,12 @@ function HomePage({ onSelectStudent, coachId }) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Начните вводить имя..."
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:px-3 sm:py-2"
+                    className="min-h-[2.75rem] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setFiltersExpanded((prev) => !prev)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 md:hidden"
+                    className="inline-flex min-h-[2.75rem] shrink-0 touch-manipulation items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 active:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 md:hidden"
                     aria-expanded={filtersExpanded}
                     aria-controls="dashboard-mobile-filters"
                   >
@@ -240,14 +284,14 @@ function HomePage({ onSelectStudent, coachId }) {
                 id="dashboard-mobile-filters"
                 className={`${filtersExpanded ? 'block' : 'hidden'} md:block`}
               >
-                <label htmlFor="dashboard-gender" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                <label htmlFor="dashboard-gender" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-400">
                   Пол
                 </label>
                 <select
                   id="dashboard-gender"
                   value={genderFilter}
                   onChange={(e) => setGenderFilter(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                  className="min-h-[2.75rem] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:text-sm"
                 >
                   <option value="all">Все</option>
                   <option value="M">Мужской</option>
@@ -255,14 +299,14 @@ function HomePage({ onSelectStudent, coachId }) {
                 </select>
               </div>
               <div className={`${filtersExpanded ? 'block' : 'hidden'} md:block`}>
-                <label htmlFor="dashboard-birth-year" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                <label htmlFor="dashboard-birth-year" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-400">
                   Год рождения
                 </label>
                 <select
                   id="dashboard-birth-year"
                   value={birthYearFilter}
                   onChange={(e) => setBirthYearFilter(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                  className="min-h-[2.75rem] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:text-sm"
                 >
                   <option value="all">Все</option>
                   {birthYearOptions.map((year) => (
@@ -273,14 +317,14 @@ function HomePage({ onSelectStudent, coachId }) {
                 </select>
               </div>
               <div className={`${filtersExpanded ? 'block' : 'hidden'} md:block`}>
-                <label htmlFor="dashboard-weight-category" className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                <label htmlFor="dashboard-weight-category" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-400">
                   Весовая категория
                 </label>
                 <select
                   id="dashboard-weight-category"
                   value={weightFilter}
                   onChange={(e) => setWeightFilter(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                  className="min-h-[2.75rem] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:text-sm"
                 >
                   <option value="all">Все</option>
                   {weightOptions.map((weight) => (
@@ -300,17 +344,17 @@ function HomePage({ onSelectStudent, coachId }) {
           </div>
         )}
 
-        <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
           {filteredStudents.map((student) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onSelectStudent?.(student)}
-                className="rounded-lg border border-slate-100 bg-white p-2.5 text-left shadow-sm transition-shadow active:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:active:bg-slate-800 sm:rounded-xl sm:p-4"
+                className="min-h-[4.5rem] touch-manipulation rounded-xl border border-slate-100 bg-white p-3.5 text-left shadow-sm transition-shadow active:bg-slate-50 active:shadow-inner hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:active:bg-slate-800 sm:p-4"
               >
                 <div className="flex min-w-0 items-start gap-1.5 sm:gap-2">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-[15px] font-semibold leading-tight text-slate-900 dark:text-slate-100 sm:text-lg sm:leading-snug">
+                    <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
                       {student.name}
                     </h2>
                     {student.lastChange ? (
