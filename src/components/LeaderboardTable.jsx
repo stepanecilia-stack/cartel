@@ -1,16 +1,17 @@
 import LeaderboardMotorPreview from './LeaderboardMotorPreview.jsx'
 import ShareLeaderboardMotorPreview from './ShareLeaderboardMotorPreview.jsx'
+import { vk } from '../utils/vkUi.js'
 
 /** @param {{ rank: number, compact?: boolean }} props */
 export function RankBadge({ rank, compact = false }) {
   const podium =
     rank === 1
-      ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-200'
+      ? 'border-amber-300 bg-amber-100 text-amber-900'
       : rank === 2
-        ? 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100'
+        ? 'border-[#c5d0de] bg-[#f0f2f5] text-[#2c2d2e]'
         : rank === 3
-          ? 'border-orange-300 bg-orange-100 text-orange-900 dark:border-orange-700 dark:bg-orange-950/50 dark:text-orange-200'
-          : 'border-slate-200 bg-white text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200'
+          ? 'border-orange-300 bg-orange-100 text-orange-900'
+          : 'border-[#e7e8ec] bg-white text-[#2c2d2e]'
 
   const size = compact ? 'h-8 w-8 text-xs' : 'h-9 w-9 text-sm'
 
@@ -32,13 +33,13 @@ export function MedalChips({ medals, stacked = false }) {
         stacked ? 'justify-center' : 'items-center justify-end sm:justify-end'
       }`}
     >
-      <span className="rounded-full bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 sm:px-2">
+      <span className="rounded-full bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 sm:px-2">
         🥇 {medals.gold}
       </span>
-      <span className="rounded-full bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:px-2">
+      <span className="rounded-full bg-[#f0f2f5] px-1.5 py-0.5 font-medium text-[#2c2d2e] sm:px-2">
         🥈 {medals.silver}
       </span>
-      <span className="rounded-full bg-orange-50 px-1.5 py-0.5 font-medium text-orange-900 dark:bg-orange-950/40 dark:text-orange-200 sm:px-2">
+      <span className="rounded-full bg-orange-50 px-1.5 py-0.5 font-medium text-orange-900 sm:px-2">
         🥉 {medals.bronze}
       </span>
     </div>
@@ -66,7 +67,7 @@ export function LeaderboardRowMetrics({ row, categoryId, rawById, publicMode = f
             className="max-w-full justify-start sm:max-w-[200px] sm:justify-end"
           />
           {row.secondary ? (
-            <span className="text-[10px] text-slate-500 sm:text-[11px] dark:text-slate-400">{row.secondary}</span>
+            <span className={vk.mutedXs}>{row.secondary}</span>
           ) : null}
         </div>
       )
@@ -79,7 +80,7 @@ export function LeaderboardRowMetrics({ row, categoryId, rawById, publicMode = f
           className="max-w-full justify-start sm:max-w-[200px] sm:justify-end"
         />
         {row.secondary ? (
-          <span className="text-[10px] text-slate-500 sm:text-[11px] dark:text-slate-400">{row.secondary}</span>
+          <span className={vk.mutedXs}>{row.secondary}</span>
         ) : null}
       </div>
     )
@@ -91,7 +92,7 @@ export function LeaderboardRowMetrics({ row, categoryId, rawById, publicMode = f
     return null
   }
   return row.secondary ? (
-    <span className="text-[10px] text-slate-500 sm:text-[11px] dark:text-slate-400">{row.secondary}</span>
+    <span className={vk.mutedXs}>{row.secondary}</span>
   ) : null
 }
 
@@ -135,10 +136,10 @@ function PodiumSlot({
       : 'bg-gradient-to-t from-orange-500 to-orange-400'
 
   const cardShell = isFirst
-    ? 'z-10 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white shadow-lg ring-2 ring-amber-400/70 dark:border-amber-600 dark:from-amber-950/50 dark:via-slate-900 dark:to-slate-900 dark:ring-amber-500/50'
+    ? 'z-10 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white ring-2 ring-amber-400/50'
     : isSecond
-      ? 'mt-5 border-slate-300 bg-white shadow-sm sm:mt-8 dark:border-slate-500 dark:bg-slate-900'
-      : 'mt-7 border-orange-200 bg-white shadow-sm sm:mt-10 dark:border-orange-700 dark:bg-slate-900'
+      ? 'mt-5 border-[#e7e8ec] bg-white sm:mt-8'
+      : 'mt-7 border-orange-200 bg-white sm:mt-10'
 
   const inner = (
     <>
@@ -149,7 +150,7 @@ function PodiumSlot({
       ) : null}
       <RankBadge rank={rank} compact />
       <span
-        className={`mt-1 line-clamp-2 w-full font-bold leading-tight text-slate-900 dark:text-slate-100 ${
+        className={`mt-1 line-clamp-2 w-full font-bold leading-tight text-[#2c2d2e] ${
           isFirst ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-xs'
         }`}
       >
@@ -157,7 +158,7 @@ function PodiumSlot({
       </span>
       <div className="mt-1 w-full">{rowPrimary(row, isFirst)}</div>
       {categoryId !== 'technical' ? (!isFirst ? (
-        <div className="mt-1.5 w-full border-t border-slate-100 pt-1.5 dark:border-slate-700">
+        <div className="mt-1.5 w-full border-t border-[#e7e8ec] pt-1.5">
           <LeaderboardRowMetrics
             row={row}
             categoryId={categoryId}
@@ -167,7 +168,7 @@ function PodiumSlot({
           />
         </div>
       ) : (
-        <div className="mt-2 w-full border-t border-amber-200/80 pt-2 dark:border-amber-800/50">
+        <div className="mt-2 w-full border-t border-amber-200/80 pt-2">
           <LeaderboardRowMetrics
             row={row}
             categoryId={categoryId}
@@ -235,12 +236,10 @@ export default function LeaderboardTable({
 
   const rowPrimary = (row, large = false) => (
     <p
-      className={`font-bold tabular-nums text-blue-700 dark:text-blue-400 ${
-        large ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'
-      }`}
+      className={`${vk.accent} ${large ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'}`}
     >
       {row.primaryLabel}
-      <span className="ml-1 text-[10px] font-medium text-slate-500 sm:text-xs dark:text-slate-400">
+      <span className={`ml-1 text-[10px] font-medium sm:text-xs ${vk.mutedXs}`}>
         {row.primarySuffix}
       </span>
     </p>
@@ -248,7 +247,7 @@ export default function LeaderboardTable({
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:px-4 sm:py-8">
+      <p className={vk.emptyState}>
         {showCheckboxes ? 'Выберите учеников для рейтинга.' : 'Нет данных для отображения.'}
       </p>
     )
@@ -259,7 +258,7 @@ export default function LeaderboardTable({
       {topThree.length > 0 && !showCheckboxes ? (
         <>
           <div>
-            <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:mb-3 sm:text-xs dark:text-slate-400">
+            <p className={`mb-2 text-center ${vk.mutedXs} sm:mb-3`}>
               Пьедестал
             </p>
             <ol
@@ -297,14 +296,14 @@ export default function LeaderboardTable({
           if (showCheckboxes) {
             return (
               <li key={rowKey}>
-                <label className="flex min-h-[3rem] cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm touch-manipulation active:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:active:bg-slate-800 sm:px-4">
+                <label className={`${vk.listRow} min-h-[3rem] cursor-pointer items-center gap-3`}>
                   <input
                     type="checkbox"
                     checked={Boolean(checked)}
                     onChange={() => onToggleStudent?.(row.id)}
-                    className="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 shrink-0 rounded border-[#e7e8ec] text-[#2d81e0] focus:ring-[#2d81e0]"
                   />
-                  <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                  <span className={`min-w-0 flex-1 ${vk.listItemTitle}`}>
                     {row[displayNameKey] ?? row.name}
                   </span>
                 </label>
@@ -318,16 +317,14 @@ export default function LeaderboardTable({
                 type="button"
                 disabled={!canOpenStudent}
                 onClick={() => onOpenStudent?.(row)}
-                className={`flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm touch-manipulation dark:border-slate-600 dark:bg-slate-900 sm:flex-row sm:items-center sm:gap-3 sm:p-4 ${
-                  canOpenStudent
-                    ? 'active:border-blue-200 active:bg-slate-50/80 dark:active:border-blue-700 dark:active:bg-slate-800/80 sm:hover:border-blue-200 sm:hover:bg-slate-50/80'
-                    : 'cursor-default'
+                className={`${vk.listRow} flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 ${
+                  canOpenStudent ? '' : 'cursor-default'
                 }`}
               >
                 <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                   <RankBadge rank={row.rank} compact />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900 sm:text-base dark:text-slate-100">
+                    <p className={`truncate ${vk.listItemTitle} sm:text-base`}>
                       {row[displayNameKey]}
                     </p>
                     <div className="mt-0.5 sm:hidden">{rowPrimary(row)}</div>
@@ -337,7 +334,7 @@ export default function LeaderboardTable({
                 <div className="hidden sm:block sm:shrink-0">{rowPrimary(row)}</div>
 
                 {categoryId !== 'technical' ? (
-                  <div className="w-full border-t border-slate-100 pt-2 sm:w-auto sm:border-0 sm:pt-0 sm:shrink-0 dark:border-slate-700">
+                  <div className="w-full border-t border-[#e7e8ec] pt-2 sm:w-auto sm:border-0 sm:pt-0 sm:shrink-0">
                     <LeaderboardRowMetrics
                       row={row}
                       categoryId={categoryId}

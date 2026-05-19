@@ -12,6 +12,7 @@ import {
 } from '../utils/leaderboardMetrics.js'
 import { loadLegacyNorms, loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
+import { vk } from '../utils/vkUi.js'
 
 /**
  * @param {{
@@ -118,59 +119,37 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
     coach.syncShareNow,
   ])
 
+  const scopeLinkClass = (active) =>
+    `${vk.segmentBtn} flex min-h-[2.5rem] flex-1 items-center justify-center text-center ${active ? vk.segmentBtnActive : vk.segmentBtnInactive}`
+
   return (
-    <main className="min-h-[calc(100vh-48px)] bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-3xl space-y-2 sm:space-y-3">
+    <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
+      <div className={`${vk.containerMid} max-w-3xl`}>
         <BackToHomeBar />
-        <header className="space-y-2 sm:space-y-3">
+        <header className="space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h1 className="text-[17px] font-semibold leading-5 sm:text-xl">Рейтинг спортсменов</h1>
-              <p className="mt-0.5 text-xs leading-snug text-slate-600 sm:mt-1 sm:text-sm dark:text-slate-400">
-                {isSchool ? (
-                  'Все ученики школы.'
-                ) : (
-                  <>
-                    <span className="sm:hidden">Состав, ссылка и сравнение.</span>
-                    <span className="hidden sm:inline">
-                      Сравнение по активности и прогрессу. Настройте состав и поделитесь ссылкой.
-                    </span>
-                  </>
-                )}
+              <h1 className={vk.h1Lg}>Рейтинг спортсменов</h1>
+              <p className={`mt-0.5 ${vk.muted}`}>
+                {isSchool
+                  ? 'Все ученики школы.'
+                  : 'Сравнение по активности и прогрессу. Настройте состав и поделитесь ссылкой.'}
               </p>
             </div>
-            <p className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold tabular-nums text-slate-800 sm:w-auto sm:py-1.5 sm:text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
+            <p className={`${vk.chipBar} w-full justify-center sm:w-auto`}>
               {(() => {
                 const n = isSchool ? students.length : coach.curatedIds.length
-                const word =
-                  n === 1 ? 'ученик' : n < 5 ? 'ученика' : 'учеников'
+                const word = n === 1 ? 'ученик' : n < 5 ? 'ученика' : 'учеников'
                 return isSchool ? `${n} ${word}` : `${n} ${word} в рейтинге`
               })()}
             </p>
           </div>
 
-          <nav
-            className="flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-600 dark:bg-slate-900"
-            aria-label="Область рейтинга"
-          >
-            <Link
-              to="/leaderboard"
-              className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-2 py-2 text-center text-xs font-semibold touch-manipulation sm:px-3 sm:text-sm ${
-                !isSchool
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-              }`}
-            >
+          <nav className={vk.segmentBar} aria-label="Область рейтинга">
+            <Link to="/leaderboard" className={scopeLinkClass(!isSchool)}>
               Мои ученики
             </Link>
-            <Link
-              to="/leaderboard/school"
-              className={`flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg px-2 py-2 text-center text-xs font-semibold touch-manipulation sm:px-3 sm:text-sm ${
-                isSchool
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-              }`}
-            >
+            <Link to="/leaderboard/school" className={scopeLinkClass(isSchool)}>
               Вся школа
             </Link>
           </nav>
@@ -200,24 +179,16 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
           <>
             <LeaderboardCategoryTabs category={category} onCategoryChange={setCategory} />
 
-            <p className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:px-3 sm:text-sm">
-              {activeCategory.hint}
-            </p>
+            <p className={vk.notice}>{activeCategory.hint}</p>
           </>
         ) : (
-          <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-400">
-            Отметьте учеников для рейтинга и публичной ссылки.
-          </p>
+          <p className={vk.muted}>Отметьте учеников для рейтинга и публичной ссылки.</p>
         )}
 
-        {loadError ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-            {loadError}
-          </p>
-        ) : null}
+        {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
         {isLoading ? (
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">Загрузка рейтинга…</p>
+          <p className={`text-center ${vk.muted}`}>Загрузка рейтинга…</p>
         ) : editMode && !isSchool ? (
           <LeaderboardTable
             rows={editListRows}
@@ -227,12 +198,12 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
             onToggleStudent={coach.toggleStudentInCurated}
           />
         ) : students.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
+          <p className={vk.emptyState}>
             {isSchool
               ? 'В системе пока нет учеников.'
               : editMode
                 ? 'Нет учеников для выбора.'
-                : 'Выберите учеников в составе рейтинга или добавьте их на дашборде.'}
+                : 'Выберите учеников в составе рейтинга или добавьте их на главной.'}
           </p>
         ) : (
           <LeaderboardTable
@@ -243,7 +214,6 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
             onOpenStudent={handleOpenStudent}
           />
         )}
-
       </div>
     </main>
   )

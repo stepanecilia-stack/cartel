@@ -5,6 +5,7 @@ import LeaderboardCategoryTabs from '../components/LeaderboardCategoryTabs.jsx'
 import LeaderboardTable from '../components/LeaderboardTable.jsx'
 import { subscribePublicLeaderboardShareByToken } from '../services/firebaseService.js'
 import { LEADERBOARD_CATEGORIES } from '../utils/leaderboardMetrics.js'
+import { vk } from '../utils/vkUi.js'
 
 export default function ShareLeaderboardPage() {
   const { token } = useParams()
@@ -62,36 +63,26 @@ export default function ShareLeaderboardPage() {
   }, [categories])
 
   return (
-    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-3xl space-y-3 sm:space-y-6">
+    <main className={`${vk.page} ${vk.pagePad}`}>
+      <div className={`${vk.containerMid} max-w-3xl`}>
         <BackToHomeBar to="/welcome" />
-        <header className="space-y-1.5 sm:space-y-2">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">
-            Публичный рейтинг
-          </p>
-          <h1 className="text-lg font-bold leading-tight tracking-tight sm:text-3xl">
-            {payload?.coachDisplayName ?? 'Рейтинг спортсменов'}
-          </h1>
+        <header className="space-y-1.5">
+          <p className={vk.mutedXs}>Публичный рейтинг</p>
+          <h1 className={vk.h1Lg}>{payload?.coachDisplayName ?? 'Рейтинг спортсменов'}</h1>
           {isConnected ? (
-            <p className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 sm:text-xs dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+            <p className="inline-flex items-center gap-1.5 text-[12px] text-[#4bb34b]">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#4bb34b]" aria-hidden />
               Обновляется в реальном времени
             </p>
           ) : null}
         </header>
 
-        {!doc && !loadError ? (
-          <p className="text-center text-sm text-slate-500">Загрузка рейтинга…</p>
-        ) : null}
+        {!doc && !loadError ? <p className={`text-center ${vk.muted}`}>Загрузка рейтинга…</p> : null}
 
-        {loadError ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800 sm:text-sm dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-            {loadError}
-          </p>
-        ) : null}
+        {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
         {doc && !payload ? (
-          <p className="text-center text-sm text-slate-500">Ссылка недействительна или рейтинг ещё не опубликован.</p>
+          <p className={`text-center ${vk.muted}`}>Ссылка недействительна или рейтинг ещё не опубликован.</p>
         ) : null}
 
         {payload ? (
@@ -103,9 +94,7 @@ export default function ShareLeaderboardPage() {
               tabIds={categoryTabs}
             />
 
-            <p className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:px-3 sm:text-sm">
-              {activeMeta?.hint ?? ''}
-            </p>
+            <p className={vk.notice}>{activeMeta?.hint ?? ''}</p>
 
             <LeaderboardTable rows={rows} categoryId={category} publicMode />
           </>

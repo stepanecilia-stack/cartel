@@ -93,6 +93,16 @@ export const vk = {
   noticeWarn: 'rounded-[10px] bg-[#fff8e6] px-3 py-2.5 text-[13px] leading-[18px] text-[#2c2d2e]',
   article: 'scroll-mt-40 rounded-[10px] border border-[#e7e8ec] bg-white p-3',
   articleLocked: 'scroll-mt-40 rounded-[10px] border border-[#f4e4a6] bg-[#fffbeb] p-3',
+
+  categoryTabGrid: 'grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-1',
+  categoryTabBtn:
+    'min-h-[2.5rem] touch-manipulation rounded-lg px-2 py-1.5 text-center text-[12px] font-medium leading-[14px] sm:min-h-[2.25rem] sm:px-2.5 sm:text-[13px]',
+  categoryTabActive: 'bg-[#2d81e0] text-white',
+  categoryTabIdle: 'bg-white text-[#2c2d2e] active:bg-[#f5f6f8]',
+  listRow: 'flex w-full touch-manipulation rounded-[10px] border border-[#e7e8ec] bg-white p-3 text-left active:bg-[#f5f6f8] sm:p-3.5',
+  emptyState:
+    'rounded-[10px] border border-dashed border-[#e7e8ec] bg-white px-4 py-8 text-center text-[13px] text-[#818c99]',
+  accent: 'font-bold tabular-nums text-[#2d81e0]',
 }
 
 /** Маркер: внутри не менять вёрстку дуэли эталона (человечки). */
