@@ -145,41 +145,65 @@ function HomePage({ onSelectStudent, coachId }) {
       key: 'add',
       label: 'Добавить ученика',
       icon: '+',
-      className:
-        'border-blue-600 bg-blue-600 text-white shadow-md hover:bg-blue-700 active:bg-blue-800 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600',
+      iconClass: 'bg-[#2d81e0] text-white text-xl font-light',
       onClick: () => setAddModalOpen(true),
     },
     {
       key: 'group',
       label: 'Прогресс техники',
       icon: '⇉',
+      iconClass: 'bg-[#e5f1fb] text-[#2d81e0] text-base',
       to: '/group-training',
-      className:
-        'border-blue-200 bg-white text-blue-800 shadow-sm hover:bg-blue-50 active:bg-blue-100 dark:border-blue-500/40 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-slate-800',
     },
     {
       key: 'norms',
       label: 'Сдать норматив',
       icon: '✓',
+      iconClass: 'bg-[#e8f9ed] text-[#4bb34b] text-base font-bold',
       to: '/bulk-norms',
-      className:
-        'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm hover:bg-emerald-100 active:bg-emerald-200/80 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/50',
     },
     {
       key: 'qualities',
       label: 'База упражнений',
       icon: '◎',
+      iconClass: 'bg-[#f0ebfa] text-[#735ce6] text-base',
       to: '/qualities',
-      className:
-        'border-violet-200 bg-violet-50 text-violet-900 shadow-sm hover:bg-violet-100 active:bg-violet-200/80 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/50',
     },
   ]
 
-  const actionButtonClass = (className) =>
-    `inline-flex min-h-[4rem] w-full touch-manipulation flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-center text-[13px] font-semibold leading-snug sm:min-h-[3.5rem] sm:flex-row sm:gap-2 sm:px-4 sm:py-4 sm:text-base ${className}`
+  const vkTileClass =
+    'flex min-h-[4.25rem] w-full touch-manipulation flex-col items-center justify-start gap-1 rounded-md px-0.5 py-1.5 text-center active:bg-[#f5f6f8] dark:active:bg-[#2c2d2e] sm:min-h-[4.5rem]'
+
+  const renderVkAction = (action) => {
+    const content = (
+      <>
+        <span
+          aria-hidden
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${action.iconClass}`}
+        >
+          {action.icon}
+        </span>
+        <span className="line-clamp-2 text-[11px] font-medium leading-[13px] text-[#2c2d2e] dark:text-[#e1e3e6]">
+          {action.label}
+        </span>
+      </>
+    )
+    if (action.to) {
+      return (
+        <Link key={action.key} to={action.to} className={vkTileClass}>
+          {content}
+        </Link>
+      )
+    }
+    return (
+      <button key={action.key} type="button" onClick={action.onClick} className={vkTileClass}>
+        {content}
+      </button>
+    )
+  }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6">
+    <main className="min-h-screen bg-[#edeef0] px-2 py-2 font-[system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif] text-[#2c2d2e] dark:bg-[#141414] dark:text-[#e1e3e6] sm:px-4 sm:py-3">
       <AddStudentModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
@@ -187,66 +211,42 @@ function HomePage({ onSelectStudent, coachId }) {
         studentIds={studentIds}
         onListChanged={loadStudents}
       />
-      <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5">
-        <header className="space-y-4">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
+      <div className="mx-auto max-w-6xl space-y-2">
+        <header className="space-y-2">
+          <h1 className="px-0.5 text-[17px] font-semibold leading-5 text-[#2c2d2e] dark:text-[#e1e3e6] sm:text-xl">
             Дашборд учеников
           </h1>
-          <nav className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4" aria-label="Быстрые действия">
-            {dashboardActions.map((action) => {
-              const content = (
-                <>
-                  <span aria-hidden className="text-lg leading-none sm:text-xl">
-                    {action.icon}
-                  </span>
-                  <span>{action.label}</span>
-                </>
-              )
-              if (action.to) {
-                return (
-                  <Link key={action.key} to={action.to} className={actionButtonClass(action.className)}>
-                    {content}
-                  </Link>
-                )
-              }
-              return (
-                <button
-                  key={action.key}
-                  type="button"
-                  onClick={action.onClick}
-                  className={actionButtonClass(action.className)}
-                >
-                  {content}
-                </button>
-              )
-            })}
+          <nav
+            className="grid grid-cols-4 gap-0 rounded-[10px] bg-white px-0.5 py-1 dark:bg-[#232324]"
+            aria-label="Быстрые действия"
+          >
+            {dashboardActions.map((action) => renderVkAction(action))}
           </nav>
         </header>
 
         {loadError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-[10px] bg-white px-3 py-2.5 text-[13px] text-[#e64646] dark:bg-[#232324]">
             {loadError}
           </div>
         )}
 
         {isLoading && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:p-6">
+          <div className="rounded-[10px] bg-white px-3 py-4 text-center text-[13px] text-[#818c99] dark:bg-[#232324] dark:text-[#939393]">
             Загрузка данных...
           </div>
         )}
 
         {studentsWithKsr.length === 0 && !loadError && !isLoading && (
           <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400 sm:p-6">
-            Пока нет ни одного ученика. Нажмите синюю кнопку «Добавить ученика» выше — откроется окно, куда можно
-            вписать нового или ввести код от другого тренера.
+            Пока нет ни одного ученика. Нажмите «Добавить ученика» выше — откроется окно, куда можно вписать нового или ввести код от другого тренера.
           </div>
         )}
 
         {studentsWithKsr.length > 0 && !isLoading && (
-          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-4">
-            <div className="grid gap-3 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <section className="rounded-[10px] bg-white p-2 dark:bg-[#232324] sm:p-2.5">
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
               <div className="md:col-span-2 lg:col-span-1">
-                <label htmlFor="dashboard-search" className="mb-1.5 block text-sm font-medium text-slate-600 dark:text-slate-400">
+                <label htmlFor="dashboard-search" className="mb-1 block text-[13px] font-normal text-[#818c99] dark:text-[#939393]">
                   Поиск по ФИО
                 </label>
                 <div className="flex gap-2 md:block">
@@ -257,18 +257,18 @@ function HomePage({ onSelectStudent, coachId }) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Начните вводить имя..."
-                    className="min-h-[2.75rem] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:text-sm"
+                    className="h-9 w-full rounded-lg bg-[#f0f2f5] px-3 text-[15px] leading-5 text-[#2c2d2e] placeholder:text-[#818c99] outline-none focus:bg-[#ebedf0] dark:bg-[#2c2d2e] dark:text-[#e1e3e6] dark:placeholder:text-[#939393]"
                   />
                   <button
                     type="button"
                     onClick={() => setFiltersExpanded((prev) => !prev)}
-                    className="inline-flex min-h-[2.75rem] shrink-0 touch-manipulation items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 active:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 md:hidden"
+                    className="inline-flex h-9 shrink-0 touch-manipulation items-center gap-1 rounded-lg bg-[#f0f2f5] px-3 text-[13px] font-medium text-[#2d81e0] active:bg-[#ebedf0] dark:bg-[#2c2d2e] dark:text-[#71aaeb] md:hidden"
                     aria-expanded={filtersExpanded}
                     aria-controls="dashboard-mobile-filters"
                   >
                     Фильтры
                     {activeFiltersCount > 0 && (
-                      <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                      <span className="rounded-full bg-[#2d81e0] px-1.5 py-0.5 text-[11px] font-semibold text-white">
                         {activeFiltersCount}
                       </span>
                     )}
@@ -339,22 +339,22 @@ function HomePage({ onSelectStudent, coachId }) {
         )}
 
         {studentsWithKsr.length > 0 && filteredStudents.length === 0 && !isLoading && !loadError && (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
+          <div className="rounded-[10px] bg-white px-3 py-3 text-center text-[13px] text-[#818c99] dark:bg-[#232324] dark:text-[#939393]">
             По выбранным фильтрам спортсмены не найдены.
           </div>
         )}
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+        <section className="overflow-hidden rounded-[10px] bg-white dark:bg-[#232324] sm:grid sm:grid-cols-2 sm:gap-px sm:bg-[#e7e8ec] sm:dark:bg-[#363738] lg:grid-cols-3">
           {filteredStudents.map((student) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onSelectStudent?.(student)}
-                className="min-h-[4.5rem] touch-manipulation rounded-xl border border-slate-100 bg-white p-3.5 text-left shadow-sm transition-shadow active:bg-slate-50 active:shadow-inner hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:active:bg-slate-800 sm:p-4"
+                className="w-full touch-manipulation border-t border-[#e7e8ec] bg-white px-3 py-2.5 text-left first:border-t-0 active:bg-[#f5f6f8] dark:border-[#363738] dark:bg-[#232324] dark:active:bg-[#2c2d2e] sm:border-t-0 sm:p-3"
               >
                 <div className="flex min-w-0 items-start gap-1.5 sm:gap-2">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-base font-semibold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">
+                    <h2 className="text-[15px] font-medium leading-5 text-[#2c2d2e] dark:text-[#e1e3e6]">
                       {student.name}
                     </h2>
                     {student.lastChange ? (
@@ -362,7 +362,7 @@ function HomePage({ onSelectStudent, coachId }) {
                         className={`mt-0.5 line-clamp-2 text-[10px] leading-snug sm:line-clamp-1 sm:truncate sm:text-[11px] ${
                           student.lastChange.isStale
                             ? 'text-amber-800 dark:text-amber-300'
-                            : 'text-slate-500 dark:text-slate-400'
+                            : 'text-[#818c99] dark:text-[#939393]'
                         }`}
                         title={[
                           student.lastChange.coachName
@@ -398,13 +398,13 @@ function HomePage({ onSelectStudent, coachId }) {
                     ) : null}
                     <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1 sm:mt-2 sm:gap-1.5">
                       <span
-                        className="inline-flex shrink-0 rounded border border-blue-100 bg-blue-50/90 px-1.5 py-0.5 text-[10px] font-medium tabular-nums leading-none text-slate-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-slate-200 sm:text-xs"
+                        className="inline-flex shrink-0 rounded px-1.5 py-0.5 text-[12px] font-normal tabular-nums leading-none text-[#818c99] dark:text-[#939393]"
                         title={`Год рождения: ${student.birthYearLabel}`}
                       >
                         {student.birthYearLabel}
                       </span>
                       <span
-                        className="inline-flex min-w-0 max-w-[10.5rem] truncate rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-800 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 sm:max-w-none sm:text-xs"
+                        className="inline-flex min-w-0 max-w-[10.5rem] truncate rounded bg-[#f0f2f5] px-1.5 py-0.5 text-[12px] font-normal leading-none text-[#818c99] dark:bg-[#2c2d2e] dark:text-[#939393] sm:max-w-none"
                         title={student.weightCategoryLine}
                       >
                         <span className="truncate sm:hidden">{student.weightCategoryShort}</span>
@@ -413,7 +413,7 @@ function HomePage({ onSelectStudent, coachId }) {
                     </div>
                   </div>
                   <span
-                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-200 bg-slate-100 text-[10px] font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 sm:h-7 sm:w-7 sm:rounded-md sm:text-xs"
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f0f2f5] text-[12px] font-medium text-[#818c99] dark:bg-[#2c2d2e] dark:text-[#939393]"
                     title={student.genderLabel}
                     aria-label={`Пол: ${student.genderLabel}`}
                   >
