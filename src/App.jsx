@@ -20,11 +20,38 @@ import {
 } from './services/firebaseService'
 import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
 import { vk } from './utils/vkUi.js'
+
+function LeaderboardNavIcon({ className = '' }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M8 21h8" />
+      <path d="M12 17V7" />
+      <path d="M7 7h10l-1-4H8L7 7z" />
+    </svg>
+  )
+}
+
 function Navbar({ user, coachProfile }) {
+  const location = useLocation()
+  const isLeaderboard =
+    location.pathname === '/leaderboard' || location.pathname === '/leaderboard/school'
+
   return (
     <header className={vk.navBar}>
       <div className={vk.navBarInner}>
-        <div className="flex min-w-0 shrink-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3">
           <Link
             to={user ? '/' : '/welcome'}
             className="shrink-0 text-[15px] font-semibold text-[#2c2d2e]"
@@ -32,6 +59,20 @@ function Navbar({ user, coachProfile }) {
           >
             Cartel
           </Link>
+          {user ? (
+            <Link
+              to="/leaderboard"
+              className={`inline-flex h-8 shrink-0 touch-manipulation items-center gap-1 rounded-lg px-2 text-[13px] font-medium md:hidden ${
+                isLeaderboard
+                  ? 'bg-[#ecf3fc] text-[#2d81e0]'
+                  : 'text-[#818c99] active:bg-[#f0f2f5]'
+              }`}
+              aria-current={isLeaderboard ? 'page' : undefined}
+            >
+              <LeaderboardNavIcon />
+              <span>Рейтинг</span>
+            </Link>
+          ) : null}
           {user ? (
             <>
               <Link to="/qualities" className={`hidden shrink-0 sm:inline ${vk.linkNav}`}>
