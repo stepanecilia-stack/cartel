@@ -76,32 +76,6 @@ const TAB_PROGRESS_LABELS = {
   technical: 'Техника',
 }
 
-const TAB_ICONS = {
-  anthropometry: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 8h16M4 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M6 6v4M9 7v2M12 6v4M15 7v2M18 6v4M6 14v4M9 15v2M12 14v4M15 15v2M18 14v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  ),
-  physical: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8 15c1.2-1.6 2.7-2.4 4.6-2.4 1.5 0 2.8.5 3.8 1.5l1.6 1.6c.8.8.8 2.1 0 2.9-.8.8-2.1.8-2.9 0l-1-1c-.6-.6-1.3-.9-2.2-.9-1.2 0-2.2.5-2.9 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6.4 8.8 8 10.4c.6.6 1.4.9 2.2.9 1.1 0 2-.4 2.7-1.2l1-1.1c.8-.8 2.1-.9 2.9-.1.8.8.9 2.1.1 2.9l-1.5 1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  functional: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M13.2 2 5 13h5l-1 9 8.2-11H12l1.2-9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  ),
-  technical: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8.5 13.5c-1.2 0-2.2-1-2.2-2.2V8.8c0-1.8 1.5-3.3 3.3-3.3h3.8c2.4 0 4.3 2 4.3 4.3v5.2c0 1.9-1.6 3.5-3.5 3.5H9.7c-1.8 0-3.2-1.4-3.2-3.2v-.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6.3 10.7h3.3c1.1 0 2 .9 2 2v2.2c0 .9-.7 1.6-1.6 1.6H8c-.9 0-1.7-.8-1.7-1.7v-4.1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  ),
-}
-
 function emptyTestsRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -1411,7 +1385,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <p className={`min-w-0 flex-1 truncate ${vk.h2}`}>{safeStudent.name}</p>
         </div>
 
-        <section className={vk.cardPadded}>
+        <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h1 className={`hidden sm:block ${vk.h1Lg}`}>{safeStudent.name}</h1>
             {student?.id && (
@@ -1471,194 +1445,168 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className={vk.cardPadded}>
+        <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
           <h2 className={vk.h2}>Тесты и техника</h2>
 
-          <div className={vk.studentTabGrid}>
+          <nav className={vk.studentTabBar} aria-label="Разделы карточки">
             {TAB_ITEMS.map((tab) => {
               const infKey = tabIdToInfluenceKey[tab.id]
               const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
+              const isActive = activeTab === tab.id
               return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`${vk.studentTab} ${
-                  activeTab === tab.id ? vk.studentTabActive : vk.studentTabIdle
-                } ${isTopInfluenceTab ? 'ring-2 ring-[#4bb34b]/50 ring-offset-1 ring-offset-white' : ''}`}
-              >
-                <span
-                  className={`${vk.studentTabIcon} ${
-                    activeTab === tab.id ? vk.studentTabIconActive : vk.studentTabIconIdle
-                  }`}
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`${vk.studentTabBtn} ${
+                    isActive ? vk.studentTabBtnActive : vk.studentTabBtnIdle
+                  } ${isTopInfluenceTab ? 'ring-1 ring-[#4bb34b]/60 ring-inset' : ''}`}
                 >
-                  {TAB_ICONS[tab.id]}
-                </span>
-                <span className={vk.studentTabLabel}>{tab.shortLabel}</span>
-                {tab.id !== 'anthropometry' ? (
-                  <>
-                    <span className={vk.studentTabProgress}>{tabProgress[tab.id] ?? 0}%</span>
-                    <span className={vk.progressTrack} aria-hidden>
-                      <span
-                        className={`block h-full rounded-full transition-all duration-500 ease-out ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
-                        style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
-                      />
+                  <span className="text-[12px] font-medium leading-4">{tab.shortLabel}</span>
+                  {tab.id !== 'anthropometry' ? (
+                    <span
+                      className={`text-[10px] font-medium tabular-nums leading-none ${
+                        isActive ? 'text-[#818c99]' : 'text-[#aeb7c2]'
+                      }`}
+                    >
+                      {tabProgress[tab.id] ?? 0}%
                     </span>
-                  </>
-                ) : null}
-              </button>
+                  ) : null}
+                </button>
               )
             })}
-          </div>
+          </nav>
 
-          <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-6">
+          <div className="mt-2 space-y-2">
             {activeTab === 'anthropometry' && (
-              <div className="space-y-3">
-                <h3 className={vk.h2}>Карта спортсмена</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2 md:col-span-2">
-                    <span className={vk.label}>Год рождения</span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        type="number"
-                        min={1900}
-                        max={new Date().getFullYear()}
-                        placeholder="например, 2012"
-                        className={`${vk.input} max-w-[200px]`}
-                        value={anthropometry.birthYear}
-                        onChange={(e) =>
-                          setAnthropometry((prev) => ({ ...prev, birthYear: e.target.value }))
-                        }
-                      />
-                      <span className={vk.muted}>
-                        {formatBirthYearRu(anthropometry.birthYear) || '—'}
-                      </span>
-                    </div>
-                    <span className={vk.mutedXs}>
-                      Возраст в расчётах: текущий год минус год рождения.
+              <div className={vk.formGrid2}>
+                <label className="block">
+                  <span className={vk.label}>Год рожд.</span>
+                  <input
+                    type="number"
+                    min={1900}
+                    max={new Date().getFullYear()}
+                    placeholder="2013"
+                    className={vk.input}
+                    value={anthropometry.birthYear}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, birthYear: e.target.value }))
+                    }
+                  />
+                  {formatBirthYearRu(anthropometry.birthYear) ? (
+                    <span className={`mt-0.5 block ${vk.mutedXs}`}>
+                      {formatBirthYearRu(anthropometry.birthYear)}
                     </span>
-                  </label>
-                  <label className="space-y-2 md:col-span-2">
-                    <span className={vk.label}>
-                      Дата рождения{' '}
-                      <span className="font-normal text-[#818c99]">(необязательно)</span>
-                    </span>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        type="date"
-                        min="1900-01-01"
-                        max={new Date().toISOString().slice(0, 10)}
-                        className={`${vk.input} max-w-[220px]`}
-                        value={anthropometry.birthDate}
-                        onChange={(e) =>
-                          setAnthropometry((prev) => ({ ...prev, birthDate: e.target.value }))
-                        }
-                      />
-                      {anthropometry.birthDate ? (
-                        <button
-                          type="button"
-                          className={vk.link}
-                          onClick={() =>
-                            setAnthropometry((prev) => ({ ...prev, birthDate: '' }))
-                          }
-                        >
-                          Очистить
-                        </button>
-                      ) : null}
-                    </div>
-                  </label>
-                  <label className="space-y-2">
-                    <span className={vk.label}>Рост (см)</span>
-                    <input
-                      type="number"
-                      className={vk.input}
-                      value={anthropometry.height}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, height: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={vk.label}>Вес (кг)</span>
-                    <input
-                      type="number"
-                      className={vk.input}
-                      value={anthropometry.weight}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, weight: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={vk.label}>Размах рук (см)</span>
-                    <input
-                      type="number"
-                      className={vk.input}
-                      value={anthropometry.reach}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, reach: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={vk.label}>Пол (для подбора норм тестов)</span>
-                    <select
-                      className={vk.input}
-                      value={anthropometry.gender}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, gender: e.target.value }))
-                      }
+                  ) : null}
+                </label>
+                <label className="block">
+                  <span className={vk.label}>Дата рожд.</span>
+                  <input
+                    type="date"
+                    min="1900-01-01"
+                    max={new Date().toISOString().slice(0, 10)}
+                    className={vk.input}
+                    value={anthropometry.birthDate}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, birthDate: e.target.value }))
+                    }
+                  />
+                  {anthropometry.birthDate ? (
+                    <button
+                      type="button"
+                      className={`mt-0.5 ${vk.link}`}
+                      onClick={() => setAnthropometry((prev) => ({ ...prev, birthDate: '' }))}
                     >
-                      <option value="M">Мужской</option>
-                      <option value="F">Женский</option>
-                    </select>
-                  </label>
-                  <label className="md:col-span-2 space-y-2">
-                    <span className={vk.label}>Дата измерения</span>
-                    <input
-                      type="date"
-                      className={vk.input}
-                      value={anthropometry.date}
-                      onChange={(e) =>
-                        setAnthropometry((prev) => ({ ...prev, date: e.target.value }))
-                      }
-                    />
-                  </label>
-                </div>
+                      Очистить
+                    </button>
+                  ) : null}
+                </label>
+                <label className="block">
+                  <span className={vk.label}>Рост, см</span>
+                  <input
+                    type="number"
+                    className={vk.input}
+                    value={anthropometry.height}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, height: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="block">
+                  <span className={vk.label}>Вес, кг</span>
+                  <input
+                    type="number"
+                    className={vk.input}
+                    value={anthropometry.weight}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, weight: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="block">
+                  <span className={vk.label}>Размах, см</span>
+                  <input
+                    type="number"
+                    className={vk.input}
+                    value={anthropometry.reach}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, reach: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="block">
+                  <span className={vk.label}>Пол</span>
+                  <select
+                    className={vk.select}
+                    value={anthropometry.gender}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, gender: e.target.value }))
+                    }
+                  >
+                    <option value="M">М</option>
+                    <option value="F">Ж</option>
+                  </select>
+                </label>
+                <label className="col-span-2 block">
+                  <span className={vk.label}>Дата измерения</span>
+                  <input
+                    type="date"
+                    className={vk.input}
+                    value={anthropometry.date}
+                    onChange={(e) =>
+                      setAnthropometry((prev) => ({ ...prev, date: e.target.value }))
+                    }
+                  />
+                </label>
 
-                <div className="mt-4 border-t border-[#e7e8ec] pt-4">
-                  {anthropometrySaveError && (
-                    <div className={`mb-3 ${vk.error}`} role="alert">
+                <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-[#e7e8ec] pt-2">
+                  {anthropometrySaveError ? (
+                    <p className={`flex-1 ${vk.error}`} role="alert">
                       {anthropometrySaveError}
-                    </div>
-                  )}
-                  {anthropometrySaveOk && !anthropometrySaveError && (
-                    <div className={`mb-3 ${vk.success}`}>Данные сохранены в облаке.</div>
-                  )}
+                    </p>
+                  ) : null}
+                  {anthropometrySaveOk && !anthropometrySaveError ? (
+                    <p className={`flex-1 ${vk.success}`}>Сохранено</p>
+                  ) : null}
                   <button
                     type="button"
                     disabled={isAnthropometrySaving || !student?.id}
                     onClick={handleSaveProfile}
-                    className={`w-full sm:w-auto ${vk.btnPrimary}`}
+                    className={`ml-auto ${vk.btnPrimary}`}
                   >
-                    {isAnthropometrySaving ? 'Сохранение…' : 'Сохранить'}
+                    {isAnthropometrySaving ? '…' : 'Сохранить'}
                   </button>
                 </div>
               </div>
             )}
 
             {activeTab === 'physical' && (
-              <div className="space-y-3">
-                <h3 className={vk.h2}>Физическое развитие</h3>
-                <div className="grid gap-4">{renderNormInputs('physical', physicalNorms, physicalResults)}</div>
-              </div>
+              <div className="space-y-2">{renderNormInputs('physical', physicalNorms, physicalResults)}</div>
             )}
 
             {activeTab === 'functional' && (
-              <div className="space-y-3">
-                <h3 className={vk.h2}>Функциональная готовность</h3>
-                <div className="grid gap-4">{renderNormInputs('functional', functionalNorms, functionalResults)}</div>
-              </div>
+              <div className="space-y-2">{renderNormInputs('functional', functionalNorms, functionalResults)}</div>
             )}
 
             {activeTab === 'technical' && (
@@ -2266,33 +2214,20 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
-        <section className={`${ETALON_MODEL_PANEL_CLASS} ${vk.cardPadded}`}>
-          <h2 className={vk.h2}>Историческая модель эталона</h2>
-          <p className={`mt-2 ${vk.muted}`}>
+        <section className={`${ETALON_MODEL_PANEL_CLASS} ${vk.cardPadded} py-2.5 sm:py-3`}>
+          <h2 className={vk.h2}>Эталон</h2>
+          <p className={vk.mutedXs}>
             {isYoungHistoricalPreview
-              ? 'Сравнение текущих параметров с ближайшим эталоном по весу из группы 13–14 лет'
-              : 'Сравнение с усреднённым эталоном в возрастной и весовой категории'}
+              ? 'Ориентир 13–14 лет по весу'
+              : 'Сравнение с эталоном категории'}
           </p>
           {isYoungHistoricalPreview ? (
-            <div className={`mt-3 ${vk.noticeInfo}`} role="note">
-              <p>
-                Спортсмену{' '}
-                <span className="font-semibold tabular-nums">
-                  {Number.isFinite(historicalAthleteAge) ? historicalAthleteAge : '—'} лет
-                </span>
-                : эталон подобран по ближайшей весовой категории для возраста{' '}
-                <span className="font-semibold">13–14</span>, чтобы было видно, сколько ещё «до выхода» на
-                этот ориентир по росту и размаху.
-              </p>
-              <p className={`mt-1.5 ${vk.mutedXs}`}>
-                К участию в календарных соревнованиях допускаются спортсмены от 13 лет.
-              </p>
-            </div>
+            <p className={`mt-1 ${vk.noticeInfo} py-2`} role="note">
+              {Number.isFinite(historicalAthleteAge) ? historicalAthleteAge : '—'} лет — эталон 13–14 по весу.
+            </p>
           ) : null}
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-            <div className="bg-white px-2 py-3 sm:px-4 sm:py-4">
-              <div className="flex flex-col gap-3">
-                <div className="standard-duel-stage order-1 md:order-2">
+          <div className="mt-2 space-y-2">
+                <div className="standard-duel-stage">
                 <StandardDuelSilhouettes
                   athleteLabel={displayNameFromStudent(safeStudent) || 'Спортсмен'}
                   referenceLabel={historicalReferenceLabel}
@@ -2304,75 +2239,47 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   referenceWeightKg={referenceWeightKg}
                 />
               </div>
-                <div className="order-2 grid gap-2 sm:gap-3 md:order-1 md:grid-cols-3">
-                  <div className={`${vk.previewCard} md:hidden`}>
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
-                    <p className="mt-1 text-xs text-slate-700">
-                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
+                <div className={`${vk.formGrid2} sm:grid-cols-3`}>
+                  <div className={`${vk.previewCard} py-2`}>
+                    <p className={vk.mutedXs}>Категория</p>
+                    <p className="mt-0.5 text-[12px] leading-4 text-[#2c2d2e]">
+                      <span className="font-semibold">{standardWeightCategory} кг</span>
+                      <span className="text-[#818c99]"> · </span>
+                      {standardAgeGroup}
                     </p>
-                    <p className="text-xs text-slate-700">
-                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
-                    </p>
-                    <p className="text-xs text-slate-700">
-                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-700">
-                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
-                    </p>
-                    <p className="text-xs text-slate-700">
-                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
+                    <p className="text-[12px] text-[#2c2d2e]">
+                      {standardArchetype}
                     </p>
                   </div>
-                  <div className={`hidden ${vk.previewCard} md:block`}>
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
-                    <p className="mt-1 text-xs text-slate-700">
-                      Весовая: <span className="font-semibold text-slate-900">{standardWeightCategory} кг</span>
+                  <div className={`${vk.previewCard} py-2`}>
+                    <p className={vk.mutedXs}>Эталон</p>
+                    <p className="mt-0.5 text-[12px] text-[#2c2d2e]">
+                      Рост <span className="font-semibold tabular-nums">{referenceHeight || '—'}</span> см
                     </p>
-                    <p className="text-xs text-slate-700">
-                      Возрастная: <span className="font-semibold text-slate-900">{standardAgeGroup}</span>
-                    </p>
-                    <p className="text-xs text-slate-700">
-                      Архетип эталона: <span className="font-semibold text-slate-900">{standardArchetype}</span>
+                    <p className="text-[12px] text-[#2c2d2e]">
+                      Размах <span className="font-semibold tabular-nums">{referenceReach || '—'}</span> см
                     </p>
                   </div>
-                  <div className={`hidden ${vk.previewCard} md:block`}>
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Эталонные параметры</p>
-                    <p className="mt-1 text-xs text-slate-700">
-                      Рост: <span className="font-semibold text-slate-900">{referenceHeight || '—'} см</span>
+                  <div className={`${vk.previewCard} col-span-2 py-2 sm:col-span-1`}>
+                    <p className={vk.mutedXs}>Дистанция</p>
+                    <p className="mt-0.5 text-[13px] font-semibold text-[#2d81e0]">
+                      {tacticDistanceDisplay || '—'}
                     </p>
-                    <p className="text-xs text-slate-700">
-                      Размах: <span className="font-semibold text-slate-900">{referenceReach || '—'} см</span>
-                    </p>
-                  </div>
-                  <div className={vk.noticeInfo}>
-                    <p className={vk.mutedXs}>Рекомендация для спортсмена</p>
-                    <p className="mt-1 text-[15px] font-semibold text-[#2d81e0]">{tacticDistanceDisplay || '—'}</p>
-                    <p className={vk.mutedXs}>Эффективная дистанция боя</p>
                   </div>
                 </div>
-              </div>
-            </div>
           </div>
           {weights.tacticMode === 'infighter' && weights.tacticAdvice && (
-            <div
-              className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-900 sm:px-4 sm:py-3"
-              role="alert"
-            >
+            <p className="mt-1.5 rounded-[10px] bg-[#fff0f0] px-2.5 py-1.5 text-[12px] font-medium text-[#e64646]" role="alert">
               {weights.tacticAdvice}
-            </div>
+            </p>
           )}
           {weights.tacticMode === 'outfighter' && weights.tacticAdvice && (
-            <div
-              className="mt-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-900 sm:px-4 sm:py-3"
-              role="status"
-            >
+            <p className={`mt-1.5 ${vk.noticeInfo} py-2`} role="status">
               {weights.tacticAdvice}
-            </div>
+            </p>
           )}
-          <div className="mt-4 sm:mt-6">
-            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-5 sm:py-4">
-              <BiometricPotentialBar kspPercent={kspPercent} basePercent={basePercent} />
-            </div>
+          <div className={`mt-2 ${vk.previewCard}`}>
+            <BiometricPotentialBar kspPercent={kspPercent} basePercent={basePercent} />
           </div>
         </section>
 

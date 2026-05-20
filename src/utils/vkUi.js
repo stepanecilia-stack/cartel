@@ -77,6 +77,11 @@ export const vk = {
   segmentBtnInactive: 'text-[#818c99] active:bg-[#ebedf0]',
   previewCard: 'rounded-[10px] bg-[#f0f2f5] p-3',
 
+  studentTabBar: 'mt-2 flex rounded-lg bg-[#f0f2f5] p-0.5',
+  studentTabBtn:
+    'flex min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0 rounded-md px-1 py-1.5 text-center',
+  studentTabBtnActive: 'bg-white text-[#2c2d2e] shadow-sm',
+  studentTabBtnIdle: 'text-[#818c99] active:bg-[#ebedf0]',
   studentTabGrid: 'mt-2 grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-1.5',
   studentTab:
     'flex min-h-[3.25rem] touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[10px] border px-1 py-1.5 text-center sm:min-h-[4.5rem] sm:gap-1 sm:px-2 sm:py-2',
@@ -107,6 +112,7 @@ export const vk = {
   emptyState:
     'rounded-[10px] border border-dashed border-[#e7e8ec] bg-white px-4 py-8 text-center text-[13px] text-[#818c99]',
   accent: 'font-bold tabular-nums text-[#2d81e0]',
+  formGrid2: 'grid grid-cols-2 gap-x-2 gap-y-2 sm:gap-3',
 }
 
 /** Маркер: внутри не менять вёрстку дуэли эталона (человечки). */
