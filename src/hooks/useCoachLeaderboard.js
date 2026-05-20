@@ -187,10 +187,10 @@ export function useCoachLeaderboard(coachId) {
     [coachId, coachProfile, allStudents],
   )
 
+  /** Фоновое обновление payload — без shareBusy, чтобы не дёргать кнопку «Поделиться». */
   const syncShareNow = useCallback(
     async (defaultCategoryId = 'motor') => {
       if (!coachId || !shareToken) return
-      setShareBusy(true)
       try {
         await publishLeaderboardShare(coachId, {
           profile: coachProfile,
@@ -201,8 +201,8 @@ export function useCoachLeaderboard(coachId) {
         await updateCoachLeaderboardSettings(coachId, {
           leaderboardShareCategory: defaultCategoryId,
         })
-      } finally {
-        setShareBusy(false)
+      } catch (err) {
+        console.warn('syncShareNow', err)
       }
     },
     [coachId, coachProfile, allStudents, shareToken],

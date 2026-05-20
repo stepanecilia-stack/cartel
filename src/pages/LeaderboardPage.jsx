@@ -120,32 +120,23 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
   ])
 
   const scopeLinkClass = (active) =>
-    `${vk.segmentBtn} flex min-h-[2.5rem] flex-1 items-center justify-center text-center ${active ? vk.segmentBtnActive : vk.segmentBtnInactive}`
+    `${vk.segmentBtn} flex min-h-8 flex-1 items-center justify-center text-center ${active ? vk.segmentBtnActive : vk.segmentBtnInactive}`
+
+  const ratingCount = isSchool ? students.length : coach.curatedIds.length
 
   return (
     <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
-      <div className={`${vk.containerMid} max-w-3xl`}>
+      <div className={`${vk.containerMid} max-w-3xl space-y-2`}>
         <BackToHomeBar />
-        <header className="space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <h1 className={vk.h1Lg}>Рейтинг спортсменов</h1>
-              <p className={`mt-0.5 ${vk.muted}`}>
-                {isSchool
-                  ? 'Все ученики школы.'
-                  : 'Сравнение по активности и прогрессу. Настройте состав и поделитесь ссылкой.'}
-              </p>
-            </div>
-            <p className={`${vk.chipBar} w-full justify-center sm:w-auto`}>
-              {(() => {
-                const n = isSchool ? students.length : coach.curatedIds.length
-                const word = n === 1 ? 'ученик' : n < 5 ? 'ученика' : 'учеников'
-                return isSchool ? `${n} ${word}` : `${n} ${word} в рейтинге`
-              })()}
-            </p>
+        <header className={`${vk.cardPadded} py-2.5 sm:py-3`}>
+          <div className="flex items-baseline justify-between gap-2">
+            <h1 className={vk.h1Lg}>Рейтинг</h1>
+            <span className={`shrink-0 tabular-nums ${vk.mutedXs}`}>
+              {ratingCount}{' '}
+              {ratingCount === 1 ? 'ученик' : ratingCount < 5 ? 'ученика' : 'учеников'}
+            </span>
           </div>
-
-          <nav className={vk.segmentBar} aria-label="Область рейтинга">
+          <nav className={`${vk.segmentBar} mt-1.5`} aria-label="Область рейтинга">
             <Link to="/leaderboard" className={scopeLinkClass(!isSchool)}>
               Мои ученики
             </Link>
@@ -179,7 +170,7 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
           <>
             <LeaderboardCategoryTabs category={category} onCategoryChange={setCategory} />
 
-            <p className={vk.notice}>{activeCategory.hint}</p>
+            <p className={`${vk.mutedXs} px-0.5`}>{activeCategory.hint}</p>
           </>
         ) : (
           <p className={vk.muted}>Отметьте учеников для рейтинга и публичной ссылки.</p>
