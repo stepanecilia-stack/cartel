@@ -3,6 +3,13 @@ import {
   formatWorkLogEntryDate,
   groupMotorQualityWorkLogForDisplay,
 } from '../utils/motorQualityWorkLog.js'
+import { vk } from '../utils/vkUi.js'
+
+function formatCount(n) {
+  if (n === 1) return '1 упр.'
+  if (n >= 2 && n <= 4) return `${n} упр.`
+  return `${n} упр.`
+}
 
 /**
  * @param {{ workLog?: unknown, className?: string }} props
@@ -12,46 +19,34 @@ export default function MotorQualityWorkLogPanel({ workLog, className = '' }) {
   if (groups.length === 0) return null
 
   return (
-    <section
-      className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-5 ${className}`}
-    >
-      <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">
-        Объём работы по качествам
-      </h2>
-      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-        Каждый квадрат — одно выполненное упражнение из базы качеств. Зелёный — в сенситивном периоде, серый — вне
-        окна.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-slate-500 dark:text-slate-400">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-emerald-500" aria-hidden />
-          сенситивный период
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-slate-300 dark:bg-slate-600" aria-hidden />
-          вне сенситивного окна
-        </span>
+    <section className={`${vk.cardPadded} py-2.5 sm:py-3 ${className}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+        <h2 className={vk.h2}>Объём работы по качествам</h2>
+        <p className={`${vk.mutedXs} flex flex-wrap items-center gap-x-2 gap-y-0`}>
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-2 w-2 rounded-sm bg-[#4bb34b]" aria-hidden />
+            в окне
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-2 w-2 rounded-sm bg-[#aeb7c2]" aria-hidden />
+            вне окна
+          </span>
+        </p>
       </div>
-      <ul className="mt-4 space-y-4">
+
+      <ul className={`${vk.list} mt-1.5`}>
         {groups.map((group) => (
-          <li key={group.slug}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <li key={group.slug} className="border-t border-[#e7e8ec] px-2.5 py-1.5 first:border-t-0">
+            <div className="flex items-center gap-2">
               <Link
                 to={`/qualities/${group.slug}`}
-                className="text-sm font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                className={`min-w-0 flex-1 truncate ${vk.link} text-[14px] font-medium`}
               >
                 {group.title}
               </Link>
-              <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                {group.entries.length}{' '}
-                {group.entries.length === 1
-                  ? 'выполнение'
-                  : group.entries.length < 5
-                    ? 'выполнения'
-                    : 'выполнений'}
-              </span>
+              <span className={`shrink-0 tabular-nums ${vk.mutedXs}`}>{formatCount(group.entries.length)}</span>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1">
+            <div className="mt-1 flex flex-wrap gap-0.5">
               {group.entries.map((entry) => {
                 const label = [
                   entry.exerciseTitle || 'Упражнение',
@@ -64,10 +59,8 @@ export default function MotorQualityWorkLogPanel({ workLog, className = '' }) {
                   <span
                     key={entry.id}
                     title={label}
-                    className={`inline-block h-3.5 w-3.5 shrink-0 rounded-sm ${
-                      entry.inSensitivePeriod
-                        ? 'bg-emerald-500 ring-1 ring-emerald-600/30'
-                        : 'bg-slate-300 ring-1 ring-slate-400/40 dark:bg-slate-600 dark:ring-slate-500/50'
+                    className={`inline-block h-2.5 w-2.5 shrink-0 rounded-[2px] ${
+                      entry.inSensitivePeriod ? 'bg-[#4bb34b]' : 'bg-[#aeb7c2]'
                     }`}
                     role="img"
                     aria-label={label}

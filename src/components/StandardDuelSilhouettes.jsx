@@ -204,6 +204,8 @@ export default function StandardDuelSilhouettes({
   referenceHeightCm = 0,
   referenceReachCm = 0,
   referenceWeightKg = null,
+  /** Без отдельной рамки — внутри общей карточки «Эталон и КБП». */
+  flat = false,
 }) {
   const layout = useMemo(() => {
     const ah = Number(athleteHeightCm) || 0
@@ -278,7 +280,13 @@ export default function StandardDuelSilhouettes({
   const deltaLabelBottom = higherHead + 18
 
   return (
-    <div className="standard-duel-silhouettes rounded-lg border border-slate-200 bg-white px-2 py-3 sm:px-3 sm:py-4">
+    <div
+      className={
+        flat
+          ? 'standard-duel-silhouettes rounded-[10px] bg-[#f0f2f5] px-1.5 py-2 sm:px-2'
+          : 'standard-duel-silhouettes rounded-lg border border-slate-200 bg-white px-2 py-3 sm:px-3 sm:py-4'
+      }
+    >
       {layout.scaled ? (
         <p className="text-center text-[10px] text-slate-500 dark:text-slate-400">
           Масштаб уменьшен под экран, пропорции сохранены.

@@ -1978,71 +1978,82 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         </section>
 
         <section className={`${ETALON_MODEL_PANEL_CLASS} ${vk.cardPadded} py-2.5 sm:py-3`}>
-          <h2 className={vk.h2}>Эталон</h2>
-          <p className={vk.mutedXs}>
-            {isYoungHistoricalPreview
-              ? 'Ориентир 13–14 лет по весу'
-              : 'Сравнение с эталоном категории'}
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className={vk.h2}>Эталон и КБП</h2>
+              <p className={vk.mutedXs}>
+                {isYoungHistoricalPreview
+                  ? 'Ориентир 13–14 лет по весу'
+                  : 'Категория, сравнение роста и потолок потенциала'}
+              </p>
+            </div>
+            <p className="shrink-0 text-right">
+              <span className="block text-[11px] text-[#818c99]">КБП</span>
+              <span className="text-[17px] font-semibold tabular-nums text-[#2d81e0]">{kspPercent}%</span>
+            </p>
+          </div>
+
           {isYoungHistoricalPreview ? (
-            <p className={`mt-1 ${vk.noticeInfo} py-2`} role="note">
+            <p className={`mt-1.5 ${vk.noticeInfo} px-2 py-1.5 text-[12px]`} role="note">
               {Number.isFinite(historicalAthleteAge) ? historicalAthleteAge : '—'} лет — эталон 13–14 по весу.
             </p>
           ) : null}
-          <div className="mt-2 space-y-2">
-                <div className="standard-duel-stage">
-                <StandardDuelSilhouettes
-                  athleteLabel={displayNameFromStudent(safeStudent) || 'Спортсмен'}
-                  referenceLabel={historicalReferenceLabel}
-                  athleteHeightCm={athleteHeight}
-                  athleteReachCm={athleteReach}
-                  athleteWeightKg={athleteWeight}
-                  referenceHeightCm={referenceHeight}
-                  referenceReachCm={referenceReach}
-                  referenceWeightKg={referenceWeightKg}
-                />
-              </div>
-                <div className={`${vk.formGrid2} sm:grid-cols-3`}>
-                  <div className={`${vk.previewCard} py-2`}>
-                    <p className={vk.mutedXs}>Категория</p>
-                    <p className="mt-0.5 text-[12px] leading-4 text-[#2c2d2e]">
-                      <span className="font-semibold">{standardWeightCategory} кг</span>
-                      <span className="text-[#818c99]"> · </span>
-                      {standardAgeGroup}
-                    </p>
-                    <p className="text-[12px] text-[#2c2d2e]">
-                      {standardArchetype}
-                    </p>
-                  </div>
-                  <div className={`${vk.previewCard} py-2`}>
-                    <p className={vk.mutedXs}>Эталон</p>
-                    <p className="mt-0.5 text-[12px] text-[#2c2d2e]">
-                      Рост <span className="font-semibold tabular-nums">{referenceHeight || '—'}</span> см
-                    </p>
-                    <p className="text-[12px] text-[#2c2d2e]">
-                      Размах <span className="font-semibold tabular-nums">{referenceReach || '—'}</span> см
-                    </p>
-                  </div>
-                  <div className={`${vk.previewCard} col-span-2 py-2 sm:col-span-1`}>
-                    <p className={vk.mutedXs}>Дистанция</p>
-                    <p className="mt-0.5 text-[13px] font-semibold text-[#2d81e0]">
-                      {tacticDistanceDisplay || '—'}
-                    </p>
-                  </div>
-                </div>
+
+          <div className="standard-duel-stage mt-1.5">
+            <StandardDuelSilhouettes
+              flat
+              athleteLabel={displayNameFromStudent(safeStudent) || 'Спортсмен'}
+              referenceLabel={historicalReferenceLabel}
+              athleteHeightCm={athleteHeight}
+              athleteReachCm={athleteReach}
+              athleteWeightKg={athleteWeight}
+              referenceHeightCm={referenceHeight}
+              referenceReachCm={referenceReach}
+              referenceWeightKg={referenceWeightKg}
+            />
           </div>
-          {weights.tacticMode === 'infighter' && weights.tacticAdvice && (
-            <p className="mt-1.5 rounded-[10px] bg-[#fff0f0] px-2.5 py-1.5 text-[12px] font-medium text-[#e64646]" role="alert">
+
+          <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1 border-t border-[#e7e8ec] pt-2 text-[12px] leading-4">
+            <div className="min-w-0">
+              <p className={vk.mutedXs}>Категория</p>
+              <p className="mt-0.5 font-medium text-[#2c2d2e]">
+                {standardWeightCategory} кг
+                <span className="font-normal text-[#818c99]"> · {standardAgeGroup}</span>
+              </p>
+              <p className="text-[#2c2d2e]">{standardArchetype}</p>
+            </div>
+            <div className="min-w-0 border-l border-[#e7e8ec] pl-2">
+              <p className={vk.mutedXs}>Эталон</p>
+              <p className="mt-0.5 text-[#2c2d2e]">
+                {referenceHeight || '—'} / {referenceReach || '—'} см
+              </p>
+            </div>
+            <div className="min-w-0 border-l border-[#e7e8ec] pl-2">
+              <p className={vk.mutedXs}>Дистанция</p>
+              <p className="mt-0.5 font-semibold text-[#2d81e0]">{tacticDistanceDisplay || '—'}</p>
+            </div>
+          </div>
+
+          {weights.tacticMode === 'infighter' && weights.tacticAdvice ? (
+            <p
+              className="mt-1.5 rounded-[10px] bg-[#fff0f0] px-2 py-1.5 text-[12px] font-medium text-[#e64646]"
+              role="alert"
+            >
               {weights.tacticAdvice}
             </p>
-          )}
-          {weights.tacticMode === 'outfighter' && weights.tacticAdvice && (
-            <p className={`mt-1.5 ${vk.noticeInfo} py-2`} role="status">
+          ) : null}
+          {weights.tacticMode === 'outfighter' && weights.tacticAdvice ? (
+            <p className={`mt-1.5 ${vk.noticeInfo} px-2 py-1.5 text-[12px]`} role="status">
               {weights.tacticAdvice}
             </p>
-          )}
-          <div className={`mt-2 ${vk.previewCard}`}>
-            <BiometricPotentialBar kspPercent={kspPercent} basePercent={basePercent} />
+          ) : null}
+
+          <div className="mt-2 border-t border-[#e7e8ec] pt-2">
+            <BiometricPotentialBar
+              embedded
+              kspPercent={kspPercent}
+              basePercent={basePercent}
+            />
           </div>
         </section>
 
