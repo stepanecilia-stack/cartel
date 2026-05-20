@@ -403,9 +403,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       reach,
       weight,
       birthYear: resolvedBirthYear,
+      birthDate: resolvedBirthDate,
       gender: anthropometry.gender === 'F' ? 'F' : 'M',
     }
-  }, [safeStudent, anthropometry, resolvedBirthYear])
+  }, [safeStudent, anthropometry, resolvedBirthYear, resolvedBirthDate])
 
   const physicalNorms = useMemo(
     () => getNormsForAthlete(allNorms, athleteForNorms, 'physical'),

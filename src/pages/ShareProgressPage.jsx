@@ -358,7 +358,7 @@ export default function ShareProgressPage() {
               </div>
             </section>
 
-            <ShareSensitivePeriodsMap birthYear={athlete?.birthYear} />
+            <ShareSensitivePeriodsMap birthYear={athlete?.birthYear} birthDate={athlete?.birthDate} />
 
             {duelRows?.length > 0 && standardPassport ? (
               <section className={`${vk.cardPadded} py-2.5`}>

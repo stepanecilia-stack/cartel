@@ -5,7 +5,7 @@ import {
   TECH_DOMINANCE_OPTIONS,
 } from './ksrUtils'
 import { formatNormAcceptedMeta } from './normAcceptanceHistory'
-import { formatBirthYearRu } from './studentModel.js'
+import { formatBirthYearRu, normalizeBirthDateISO } from './studentModel.js'
 import { findGoldStandardRow, referenceIdealHeightCm, shortTypageLabel } from './standards.js'
 import { buildShareAutoRecommendations } from './shareAutoRecommendations.js'
 import { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes.jsx'
@@ -233,6 +233,7 @@ export function buildPublicSharePayload({
   const ah = Number(athleteForNorms?.height) || 0
   const ar = Number(athleteForNorms?.reach) || 0
   const birthYear = Number(athleteForNorms?.birthYear) || 0
+  const birthDate = normalizeBirthDateISO(athleteForNorms?.birthDate) || null
   const gender = athleteForNorms?.gender === 'F' ? 'F' : 'M'
   const md =
     typeof measureDate === 'string' && measureDate.trim()
@@ -291,6 +292,7 @@ export function buildPublicSharePayload({
     autoRecommendations,
     athleteSnapshot: {
       birthYear,
+      birthDate,
       birthYearLabel: formatBirthYearRu(birthYear),
       gender,
       genderLabel: gender === 'F' ? 'Женский' : 'Мужской',
