@@ -2,10 +2,7 @@ import { useMemo, useState } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
-import {
-  getTechnicalProgramAtomsStorageMode,
-  saveTechnicalProgramAtomMedia,
-} from '../services/technicalProgramAtomsService.js'
+import { saveTechnicalProgramAtomMedia } from '../services/technicalProgramAtomsService.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage'
 import { vk } from '../utils/vkUi.js'
 
@@ -26,7 +23,7 @@ function atomToForm(atom) {
 }
 
 export default function TechnicalElementsPage() {
-  const { level1, level2 } = useTechnicalProgramAtoms()
+  const { level1, level2, syncError } = useTechnicalProgramAtoms()
   const [tier, setTier] = useState(1)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(null)
@@ -35,7 +32,6 @@ export default function TechnicalElementsPage() {
   const [ok, setOk] = useState('')
 
   const list = tier === 2 ? level2 : level1
-  const storageMode = getTechnicalProgramAtomsStorageMode()
 
   const editingAtom = useMemo(
     () => list.find((a) => a.id === editingId) ?? null,
@@ -84,12 +80,16 @@ export default function TechnicalElementsPage() {
           <p className={vk.mutedXs}>Ссылки на GIF или WebM — превью на карточке ученика.</p>
         </header>
 
-        {storageMode === 'local' ? (
+        {syncError ? (
           <p className={vk.noticeWarn}>
-            Облако недоступно — правки только в этом браузере. Коллекция{' '}
-            <span className="font-mono">technical_program_atoms</span> в firestore.rules.
+            {syncError} Список элементов показан из программы по умолчанию; GIF/WebM из облака не подтянулись.
           </p>
-        ) : null}
+        ) : (
+          <p className={vk.mutedXs}>
+            Медиа хранятся в Firestore: коллекция <span className="font-mono">technical_program_atoms</span> (общая для
+            всех тренеров клуба).
+          </p>
+        )}
 
         <nav className={vk.segmentBar} aria-label="Уровень программы">
           {TIER_TABS.map((tab) => (

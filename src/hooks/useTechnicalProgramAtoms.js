@@ -3,18 +3,27 @@ import {
   getTechnicalProgramAtomsCache,
   subscribeTechnicalProgramAtomsCache,
 } from '../data/technicalProgramAtomsCache.js'
-import { loadTechnicalProgramAtomsOnce } from '../services/technicalProgramAtomsService.js'
+import {
+  getTechnicalProgramAtomsSyncError,
+  loadTechnicalProgramAtomsOnce,
+} from '../services/technicalProgramAtomsService.js'
 
 export function useTechnicalProgramAtoms() {
   const [bundle, setBundle] = useState(() => getTechnicalProgramAtomsCache())
+  const [syncError, setSyncError] = useState(() => getTechnicalProgramAtomsSyncError())
+
+  const refresh = () => {
+    setBundle(getTechnicalProgramAtomsCache())
+    setSyncError(getTechnicalProgramAtomsSyncError())
+  }
 
   useEffect(() => {
     let cancelled = false
     loadTechnicalProgramAtomsOnce().then(() => {
-      if (!cancelled) setBundle(getTechnicalProgramAtomsCache())
+      if (!cancelled) refresh()
     })
     const unsub = subscribeTechnicalProgramAtomsCache(() => {
-      setBundle(getTechnicalProgramAtomsCache())
+      if (!cancelled) refresh()
     })
     return () => {
       cancelled = true
@@ -22,5 +31,5 @@ export function useTechnicalProgramAtoms() {
     }
   }, [])
 
-  return bundle
+  return { level1: bundle.level1, level2: bundle.level2, syncError }
 }

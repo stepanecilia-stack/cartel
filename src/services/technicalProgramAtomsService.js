@@ -16,17 +16,16 @@ import {
   setTechnicalProgramAtomsCache,
 } from '../data/technicalProgramAtomsCache.js'
 import db, { isFirebaseConfigured } from './firebaseService.js'
-import { loadLocalAtomDocs, upsertLocalAtom } from './technicalProgramAtomsLocal.js'
+import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 
 const COLLECTION_ID = 'technical_program_atoms'
 
-/** @type {'firestore' | 'local'} */
-let storageMode = 'firestore'
-let firestoreBlocked = false
 let unsubscribeSnapshot = null
+/** @type {string | null} */
+let lastSyncError = null
 
-export function getTechnicalProgramAtomsStorageMode() {
-  return storageMode
+export function getTechnicalProgramAtomsSyncError() {
+  return lastSyncError
 }
 
 function isPermissionError(err) {
@@ -84,12 +83,17 @@ function buildCacheFromOverrides(overrideDocs) {
   setTechnicalProgramAtomsCache({ level1, level2 })
 }
 
-function applyCache(firestoreDocs = [], { blocked = firestoreBlocked } = {}) {
-  firestoreBlocked = blocked
-  storageMode = blocked ? 'local' : 'firestore'
-  const localDocs = loadLocalAtomDocs()
-  const merged = blocked ? localDocs : [...firestoreDocs, ...localDocs.filter((l) => !firestoreDocs.some((f) => f.id === l.id))]
-  buildCacheFromOverrides(merged)
+function setSyncError(err) {
+  lastSyncError = err ? formatFirestoreErrorMessage(err) : null
+}
+
+function applyFirestoreDocs(docs) {
+  lastSyncError = null
+  buildCacheFromOverrides(docs)
+}
+
+function applyDefaultsOnly() {
+  buildCacheFromOverrides([])
 }
 
 /**
@@ -109,24 +113,29 @@ export function getTechnicalProgramAtomsLevel2() {
 }
 
 export async function loadTechnicalProgramAtomsOnce() {
+  applyDefaultsOnly()
   if (!isFirebaseConfigured) {
-    applyCache([], { blocked: true })
+    setSyncError(new Error('Firebase не настроен'))
     return
   }
   try {
     const snapshot = await getDocs(query(atomsCollection()))
-    applyCache(snapshot.docs, { blocked: false })
+    applyFirestoreDocs(snapshot.docs)
   } catch (err) {
-    if (isPermissionError(err)) applyCache([], { blocked: true })
-    else throw err
+    console.error('loadTechnicalProgramAtomsOnce', err)
+    applyDefaultsOnly()
+    setSyncError(err)
+    if (!isPermissionError(err)) throw err
   }
 }
 
 /** @returns {() => void} */
 export function subscribeTechnicalProgramAtoms() {
+  applyDefaultsOnly()
+
   if (!isFirebaseConfigured) {
-    applyCache([], { blocked: true })
-    return () => setTechnicalProgramAtomsCache({ level1: [], level2: [] })
+    setSyncError(new Error('Firebase не настроен'))
+    return () => applyDefaultsOnly()
   }
 
   if (unsubscribeSnapshot) {
@@ -134,16 +143,13 @@ export function subscribeTechnicalProgramAtoms() {
     unsubscribeSnapshot = null
   }
 
-  firestoreBlocked = false
-  storageMode = 'firestore'
-
   unsubscribeSnapshot = onSnapshot(
     query(atomsCollection()),
-    (snapshot) => applyCache(snapshot.docs, { blocked: false }),
+    (snapshot) => applyFirestoreDocs(snapshot.docs),
     (err) => {
       console.error('subscribeTechnicalProgramAtoms', err)
-      if (isPermissionError(err)) applyCache([], { blocked: true })
-      else applyCache([], { blocked: true })
+      applyDefaultsOnly()
+      setSyncError(err)
     },
   )
 
@@ -152,7 +158,8 @@ export function subscribeTechnicalProgramAtoms() {
       unsubscribeSnapshot()
       unsubscribeSnapshot = null
     }
-    setTechnicalProgramAtomsCache({ level1: [], level2: [] })
+    lastSyncError = null
+    applyDefaultsOnly()
   }
 }
 
@@ -162,6 +169,12 @@ export function subscribeTechnicalProgramAtoms() {
  * @param {object} payload
  */
 export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
+  if (!isFirebaseConfigured) {
+    throw new Error(
+      'Firebase не настроен. Медиа элементов программы сохраняются только в облако (коллекция technical_program_atoms).',
+    )
+  }
+
   const defaults = getDefaultTechnicalProgramAtoms()
   const list = tier === 2 ? defaults.level2 : defaults.level1
   const base = list.find((a) => a.id === atomId)
@@ -183,12 +196,6 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
       webmSrc: trimOrNull(payload?.webmSrc),
     },
     updatedAt: serverTimestamp(),
-  }
-
-  if (!isFirebaseConfigured || storageMode === 'local') {
-    upsertLocalAtom(record)
-    applyCache(loadLocalAtomDocs(), { blocked: true })
-    return atomId
   }
 
   await setDoc(doc(ensureDb(), COLLECTION_ID, atomId), record, { merge: true })

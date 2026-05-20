@@ -9,7 +9,7 @@ export function formatFirestoreErrorMessage(err) {
   if (code === 'permission-denied' || /insufficient permissions/i.test(raw)) {
     return (
       'Нет прав на запись в Firestore. Опубликуйте правила: Firebase Console → Firestore → Rules → ' +
-      'вставьте блок motor_quality_exercises из файла firestore.rules в проекте → «Опубликовать». ' +
+      'вставьте блоки motor_quality_exercises и technical_program_atoms из firestore.rules → «Опубликовать». ' +
       'Либо в корне проекта: npx firebase-tools login && npx firebase-tools deploy --only firestore:rules --project ВАШ_PROJECT_ID'
     )
   }
