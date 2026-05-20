@@ -49,6 +49,7 @@ import {
   setPublicStudentShareDocument,
   updateStudentData,
 } from '../services/firebaseService'
+import TechnicalAtomRow from '../components/TechnicalAtomRow.jsx'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
@@ -1589,439 +1590,234 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             )}
 
             {activeTab === 'technical' && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className={vk.h2}>Техника</h3>
-                  <p className={`mt-1 ${vk.mutedXs}`}>
-                    Три уровня: базовые элементы, контексты удара/защиты и индивидуальные комбинации. Шкала освоения для
-                    всех уровней одинаковая.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-900">
-                  Предложенные технические элементы и видеоматериалы носят рекомендательный методический характер и
-                  не являются единственно верным стандартом исполнения. В зависимости от школы бокса допустимы
-                  различия в технике и акцентах обучения. Приоритетным является соблюдение последовательности
-                  освоения: переход к следующему элементу осуществляется после уверенного закрепления предыдущего.
-                  Видео используется как дополнительный визуальный инструмент по усмотрению тренера.
-                </div>
+              <div className="space-y-2">
                 {technicalAtoms.length === 0 && !loadingNorms ? (
-                  <p className="text-sm text-slate-500">
-                    Список ударов из общей таблицы не загрузился — проверьте интернет и откройте страницу позже.
+                  <p className={vk.mutedXs}>
+                    Список не загрузился — проверьте интернет и обновите страницу.
                   </p>
                 ) : (
                   <>
-                    <nav className={`flex flex-col gap-2 sm:flex-row sm:items-stretch ${vk.segmentBar}`} aria-label="Разделы техники">
+                    <nav className={vk.segmentBar} aria-label="Разделы техники">
                       <button
                         type="button"
                         onClick={() => setTechnicalTierTab('level1')}
                         aria-current={technicalTierTab === 'level1' ? 'page' : undefined}
-                        className={`${vk.segmentBtn} flex-1 text-center sm:py-2.5 ${
-                          technicalTierTab === 'level1'
-                            ? vk.segmentBtnActive
-                            : vk.segmentBtnInactive
+                        className={`${vk.segmentBtn} flex-1 ${
+                          technicalTierTab === 'level1' ? vk.segmentBtnActive : vk.segmentBtnInactive
                         }`}
                       >
-                        Уровень 1
-                        <span className="mt-0.5 block text-[10px] font-normal opacity-80">Базовые элементы</span>
+                        Ур.1
                       </button>
                       <button
                         type="button"
                         onClick={() => setTechnicalTierTab('level2')}
                         aria-current={technicalTierTab === 'level2' ? 'page' : undefined}
-                        className={`${vk.segmentBtn} flex-1 text-center sm:py-2.5 ${
-                          technicalTierTab === 'level2'
-                            ? vk.segmentBtnActive
-                            : vk.segmentBtnInactive
+                        className={`${vk.segmentBtn} flex-1 ${
+                          technicalTierTab === 'level2' ? vk.segmentBtnActive : vk.segmentBtnInactive
                         }`}
                       >
-                        Уровень 2
-                        <span className="mt-0.5 block text-[10px] font-normal opacity-80">Линии удара</span>
+                        Ур.2
                       </button>
                       <button
                         type="button"
                         onClick={() => setTechnicalTierTab('combos')}
                         aria-current={technicalTierTab === 'combos' ? 'page' : undefined}
-                        className={`${vk.segmentBtn} flex-1 text-center sm:py-2.5 ${
-                          technicalTierTab === 'combos'
-                            ? vk.segmentBtnActive
-                            : vk.segmentBtnInactive
+                        className={`${vk.segmentBtn} flex-1 ${
+                          technicalTierTab === 'combos' ? vk.segmentBtnActive : vk.segmentBtnInactive
                         }`}
                       >
-                        Комбинации
-                        <span className="mt-0.5 block text-[10px] font-normal opacity-80">
-                          {technicalCombinationsResolved.length
-                            ? `${technicalCombinationsResolved.length} шт.`
-                            : 'Уровень 3'}
-                        </span>
+                        Комб.
+                        {technicalCombinationsResolved.length > 0 ? (
+                          <span className="ml-0.5 tabular-nums">{technicalCombinationsResolved.length}</span>
+                        ) : null}
                       </button>
                     </nav>
 
                     {technicalTierTab === 'level1' && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Уровень 1 — базовые элементы
-                      </h4>
-                      {orderedTechnicalAtoms.map((atom) => {
-                        const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
-                        const isLockedBySequence = Boolean(technicalLocksById[atom.id])
-                        return (
-                          <article
-                            key={atom.id}
-                            id={`technical-atom-${atom.id}`}
-                            className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm ${
-                              isLockedBySequence ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'
-                            }`}
-                          >
-                            <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2">
-                              <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900">
-                                <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
-                              </h3>
-                              {isLockedBySequence && (
-                                <span
-                                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-sm text-amber-800"
-                                  title="Элемент закрыт до уровня «Умение» на предыдущем"
-                                  aria-label="Элемент закрыт"
-                                >
-                                  🔒
-                                </span>
-                              )}
-                              {atom.embedUrl && (
-                                <button
-                                  type="button"
-                                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-slate-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-200 ${
-                                    openTechnicalVideoId === atom.id
-                                      ? 'border-blue-300 bg-blue-50 text-blue-700'
-                                      : `${vk.iconBtn} border border-[#e7e8ec]`
-                                  }`}
-                                  title="Видеоматериал (опционально)"
-                                  aria-label="Показать или скрыть видео"
-                                  aria-expanded={openTechnicalVideoId === atom.id}
-                                  onClick={() =>
-                                    setOpenTechnicalVideoId((id) => (id === atom.id ? null : atom.id))
-                                  }
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                                    <path d="M8 5v14l11-7L8 5z" />
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                            {atom.embedUrl && openTechnicalVideoId === atom.id && (
-                              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-950 p-2">
-                                <div className="relative w-full pt-[177.78%]">
-                                  <iframe
-                                    src={atom.embedUrl}
-                                    title={`Видео: ${atom.name}`}
-                                    className="absolute left-0 top-0 h-full w-full"
-                                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock;"
-                                    allowFullScreen
-                                    loading="lazy"
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="mt-2">
-                              <label className="min-w-0 space-y-0.5">
-                                <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                  Уровень освоения
-                                </span>
-                                <select
-                                  className={`${vk.select} disabled:cursor-not-allowed disabled:opacity-50`}
-                                  value={atomLevelKey}
-                                  disabled={isLockedBySequence}
-                                  onChange={(event) =>
-                                    isLockedBySequence
-                                      ? null
-                                      : setTechnicalData((prev) => ({
-                                          ...prev,
-                                          [atom.id]: { ...(prev[atom.id] ?? {}), level: event.target.value },
-                                        }))
-                                  }
-                                >
-                                  {TECH_DOMINANCE_OPTIONS.map((opt) => (
-                                    <option key={opt.key} value={opt.key}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            </div>
-
-                            <label className="mt-2 block space-y-0.5">
-                              <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                Комментарий тренера
-                              </span>
-                              <textarea
-                                rows={2}
-                                className={`${vk.input} min-h-[4.5rem] resize-y disabled:cursor-not-allowed disabled:opacity-50`}
-                                placeholder="Заметки по элементу…"
-                                value={technicalData[atom.id]?.comment ?? ''}
-                                disabled={isLockedBySequence}
-                                onChange={(event) =>
-                                  isLockedBySequence
-                                    ? null
-                                    : setTechnicalData((prev) => ({
-                                        ...prev,
-                                        [atom.id]: { ...(prev[atom.id] ?? {}), comment: event.target.value },
-                                      }))
-                                }
-                              />
-                            </label>
-                            {isLockedBySequence && (
-                              <p className="mt-2 rounded-md border border-amber-200 bg-amber-100/70 px-2.5 py-1.5 text-xs font-medium text-amber-900">
-                                Элемент под замком. Чтобы открыть его, предыдущий элемент должен быть на уровне «Умение».
-                              </p>
-                            )}
-                            <div className="mt-2 border-t border-slate-100 pt-2">
-                              <button
-                                type="button"
-                                disabled={!student?.id || isLockedBySequence || technicalSavingKey === `technical:${atom.id}`}
-                                onClick={() => handleSaveTechnicalAtom(atom)}
-                                className={`w-full ${vk.btnSecondary} text-[13px] disabled:opacity-45`}
-                              >
-                                {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
-                              </button>
-                            </div>
-
-                            <details className="mt-1.5 text-xs text-slate-600">
-                              <summary className="cursor-pointer font-medium text-blue-600">Подсказка и детали</summary>
-                              <p className="mt-2">
-                                <strong>Как надо:</strong> {atom.howTo}
-                              </p>
-                              <p className="mt-1">
-                                <strong>Почему:</strong> {atom.whyHowTo}
-                              </p>
-                              <p className="mt-1">
-                                <strong>Ошибки:</strong> {atom.mistakes}
-                              </p>
-                              <p className="mt-1">
-                                <strong>Почему ошибка:</strong> {atom.whyMistakes}
-                              </p>
-                            </details>
-                          </article>
-                        )
-                      })}
-                    </div>
+                      <ul className={vk.list}>
+                        {orderedTechnicalAtoms.map((atom) => {
+                          const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
+                          const isLockedBySequence = Boolean(technicalLocksById[atom.id])
+                          return (
+                            <TechnicalAtomRow
+                              key={atom.id}
+                              atom={atom}
+                              levelKey={atomLevelKey}
+                              comment={technicalData[atom.id]?.comment ?? ''}
+                              locked={isLockedBySequence}
+                              saving={technicalSavingKey === `technical:${atom.id}`}
+                              canSave={Boolean(student?.id)}
+                              videoOpen={openTechnicalVideoId === atom.id}
+                              onToggleVideo={() =>
+                                setOpenTechnicalVideoId((id) => (id === atom.id ? null : atom.id))
+                              }
+                              onLevelChange={(level) =>
+                                setTechnicalData((prev) => ({
+                                  ...prev,
+                                  [atom.id]: { ...(prev[atom.id] ?? {}), level },
+                                }))
+                              }
+                              onCommentChange={(comment) =>
+                                setTechnicalData((prev) => ({
+                                  ...prev,
+                                  [atom.id]: { ...(prev[atom.id] ?? {}), comment },
+                                }))
+                              }
+                              onSave={() => handleSaveTechnicalAtom(atom)}
+                              showMethodDetails
+                            />
+                          )
+                        })}
+                      </ul>
                     )}
 
                     {technicalTierTab === 'level2' && (
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Уровень 2
-                      </h4>
-                      <p className="text-xs text-slate-600">
-                        Фиксированный набор контекстов; освоение по той же шкале, что и уровень 1. На программу «под
-                        замок» уровень 2 не влияет.
-                      </p>
-                      {TECHNIQUE_LEVEL2_ATOMS.map((atom) => {
-                        const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
-                        return (
-                          <article
-                            key={atom.id}
-                            id={`technical-atom-${atom.id}`}
-                            className="scroll-mt-40 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-                          >
-                            <div className="flex items-start gap-1.5 border-b border-slate-100 pb-2">
-                              <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-900">
-                                <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
-                              </h3>
-                            </div>
-                            <div className="mt-2">
-                              <label className="min-w-0 space-y-0.5">
-                                <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                  Уровень освоения
-                                </span>
-                                <select
-                                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
-                                  value={atomLevelKey}
-                                  onChange={(event) =>
-                                    setTechnicalData((prev) => ({
-                                      ...prev,
-                                      [atom.id]: { ...(prev[atom.id] ?? {}), level: event.target.value },
-                                    }))
-                                  }
-                                >
-                                  {TECH_DOMINANCE_OPTIONS.map((opt) => (
-                                    <option key={opt.key} value={opt.key}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            </div>
-                            <label className="mt-2 block space-y-0.5">
-                              <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                Комментарий тренера
-                              </span>
-                              <textarea
-                                rows={2}
-                                className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
-                                placeholder="Заметки по элементу…"
-                                value={technicalData[atom.id]?.comment ?? ''}
-                                onChange={(event) =>
-                                  setTechnicalData((prev) => ({
-                                    ...prev,
-                                    [atom.id]: { ...(prev[atom.id] ?? {}), comment: event.target.value },
-                                  }))
-                                }
-                              />
-                            </label>
-                            <div className="mt-2 border-t border-slate-100 pt-2">
-                              <button
-                                type="button"
-                                disabled={!student?.id || technicalSavingKey === `technical:${atom.id}`}
-                                onClick={() => handleSaveTechnicalAtom(atom)}
-                                className={`w-full ${vk.btnSecondary} text-[13px] disabled:opacity-45`}
-                              >
-                                {technicalSavingKey === `technical:${atom.id}` ? 'Сохранение…' : 'Сохранить элемент'}
-                              </button>
-                            </div>
-                          </article>
-                        )
-                      })}
-                    </div>
+                      <ul className={vk.list}>
+                        {TECHNIQUE_LEVEL2_ATOMS.map((atom) => {
+                          const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
+                          return (
+                            <TechnicalAtomRow
+                              key={atom.id}
+                              atom={atom}
+                              levelKey={atomLevelKey}
+                              comment={technicalData[atom.id]?.comment ?? ''}
+                              saving={technicalSavingKey === `technical:${atom.id}`}
+                              canSave={Boolean(student?.id)}
+                              onLevelChange={(level) =>
+                                setTechnicalData((prev) => ({
+                                  ...prev,
+                                  [atom.id]: { ...(prev[atom.id] ?? {}), level },
+                                }))
+                              }
+                              onCommentChange={(comment) =>
+                                setTechnicalData((prev) => ({
+                                  ...prev,
+                                  [atom.id]: { ...(prev[atom.id] ?? {}), comment },
+                                }))
+                              }
+                              onSave={() => handleSaveTechnicalAtom(atom)}
+                            />
+                          )
+                        })}
+                      </ul>
                     )}
 
                     {technicalTierTab === 'combos' && (
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-end justify-between gap-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                          Уровень 3
-                        </h4>
-                        <button
-                          type="button"
-                          disabled={!student?.id}
-                          onClick={() => {
-                            setComboDraftName('')
-                            setComboDraftSteps([])
-                            setComboPickTier('1')
-                            setComboPickAtomId('')
-                            setComboModalOpen(true)
-                          }}
-                          className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 shadow-sm hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-45:bg-violet-900/60"
-                        >
-                          Добавить комбинацию
-                        </button>
-                      </div>
-                      <p className="text-xs font-medium text-slate-800">
-                        Обязательные к изучению:{' '}
-                        <span className="text-violet-700">1. Двойка подшаг</span>,{' '}
-                        <span className="text-violet-700">2. Двойка толчок</span> — всегда в начале
-                        списка, удалить их нельзя.
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        Соберите цепочку из атомов уровней 1 и 2 (конструктор). У каждой комбинации свой уровень освоения
-                        и комментарий.
-                      </p>
-                      {technicalCombinationsResolved.map((combo) => {
-                        const chain = buildComboChainPreview(combo.steps, atomByIdLookup)
-                        const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[combo.id]?.level)
-                        const reqNum = REQUIRED_LEVEL3_COMBO_IDS.indexOf(combo.id)
-                        const isRequiredCombo = reqNum >= 0
-                        return (
-                            <article
-                              key={combo.id}
-                              id={`technical-combo-${combo.id}`}
-                              className={`scroll-mt-40 rounded-lg border bg-white p-3 shadow-sm ${
-                                isRequiredCombo
-                                  ? 'border-amber-200 ring-1 ring-amber-100/80'
-                                  : 'border-violet-200'
-                              }`}
-                            >
-                              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-2">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    {isRequiredCombo ? (
-                                      <span className="inline-flex shrink-0 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
-                                        Обязательная {reqNum + 1}
-                                      </span>
-                                    ) : null}
-                                    <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900">
-                                      <span className="tabular-nums text-violet-600">∑</span>{' '}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={vk.mutedXs}>Обязательные: двойка подшаг, двойка толчок</p>
+                          <button
+                            type="button"
+                            disabled={!student?.id}
+                            onClick={() => {
+                              setComboDraftName('')
+                              setComboDraftSteps([])
+                              setComboPickTier('1')
+                              setComboPickAtomId('')
+                              setComboModalOpen(true)
+                            }}
+                            className={vk.btnSecondary}
+                          >
+                            + Комбинация
+                          </button>
+                        </div>
+                        <ul className={vk.list}>
+                          {technicalCombinationsResolved.map((combo) => {
+                            const chain = buildComboChainPreview(combo.steps, atomByIdLookup)
+                            const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[combo.id]?.level)
+                            const reqNum = REQUIRED_LEVEL3_COMBO_IDS.indexOf(combo.id)
+                            const isRequiredCombo = reqNum >= 0
+                            const comboSaving = technicalSavingKey === `technical:${combo.id}`
+                            return (
+                              <li
+                                key={combo.id}
+                                id={`technical-combo-${combo.id}`}
+                                className={`scroll-mt-40 border-t border-[#e7e8ec] first:border-t-0 ${
+                                  isRequiredCombo ? 'bg-[#fffbeb]' : 'bg-white'
+                                }`}
+                              >
+                                <div className="px-2.5 py-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <h3 className="min-w-0 flex-1 truncate text-[15px] font-medium text-[#2c2d2e]">
+                                      {isRequiredCombo ? (
+                                        <span className="mr-1 text-[10px] font-bold text-amber-800">
+                                          #{reqNum + 1}
+                                        </span>
+                                      ) : (
+                                        <span className="mr-0.5 text-[#6f3ff5]">∑</span>
+                                      )}
                                       {combo.name}
                                     </h3>
+                                    {!isRequiredCombo ? (
+                                      <button
+                                        type="button"
+                                        disabled={!student?.id || Boolean(technicalSavingKey)}
+                                        onClick={() => handleDeleteCombination(combo.id)}
+                                        className="shrink-0 text-[12px] font-medium text-[#e64646] disabled:opacity-40"
+                                      >
+                                        Удалить
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                  <p className={`mt-0.5 line-clamp-2 ${vk.mutedXs}`} title={chain}>
+                                    {chain}
+                                  </p>
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    <select
+                                      className={`${vk.select} min-w-[6.5rem] max-w-[10rem] flex-1`}
+                                      value={atomLevelKey}
+                                      aria-label="Уровень освоения"
+                                      onChange={(e) =>
+                                        setTechnicalData((prev) => ({
+                                          ...prev,
+                                          [combo.id]: { ...(prev[combo.id] ?? {}), level: e.target.value },
+                                        }))
+                                      }
+                                    >
+                                      {TECH_DOMINANCE_OPTIONS.map((opt) => (
+                                        <option key={opt.key} value={opt.key}>
+                                          {opt.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <input
+                                      type="text"
+                                      className={`${vk.input} min-w-0 flex-1`}
+                                      placeholder="Комментарий"
+                                      value={technicalData[combo.id]?.comment ?? ''}
+                                      onChange={(e) =>
+                                        setTechnicalData((prev) => ({
+                                          ...prev,
+                                          [combo.id]: { ...(prev[combo.id] ?? {}), comment: e.target.value },
+                                        }))
+                                      }
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={!student?.id || comboSaving}
+                                      onClick={() =>
+                                        handleSaveTechnicalAtom({
+                                          id: combo.id,
+                                          number: 'III',
+                                          name: combo.name,
+                                          embedUrl: '',
+                                          howTo: '',
+                                          whyHowTo: '',
+                                          mistakes: '',
+                                          whyMistakes: '',
+                                        })
+                                      }
+                                      className={vk.btnCompact}
+                                    >
+                                      {comboSaving ? '…' : 'Сохранить'}
+                                    </button>
                                   </div>
                                 </div>
-                                {!isRequiredCombo ? (
-                                  <button
-                                    type="button"
-                                    disabled={!student?.id || Boolean(technicalSavingKey)}
-                                    onClick={() => handleDeleteCombination(combo.id)}
-                                    className="shrink-0 rounded-md border border-red-200 px-2 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40:bg-red-950/40"
-                                  >
-                                    Удалить
-                                  </button>
-                                ) : null}
-                              </div>
-                              <p className="mt-2 text-xs leading-snug text-slate-600">
-                                Цепочка: <span className="font-medium text-slate-800">{chain}</span>
-                              </p>
-                              <div className="mt-2">
-                                <label className="min-w-0 space-y-0.5">
-                                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                    Уровень освоения
-                                  </span>
-                                  <select
-                                    className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
-                                    value={atomLevelKey}
-                                    onChange={(event) =>
-                                      setTechnicalData((prev) => ({
-                                        ...prev,
-                                        [combo.id]: { ...(prev[combo.id] ?? {}), level: event.target.value },
-                                      }))
-                                    }
-                                  >
-                                    {TECH_DOMINANCE_OPTIONS.map((opt) => (
-                                      <option key={opt.key} value={opt.key}>
-                                        {opt.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                              </div>
-                              <label className="mt-2 block space-y-0.5">
-                                <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                  Комментарий тренера
-                                </span>
-                                <textarea
-                                  rows={2}
-                                  className="w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-200"
-                                  placeholder="Заметки по комбинации…"
-                                  value={technicalData[combo.id]?.comment ?? ''}
-                                  onChange={(event) =>
-                                    setTechnicalData((prev) => ({
-                                      ...prev,
-                                      [combo.id]: { ...(prev[combo.id] ?? {}), comment: event.target.value },
-                                    }))
-                                  }
-                                />
-                              </label>
-                              <div className="mt-2 border-t border-slate-100 pt-2">
-                                <button
-                                  type="button"
-                                  disabled={!student?.id || technicalSavingKey === `technical:${combo.id}`}
-                                  onClick={() =>
-                                    handleSaveTechnicalAtom({
-                                      id: combo.id,
-                                      number: 'III',
-                                      name: combo.name,
-                                      embedUrl: '',
-                                      howTo: '',
-                                      whyHowTo: '',
-                                      mistakes: '',
-                                      whyMistakes: '',
-                                    })
-                                  }
-                                  className={`w-full ${vk.btnSecondary} text-[13px] disabled:opacity-45`}
-                                >
-                                  {technicalSavingKey === `technical:${combo.id}` ? 'Сохранение…' : 'Сохранить комбинацию'}
-                                </button>
-                              </div>
-                            </article>
-                          )
-                      })}
-                    </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
                     )}
                   </>
                 )}
