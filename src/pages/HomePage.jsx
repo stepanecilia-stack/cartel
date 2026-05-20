@@ -30,7 +30,7 @@ function formatDashboardWeightCategoryShort(fullLine) {
   return fullLine.replace(/\s*\(вес из анкеты\)/i, '').trim()
 }
 
-function HomePage({ onSelectStudent, coachId }) {
+function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
   const [students, setStudents] = useState([])
   const [loadError, setLoadError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -140,43 +140,48 @@ function HomePage({ onSelectStudent, coachId }) {
 
   const studentIds = useMemo(() => students.map((s) => s.id), [students])
 
-  const dashboardActions = [
-    {
-      key: 'add',
-      label: 'Добавить ученика',
-      icon: '+',
-      iconClass: 'bg-[#2d81e0] text-white text-xl font-light',
-      onClick: () => setAddModalOpen(true),
-    },
-    {
-      key: 'group',
-      label: 'Прогресс техники',
-      icon: '⇉',
-      iconClass: 'bg-[#e5f1fb] text-[#2d81e0] text-base',
-      to: '/group-training',
-    },
-    {
-      key: 'norms',
-      label: 'Сдать норматив',
-      icon: '✓',
-      iconClass: 'bg-[#e8f9ed] text-[#4bb34b] text-base font-bold',
-      to: '/bulk-norms',
-    },
-    {
-      key: 'qualities',
-      label: 'База упражнений',
-      icon: '◎',
-      iconClass: 'bg-[#f0ebfa] text-[#735ce6] text-base',
-      to: '/qualities',
-    },
-    {
-      key: 'elements',
-      label: 'Элементы техники',
-      icon: '▣',
-      iconClass: 'bg-[#fff8e6] text-[#e6a817] text-base',
-      to: '/technical-elements',
-    },
-  ]
+  const dashboardActions = useMemo(() => {
+    const actions = [
+      {
+        key: 'add',
+        label: 'Добавить ученика',
+        icon: '+',
+        iconClass: 'bg-[#2d81e0] text-white text-xl font-light',
+        onClick: () => setAddModalOpen(true),
+      },
+      {
+        key: 'group',
+        label: 'Прогресс техники',
+        icon: '⇉',
+        iconClass: 'bg-[#e5f1fb] text-[#2d81e0] text-base',
+        to: '/group-training',
+      },
+      {
+        key: 'norms',
+        label: 'Сдать норматив',
+        icon: '✓',
+        iconClass: 'bg-[#e8f9ed] text-[#4bb34b] text-base font-bold',
+        to: '/bulk-norms',
+      },
+      {
+        key: 'qualities',
+        label: 'База упражнений',
+        icon: '◎',
+        iconClass: 'bg-[#f0ebfa] text-[#735ce6] text-base',
+        to: '/qualities',
+      },
+    ]
+    if (isProgramAdmin) {
+      actions.push({
+        key: 'elements',
+        label: 'Элементы техники',
+        icon: '▣',
+        iconClass: 'bg-[#fff8e6] text-[#e6a817] text-base',
+        to: '/technical-elements',
+      })
+    }
+    return actions
+  }, [isProgramAdmin])
 
   const vkTileClass =
     'flex min-h-[4.25rem] w-full touch-manipulation flex-col items-center justify-start gap-1 rounded-md px-0.5 py-1.5 text-center active:bg-[#f5f6f8] dark:active:bg-[#2c2d2e] sm:min-h-[4.5rem]'

@@ -15,12 +15,13 @@ import StudentPage from './pages/StudentPage'
 import TechnicalElementsPage from './pages/TechnicalElementsPage'
 import WelcomePage from './pages/WelcomePage'
 import {
-  getCoachProfile,
   logoutCoach,
+  subscribeCoachProfile,
   subscribeToAuth,
 } from './services/firebaseService'
 import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
 import { subscribeTechnicalProgramAtoms } from './services/technicalProgramAtomsService.js'
+import { isProgramAdmin } from './utils/coachRoles.js'
 import { vk } from './utils/vkUi.js'
 
 function LeaderboardNavIcon({ className = '' }) {
@@ -45,7 +46,7 @@ function LeaderboardNavIcon({ className = '' }) {
   )
 }
 
-function Navbar({ user, coachProfile }) {
+function Navbar({ user, coachProfile, programAdmin }) {
   const location = useLocation()
   const isLeaderboard =
     location.pathname === '/leaderboard' || location.pathname === '/leaderboard/school'
@@ -80,9 +81,11 @@ function Navbar({ user, coachProfile }) {
               <Link to="/qualities" className={`hidden shrink-0 sm:inline ${vk.linkNav}`}>
                 Качества
               </Link>
-              <Link to="/technical-elements" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
-                Элементы
-              </Link>
+              {programAdmin ? (
+                <Link to="/technical-elements" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
+                  Элементы
+                </Link>
+              ) : null}
               <Link to="/bulk-norms" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Норматив
               </Link>
@@ -100,6 +103,11 @@ function Navbar({ user, coachProfile }) {
             <>
               <span className="min-w-0 max-w-[42vw] truncate text-right text-[13px] text-[#818c99] sm:max-w-none">
                 {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
+                {programAdmin ? (
+                  <span className="ml-1 rounded bg-[#fff8e6] px-1 py-0.5 text-[10px] font-semibold text-[#e6a817]">
+                    админ
+                  </span>
+                ) : null}
               </span>
               <button type="button" onClick={() => logoutCoach()} className={vk.btnGhost}>
                 Выйти
@@ -126,7 +134,14 @@ function ProtectedRoute({ user, element }) {
   return element
 }
 
+function AdminRoute({ user, coachProfile, element }) {
+  if (!user) return <Navigate to="/login" replace />
+  if (!isProgramAdmin(coachProfile)) return <Navigate to="/" replace />
+  return element
+}
+
 function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile }) {
+  const programAdmin = isProgramAdmin(coachProfile)
   const location = useLocation()
   const navigate = useNavigate()
   const isShareRoute =
@@ -146,7 +161,9 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
 
   return (
     <div className="vk-app">
-      {!isShareRoute && <Navbar user={authUser} coachProfile={coachProfile} />}
+      {!isShareRoute && (
+        <Navbar user={authUser} coachProfile={coachProfile} programAdmin={programAdmin} />
+      )}
       <Routes>
         <Route path="/share/:student_hash" element={<ShareProgressPage />} />
         <Route path="/leaderboard/share/:token" element={<ShareLeaderboardPage />} />
@@ -166,7 +183,11 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
                     }
                   />
                 ) : (
-                  <HomePage onSelectStudent={setSelectedStudent} coachId={authUser?.uid} />
+                  <HomePage
+                    onSelectStudent={setSelectedStudent}
+                    coachId={authUser?.uid}
+                    isProgramAdmin={programAdmin}
+                  />
                 )
               }
             />
@@ -200,7 +221,13 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         />
         <Route
           path="/technical-elements"
-          element={<ProtectedRoute user={authUser} element={<TechnicalElementsPage />} />}
+          element={
+            <AdminRoute
+              user={authUser}
+              coachProfile={coachProfile}
+              element={<TechnicalElementsPage />}
+            />
+          }
         />
         <Route
           path="/qualities/:slug"
@@ -263,23 +290,27 @@ function App() {
   const [coachProfile, setCoachProfile] = useState(null)
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuth(async (user) => {
+    const unsubscribe = subscribeToAuth((user) => {
       setAuthUser(user ?? null)
-      if (user) {
-        try {
-          const profile = await getCoachProfile(user.uid)
-          setCoachProfile(profile)
-        } catch (error) {
-          console.error('Не удалось загрузить профиль тренера:', error)
-          setCoachProfile(null)
-        }
-      } else {
+      if (!user) {
         setCoachProfile(null)
         setSelectedStudent(null)
       }
     })
     return () => unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!authUser?.uid) return undefined
+    return subscribeCoachProfile(
+      authUser.uid,
+      (profile) => setCoachProfile(profile),
+      (err) => {
+        console.error('Не удалось загрузить профиль тренера:', err)
+        setCoachProfile(null)
+      },
+    )
+  }, [authUser?.uid])
 
   useEffect(() => {
     if (!authUser) return undefined

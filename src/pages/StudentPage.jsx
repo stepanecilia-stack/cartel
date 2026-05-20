@@ -2054,14 +2054,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
         <MotorQualityWorkLogPanel workLog={student?.motorQualityWorkLog ?? safeStudent?.motorQualityWorkLog} />
 
-        <section className={vk.cardPadded}>
+        <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
           <h2 className={vk.h2}>Сенситивные периоды</h2>
-          <div className="mt-2 sm:mt-4">
-            <SensitivePeriodTimer
-              birthYear={resolvedBirthYear}
-              birthDate={resolvedBirthDate}
-            />
-          </div>
+          <SensitivePeriodTimer
+            className="mt-1.5"
+            birthYear={resolvedBirthYear}
+            birthDate={resolvedBirthDate}
+          />
         </section>
 
       </div>

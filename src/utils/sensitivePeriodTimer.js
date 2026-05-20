@@ -19,7 +19,6 @@ const MS_DAY = 86400000
  *   spanDays: number,
  *   urgencyTone: 'missed' | 'comfort' | 'warn' | 'critical',
  *   counterLabel: string,
- *   windowLabel: string,
  * }} SensitivePeriodTimerItem
  */
 
@@ -125,11 +124,6 @@ export function formatAthleteAgeLabel(birth, now) {
   return parts.join(' ')
 }
 
-function formatWindowLabel(start, end) {
-  const fmt = (p) => `${p.years} г. ${p.months > 0 ? `${p.months} мес.` : ''}`.trim()
-  return `${fmt(start)} — ${fmt(end)}`
-}
-
 /**
  * @param {Date} now
  * @param {Date} start
@@ -170,14 +164,14 @@ export function getSensitivePeriodUrgencyTone(status, { daysLeft, daysUntilStart
 function buildCounterLabel(status, now, start, end) {
   if (status === 'active') {
     const left = daysBetween(now, end)
-    return `Осталось: ${formatDurationRu(left)} до закрытия окна`
+    return `Осталось ${formatDurationRu(left)}`
   }
   if (status === 'future') {
     const until = daysBetween(now, start)
-    return `Начнётся через: ${formatDurationRu(until)}`
+    return `Через ${formatDurationRu(until)}`
   }
   const ago = daysBetween(end, now)
-  return `Окно закрыто ${formatDurationRu(ago)} назад`
+  return `Закрыто ${formatDurationRu(ago)} назад`
 }
 
 /**
@@ -228,7 +222,6 @@ export function buildSensitivePeriodTimer({
       spanDays,
       urgencyTone,
       counterLabel: buildCounterLabel(status, now, startDate, endDate),
-      windowLabel: formatWindowLabel(def.start, def.end),
     }
   })
 

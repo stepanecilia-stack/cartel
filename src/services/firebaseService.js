@@ -350,6 +350,7 @@ export const registerCoach = async (email, password, coachData) => {
     lastName: coachData.lastName,
     city: coachData.city,
     email,
+    role: 'coach',
     createdAt: serverTimestamp(),
   })
 

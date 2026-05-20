@@ -2,6 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Администратор программы: coaches/{uid}.role == "admin" (или isAdmin: true).
+    // Первого админа назначают вручную в Firebase Console → coaches → документ → поле role: "admin".
+    function coachDoc() {
+      return get(/databases/$(database)/documents/coaches/$(request.auth.uid));
+    }
+
+    function isProgramAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/coaches/$(request.auth.uid))
+        && (
+          coachDoc().data.role == 'admin'
+          || coachDoc().data.isAdmin == true
+        );
+    }
+
     // ---------------------------------------------------------------------------
     // Cartel Boxing — пример правил для локальной отладки.
     //
@@ -29,7 +44,13 @@ service cloud.firestore {
     }
 
     match /coaches/{coachId} {
-      allow read, write: if request.auth != null && request.auth.uid == coachId;
+      allow read: if request.auth != null && request.auth.uid == coachId;
+      allow create: if request.auth != null && request.auth.uid == coachId;
+      // Тренер не может сам выдать себе role / isAdmin через приложение.
+      allow update: if request.auth != null
+        && request.auth.uid == coachId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isAdmin']);
+      allow delete: if false;
     }
 
     match /accessCodes/{codeId} {
@@ -45,10 +66,10 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
 
-    // Каталог технических элементов программы (GIF / WebM / embed).
+    // Каталог технических элементов программы (GIF / WebM / embed). Пишет только администратор.
     match /technical_program_atoms/{atomId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null;
+      allow create, update, delete: if isProgramAdmin();
     }
 
     match /public_student_shares/{token} {

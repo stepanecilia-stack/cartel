@@ -15,7 +15,8 @@ import {
   getTechnicalProgramAtomsCache,
   setTechnicalProgramAtomsCache,
 } from '../data/technicalProgramAtomsCache.js'
-import db, { isFirebaseConfigured } from './firebaseService.js'
+import db, { getCoachProfile, getCurrentCoachId, isFirebaseConfigured } from './firebaseService.js'
+import { isProgramAdmin } from '../utils/coachRoles.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 
 const COLLECTION_ID = 'technical_program_atoms'
@@ -173,6 +174,15 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
     throw new Error(
       'Firebase не настроен. Медиа элементов программы сохраняются только в облако (коллекция technical_program_atoms).',
     )
+  }
+
+  const coachId = getCurrentCoachId()
+  if (!coachId) {
+    throw new Error('Войдите в аккаунт тренера.')
+  }
+  const profile = await getCoachProfile(coachId)
+  if (!isProgramAdmin(profile)) {
+    throw new Error('Редактирование каталога техники доступно только администратору программы.')
   }
 
   const defaults = getDefaultTechnicalProgramAtoms()
