@@ -7,65 +7,32 @@ import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
 import StandardDuelSilhouettes from '../components/StandardDuelSilhouettes'
 import ShareSensitivePeriodsMap from '../components/ShareSensitivePeriodsMap'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
-import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
+import { normScoreToneByStatus } from '../utils/normCardTone'
+import { ETALON_MODEL_PANEL_CLASS, vk } from '../utils/vkUi.js'
 
 const TAB_ITEMS = [
-  { id: 'anthropometry', label: 'Антропометрия' },
-  { id: 'physical', label: 'Физическое развитие' },
-  { id: 'functional', label: 'Функциональная готовность' },
-  { id: 'technical', label: 'Техника' },
+  { id: 'anthropometry', shortLabel: 'Карта' },
+  { id: 'physical', shortLabel: 'Физика' },
+  { id: 'functional', shortLabel: 'Функционал' },
+  { id: 'technical', shortLabel: 'Техника' },
 ]
 
-const TAB_PROGRESS_LABELS = {
-  anthropometry: 'Антропометрия',
-  physical: 'Физика',
-  functional: 'Функционал',
-  technical: 'Техника',
-}
-
-const TAB_ICONS = {
-  anthropometry: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 8h16M4 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M6 6v4M9 7v2M12 6v4M15 7v2M18 6v4M6 14v4M9 15v2M12 14v4M15 15v2M18 14v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  ),
-  physical: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8 15c1.2-1.6 2.7-2.4 4.6-2.4 1.5 0 2.8.5 3.8 1.5l1.6 1.6c.8.8.8 2.1 0 2.9-.8.8-2.1.8-2.9 0l-1-1c-.6-.6-1.3-.9-2.2-.9-1.2 0-2.2.5-2.9 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6.4 8.8 8 10.4c.6.6 1.4.9 2.2.9 1.1 0 2-.4 2.7-1.2l1-1.1c.8-.8 2.1-.9 2.9-.1.8.8.9 2.1.1 2.9l-1.5 1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  functional: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M13.2 2 5 13h5l-1 9 8.2-11H12l1.2-9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  ),
-  technical: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8.5 13.5c-1.2 0-2.2-1-2.2-2.2V8.8c0-1.8 1.5-3.3 3.3-3.3h3.8c2.4 0 4.3 2 4.3 4.3v5.2c0 1.9-1.6 3.5-3.5 3.5H9.7c-1.8 0-3.2-1.4-3.2-3.2v-.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6.3 10.7h3.3c1.1 0 2 .9 2 2v2.2c0 .9-.7 1.6-1.6 1.6H8c-.9 0-1.7-.8-1.7-1.7v-4.1Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-}
-
-/** Как у тренера: кольцо «доминирует влияние» только у трёх разделов КСР (без антропометрии). */
 const tabIdToInfluenceKey = {
   physical: 'physical',
   functional: 'functional',
   technical: 'tech',
 }
 
-function progressColorClass(value) {
-  if (value <= 30) return 'bg-red-500'
-  if (value <= 70) return 'bg-amber-400'
-  return 'bg-emerald-500'
+function progressBarClass(value) {
+  if (value <= 30) return 'bg-[#e64646]'
+  if (value <= 70) return 'bg-[#ffa000]'
+  return 'bg-[#4bb34b]'
 }
 
-function WeightLineChartLight({ points }) {
-  const w = 560
-  const h = 200
-  const pad = 24
+function WeightLineChartCompact({ points }) {
+  const w = 480
+  const h = 140
+  const pad = 20
   const sorted = useMemo(
     () =>
       [...(points || [])]
@@ -87,43 +54,39 @@ function WeightLineChartLight({ points }) {
     })
     const d = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ')
     return { d, circles: coords }
-  }, [sorted, w, h, pad])
+  }, [sorted])
 
   if (sorted.length === 0) {
-    return (
-      <div className="flex h-36 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 sm:h-52 sm:rounded-xl sm:text-sm dark:border-slate-600 dark:bg-slate-800/85">
-        Пока нет записей веса для графика.
-      </div>
-    )
+    return <p className={vk.mutedXs}>Пока нет записей веса для графика.</p>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm sm:rounded-xl sm:p-4 dark:border-slate-600 dark:bg-slate-900">
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mx-auto max-w-full text-blue-600">
+    <div className="overflow-x-auto rounded-lg bg-[#f0f2f5] p-2">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mx-auto max-w-full text-[#2d81e0]">
         <defs>
-          <linearGradient id="share-w-lg" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#2563eb" />
-            <stop offset="100%" stopColor="#38bdf8" />
+          <linearGradient id="share-w-vk" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#2d81e0" />
+            <stop offset="100%" stopColor="#5eb3f6" />
           </linearGradient>
         </defs>
-        {pathData.d && (
+        {pathData.d ? (
           <path
             d={pathData.d}
             fill="none"
-            stroke="url(#share-w-lg)"
-            strokeWidth="3"
+            stroke="url(#share-w-vk)"
+            strokeWidth="2.5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-        )}
+        ) : null}
         {pathData.circles.map((c) => (
-          <circle key={`${c.date}-${c.weight}`} cx={c.x} cy={c.y} r="5" fill="white" stroke="#2563eb" strokeWidth="2" />
+          <circle key={`${c.date}-${c.weight}`} cx={c.x} cy={c.y} r="4" fill="white" stroke="#2d81e0" strokeWidth="2" />
         ))}
       </svg>
-      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+      <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[11px] text-[#818c99]">
         {sorted.map((p) => (
           <span key={`${p.date}-${p.weight}`}>
-            {p.date}: <span className="font-semibold text-slate-900 dark:text-slate-100">{p.weight} кг</span>
+            {p.date}: <span className="font-semibold tabular-nums text-[#2c2d2e]">{p.weight} кг</span>
           </span>
         ))}
       </div>
@@ -131,12 +94,8 @@ function WeightLineChartLight({ points }) {
   )
 }
 
-function ShareReadonlyNormCard({ item }) {
-  const cardStatus = item.status === 'empty' ? undefined : item.status
-  const cardTone = normCardToneByStatus(cardStatus)
-  const scoreTone = normScoreToneByStatus(cardStatus)
-  const betterHint =
-    item.measureType === 'MAX' ? 'Чем больше — тем лучше' : 'Чем меньше — тем лучше'
+function ShareNormRow({ item }) {
+  const scoreTone = normScoreToneByStatus(item.status === 'empty' ? undefined : item.status)
   const goalStr =
     item.normGoldDisplay != null && item.normGoldDisplay !== ''
       ? item.normGoldDisplay
@@ -145,62 +104,98 @@ function ShareReadonlyNormCard({ item }) {
         : '—'
 
   return (
-    <div className={`flex flex-col gap-1.5 rounded-lg border p-2.5 transition-colors sm:gap-2 sm:rounded-xl sm:p-4 ${cardTone}`}>
-      <div className="text-center">
-        <span className="block text-base font-bold leading-snug text-slate-900 dark:text-slate-100 sm:text-lg">{item.name}</span>
-        {item.description ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-600 dark:text-slate-400 sm:text-xs">{item.description}</p>
-        ) : null}
+    <article className="rounded-[10px] border border-[#e7e8ec] bg-white px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-medium leading-5 text-[#2c2d2e]">{item.name}</p>
+          {item.description ? <p className={`mt-0.5 line-clamp-2 ${vk.mutedXs}`}>{item.description}</p> : null}
+        </div>
+        {item.hasResult && item.status !== 'empty' ? <NormMedalChip status={item.status} size="sm" /> : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+        <div className="flex min-w-0 items-center gap-1.5 rounded-lg bg-[#f0f2f5] px-2 py-1.5">
           <NormGoldGoalIcon />
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/85">Цель</p>
-            <p className="truncate text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
-              {goalStr} <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{item.unit}</span>
+            <p className="text-[10px] text-[#818c99]">Цель</p>
+            <p className="truncate font-semibold tabular-nums text-[#2c2d2e]">
+              {goalStr} {item.unit}
             </p>
           </div>
         </div>
-        <div className="flex items-center justify-end">
-          <p className="max-w-[11rem] text-right text-[11px] font-medium leading-snug text-slate-700 sm:max-w-none sm:text-xs">
-            {betterHint}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3 border-t border-slate-200 dark:border-slate-600/80 pt-2">
-        <div className="min-w-[140px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Результат ({item.unit})</span>
-          <div className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100">
+        <div className="rounded-lg bg-[#f0f2f5] px-2 py-1.5">
+          <p className="text-[10px] text-[#818c99]">Результат</p>
+          <p className="font-semibold tabular-nums text-[#2c2d2e]">
             {item.hasResult ? item.resultDisplay || item.resultValue : '—'}
-          </div>
-        </div>
-        {item.hasResult && item.status !== 'empty' && (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-600 dark:text-slate-400">
-              Оценка в баллах:{' '}
-              <span className={`font-semibold tabular-nums ${scoreTone}`}>{item.normalizedScore ?? '—'}</span>
-            </span>
-            <NormMedalChip status={item.status} size="sm" />
-          </div>
-        )}
-      </div>
-
-      <div className="border-t border-slate-200 dark:border-slate-600/80 pt-2">
-        {item.acceptedDisplay ? (
-          <p className="text-[11px] leading-snug text-slate-700">
-            <span className="font-semibold text-slate-800">Фиксация норматива:</span> {item.acceptedDisplay}
-            {item.acceptanceHistoryCount > 1 ? (
-              <span className="text-slate-500"> · в истории {item.acceptanceHistoryCount} записей</span>
+            {item.hasResult && item.unit ? (
+              <span className="ml-0.5 text-[11px] font-medium text-[#818c99]">{item.unit}</span>
             ) : null}
           </p>
-        ) : (
-          <p className="text-[11px] text-slate-500">Тренер ещё не зафиксировал этот норматив кнопкой «Сохранить норматив».</p>
-        )}
+        </div>
       </div>
-    </div>
+
+      {item.hasResult && item.status !== 'empty' ? (
+        <p className={`mt-1.5 text-[11px] ${scoreTone}`}>
+          Баллы: <span className="font-semibold tabular-nums">{item.normalizedScore ?? '—'}</span>
+        </p>
+      ) : null}
+
+      {item.acceptedDisplay ? (
+        <p className={`mt-1.5 ${vk.mutedXs}`}>
+          Фиксация: {item.acceptedDisplay}
+          {item.acceptanceHistoryCount > 1 ? ` · в истории ${item.acceptanceHistoryCount}` : ''}
+        </p>
+      ) : (
+        <p className={`mt-1.5 ${vk.mutedXs}`}>Норматив ещё не зафиксирован тренером.</p>
+      )}
+    </article>
+  )
+}
+
+function ShareTechRow({ atom }) {
+  const pct =
+    atom.levelPercent != null && Number.isFinite(Number(atom.levelPercent))
+      ? Number(atom.levelPercent)
+      : technicalLevelInterpolationPercent(atom.levelKey)
+  const hasDetails = atom.howTo || atom.whyHowTo || atom.mistakes || atom.whyMistakes
+
+  return (
+    <article className="rounded-[10px] border border-[#e7e8ec] bg-white px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 text-[14px] font-medium leading-5 text-[#2c2d2e]">
+          <span className="tabular-nums text-[#818c99]">#{atom.number}</span> {atom.name}
+        </p>
+        {atom.videoLink ? (
+          <a href={atom.videoLink} target="_blank" rel="noreferrer" className={`shrink-0 ${vk.link}`}>
+            Видео
+          </a>
+        ) : null}
+      </div>
+      {atom.comboChain ? (
+        <p className={`mt-1 ${vk.mutedXs}`}>
+          Цепочка: <span className="text-[#2c2d2e]">{atom.comboChain}</span>
+        </p>
+      ) : null}
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-[12px] text-[#2c2d2e]">{atom.levelLabel}</span>
+        <span className="text-[11px] font-medium tabular-nums text-[#818c99]">{pct}%</span>
+      </div>
+      <div className={`${vk.progressTrack} mt-1 block`}>
+        <span className={`block h-full rounded-full ${progressBarClass(pct)}`} style={{ width: `${pct}%` }} />
+      </div>
+      {atom.comment ? <p className={`mt-1.5 ${vk.mutedXs}`}>{atom.comment}</p> : null}
+      {hasDetails ? (
+        <details className="mt-1">
+          <summary className={`cursor-pointer ${vk.link}`}>Подробнее</summary>
+          <div className={`mt-1 space-y-1 ${vk.mutedXs}`}>
+            {atom.howTo ? <p>Как: {atom.howTo}</p> : null}
+            {atom.whyHowTo ? <p>Почему: {atom.whyHowTo}</p> : null}
+            {atom.mistakes ? <p>Ошибки: {atom.mistakes}</p> : null}
+            {atom.whyMistakes ? <p>Почему ошибка: {atom.whyMistakes}</p> : null}
+          </div>
+        </details>
+      ) : null}
+    </article>
   )
 }
 
@@ -238,10 +233,10 @@ export default function ShareProgressPage() {
         setLoading(false)
         if (e?.code === 'permission-denied') {
           setError(
-            'Нет доступа к данным: в Firebase Console опубликуйте правила Firestore (раздел public_student_shares, чтение для гостей).',
+            'Нет доступа к данным: в Firebase Console опубликуйте правила Firestore (public_student_shares, чтение для гостей).',
           )
         } else {
-          setError('Не удалось подключиться к обновлениям. Проверьте интернет.')
+          setError('Не удалось подключиться. Проверьте интернет.')
         }
       },
     )
@@ -268,11 +263,8 @@ export default function ShareProgressPage() {
     }
   }, [p])
 
-  /** Те же входы, что у `dynamicStudent` на странице тренера — для идентичных T/P/F. */
   const studentForWeights = useMemo(() => {
-    if (!p) {
-      return { height: 0, reach: 0, weight: 0, birthYear: 0, gender: 'M' }
-    }
+    if (!p) return { height: 0, reach: 0, weight: 0, birthYear: 0, gender: 'M' }
     const a = p.athleteSnapshot
     if (a && typeof a === 'object') {
       return {
@@ -283,8 +275,7 @@ export default function ShareProgressPage() {
         gender: a.gender === 'F' ? 'F' : 'M',
       }
     }
-    const cw = Number(p.currentWeight) || 0
-    return { height: 0, reach: 0, weight: cw, birthYear: 0, gender: 'M' }
+    return { height: 0, reach: 0, weight: Number(p.currentWeight) || 0, birthYear: 0, gender: 'M' }
   }, [p])
 
   const weights = useMemo(() => getWeights(studentForWeights), [studentForWeights])
@@ -292,8 +283,8 @@ export default function ShareProgressPage() {
   const influenceItems = useMemo(
     () => [
       { key: 'tech', label: 'Техника', value: Math.round(weights.T * 100) },
-      { key: 'physical', label: 'Физическое развитие', value: Math.round(weights.P * 100) },
-      { key: 'functional', label: 'Функциональная готовность', value: Math.round(weights.F * 100) },
+      { key: 'physical', label: 'Физика', value: Math.round(weights.P * 100) },
+      { key: 'functional', label: 'Функционал', value: Math.round(weights.F * 100) },
     ],
     [weights],
   )
@@ -304,469 +295,238 @@ export default function ShareProgressPage() {
     .map((item) => item.key)
 
   const athlete = p?.athleteSnapshot
-
   const duelRows = p?.duelRows
   const standardPassport = p?.standardPassport
 
+  const attestationLabel = p?.nextAttestationDate
+    ? new Date(p.nextAttestationDate + 'T12:00:00').toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : 'уточняйте у тренера'
+
   return (
-    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-4xl space-y-2.5 sm:space-y-6">
+    <main className={`${vk.page} ${vk.pagePad}`}>
+      <div className={`${vk.containerMid} max-w-3xl`}>
         <BackToHomeBar to="/welcome" />
-        <header className="text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs dark:text-slate-400">
-            Cartel Academy
-          </p>
-          <h1 className="mt-0.5 text-xl font-bold text-slate-900 dark:text-slate-100 sm:mt-1 sm:text-3xl">
-            Карточка спортсмена
-          </h1>
+
+        <header className="space-y-1">
+          <p className={vk.mutedXs}>Cartel Academy · прогресс спортсмена</p>
+          <h1 className={vk.h1Lg}>{p?.displayName ?? 'Карточка спортсмена'}</h1>
           {live && !error && p ? (
-            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-800 sm:mt-3 sm:gap-2 sm:px-3 sm:py-1 sm:text-xs">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              Подключено к облаку · обновления в реальном времени
+            <p className="inline-flex items-center gap-1.5 text-[12px] text-[#4bb34b]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4bb34b]" aria-hidden />
+              Обновляется в реальном времени
             </p>
           ) : null}
         </header>
 
-        {loading && !p && (
-          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 py-16 text-center text-slate-500 shadow-sm">
-            Загрузка…
-          </div>
-        )}
+        {loading && !p ? <p className={`text-center ${vk.muted}`}>Загрузка…</p> : null}
+        {error ? <p className={vk.error}>{error}</p> : null}
 
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center text-sm text-red-800">{error}</div>
-        )}
-
-        {!loading && p && (
+        {!loading && p ? (
           <>
-            <section className="rounded-xl bg-white p-2.5 shadow-sm dark:bg-slate-900 sm:p-6">
-              <div className="flex items-center gap-3 sm:flex-row sm:items-start sm:gap-4">
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-24 sm:w-24 sm:rounded-xl dark:border-slate-600">
+            <section className={`${vk.cardPadded} py-2.5`}>
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#e7e8ec] bg-[#f0f2f5]">
                   {p.photoURL ? (
                     <img src={p.photoURL} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-slate-400">
+                    <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-[#818c99]">
                       {String(p.displayName || '?')
                         .slice(0, 1)
                         .toUpperCase()}
                     </div>
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-lg font-bold leading-tight text-slate-900 sm:text-2xl dark:text-slate-100">{p.displayName}</h2>
-                  <p className="mt-1 text-xs text-slate-600 sm:mt-2 sm:text-sm dark:text-slate-400">
-                    Текущий вес:{' '}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
+                  <p>
+                    Вес:{' '}
+                    <span className="font-semibold tabular-nums text-[#2c2d2e]">
                       {p.currentWeight > 0 ? `${p.currentWeight} кг` : '—'}
                     </span>
                   </p>
-                  <p className="mt-0.5 text-xs text-slate-600 sm:text-sm dark:text-slate-400">
-                    Следующая аттестация:{' '}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {p.nextAttestationDate
-                        ? new Date(p.nextAttestationDate + 'T12:00:00').toLocaleDateString('ru-RU', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        : 'уточняйте у тренера'}
-                    </span>
+                  <p className="mt-0.5 text-[#818c99]">
+                    Аттестация: <span className="font-medium text-[#2c2d2e]">{attestationLabel}</span>
                   </p>
                 </div>
               </div>
-
-              <div className="mt-3 sm:mt-6">
-                <h3 className="mb-1.5 text-xs font-semibold text-slate-800 sm:mb-2 sm:text-sm">Динамика веса</h3>
-                <WeightLineChartLight points={p.weightHistory || []} />
+              <div className="mt-2.5">
+                <p className={`mb-1 ${vk.label}`}>Динамика веса</p>
+                <WeightLineChartCompact points={p.weightHistory || []} />
               </div>
             </section>
 
             <ShareSensitivePeriodsMap birthYear={athlete?.birthYear} />
 
-            {duelRows?.length > 0 && standardPassport && (
-              <section className="rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-8">
-                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600">
-                  <div className="flex flex-col gap-2 bg-slate-900 px-3 py-2.5 text-white sm:px-4 sm:py-3">
-                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                      <span
-                        className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-500 bg-slate-800 sm:inline-flex"
-                        aria-hidden
+            {duelRows?.length > 0 && standardPassport ? (
+              <section className={`${vk.cardPadded} py-2.5`}>
+                <h2 className={vk.h2}>Эталон и биометрия</h2>
+                <div className={`${ETALON_MODEL_PANEL_CLASS} mt-2 rounded-lg bg-[#f0f2f5] px-2 py-2`}>
+                  <StandardDuelSilhouettes
+                    flat
+                    athleteLabel={p.displayName || 'Спортсмен'}
+                    referenceLabel="Эталон"
+                    athleteHeightCm={athlete?.height ?? 0}
+                    athleteReachCm={athlete?.reach ?? 0}
+                    athleteWeightKg={athlete?.weight ?? 0}
+                    referenceHeightCm={duelRows?.[0]?.referenceValue ?? 0}
+                    referenceReachCm={duelRows?.[1]?.referenceValue ?? duelRows?.[0]?.referenceValue ?? 0}
+                    referenceWeightKg={standardPassport?.referenceWeightKg ?? null}
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">
+                  <span className="rounded-md bg-[#f0f2f5] px-2 py-1">
+                    Вес: <strong>{standardPassport.weightCategory} кг</strong>
+                  </span>
+                  <span className="rounded-md bg-[#f0f2f5] px-2 py-1">
+                    Возраст: <strong>{standardPassport.ageGroup}</strong>
+                  </span>
+                  <span className="rounded-md bg-[#f0f2f5] px-2 py-1">
+                    Типаж: <strong>{standardPassport.archetype}</strong>
+                  </span>
+                </div>
+                <ul className="mt-2 space-y-1">
+                  {duelRows.map((row) => {
+                    const deltaTone =
+                      !Number.isFinite(row.delta) || row.delta === 0
+                        ? 'text-[#818c99]'
+                        : row.delta > 0
+                          ? 'text-[#4bb34b]'
+                          : 'text-[#e64646]'
+                    return (
+                      <li
+                        key={row.key}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2 text-[12px]"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-                          <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-                          <circle cx="12" cy="12" r="1.4" fill="currentColor" />
-                        </svg>
-                      </span>
-                      <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">Историческая модель эталона</p>
-                    </div>
-
-                  </div>
-
-                  <div className="etalon-model-panel bg-white px-2 py-3 sm:px-4 sm:py-4">
-                    <div className="flex flex-col gap-3">
-                      <div className="order-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 sm:px-3 sm:py-3 md:order-2">
-                        <StandardDuelSilhouettes
-                          athleteLabel={p.displayName || 'Спортсмен'}
-                          referenceLabel="Эталон"
-                          athleteHeightCm={athlete?.height ?? 0}
-                          athleteReachCm={athlete?.reach ?? 0}
-                          athleteWeightKg={athlete?.weight ?? 0}
-                          referenceHeightCm={duelRows?.[0]?.referenceValue ?? 0}
-                          referenceReachCm={duelRows?.[1]?.referenceValue ?? duelRows?.[0]?.referenceValue ?? 0}
-                          referenceWeightKg={standardPassport?.referenceWeightKg ?? null}
-                        />
-                        <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-500">Дуэль: спортсмен vs эталон</p>
-                        <div className="mt-2 space-y-2">
-                          {duelRows.map((row) => {
-                            const tone =
-                              !Number.isFinite(row.delta) || row.delta === 0
-                                ? 'text-slate-700'
-                                : row.delta > 0
-                                  ? 'text-emerald-700'
-                                  : 'text-red-700'
-                            const toneOnDark =
-                              !Number.isFinite(row.delta) || row.delta === 0
-                                ? 'text-white'
-                                : row.delta > 0
-                                  ? 'text-emerald-300'
-                                  : 'text-red-300'
-                            const athleteStr =
-                              Number.isFinite(row.athleteValue) && row.athleteValue > 0
-                                ? `${row.athleteValue} ${row.unit}`
-                                : '—'
-                            const refStr =
-                              Number.isFinite(row.referenceValue) && row.referenceValue > 0
-                                ? `${row.referenceValue} ${row.unit}`
-                                : '—'
-                            const deltaStr = Number.isFinite(row.delta)
-                              ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)} ${row.unit}`
-                              : '—'
-                            return (
-                              <div key={row.key} className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-600 text-xs">
-                                <div className="p-2.5 sm:hidden">
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{row.label}</p>
-                                  <div className="mt-2 flex justify-between gap-3 border-b border-slate-100 pb-2">
-                                    <span className="shrink-0 text-slate-600 dark:text-slate-400">Спортсмен</span>
-                                    <span className="min-w-0 text-right font-semibold tabular-nums text-blue-900">{athleteStr}</span>
-                                  </div>
-                                  <div className="mt-2 flex justify-between gap-3 border-b border-slate-100 pb-2">
-                                    <span className="shrink-0 text-slate-600 dark:text-slate-400">Эталон</span>
-                                    <span className="min-w-0 text-right font-semibold tabular-nums text-red-900">{refStr}</span>
-                                  </div>
-                                  <div className="mt-3 rounded-md bg-slate-900 px-2 py-2.5 text-center">
-                                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Разница</span>
-                                    <p className={`mt-0.5 text-sm font-semibold tabular-nums ${toneOnDark}`}>{deltaStr}</p>
-                                  </div>
-                                </div>
-                                <div className="hidden min-w-0 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-stretch sm:text-xs">
-                                  <div className="min-w-0 bg-blue-50 px-2 py-2 text-blue-900 sm:px-3">
-                                    <p className="font-medium text-slate-700">{row.label}</p>
-                                    <p className="mt-0.5 font-semibold tabular-nums">
-                                      {Number.isFinite(row.athleteValue) && row.athleteValue > 0 ? row.athleteValue : '—'}{' '}
-                                      {row.unit}
-                                    </p>
-                                  </div>
-                                  <div className="flex min-w-[4.25rem] flex-col items-center justify-center bg-slate-900 px-1.5 text-white sm:min-w-[4.5rem] sm:px-2">
-                                    <span className="text-[9px] uppercase tracking-wider text-slate-300 sm:text-[10px]">delta</span>
-                                    <span className={`text-center text-[11px] font-semibold tabular-nums leading-tight sm:text-xs ${tone}`}>
-                                      {Number.isFinite(row.delta) ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)} ${row.unit}` : '—'}
-                                    </span>
-                                  </div>
-                                  <div className="min-w-0 bg-red-50 px-2 py-2 text-right text-red-900 sm:px-3">
-                                    <p className="font-medium text-slate-700">{row.label}</p>
-                                    <p className="mt-0.5 font-semibold tabular-nums">
-                                      {Number.isFinite(row.referenceValue) && row.referenceValue > 0 ? row.referenceValue : '—'}{' '}
-                                      {row.unit}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="order-2 grid gap-2 sm:gap-3 md:order-1 md:grid-cols-3">
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2 py-2 sm:px-3 md:hidden">
-                          <p className="text-[11px] uppercase tracking-wide text-slate-500">Паспорт эталона</p>
-                          <p className="mt-1 text-xs text-slate-700">
-                            Весовая: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardPassport.weightCategory} кг</span>
-                          </p>
-                          <p className="text-xs text-slate-700">
-                            Возрастная: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardPassport.ageGroup}</span>
-                          </p>
-                          <p className="text-xs text-slate-700">
-                            Типаж: <span className="font-semibold text-slate-900 dark:text-slate-100">{standardPassport.archetype}</span>
-                          </p>
-                        </div>
-                        <div className="hidden rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 md:block">
-                          <p className="text-[11px] uppercase tracking-wide text-slate-500">Весовая группа</p>
-                          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{standardPassport.weightCategory} кг</p>
-                        </div>
-                        <div className="hidden rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 md:block">
-                          <p className="text-[11px] uppercase tracking-wide text-slate-500">Возрастная группа</p>
-                          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{standardPassport.ageGroup}</p>
-                        </div>
-                        <div className="hidden rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-3 md:block">
-                          <p className="text-[11px] uppercase tracking-wide text-slate-500">Типаж эталона</p>
-                          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{standardPassport.archetype}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                        <span className="font-medium text-[#2c2d2e]">{row.label}</span>
+                        <span className="tabular-nums text-[#818c99]">
+                          {Number.isFinite(row.athleteValue) && row.athleteValue > 0 ? row.athleteValue : '—'} /{' '}
+                          {Number.isFinite(row.referenceValue) && row.referenceValue > 0 ? row.referenceValue : '—'}{' '}
+                          {row.unit}
+                        </span>
+                        <span className={`shrink-0 font-semibold tabular-nums ${deltaTone}`}>
+                          {Number.isFinite(row.delta)
+                            ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)}`
+                            : '—'}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
               </section>
-            )}
+            ) : null}
 
-            <section className="rounded-xl bg-white p-2.5 shadow-sm dark:bg-slate-900 sm:p-6">
-              <h2 className="text-base font-semibold text-slate-900 sm:text-lg dark:text-slate-100">Тесты и техника</h2>
-              <p className="mt-1 hidden text-sm text-slate-600 sm:block dark:text-slate-400">
-                Нормативы обновляются после сохранения тренером.
-              </p>
+            <section className={`${vk.cardPadded} py-2.5`}>
+              <h2 className={vk.h2}>Тесты и техника</h2>
+              <p className={`mt-0.5 ${vk.mutedXs}`}>Доли в формуле балла (Smart Weights). Заполненность — на вкладках.</p>
 
-              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 sm:mt-4 sm:rounded-xl sm:px-4 sm:py-3 dark:border-slate-600 dark:bg-slate-800/85">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                  Степень влияния на реализацию потенциала
-                </p>
-                <p className="mt-1 text-xs leading-snug text-slate-600 dark:text-slate-400">
-                  Доля техники, физики и функционала в формуле балла (Smart Weights по антропометрии и эталону). Это не
-                  процент заполнения анкеты — заполненность разделов показана на тёмных вкладках ниже.
-                </p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {[...influenceItems]
-                    .sort((a, b) => b.value - a.value)
-                    .map((item) => {
-                      const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
-                      return (
-                        <div
-                          key={item.key}
-                          className={`rounded-lg border bg-white dark:bg-slate-900 px-3 py-2 ${
-                            isTop ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-slate-200 dark:border-slate-600'
-                          }`}
-                        >
-                          <p className="text-xs font-medium text-slate-800">{item.label}</p>
-                          <p className="mt-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{item.value}%</p>
-                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                            <div
-                              className={`h-full rounded-full transition-colors ${progressColorClass(item.value)}`}
-                              style={{ width: `${item.value}%` }}
-                            />
-                          </div>
+              <div className="mt-2 grid grid-cols-3 gap-1">
+                {[...influenceItems]
+                  .sort((a, b) => b.value - a.value)
+                  .map((item) => {
+                    const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
+                    return (
+                      <div
+                        key={item.key}
+                        className={`rounded-lg px-2 py-1.5 ${isTop ? 'bg-[#ecf3fc] ring-1 ring-[#aec8e8]' : 'bg-[#f0f2f5]'}`}
+                      >
+                        <p className="text-[10px] leading-3 text-[#818c99]">{item.label}</p>
+                        <p className="text-[15px] font-semibold tabular-nums text-[#2c2d2e]">{item.value}%</p>
+                        <div className={`${vk.progressTrack} mt-1 block`}>
+                          <span
+                            className={`block h-full rounded-full ${progressBarClass(item.value)}`}
+                            style={{ width: `${item.value}%` }}
+                          />
                         </div>
-                      )
-                    })}
-                </div>
+                      </div>
+                    )
+                  })}
               </div>
 
-              <div className="-mx-0.5 mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:mx-0 sm:mt-4 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pb-0 md:flex md:flex-nowrap md:gap-4">
+              <nav className={`${vk.studentTabBar} mt-2`} aria-label="Разделы прогресса">
                 {TAB_ITEMS.map((tab) => {
                   const infKey = tabIdToInfluenceKey[tab.id]
                   const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
+                  const isActive = activeTab === tab.id
                   return (
                     <button
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`group relative min-w-[7.5rem] shrink-0 min-h-[4.25rem] rounded-lg border bg-[#1A1A1A] px-2 py-2 text-left text-[#E8E8E8] transition-all sm:min-w-0 sm:min-h-[124px] sm:rounded-xl sm:px-4 sm:py-4 md:min-h-[132px] md:flex-1 ${
-                        activeTab === tab.id
-                          ? 'border-[#E8E8E8] shadow-[0_0_0_1px_rgba(232,232,232,0.18)]'
-                          : 'border-[#333333] hover:border-[#E8E8E8] hover:shadow-[0_0_14px_rgba(232,232,232,0.2)]'
-                      } ${
-                        isTopInfluenceTab ? 'ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-white md:min-h-[138px]' : ''
-                      }`}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`${vk.studentTabBtn} ${
+                        isActive ? vk.studentTabBtnActive : vk.studentTabBtnIdle
+                      } ${isTopInfluenceTab ? 'ring-1 ring-[#4bb34b]/50 ring-inset' : ''}`}
                     >
-                      <span
-                        className={`absolute inset-x-0 bottom-0 h-1 rounded-b-xl transition-all duration-300 ${
-                          activeTab === tab.id ? 'bg-[#E8E8E8]' : 'bg-transparent'
-                        }`}
-                        aria-hidden
-                      />
-                      <span className="mb-1 inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#333333] bg-[#222222] sm:mb-3 sm:h-10 sm:w-10 sm:rounded-lg">
-                        {TAB_ICONS[tab.id]}
-                      </span>
-                      <span
-                        className="block text-[11px] uppercase leading-tight sm:text-[16px] md:text-[18px] md:tracking-wide"
-                        style={{ fontFamily: '"Bebas Neue", "Arial Narrow", sans-serif' }}
-                      >
-                        {tab.label}
-                      </span>
-                      <span className="mt-0.5 block text-[10px] text-[#A8A8A8] sm:mt-3 sm:text-xs">
-                        {TAB_PROGRESS_LABELS[tab.id]}: {tabProgress[tab.id] ?? 0}%
-                      </span>
-                      <span className="mt-1 hidden h-1.5 w-full overflow-hidden rounded-full bg-[#2A2A2A] sm:mt-2 sm:block" aria-hidden>
+                      <span className="text-[12px] font-medium leading-4">{tab.shortLabel}</span>
+                      {tab.id !== 'anthropometry' ? (
                         <span
-                          className={`block h-full transition-all duration-300 ${progressColorClass(tabProgress[tab.id] ?? 0)}`}
-                          style={{ width: `${tabProgress[tab.id] ?? 0}%` }}
-                        />
-                      </span>
+                          className={`text-[10px] font-medium tabular-nums leading-none ${
+                            isActive ? 'text-[#818c99]' : 'text-[#aeb7c2]'
+                          }`}
+                        >
+                          {tabProgress[tab.id] ?? 0}%
+                        </span>
+                      ) : null}
                     </button>
                   )
                 })}
-              </div>
+              </nav>
 
-              <div className="mt-3 space-y-3 sm:mt-6 sm:space-y-6">
-                {activeTab === 'anthropometry' && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">Антропометрия</h3>
-                    {athlete ? (
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
-                          <p className="text-xs text-slate-500">Год рождения</p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {athlete.birthYearLabel || athlete.birthYear || '—'}
-                          </p>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
-                          <p className="text-xs text-slate-500">Пол</p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.genderLabel || '—'}</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
-                          <p className="text-xs text-slate-500">Рост (см)</p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.height > 0 ? athlete.height : '—'}</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
-                          <p className="text-xs text-slate-500">Вес (кг)</p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.weight > 0 ? athlete.weight : '—'}</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2">
-                          <p className="text-xs text-slate-500">Размах (см)</p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.reach > 0 ? athlete.reach : '—'}</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-3 py-2 md:col-span-2">
-                          <p className="text-xs text-slate-500">Дата измерения</p>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{athlete.measureDate || '—'}</p>
-                        </div>
+              <div className="mt-2 space-y-2">
+                {activeTab === 'anthropometry' && athlete ? (
+                  <div className={vk.formGrid2}>
+                    {[
+                      ['Год рожд.', athlete.birthYearLabel || athlete.birthYear || '—'],
+                      ['Пол', athlete.genderLabel || '—'],
+                      ['Рост, см', athlete.height > 0 ? athlete.height : '—'],
+                      ['Вес, кг', athlete.weight > 0 ? athlete.weight : '—'],
+                      ['Размах, см', athlete.reach > 0 ? athlete.reach : '—'],
+                      ['Дата измерения', athlete.measureDate || '—'],
+                    ].map(([label, val]) => (
+                      <div key={label} className="rounded-lg bg-[#f0f2f5] px-2.5 py-2">
+                        <p className="text-[10px] text-[#818c99]">{label}</p>
+                        <p className="text-[14px] font-semibold text-[#2c2d2e]">{val}</p>
                       </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        Попросите тренера обновить ссылку «Поделиться прогрессом» — в данных появится полная антропометрия.
-                      </p>
-                    )}
+                    ))}
                   </div>
-                )}
+                ) : null}
 
-                {activeTab === 'physical' && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">Физическое развитие</h3>
-                    <div className="grid gap-4">
-                      {(p.physical?.items ?? []).length === 0 ? (
-                        <p className="text-sm text-slate-500">Нет нормативов для отображения.</p>
-                      ) : (
-                        (p.physical?.items ?? []).map((item) => <ShareReadonlyNormCard key={item.id} item={item} />)
-                      )}
-                    </div>
-                  </div>
-                )}
+                {activeTab === 'anthropometry' && !athlete ? (
+                  <p className={vk.mutedXs}>Попросите тренера обновить ссылку «Поделиться прогрессом».</p>
+                ) : null}
 
-                {activeTab === 'functional' && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-800">Функциональная готовность</h3>
-                    <div className="grid gap-4">
-                      {(p.functional?.items ?? []).length === 0 ? (
-                        <p className="text-sm text-slate-500">Нет нормативов для отображения.</p>
-                      ) : (
-                        (p.functional?.items ?? []).map((item) => <ShareReadonlyNormCard key={item.id} item={item} />)
-                      )}
-                    </div>
-                  </div>
-                )}
+                {activeTab === 'physical' ? (
+                  (p.physical?.items ?? []).length === 0 ? (
+                    <p className={vk.mutedXs}>Нет нормативов для отображения.</p>
+                  ) : (
+                    (p.physical?.items ?? []).map((item) => <ShareNormRow key={item.id} item={item} />)
+                  )
+                ) : null}
 
-                {activeTab === 'technical' && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-slate-800">Техника</h3>
-                    {(p.technical?.atoms ?? []).length === 0 ? (
-                      <p className="text-sm text-slate-500">Список элементов пуст.</p>
-                    ) : (
-                      (p.technical?.atoms ?? []).map((atom) => {
-                        const pct =
-                          atom.levelPercent != null && Number.isFinite(Number(atom.levelPercent))
-                            ? Number(atom.levelPercent)
-                            : technicalLevelInterpolationPercent(atom.levelKey)
-                        return (
-                          <article key={atom.id} className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 p-3 shadow-sm">
-                            <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
-                              <h3 className="min-w-0 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
-                                <span className="tabular-nums text-slate-500">#{atom.number}</span> {atom.name}
-                              </h3>
-                              {atom.videoLink ? (
-                                <a
-                                  className="flex-shrink-0 text-[11px] font-medium text-blue-600 underline-offset-2 hover:underline sm:text-xs"
-                                  href={atom.videoLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  Видео
-                                </a>
-                              ) : null}
-                            </div>
-                            {atom.comboChain ? (
-                              <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-                                Цепочка: <span className="font-medium text-slate-800 dark:text-slate-200">{atom.comboChain}</span>
-                              </p>
-                            ) : null}
-                            <div className="mt-2 space-y-0.5">
-                              <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                                Уровень освоения
-                              </span>
-                              <div className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 sm:max-w-md">
-                                {atom.levelLabel}
-                              </div>
-                            </div>
-                            <div className="mt-2 h-2 min-w-0 overflow-hidden rounded-full bg-slate-200">
-                              <div
-                                className="h-full rounded-full bg-gradient-to-r from-teal-600 to-cyan-500 transition-[width] duration-700"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            {atom.comment ? (
-                              <div className="mt-2 rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/85 px-2.5 py-1.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Комментарий тренера</p>
-                                <p className="mt-0.5 text-sm text-slate-800 whitespace-pre-wrap">{atom.comment}</p>
-                              </div>
-                            ) : null}
-                            {(atom.howTo || atom.whyHowTo || atom.mistakes || atom.whyMistakes) && (
-                              <details className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">
-                                <summary className="cursor-pointer font-medium text-blue-600">Подсказка и детали</summary>
-                                {atom.howTo ? (
-                                  <p className="mt-2">
-                                    <strong>Как надо:</strong> {atom.howTo}
-                                  </p>
-                                ) : null}
-                                {atom.whyHowTo ? (
-                                  <p className="mt-1">
-                                    <strong>Почему:</strong> {atom.whyHowTo}
-                                  </p>
-                                ) : null}
-                                {atom.mistakes ? (
-                                  <p className="mt-1">
-                                    <strong>Ошибки:</strong> {atom.mistakes}
-                                  </p>
-                                ) : null}
-                                {atom.whyMistakes ? (
-                                  <p className="mt-1">
-                                    <strong>Почему ошибка:</strong> {atom.whyMistakes}
-                                  </p>
-                                ) : null}
-                              </details>
-                            )}
-                          </article>
-                        )
-                      })
-                    )}
-                  </div>
-                )}
+                {activeTab === 'functional' ? (
+                  (p.functional?.items ?? []).length === 0 ? (
+                    <p className={vk.mutedXs}>Нет нормативов для отображения.</p>
+                  ) : (
+                    (p.functional?.items ?? []).map((item) => <ShareNormRow key={item.id} item={item} />)
+                  )
+                ) : null}
+
+                {activeTab === 'technical' ? (
+                  (p.technical?.atoms ?? []).length === 0 ? (
+                    <p className={vk.mutedXs}>Список элементов пуст.</p>
+                  ) : (
+                    (p.technical?.atoms ?? []).map((atom) => <ShareTechRow key={atom.id} atom={atom} />)
+                  )
+                ) : null}
               </div>
             </section>
 
-            <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-center shadow-sm sm:p-6">
-              <p className="text-sm font-semibold text-emerald-900 sm:text-lg">Вопросы по прогрессу — к тренеру в зале</p>
-            </section>
+            <p className={`text-center ${vk.mutedXs}`}>Вопросы по прогрессу — к тренеру в зале</p>
           </>
-        )}
+        ) : null}
       </div>
     </main>
   )

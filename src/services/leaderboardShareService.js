@@ -4,7 +4,9 @@ import {
   getCoachStudents,
   setPublicLeaderboardShareDocument,
 } from './firebaseService.js'
-import { loadLegacyNorms, loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
+import { getTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
+import { loadLegacyNorms } from '../utils/ksrUtils.js'
+import { loadTechnicalProgramAtomsOnce } from './technicalProgramAtomsService.js'
 import {
   buildPublicLeaderboardPayload,
   isValidLeaderboardShareToken,
@@ -19,7 +21,9 @@ async function getNormsAndAtoms() {
   if (!normsAtomsPromise) {
     normsAtomsPromise = Promise.all([
       loadLegacyNorms().catch(() => []),
-      loadLegacyTechnicalAtoms().catch(() => []),
+      loadTechnicalProgramAtomsOnce()
+        .then(() => getTechnicalProgramAtomsCache().level1)
+        .catch(() => getTechnicalProgramAtomsCache().level1),
     ]).then(([norms, atoms]) => {
       normsCache = norms
       atomsCache = atoms
@@ -33,8 +37,15 @@ async function getNormsAndAtoms() {
  * @param {string[]} allIds
  * @param {unknown} saved
  */
+/**
+ * Состав рейтинга из профиля тренера.
+ * undefined / null — ещё не настраивали → все ученики.
+ * [] — явно пустой состав («Снять всех»).
+ */
 export function resolveCuratedStudentIds(allIds, saved) {
-  if (!Array.isArray(saved) || saved.length === 0) return [...allIds]
+  if (saved == null) return [...allIds]
+  if (!Array.isArray(saved)) return [...allIds]
+  if (saved.length === 0) return []
   const allowed = new Set(allIds)
   return saved.filter((id) => allowed.has(id))
 }

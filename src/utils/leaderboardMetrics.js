@@ -1,5 +1,13 @@
-import { getNormsForAthlete, normalizeTechnicalDominanceKey, calculateKD } from './ksrUtils.js'
+import {
+  calculateEffectiveKSR,
+  calculateKsrAndKsp,
+  calculateKD,
+  calculateLegacySectionScores,
+  getNormsForAthlete,
+  normalizeTechnicalDominanceKey,
+} from './ksrUtils.js'
 import { buildFullTechnicalProgramAtoms, mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
+import { getNormValueByTestId } from './normTestsStorage.js'
 import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
 import { studentAthleteShape } from './studentModel.js'
 
@@ -61,7 +69,7 @@ export function countNormMedalsForStudent(student, allNorms, category) {
 
   const medals = { gold: 0, silver: 0, bronze: 0, red: 0, filled: 0 }
   for (const norm of norms) {
-    const row = tests[norm.testId]
+    const row = getNormValueByTestId(tests, norm.testId)
     if (!row || row.status == null || row.status === 'empty') continue
     if (row.status in medals) medals[row.status] += 1
     if (row.status === 'gold' || row.status === 'silver' || row.status === 'bronze' || row.status === 'red') {
@@ -78,10 +86,31 @@ export function countNormMedalsForStudent(student, allNorms, category) {
  * @param {object[]} technicalAtoms — level 1 CSV atoms
  */
 export function computeTechniqueLeaderboardMetrics(student, technicalAtoms) {
+  const shape = studentAthleteShape(student)
   const data = student.technicalData && typeof student.technicalData === 'object' ? student.technicalData : {}
   const combinations = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
   const programAtoms = buildFullTechnicalProgramAtoms(technicalAtoms, combinations)
   const kdBundle = calculateKD(programAtoms, data)
+
+  const tests = student.tests && typeof student.tests === 'object' ? student.tests : {}
+  const physicalResults = tests.physical && typeof tests.physical === 'object' ? tests.physical : {}
+  const functionalResults = tests.functional && typeof tests.functional === 'object' ? tests.functional : {}
+  const scores = calculateLegacySectionScores({
+    physicalNorms: [],
+    functionalNorms: [],
+    physicalResults,
+    functionalResults,
+    technicalData: data,
+    technicalProgramAtoms: programAtoms,
+  })
+  const prevScores = student?.scores && typeof student.scores === 'object' ? student.scores : {}
+  const mergedScores = {
+    техника: scores.техника,
+    физика: Number(prevScores.физика ?? 0) || 0,
+    функционал: Number(prevScores.функционал ?? 0) || 0,
+  }
+  const kspBundle = calculateKsrAndKsp(shape, mergedScores)
+  const effective = calculateEffectiveKSR(kspBundle.baseKSR, kdBundle.kd)
 
   let studiedCount = 0
   let skillSum = 0
@@ -93,10 +122,8 @@ export function computeTechniqueLeaderboardMetrics(student, technicalAtoms) {
 
   const totalAtoms = programAtoms.length
   const kdPercent = Math.round((kdBundle.kd ?? 0.25) * 100)
-  const effectiveKSR = Number(student.effectiveKSR)
-  const effective = Number.isFinite(effectiveKSR) ? effectiveKSR : 0
 
-  const sortScore = studiedCount * 1000 + kdPercent * 10 + effective
+  const sortScore = studiedCount * 10000 + kdPercent * 100 + effective
 
   return {
     studiedCount,

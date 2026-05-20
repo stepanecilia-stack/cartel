@@ -10,7 +10,9 @@ import {
   LEADERBOARD_CATEGORIES,
   buildLeaderboardRows,
 } from '../utils/leaderboardMetrics.js'
-import { loadLegacyNorms, loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
+import { getTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
+import { loadLegacyNorms } from '../utils/ksrUtils.js'
+import { loadTechnicalProgramAtomsOnce } from '../services/technicalProgramAtomsService.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
 import { vk } from '../utils/vkUi.js'
 
@@ -43,7 +45,7 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
     Promise.all([
       getStudents(),
       loadLegacyNorms().catch(() => []),
-      loadLegacyTechnicalAtoms().catch(() => []),
+      loadTechnicalProgramAtomsOnce().then(() => getTechnicalProgramAtomsCache().level1),
     ])
       .then(([students, norms, atoms]) => {
         if (cancelled) return

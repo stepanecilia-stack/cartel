@@ -13,6 +13,10 @@ import {
 } from '../services/motorQualityExercisesService'
 import { isFirebaseConfigured } from '../services/firebaseService'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
+import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
+import ExerciseContraindicationMark, {
+  hasExerciseContraindications,
+} from '../components/ExerciseContraindicationMark.jsx'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage'
 import { pickDoseForAge } from '../utils/exerciseDoseByAge.js'
 import { isMotorQualitySensitiveForAge } from '../utils/sensitivePeriods.js'
@@ -37,6 +41,7 @@ const EMPTY_FORM = {
   intent: '',
   cues: '',
   avoid: '',
+  contraindications: '',
   minAge: '',
   maxAge: '',
   doseUnder12: '',
@@ -54,6 +59,7 @@ function exerciseToForm(ex) {
     intent: ex.intent ?? '',
     cues: ex.cues ?? '',
     avoid: ex.avoid ?? '',
+    contraindications: ex.contraindications ?? '',
     minAge: ex.minAge != null ? String(ex.minAge) : '',
     maxAge: ex.maxAge != null ? String(ex.maxAge) : '',
     doseUnder12: ex.doseUnder12 ?? '',
@@ -105,6 +111,17 @@ function ExerciseForm({ title, form, formError, saving, onFieldChange, onSubmit,
           onChange={(e) => onFieldChange('avoid', e.target.value)}
           className={textareaClass}
         />
+      </label>
+      <label className="block">
+        <span className={vk.label}>Противопоказания</span>
+        <textarea
+          rows={2}
+          value={form.contraindications}
+          onChange={(e) => onFieldChange('contraindications', e.target.value)}
+          placeholder="Например: лишний вес, травма колена"
+          className={textareaClass}
+        />
+        <p className={`mt-0.5 ${vk.mutedXs}`}>Если заполнено — в списке появится красный «!».</p>
       </label>
       <div className={`${vk.previewCard} space-y-2`}>
         <p className="text-[13px] font-semibold text-[#2c2d2e]">Объём по возрасту</p>
@@ -232,25 +249,25 @@ function ExerciseCard({
   return (
     <li>
       <div className={rowClass}>
-        <button type="button" onClick={onSelect} className="flex w-full gap-2 p-2 text-left active:bg-[#f5f6f8]">
+        <div className="flex w-full gap-2 p-2">
           {(hasVideo || hasGif) && (
-            <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md bg-[#f0f2f5]">
-              {hasVideo ? (
-                <video
-                  className="h-full w-full object-cover"
-                  muted
-                  playsInline
-                  preload="metadata"
-                  src={webm.trim()}
-                />
-              ) : (
-                <img src={gif.trim()} alt="" className="h-full w-full object-cover" loading="lazy" />
-              )}
-            </div>
+            <TechnicalAtomMedia
+              atom={{ media: { gifSrc: hasGif ? gif : null, webmSrc: hasVideo ? webm : null } }}
+              className="h-10 w-14"
+              title={ex.title}
+            />
           )}
-          <div className="min-w-0 flex-1">
-            <h3 className={`truncate ${vk.listItemTitle}`}>{ex.title}</h3>
+          <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left active:bg-[#f5f6f8]">
+            <div className="flex items-center gap-1.5">
+              <h3 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{ex.title}</h3>
+              <ExerciseContraindicationMark text={ex.contraindications} />
+            </div>
             {ageLabel ? <p className={vk.mutedXs}>Возраст: {ageLabel} лет</p> : null}
+            {hasExerciseContraindications(ex) ? (
+              <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-[#e64646]">
+                Противопоказания: {ex.contraindications.trim()}
+              </p>
+            ) : null}
             <p className="mt-0.5 line-clamp-2 text-[12px] leading-4 text-[#818c99]">{ex.intent}</p>
             {ex.doseUnder12 || ex.dose13to15 || ex.dose16Plus ? (
               <p className={`mt-0.5 line-clamp-1 ${vk.mutedXs}`}>
@@ -259,8 +276,8 @@ function ExerciseCard({
                   .join(' · ')}
               </p>
             ) : null}
-          </div>
-        </button>
+          </button>
+        </div>
         {canPersist ? (
           <div className="flex gap-3 border-t border-[#e7e8ec] px-2.5 py-1.5">
             <button type="button" onClick={onEdit} className={`text-[12px] font-medium ${vk.link}`}>
@@ -480,10 +497,14 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
           </div>
 
           {selectedExercise && !exercisesPickerOpen ? (
-            <div className={`${vk.cardPadded} flex items-center gap-2 py-2`}>
-              <div className="min-w-0 flex-1">
-                <p className={`truncate ${vk.listItemTitle}`}>{selectedExercise.title}</p>
-              </div>
+            <div className={`${vk.cardPadded} space-y-1 py-2`}>
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{selectedExercise.title}</p>
+                    <ExerciseContraindicationMark text={selectedExercise.contraindications} />
+                  </div>
+                </div>
               <button
                 type="button"
                 onClick={() => setExercisesPickerOpen(true)}
@@ -501,6 +522,12 @@ function MotorQualityDetailPage({ coachId, onOpenStudent }) {
               >
                 Снять
               </button>
+              </div>
+              {hasExerciseContraindications(selectedExercise) ? (
+                <p className="text-[12px] leading-4 text-[#e64646]">
+                  <span className="font-semibold">Противопоказания:</span> {selectedExercise.contraindications.trim()}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

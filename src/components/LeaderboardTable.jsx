@@ -4,19 +4,19 @@ import { vk } from '../utils/vkUi.js'
 
 const TOP_RANK_ROW = {
   1: 'bg-[#fff8e6]',
-  2: 'bg-white',
-  3: 'bg-[#fff4eb]',
+  2: 'bg-[#f5f6f8]',
+  3: 'bg-[#f7f0ea]',
 }
 
 /** @param {{ rank: number, compact?: boolean }} props */
 export function RankBadge({ rank, compact = false }) {
   const podium =
     rank === 1
-      ? 'bg-[#e6a817] text-white'
+      ? 'bg-[#f0b429] text-[#3d2e00] ring-1 ring-[#e6a817]/60'
       : rank === 2
-        ? 'bg-[#818c99] text-white'
+        ? 'bg-[#9aa7b5] text-white'
         : rank === 3
-          ? 'bg-[#e6a817]/70 text-white'
+          ? 'bg-[#a0632d] text-white'
           : 'bg-[#f0f2f5] text-[#2c2d2e]'
 
   const size = compact ? 'h-7 w-7 text-[12px]' : 'h-8 w-8 text-[13px]'

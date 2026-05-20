@@ -1,10 +1,42 @@
+import { useState, useCallback } from 'react'
 import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
+import MediaLightbox from './MediaLightbox.jsx'
+
+const PREVIEWABLE_KINDS = new Set(['gif', 'webm', 'embed', 'link'])
 
 /**
- * Превью GIF / WebM справа в строке элемента.
+ * Превью GIF / WebM (и embed) с лайтбоксом по клику — без ухода со страницы.
+ * @param {{ atom: object, className?: string, previewable?: boolean, title?: string }} props
  */
-export default function TechnicalAtomMedia({ atom, className = '' }) {
+export default function TechnicalAtomMedia({ atom, className = '', previewable = true, title }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const media = resolveTechnicalAtomMedia(atom)
+  const displayTitle = title ?? atom?.name ?? ''
+
+  const canPreview = previewable && PREVIEWABLE_KINDS.has(media.kind)
+
+  const openPreview = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (canPreview) setLightboxOpen(true)
+    },
+    [canPreview],
+  )
+
+  const wrapPreviewable = (node) => {
+    if (!canPreview) return node
+    return (
+      <button
+        type="button"
+        onClick={openPreview}
+        className={`relative shrink-0 overflow-hidden rounded-md bg-[#f0f2f5] active:opacity-90 ${className}`}
+        aria-label={`Увеличить: ${displayTitle || 'медиа'}`}
+      >
+        {node}
+      </button>
+    )
+  }
 
   if (media.kind === 'none') {
     return (
@@ -17,43 +49,40 @@ export default function TechnicalAtomMedia({ atom, className = '' }) {
     )
   }
 
+  let thumb = null
   if (media.kind === 'gif') {
-    return (
-      <img
-        src={media.src}
-        alt=""
-        loading="lazy"
-        className={`shrink-0 rounded-md object-cover bg-[#f0f2f5] ${className}`}
-      />
-    )
-  }
-
-  if (media.kind === 'webm') {
-    return (
+    thumb = <img src={media.src} alt="" loading="lazy" className="h-full w-full object-cover" />
+  } else if (media.kind === 'webm') {
+    thumb = (
       <video
         src={media.src}
-        className={`shrink-0 rounded-md object-cover bg-[#0f0f0f] ${className}`}
+        className="h-full w-full object-cover bg-[#0f0f0f]"
         muted
         playsInline
         loop
         preload="metadata"
-        aria-label="Демонстрация"
+        aria-hidden
       />
+    )
+  } else {
+    thumb = (
+      <span className="flex h-full w-full items-center justify-center bg-[#ecf3fc] text-[#2d81e0]">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M8 5v14l11-7L8 5z" />
+        </svg>
+      </span>
     )
   }
 
   return (
-    <a
-      href={media.src}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`flex shrink-0 items-center justify-center rounded-md bg-[#ecf3fc] text-[#2d81e0] ${className}`}
-      title="Открыть видео"
-      aria-label="Открыть видео"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M8 5v14l11-7L8 5z" />
-      </svg>
-    </a>
+    <>
+      {wrapPreviewable(thumb)}
+      <MediaLightbox
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        media={media}
+        title={displayTitle}
+      />
+    </>
   )
 }

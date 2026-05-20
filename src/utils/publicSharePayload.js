@@ -9,6 +9,7 @@ import { formatBirthYearRu } from './studentModel.js'
 import { findGoldStandardRow, referenceIdealHeightCm, shortTypageLabel } from './standards.js'
 import { buildShareAutoRecommendations } from './shareAutoRecommendations.js'
 import { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes.jsx'
+import { getNormValueByTestId } from './normTestsStorage.js'
 
 /** Подпись уровня освоения атома — те же названия, что у тренера в карточке. */
 export function technicalDominancePublicLabel(level) {
@@ -87,7 +88,7 @@ function formatStandardWeightCategory(row) {
 
 function mapNormRows(norms, results) {
   return norms.map((norm) => {
-    const row = results[norm.testId]
+    const row = getNormValueByTestId(results, norm.testId)
     const hasResult = row && row.result != null && Number.isFinite(Number(row.result))
     let status = 'empty'
     let critical = false

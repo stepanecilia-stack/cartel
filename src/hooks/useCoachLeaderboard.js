@@ -8,7 +8,9 @@ import {
   publishLeaderboardShare,
   resolveCuratedStudentIds,
 } from '../services/leaderboardShareService.js'
-import { loadLegacyNorms, loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
+import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
+import { loadLegacyNorms } from '../utils/ksrUtils.js'
+import { loadTechnicalProgramAtomsOnce } from '../services/technicalProgramAtomsService.js'
 import { isValidLeaderboardShareToken } from '../utils/publicLeaderboardPayload.js'
 
 /**
@@ -18,7 +20,7 @@ export function useCoachLeaderboard(coachId) {
   const [allStudents, setAllStudents] = useState([])
   const [coachProfile, setCoachProfile] = useState(null)
   const [allNorms, setAllNorms] = useState([])
-  const [technicalAtoms, setTechnicalAtoms] = useState([])
+  const [technicalAtoms, setTechnicalAtoms] = useState(() => getTechnicalProgramAtomsCache().level1)
   const [loadError, setLoadError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [shareBusy, setShareBusy] = useState(false)
@@ -77,11 +79,15 @@ export function useCoachLeaderboard(coachId) {
       },
     )
 
-    Promise.all([loadLegacyNorms().catch(() => []), loadLegacyTechnicalAtoms().catch(() => [])])
-      .then(([norms, atoms]) => {
-        setAllNorms(norms)
-        setTechnicalAtoms(atoms)
-      })
+    const syncAtomsFromCache = () => setTechnicalAtoms(getTechnicalProgramAtomsCache().level1)
+    const unsubAtomsCache = subscribeTechnicalProgramAtomsCache(syncAtomsFromCache)
+    loadTechnicalProgramAtomsOnce()
+      .then(syncAtomsFromCache)
+      .catch(() => syncAtomsFromCache())
+
+    loadLegacyNorms()
+      .then((norms) => setAllNorms(norms))
+      .catch(() => setAllNorms([]))
       .finally(() => {
         normsReady = true
         maybeDone()
@@ -90,6 +96,7 @@ export function useCoachLeaderboard(coachId) {
     return () => {
       unsubStudents()
       unsubProfile()
+      unsubAtomsCache()
       setIsLive(false)
     }
   }, [coachId])

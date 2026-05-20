@@ -3,6 +3,7 @@ import SensitiveAgeScale from './SensitiveAgeScale'
 import { getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
 import { computeAthleteAgeYears } from '../utils/studentModel'
 import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
+import { vk } from '../utils/vkUi.js'
 
 export default function ShareSensitivePeriodsMap({ birthYear }) {
   const catalog = useMemo(() => getMotorQualitiesCatalog(), [])
@@ -18,52 +19,41 @@ export default function ShareSensitivePeriodsMap({ birthYear }) {
   }, [ageYears, sensitiveNow])
 
   return (
-    <section className="rounded-xl bg-white p-2.5 shadow-sm dark:bg-slate-900 sm:p-5">
-      <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 sm:text-lg">
-        Карта сенситивных периодов
-      </h2>
-      <p className="mt-1 text-[11px] leading-snug text-slate-600 sm:text-xs dark:text-slate-400">
-        Зелёным отмечены возраста, когда качество развивается особенно эффективно (7–18 лет).
-      </p>
+    <section className={`${vk.cardPadded} py-2.5`}>
+      <h2 className={vk.h2}>Сенситивные периоды</h2>
+      <p className={`mt-0.5 ${vk.mutedXs}`}>Зелёным — возраста, когда качество развивается особенно эффективно.</p>
 
       {ageYears != null ? (
-        <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] leading-snug text-emerald-900 sm:text-xs dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-          <span className="font-semibold">Сейчас {ageYears} лет.</span>
+        <p className={`${vk.noticeInfo} mt-2`}>
+          <span className="font-medium text-[#2c2d2e]">Сейчас {ageYears} лет.</span>
           {activeNowSet.size > 0 ? (
             <>
               {' '}
-              В сенситивном окне:{' '}
-              {[...(sensitiveNow?.qualities ?? [])].slice(0, 4).join(', ')}
+              В окне: {[...(sensitiveNow?.qualities ?? [])].slice(0, 4).join(', ')}
               {activeNowSet.size > 4 ? ` и ещё ${activeNowSet.size - 4}` : ''}.
             </>
           ) : (
-            ' Сейчас нет качеств в активном сенситивном окне по таблице.'
+            ' Сейчас нет качеств в активном окне по таблице.'
           )}
         </p>
       ) : (
-        <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600 dark:border-slate-600 dark:bg-slate-800/85 dark:text-slate-400">
-          Укажите тренеру год рождения в карте спортсмена — тогда здесь появится возраст и подсветка «Сейчас».
-        </p>
+        <p className={`${vk.notice} mt-2`}>Укажите тренеру год рождения — появится возраст и подсветка «Сейчас».</p>
       )}
 
-      <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:mt-4 sm:grid-cols-2 sm:gap-2">
+      <ul className="mt-2 space-y-1">
         {catalog.map(({ title, sensitiveAgeSet }) => {
           const activeNow = activeNowSet.has(title)
           return (
             <li
               key={title}
-              className={`rounded-lg border px-2 py-2 sm:px-2.5 sm:py-2.5 ${
-                activeNow
-                  ? 'border-emerald-300 bg-emerald-50/80 ring-1 ring-emerald-200 dark:border-emerald-700 dark:bg-emerald-950/30 dark:ring-emerald-800/50'
-                  : 'border-slate-200 bg-slate-50/80 dark:border-slate-600 dark:bg-slate-800/50'
+              className={`rounded-lg border px-2.5 py-2 ${
+                activeNow ? 'border-[#b8d4a8] bg-[#e8f7e8]' : 'border-[#e7e8ec] bg-[#f0f2f5]'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className="min-w-0 text-[11px] font-semibold leading-snug text-slate-900 sm:text-xs dark:text-slate-100">
-                  {title}
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[12px] font-medium leading-4 text-[#2c2d2e]">{title}</span>
                 {activeNow ? (
-                  <span className="shrink-0 rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                  <span className="shrink-0 rounded bg-[#4bb34b] px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
                     Сейчас
                   </span>
                 ) : null}
@@ -73,7 +63,7 @@ export default function ShareSensitivePeriodsMap({ birthYear }) {
                   sensitiveAges={sensitiveAgeSet}
                   compact
                   showCaption={false}
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               ) : null}
             </li>

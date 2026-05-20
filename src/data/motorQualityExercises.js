@@ -6,6 +6,7 @@
  *   intent: string,
  *   cues?: string,
  *   avoid?: string,
+ *   contraindications?: string,
  *   minAge?: number,
  *   maxAge?: number,
  *   doseUnder12?: string,
