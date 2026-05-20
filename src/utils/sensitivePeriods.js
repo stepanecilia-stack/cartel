@@ -1,7 +1,10 @@
 /**
  * Примерные сенситивные периоды развития двигательных качеств (возраст в полных годах).
- * Колонка «17–18» в таблице: для кода используется возраст ≥ 17.
+ * Колонка «17–18» в таблице: только 17 и 18 лет (не «все старше 17»).
+ * Таблица рассчитана на юниорский возраст; старше MAX_AGE — сенситивное окно не применяется.
  */
+export const SENSITIVE_TABLE_MAX_AGE = 18
+export const SENSITIVE_TABLE_MIN_AGE = 7
 export const QUALITY_ORDER = [
   'Рост',
   'Мышечная масса',
@@ -72,7 +75,7 @@ export const QUALITY_SENSITIVE_AGES = {
 }
 
 function ageHitsBucket(ageInt, bucket) {
-  if (bucket === '17-18') return ageInt >= 17
+  if (bucket === '17-18') return ageInt === 17 || ageInt === 18
   return ageInt === bucket
 }
 
@@ -83,9 +86,10 @@ function ageHitsBucket(ageInt, bucket) {
  */
 export function isMotorQualitySensitiveForAge(qualityTitle, ageYears) {
   if (!qualityTitle || ageYears == null || !Number.isFinite(ageYears)) return false
+  const ageInt = Math.floor(ageYears)
+  if (ageInt < SENSITIVE_TABLE_MIN_AGE || ageInt > SENSITIVE_TABLE_MAX_AGE) return false
   const buckets = QUALITY_SENSITIVE_AGES[qualityTitle]
   if (!buckets?.length) return false
-  const ageInt = Math.floor(ageYears)
   return buckets.some((b) => ageHitsBucket(ageInt, b))
 }
 
@@ -103,8 +107,11 @@ export function getSensitiveMotorQualities(ageYears) {
     return { qualities: [], lowImpactQualities: [], ageInt: null, reason: 'no_birth_year' }
   }
   const ageInt = Math.floor(ageYears)
-  if (ageInt < 7) {
+  if (ageInt < SENSITIVE_TABLE_MIN_AGE) {
     return { qualities: [], lowImpactQualities: [], ageInt, reason: 'below_table' }
+  }
+  if (ageInt > SENSITIVE_TABLE_MAX_AGE) {
+    return { qualities: [], lowImpactQualities: [], ageInt, reason: 'above_table' }
   }
   const matched = new Set()
   for (const q of QUALITY_ORDER) {

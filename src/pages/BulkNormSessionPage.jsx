@@ -1,5 +1,4 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import {
@@ -26,6 +25,7 @@ import {
   mergeNormAcceptanceIntoTests,
   mergeStudentTestBuckets,
 } from '../utils/studentNormUpdate.js'
+import { vk } from '../utils/vkUi.js'
 
 const STATUS_LABEL = {
   gold: 'золото',
@@ -36,10 +36,15 @@ const STATUS_LABEL = {
 
 function normScoreTone(status) {
   if (status === 'gold') return 'text-amber-700'
-  if (status === 'silver') return 'text-slate-600'
+  if (status === 'silver') return 'text-[#818c99]'
   if (status === 'bronze') return 'text-orange-700'
-  return 'text-red-600'
+  return 'text-[#e64646]'
 }
+
+const CATEGORY_TABS = [
+  { id: 'physical', label: 'Физика', full: 'Физическое развитие' },
+  { id: 'functional', label: 'Функционал', full: 'Функциональная готовность' },
+]
 
 export default function BulkNormSessionPage({ coachId }) {
   const [students, setStudents] = useState([])
@@ -275,60 +280,49 @@ export default function BulkNormSessionPage({ coachId }) {
   const allFilteredSelected =
     filteredEligible.length > 0 && filteredEligible.every((s) => selectedIds.has(s.id))
 
+  const segmentClass = (active) =>
+    [vk.segmentBtn, active ? vk.segmentBtnActive : vk.segmentBtnInactive].join(' ')
+
   return (
-    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-4xl space-y-2 sm:space-y-3">
+    <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
+      <div className={`${vk.containerMid} max-w-4xl`}>
         <BackToHomeBar />
         <header>
-          <h1 className="text-[17px] font-semibold leading-5 text-[#2c2d2e] sm:text-xl">Сдать норматив</h1>
-          <p className="mt-1 text-[13px] leading-[18px] text-[#818c99]">
-            Один норматив — несколько спортсменов. В списке только те, у кого он есть по возрасту и полу.
+          <h1 className={vk.h1Lg}>Сдать норматив</h1>
+          <p className={`mt-1 ${vk.muted}`}>
+            Один тест — несколько спортсменов. В списке только подходящие по возрасту и полу.
           </p>
         </header>
 
-        {loadError ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {loadError}
-          </div>
-        ) : null}
-        {normsError ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {normsError}
-          </div>
-        ) : null}
+        {loadError ? <p className={vk.error}>{loadError}</p> : null}
+        {normsError ? <p className={vk.noticeWarn}>{normsError}</p> : null}
+        {isLoading ? <p className={`text-center ${vk.muted}`}>Загрузка…</p> : null}
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-5">
-          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">1. Норматив</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              { id: 'physical', label: 'Физическое развитие' },
-              { id: 'functional', label: 'Функциональная готовность' },
-            ].map((tab) => (
+        <section className={`${vk.cardPadded} space-y-3`}>
+          <h2 className={vk.h2}>Норматив</h2>
+          <nav className={vk.segmentBar} aria-label="Раздел норматива">
+            {CATEGORY_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setCategory(tab.id)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  category === tab.id
-                    ? 'border-blue-500 bg-blue-50 text-blue-800 dark:border-blue-500 dark:bg-blue-950/50 dark:text-blue-200'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200'
-                }`}
+                className={segmentClass(category === tab.id)}
+                title={tab.full}
               >
-                {tab.label}
+                <span className="sm:hidden">{tab.label}</span>
+                <span className="hidden sm:inline">{tab.full}</span>
               </button>
             ))}
-          </div>
-          <label className="mt-4 block">
-            <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
-              Упражнение / тест
-            </span>
+          </nav>
+          <label className="block">
+            <span className={vk.label}>Упражнение / тест</span>
             <select
               value={testId}
               onChange={(e) => setTestId(e.target.value)}
               disabled={isLoading || normOptions.length === 0}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900"
+              className={vk.select}
             >
-              <option value="">— выберите норматив —</option>
+              <option value="">— выберите —</option>
               {normOptions.map((n) => (
                 <option key={n.testId} value={n.testId}>
                   {n.testName}
@@ -337,50 +331,54 @@ export default function BulkNormSessionPage({ coachId }) {
             </select>
           </label>
           {selectedNormMeta?.description ? (
-            <p className="mt-2 text-xs text-slate-500">{selectedNormMeta.description}</p>
+            <p className={vk.mutedXs}>{selectedNormMeta.description}</p>
           ) : null}
         </section>
 
         {testId ? (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-5">
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">2. Спортсмены</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Доступно по этому нормативу: {eligibleAthletes.length}
-              {students.length > eligibleAthletes.length
-                ? ` · остальные ${students.length - eligibleAthletes.length} не подходят по возрасту или полу`
-                : ''}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+          <section className={`${vk.cardPadded} space-y-2.5`}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className={vk.h2}>Спортсмены</h2>
+              <span className={`${vk.mutedXs} tabular-nums`}>
+                {eligibleAthletes.length} подходят
+                {students.length > eligibleAthletes.length
+                  ? ` · ${students.length - eligibleAthletes.length} не подходят`
+                  : ''}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск по имени..."
-                className="min-w-[200px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                placeholder="Поиск по имени"
+                className={`${vk.input} min-w-0 flex-1`}
               />
               <button
                 type="button"
                 onClick={toggleAllFiltered}
                 disabled={filteredEligible.length === 0}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                className={vk.btnSecondary}
               >
-                {allFilteredSelected ? 'Снять всех' : 'Выбрать всех'}
+                {allFilteredSelected ? 'Снять всех' : 'Всех'}
               </button>
             </div>
-            <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-100 p-2 dark:border-slate-700">
+            <ul className={`${vk.list} max-h-52 overflow-y-auto`}>
               {filteredEligible.length === 0 ? (
-                <li className="px-2 py-3 text-sm text-slate-500">Никто из учеников не подходит под этот норматив.</li>
+                <li className={`px-3 py-3 ${vk.muted}`}>Никто не подходит под этот норматив.</li>
               ) : (
                 filteredEligible.map((s) => (
-                  <li key={s.id}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <li key={s.id} className="border-t border-[#e7e8ec] first:border-t-0">
+                    <label className="flex cursor-pointer touch-manipulation items-center gap-2.5 px-3 py-2 active:bg-[#f5f6f8]">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(s.id)}
                         onChange={() => toggleStudent(s.id)}
-                        className="rounded border-slate-300"
+                        className="h-4 w-4 shrink-0 rounded border-[#e7e8ec] text-[#2d81e0]"
                       />
-                      <span className="text-sm text-slate-800 dark:text-slate-100">{displayNameFromStudent(s)}</span>
+                      <span className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>
+                        {displayNameFromStudent(s)}
+                      </span>
                     </label>
                   </li>
                 ))
@@ -390,12 +388,14 @@ export default function BulkNormSessionPage({ coachId }) {
         ) : null}
 
         {testId && selectedAthletes.length > 0 ? (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:p-5">
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">3. Результаты</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {selectedNormMeta?.testName} · выбрано: {selectedAthletes.length}
-            </p>
-            <ul className="mt-4 space-y-3">
+          <section className={`${vk.cardPadded} space-y-3`}>
+            <div>
+              <h2 className={vk.h2}>Результаты</h2>
+              <p className={vk.mutedXs}>
+                {selectedNormMeta?.testName} · {selectedAthletes.length} чел.
+              </p>
+            </div>
+            <ul className="space-y-2">
               {selectedAthletes.map((student) => {
                 const norm = getAthleteNormForTest(allNorms, student, category, testId)
                 if (!norm) return null
@@ -412,8 +412,8 @@ export default function BulkNormSessionPage({ coachId }) {
                       : ''
                 const goldHint = formatNormGoldLabel(norm)
                 const prevText = stored
-                  ? `Ранее: ${formatNormResultDisplay(norm, stored)}${stored.status ? ` (${STATUS_LABEL[stored.status] ?? stored.status})` : ''}`
-                  : 'Ранее не сдавал'
+                  ? `Было: ${formatNormResultDisplay(norm, stored)}${stored.status ? ` (${STATUS_LABEL[stored.status] ?? stored.status})` : ''}`
+                  : 'Не сдавал'
                 const lastSavedText =
                   saved && Number.isFinite(saved.result)
                     ? `Сохранено: ${formatNormResultDisplay(norm, saved)}`
@@ -421,88 +421,68 @@ export default function BulkNormSessionPage({ coachId }) {
                 const acceptedMeta = saved ? formatNormAcceptedMeta(saved) : null
 
                 return (
-                  <li
-                    key={student.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-600 dark:bg-slate-800/50 sm:p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">
-                          {displayNameFromStudent(student)}
-                        </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
+                  <li key={student.id} className={vk.previewCard}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate ${vk.listItemTitle}`}>{displayNameFromStudent(student)}</p>
+                        <p className={`mt-1 flex flex-wrap items-center gap-1 ${vk.mutedXs}`}>
                           <NormGoldGoalIcon />
                           <span>
-                            Золото:{' '}
-                            <span className="font-semibold tabular-nums text-amber-900">{goldHint}</span>
+                            Золото: <span className="font-semibold tabular-nums text-amber-800">{goldHint}</span>
                           </span>
                         </p>
-                        <p className="mt-1 text-[11px] text-slate-500">{prevText}</p>
+                        <p className={`mt-0.5 ${vk.mutedXs}`}>{prevText}</p>
                       </div>
                       {displayRow && Number.isFinite(displayRow.result) ? (
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-semibold tabular-nums ${normScoreTone(displayRow.status)}`}
-                          >
-                            {displayRow.normalizedScore} б.
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <span className={`text-[12px] font-semibold tabular-nums ${normScoreTone(displayRow.status)}`}>
+                            {displayRow.normalizedScore}
                           </span>
                           <NormMedalChip status={displayRow.status} size="sm" />
                         </div>
                       ) : null}
                     </div>
-                    <div className="mt-3 flex flex-wrap items-end gap-3">
-                      <label className="min-w-[140px] flex-1">
-                        <span className="mb-1 block text-xs font-medium text-slate-600">
-                          Результат ({norm.unit})
-                        </span>
-                        <input
-                          type={isMinuteSecondNorm(norm) ? 'text' : 'number'}
-                          inputMode={isMinuteSecondNorm(norm) ? 'numeric' : 'decimal'}
-                          step={isMinuteSecondNorm(norm) ? undefined : 'any'}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
-                          value={inputVal}
-                          onChange={(e) => setDraftRaw(student.id, e.target.value)}
-                          placeholder={isMinuteSecondNorm(norm) ? 'м:сс' : 'число'}
-                        />
-                      </label>
-                    </div>
+                    <label className="mt-2 block">
+                      <span className={vk.label}>Результат ({norm.unit})</span>
+                      <input
+                        type={isMinuteSecondNorm(norm) ? 'text' : 'number'}
+                        inputMode={isMinuteSecondNorm(norm) ? 'numeric' : 'decimal'}
+                        step={isMinuteSecondNorm(norm) ? undefined : 'any'}
+                        className={vk.input}
+                        value={inputVal}
+                        onChange={(e) => setDraftRaw(student.id, e.target.value)}
+                        placeholder={isMinuteSecondNorm(norm) ? 'м:сс' : 'число'}
+                      />
+                    </label>
                     {lastSavedText ? (
-                      <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      <p className="mt-1.5 text-[12px] font-medium text-[#4bb34b]">
                         {lastSavedText}
                         {saved?.status ? ` · ${STATUS_LABEL[saved.status] ?? saved.status}` : ''}
                       </p>
                     ) : null}
-                    {acceptedMeta ? (
-                      <p className="mt-1 text-[11px] text-slate-500">{acceptedMeta}</p>
-                    ) : null}
+                    {acceptedMeta ? <p className={`mt-0.5 ${vk.mutedXs}`}>{acceptedMeta}</p> : null}
                   </li>
                 )
               })}
             </ul>
 
             {saveError ? (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className={vk.error} role="alert">
                 {saveError}
-              </div>
+              </p>
             ) : null}
-            {saveOk && !saveError ? (
-              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                Результаты сохранены и учтены в баллах.
-              </div>
-            ) : null}
+            {saveOk && !saveError ? <p className={vk.success}>Результаты сохранены и учтены в баллах.</p> : null}
 
             <button
               type="button"
               disabled={isSaving || selectedAthletes.length === 0}
               onClick={handleSaveAll}
-              className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:w-auto sm:px-6"
+              className={`w-full sm:w-auto ${vk.btnPrimary}`}
             >
-              {isSaving ? 'Сохранение…' : 'Сохранить результаты'}
+              {isSaving ? 'Сохранение…' : 'Сохранить'}
             </button>
           </section>
         ) : null}
-
-        {isLoading ? <p className="text-center text-sm text-slate-500">Загрузка…</p> : null}
       </div>
     </main>
   )

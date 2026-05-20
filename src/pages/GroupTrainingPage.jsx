@@ -18,21 +18,22 @@ import {
   countLeadingMasteredAtoms,
 } from '../utils/studentTechnicalUpdate.js'
 import { displayNameFromStudent } from '../utils/studentModel'
+import { vk } from '../utils/vkUi.js'
 
 const SAVE_DEBOUNCE_MS = 350
 
-function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = 'blue' }) {
+function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = 'primary' }) {
   const fillPercent = max > 0 ? (value / max) * 100 : 0
-  const fillClass = variant === 'violet' ? 'bg-violet-600' : 'bg-blue-600'
+  const fillClass = variant === 'accent' ? 'bg-[#6f3ff5]' : 'bg-[#2d81e0]'
   const thumbBorderClass =
-    variant === 'violet'
-      ? '[&::-moz-range-thumb]:border-violet-600 [&::-webkit-slider-thumb]:border-violet-600'
-      : '[&::-moz-range-thumb]:border-blue-600 [&::-webkit-slider-thumb]:border-blue-600'
+    variant === 'accent'
+      ? '[&::-moz-range-thumb]:border-[#6f3ff5] [&::-webkit-slider-thumb]:border-[#6f3ff5]'
+      : '[&::-moz-range-thumb]:border-[#2d81e0] [&::-webkit-slider-thumb]:border-[#2d81e0]'
 
   return (
     <div className="relative flex h-9 items-center sm:h-8">
       <div
-        className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+        className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-[#e7e8ec]"
         aria-hidden
       >
         <div className={`h-full ${fillClass}`} style={{ width: `${fillPercent}%` }} />
@@ -55,6 +56,11 @@ function normalizeSearchText(value) {
   return String(value ?? '').toLowerCase().trim()
 }
 
+function tierBadgeClass(variant) {
+  if (variant === 'accent') return 'bg-[#f3f0ff] text-[#6f3ff5]'
+  return 'bg-[#ecf3fc] text-[#2d81e0]'
+}
+
 function ComposePhase({
   students,
   isLoading,
@@ -72,83 +78,64 @@ function ComposePhase({
   const totalInView = filteredStudents.length
 
   return (
-    <div className="space-y-3 pb-24 sm:space-y-5 sm:pb-0">
-      <header className="space-y-2">
-        <div>
-          <h1 className="text-[17px] font-semibold leading-5 text-[#2c2d2e] sm:text-xl">Групповой прогресс техники</h1>
-          <p className="mt-1 text-[13px] leading-[18px] text-[#818c99]">
-            Шаг 1 из 2: отметьте, кто пришёл на тренировку.
-          </p>
-        </div>
+    <div className="space-y-2 pb-20 sm:pb-0">
+      <header>
+        <h1 className={vk.h1Lg}>Прогресс техники</h1>
+        <p className={`mt-1 ${vk.muted}`}>Шаг 1: отметьте, кто на тренировке.</p>
       </header>
 
-      {loadError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {loadError}
-        </div>
-      ) : null}
+      {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
-      <div className="rounded-[10px] bg-white p-2.5 dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-4 md:p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <div className="min-w-0 flex-1">
-            <label htmlFor="group-training-search" className="sr-only">
-              Поиск ученика
-            </label>
+      <section className={`${vk.cardPadded} space-y-2`}>
+        <div className="flex flex-wrap gap-1.5">
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Поиск ученика</span>
             <input
-              id="group-training-search"
-              type="text"
+              type="search"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Поиск по имени..."
-              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-900 sm:px-3"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по имени"
+              className={vk.input}
             />
-          </div>
+          </label>
           <button
             type="button"
             onClick={() => toggleAll(!allSelectedInView)}
             disabled={totalInView === 0}
-            className="w-full shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto sm:text-sm"
+            className={vk.btnSecondary}
           >
-            {allSelectedInView ? 'Снять выбор' : 'Выбрать всех'}
+            {allSelectedInView ? 'Снять всех' : 'Всех'}
           </button>
         </div>
-        <p className="mt-2 text-[11px] text-slate-500 sm:mt-3 sm:text-xs dark:text-slate-400">
+        <p className={vk.mutedXs}>
           Отмечено: {selectedCount} из {students.length}
         </p>
-      </div>
+      </section>
 
       {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
-          Загрузка учеников...
-        </div>
+        <p className={`text-center ${vk.muted}`}>Загрузка…</p>
       ) : students.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
-          В вашем списке пока нет учеников. Добавьте их на главной странице.
-        </div>
+        <p className={vk.emptyState}>Нет учеников. Добавьте их на главной.</p>
       ) : filteredStudents.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400">
-          По запросу никто не найден.
-        </div>
+        <p className={vk.emptyState}>По запросу никто не найден.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2 lg:grid-cols-3">
+        <ul className={`${vk.list} max-h-[min(50vh,22rem)] overflow-y-auto`}>
           {filteredStudents.map((student) => {
             const checked = selectedIds.has(student.id)
             return (
-              <li key={student.id}>
+              <li key={student.id} className="border-t border-[#e7e8ec] first:border-t-0">
                 <label
-                  className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2.5 transition-colors active:opacity-90 sm:gap-3 sm:rounded-xl sm:px-3 sm:py-3 ${
-                    checked
-                      ? 'border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-500/10'
-                      : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800'
+                  className={`flex cursor-pointer touch-manipulation items-center gap-2.5 px-3 py-2 active:bg-[#f5f6f8] ${
+                    checked ? 'bg-[#ecf3fc]' : ''
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleStudent(student.id)}
-                    className="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500 sm:h-5 sm:w-5"
+                    className="h-4 w-4 shrink-0 rounded border-[#e7e8ec] text-[#2d81e0]"
                   />
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-tight text-slate-900 sm:text-sm dark:text-slate-100">
+                  <span className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>
                     {student.displayName}
                   </span>
                 </label>
@@ -158,15 +145,15 @@ function ComposePhase({
         </ul>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-slate-50/95 p-2 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-950/95 sm:static sm:inset-auto sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e8ec] bg-white/95 p-2 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0">
         <button
           type="button"
           onClick={onStartTraining}
           disabled={selectedCount === 0}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 sm:inline-flex sm:w-auto sm:px-5"
+          className={`w-full sm:w-auto ${vk.btnPrimary}`}
         >
-          Начать тренировку
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold tabular-nums">
+          Начать
+          <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
             {selectedCount}
           </span>
         </button>
@@ -224,10 +211,16 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
   }
 
   const statusLine = (() => {
-    if (savingStatus === 'saving') return 'Сохранение...'
-    if (savingStatus === 'error') return 'Не удалось сохранить'
+    if (savingStatus === 'saving') return 'Сохранение…'
+    if (savingStatus === 'error') return 'Ошибка'
     if (savingStatus === 'saved') return 'Сохранено'
     return null
+  })()
+
+  const statusClass = (() => {
+    if (savingStatus === 'error') return 'text-[#e64646]'
+    if (savingStatus === 'saved') return 'text-[#4bb34b]'
+    return 'text-[#818c99]'
   })()
 
   const tierLabel = (n, total, value) => `Ур.${n}: ${value}/${total}`
@@ -236,21 +229,21 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
     const current = value >= 1 && value <= total ? ordered[value - 1] : null
     const next = value < total ? ordered[value] : null
     if (!current && !(value === total && total > 0)) {
-      return <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">Не начато</p>
+      return <p className={`mt-0.5 ${vk.mutedXs}`}>Не начато</p>
     }
     return (
-      <div className="mt-0.5 text-[10px] leading-snug text-slate-700 sm:text-[11px] dark:text-slate-200">
+      <div className={`mt-0.5 ${vk.mutedXs} leading-snug`}>
         {current ? (
-          <p className="line-clamp-1 sm:line-clamp-2" title={current.name}>
-            <span className="font-semibold text-blue-700 dark:text-blue-400">Шаг {value}.</span> {current.name}
+          <p className="line-clamp-2" title={current.name}>
+            <span className="font-semibold text-[#2d81e0]">Шаг {value}.</span> {current.name}
           </p>
         ) : null}
         {next ? (
-          <p className="mt-0.5 hidden line-clamp-1 text-slate-500 sm:block dark:text-slate-400" title={next.name}>
+          <p className="mt-0.5 hidden line-clamp-1 sm:block" title={next.name}>
             Дальше: {next.name}
           </p>
         ) : value === total && total > 0 ? (
-          <p className="mt-0.5 font-medium text-emerald-700 dark:text-emerald-400">Уровень закрыт</p>
+          <p className="mt-0.5 font-medium text-[#4bb34b]">Уровень закрыт</p>
         ) : null}
       </div>
     )
@@ -258,15 +251,13 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
 
   const renderTierBlock = (tierNum, total, value, ordered, variant, onValueChange) => {
     if (total <= 0) return null
-    const label =
-      tierNum === 3 ? 'Ур.3' : tierNum === 2 ? 'Ур.2' : 'Ур.1'
+    const label = tierNum === 3 ? 'Ур.3' : tierNum === 2 ? 'Ур.2' : 'Ур.1'
+    const sliderVariant = tierNum === 3 ? 'accent' : 'primary'
     return (
-      <div className="border-t border-slate-100 pt-1.5 first:border-t-0 first:pt-0 sm:pt-2 dark:border-slate-700">
-        <div className="mb-0.5 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:text-[11px] dark:text-slate-400">
-            {label}
-          </p>
-          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+      <div className="border-t border-[#e7e8ec] pt-2 first:border-t-0 first:pt-0">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">{label}</p>
+          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[#2c2d2e]">
             {value}/{total}
           </span>
         </div>
@@ -274,7 +265,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
           min={0}
           max={total}
           value={value}
-          variant={variant}
+          variant={sliderVariant}
           ariaLabel={`${label}, ${student.displayName}`}
           onChange={(e) => {
             const raw = Number(e.target.value)
@@ -288,53 +279,41 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
   }
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-600 dark:bg-slate-900 sm:rounded-xl sm:p-3">
+    <li className={vk.cardPadded}>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
-          {student.displayName}
-        </h2>
-        <span className="rounded bg-blue-50 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">
+        <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
+        <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('primary')}`}>
           {tierLabel(1, total1, slider1)}
         </span>
         {showTier2 && total2 > 0 ? (
-          <span className="rounded bg-blue-50/80 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+          <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('primary')}`}>
             {tierLabel(2, total2, slider2)}
           </span>
         ) : null}
         {showTier3 && total3 > 0 ? (
-          <span className="rounded bg-violet-50 px-1 py-0.5 text-[9px] font-semibold tabular-nums text-violet-900 dark:bg-violet-950/40 dark:text-violet-200">
+          <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('accent')}`}>
             {tierLabel(3, total3, slider3)}
           </span>
         ) : null}
         {statusLine ? (
-          <span
-            className={`text-[9px] font-medium sm:text-[10px] ${
-              savingStatus === 'error'
-                ? 'text-red-600 dark:text-red-400'
-                : savingStatus === 'saved'
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            {statusLine}
-          </span>
+          <span className={`text-[10px] font-medium ${statusClass}`}>{statusLine}</span>
         ) : null}
       </div>
 
-      <div className="mt-1 space-y-1 sm:mt-1.5 sm:space-y-1.5">
-        {renderTierBlock(1, total1, slider1, orderedL1, 'blue', (next) => {
+      <div className="mt-2 space-y-2">
+        {renderTierBlock(1, total1, slider1, orderedL1, 'primary', (next) => {
           setSlider1(next)
           emit(next, slider2, slider3)
         })}
 
         {showTier2 && total2 > 0
-          ? renderTierBlock(2, total2, slider2, orderedL2, 'blue', (next) => {
+          ? renderTierBlock(2, total2, slider2, orderedL2, 'primary', (next) => {
               setSlider2(next)
               emit(slider1, next, slider3)
             })
           : null}
         {showTier3 && total3 > 0
-          ? renderTierBlock(3, total3, slider3, orderedL3, 'violet', (next) => {
+          ? renderTierBlock(3, total3, slider3, orderedL3, 'accent', (next) => {
               setSlider3(next)
               emit(slider1, slider2, next)
             })
@@ -421,39 +400,27 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
   )
 
   return (
-    <div className="space-y-3 pb-2 sm:space-y-5 sm:pb-0">
-      <header className="sticky top-12 z-20 -mx-1 flex flex-wrap items-center gap-2 rounded-lg border border-[#e7e8ec]/80 bg-white/95 p-2 backdrop-blur-sm sm:static sm:mx-0 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+    <div className="space-y-2">
+      <header className="sticky top-12 z-20 -mx-0.5 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2 sm:static sm:border-0 sm:bg-transparent sm:p-0">
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-bold leading-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
-            Прогресс по шагам
-          </h1>
-          <p className="text-[10px] leading-snug text-slate-600 sm:mt-1 sm:text-sm dark:text-slate-400">
-            <span className="sm:hidden">Шаг 2 · автосохранение</span>
+          <h1 className={vk.h1Lg}>По шагам</h1>
+          <p className={vk.mutedXs}>
+            <span className="sm:hidden">Шаг 2 · автосохранение · {studentsForSession.length} чел.</span>
             <span className="hidden sm:inline">
-              Шаг 2 из 2: три ползунка — уровень 1 (программа), уровень 2 и уровень 3 (комбинации). Уровни 2 и 3
-              открываются сами, когда предыдущий доведён до конца. Данные сохраняются автоматически.
+              Три ползунка: программа, ур.2 и комбинации. Ур.2–3 открываются после закрытия предыдущего.
             </span>
           </p>
         </div>
-        <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-blue-800 dark:bg-blue-950/50 dark:text-blue-200 sm:hidden">
-          {studentsForSession.length}
-        </span>
-        <button
-          type="button"
-          onClick={onBack}
-          className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 active:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-3 sm:py-2 sm:text-sm"
-        >
+        <button type="button" onClick={onBack} className={vk.btnSecondary}>
           Состав
         </button>
       </header>
 
       {orderedL1.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-          Программа техники не загружена — обновите страницу.
-        </div>
+        <p className={vk.noticeWarn}>Программа техники не загрузилась — обновите страницу.</p>
       ) : null}
 
-      <ul className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
+      <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
         {studentsForSession.map((student) => (
           <StudentProgressRow
             key={student.id}
@@ -573,29 +540,23 @@ export default function GroupTrainingPage({ coachId }) {
 
   if (!coachId) {
     return (
-      <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-        <div className="mx-auto max-w-md space-y-2">
+      <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
+        <div className={`${vk.containerMid} max-w-md`}>
           <BackToHomeBar />
-          <div className="rounded-[10px] bg-white p-4 text-center text-[13px] text-[#818c99]">
-            Войдите в аккаунт тренера, чтобы запустить групповую тренировку.
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="rounded-lg bg-[#2d81e0] px-4 py-2 text-[14px] font-medium text-white active:bg-[#2875cc]"
-              >
-                Войти
-              </button>
-            </div>
-          </div>
+          <p className={`${vk.emptyState} py-6`}>
+            Войдите в аккаунт тренера, чтобы отмечать прогресс техники.
+          </p>
+          <button type="button" onClick={() => navigate('/login')} className={vk.btnPrimary}>
+            Войти
+          </button>
         </div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-5xl space-y-2">
+    <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
+      <div className={`${vk.containerMid} max-w-4xl`}>
         <BackToHomeBar />
         {phase === 'compose' ? (
           <ComposePhase
