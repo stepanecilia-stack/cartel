@@ -203,13 +203,6 @@ function formatMinutesToMinuteSecond(value) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-function getCoachInputHint(norm) {
-  if (isMinuteSecondNorm(norm)) {
-    return 'Время: 8:30 и 8:05 (секунды всегда двумя цифрами), либо 8.30 / 8,30 / 8 30. Дробные минуты без секунд — только запятой: 8,5.'
-  }
-  return 'Числовой формат: можно вводить с точкой или запятой (например, 6.5 или 6,5) — программа распознает автоматически.'
-}
-
 function emptyTechnicalRecord(raw) {
   if (!raw || typeof raw !== 'object') return {}
   const out = {}
@@ -1261,112 +1254,98 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const renderNormInputs = (category, norms, values) => {
     if (loadingNorms) {
-      return <p className="text-sm text-slate-500">Загрузка нормативов...</p>
+      return <p className={vk.muted}>Загрузка…</p>
     }
     if (norms.length === 0) {
       return (
-        <p className="text-sm text-slate-500">
-          Нет нормативов для возраста и пола. Укажите год рождения и пол в «Карте спортсмена».
+        <p className={vk.mutedXs}>
+          Нет нормативов для возраста и пола. Укажите год рождения и пол на вкладке «Карта».
         </p>
       )
     }
-    return norms.map((norm) => {
-      const row = getNormValueByTestId(values, norm.testId)
-      const displayVal =
-        row?.resultRaw ??
-        (row?.result !== undefined && row?.result !== null
-          ? isMinuteSecondNorm(norm)
-            ? formatMinutesToMinuteSecond(row.result)
-            : String(row.result)
-          : '')
-      const inputType = isMinuteSecondNorm(norm) ? 'text' : 'number'
-      const goalLabel =
-        Number.isFinite(norm.gold)
-          ? isMinuteSecondNorm(norm)
-            ? formatMinutesToMinuteSecond(norm.gold)
-            : String(norm.gold)
-          : '—'
-      const cardTone = normCardToneByStatus(row?.status)
-      const scoreTone = normScoreToneByStatus(row?.status)
-      const betterHint =
-        norm.measureType === 'MAX' ? 'Чем больше — тем лучше' : 'Чем меньше — тем лучше'
-      const acceptedMeta = formatNormAcceptedMeta(row)
-      const normBusy = normSavingKey === `${category}:${norm.testId}`
-      return (
-        <div
-          key={norm.testId}
-          id={normCardDomId(category, norm.testId)}
-          className={`scroll-mt-40 flex flex-col gap-1.5 rounded-lg border p-2.5 transition-colors sm:gap-2 sm:rounded-xl sm:p-4 ${cardTone}`}
-        >
-          <div className="text-center">
-            <span className="block text-base font-bold leading-snug text-slate-900 sm:text-lg">{norm.testName}</span>
-            {norm.description ? (
-              <p className="mt-0.5 text-[11px] leading-snug text-slate-600 sm:text-xs">{norm.description}</p>
-            ) : null}
-          </div>
+    return (
+      <ul className={vk.list}>
+        {norms.map((norm) => {
+          const row = getNormValueByTestId(values, norm.testId)
+          const displayVal =
+            row?.resultRaw ??
+            (row?.result !== undefined && row?.result !== null
+              ? isMinuteSecondNorm(norm)
+                ? formatMinutesToMinuteSecond(row.result)
+                : String(row.result)
+              : '')
+          const inputType = isMinuteSecondNorm(norm) ? 'text' : 'number'
+          const goalLabel =
+            Number.isFinite(norm.gold)
+              ? isMinuteSecondNorm(norm)
+                ? formatMinutesToMinuteSecond(norm.gold)
+                : String(norm.gold)
+              : '—'
+          const cardTone = normCardToneByStatus(row?.status)
+          const scoreTone = normScoreToneByStatus(row?.status)
+          const acceptedMeta = formatNormAcceptedMeta(row)
+          const normBusy = normSavingKey === `${category}:${norm.testId}`
+          const inputPlaceholder = isMinuteSecondNorm(norm) ? 'м:сс' : 'число'
 
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <NormGoldGoalIcon />
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900/85">Цель</p>
-                <p className="truncate text-sm font-bold tabular-nums text-slate-900">
-                  {goalLabel}{' '}
-                  <span className="text-xs font-semibold text-slate-600">{norm.unit}</span>
-                </p>
+          return (
+            <li
+              key={norm.testId}
+              id={normCardDomId(category, norm.testId)}
+              className={`scroll-mt-40 border-t border-[#e7e8ec] first:border-t-0 ${cardTone}`}
+            >
+              <div className="px-2.5 py-2">
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-medium leading-5 text-[#2c2d2e]">{norm.testName}</p>
+                    {norm.description ? (
+                      <p className="line-clamp-1 text-[11px] leading-4 text-[#818c99]">{norm.description}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1" title="Золото">
+                    <NormGoldGoalIcon />
+                    <span className="text-[12px] font-semibold tabular-nums text-amber-800">
+                      {goalLabel}
+                      <span className="ml-0.5 font-normal text-[#818c99]">{norm.unit}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <input
+                    type={inputType}
+                    inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
+                    step={inputType === 'number' ? 'any' : undefined}
+                    aria-label={`Результат, ${norm.unit}`}
+                    placeholder={inputPlaceholder}
+                    className={`${vk.input} w-[5.5rem] min-w-0 shrink-0 sm:w-24`}
+                    value={displayVal}
+                    onChange={(e) => updateNormResult(category, norm, e.target.value)}
+                  />
+                  {row && Number.isFinite(row.result) ? (
+                    <span className={`flex items-center gap-1 text-[12px] tabular-nums ${scoreTone}`}>
+                      <span className="font-semibold">{row.normalizedScore}</span>
+                      <NormMedalChip status={row.status} size="sm" />
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={!student?.id || normBusy || !row || !Number.isFinite(row.result)}
+                    onClick={() => handleSaveNormAcceptance(category, norm)}
+                    className={`${vk.btnCompact} ml-auto disabled:opacity-45`}
+                  >
+                    {normBusy ? '…' : 'Сохранить'}
+                  </button>
+                </div>
+
+                {acceptedMeta ? (
+                  <p className={`mt-1 truncate ${vk.mutedXs}`}>{acceptedMeta}</p>
+                ) : null}
               </div>
-            </div>
-            <div className="flex items-center justify-end">
-              <p className="max-w-[11rem] text-right text-[11px] font-medium leading-snug text-slate-700 sm:max-w-none sm:text-xs">
-                {betterHint}
-              </p>
-            </div>
-          </div>
-
-          <p className="text-[11px] leading-snug text-slate-500 sm:text-xs">{getCoachInputHint(norm)}</p>
-          <div className="flex flex-wrap items-end gap-3 pt-0.5">
-            <label className="min-w-[140px] flex-1">
-              <span className="mb-1 block text-xs font-medium text-slate-600">Результат ({norm.unit})</span>
-              <input
-                type={inputType}
-                inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
-                step={inputType === 'number' ? 'any' : undefined}
-                className={vk.input}
-                value={displayVal}
-                onChange={(e) => updateNormResult(category, norm, e.target.value)}
-              />
-            </label>
-            {row && Number.isFinite(row.result) ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-slate-600">
-                  Оценка в баллах:{' '}
-                  <span className={`font-semibold tabular-nums ${scoreTone}`}>{row.normalizedScore}</span>
-                </span>
-                <NormMedalChip status={row.status} size="sm" />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-1.5 border-t border-slate-200/80 pt-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={!student?.id || normBusy || !row || !Number.isFinite(row.result)}
-                onClick={() => handleSaveNormAcceptance(category, norm)}
-                className={`${vk.btnSecondary} text-[13px] disabled:opacity-45`}
-              >
-                {normBusy ? 'Сохранение…' : 'Сохранить норматив'}
-              </button>
-            </div>
-            {acceptedMeta ? (
-              <p className="text-[11px] leading-snug text-slate-600">{acceptedMeta}</p>
-            ) : (
-              <p className="text-[11px] text-slate-400">После сохранения здесь появятся тренер и время фиксации.</p>
-            )}
-          </div>
-        </div>
-      )
-    })
+            </li>
+          )
+        })}
+      </ul>
+    )
   }
 
   const orderedTechnicalAtoms = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
