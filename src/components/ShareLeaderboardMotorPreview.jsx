@@ -5,7 +5,7 @@ const MAX_SQUARES = 48
  */
 export default function ShareLeaderboardMotorPreview({ squares = [], className = '' }) {
   if (!squares.length) {
-    return <span className={`text-[10px] text-slate-400 ${className}`}>нет выполнений</span>
+    return <span className={`text-[11px] text-[#aeb7c2] ${className}`}>нет выполнений</span>
   }
 
   const shown = squares.slice(-MAX_SQUARES)
@@ -16,8 +16,8 @@ export default function ShareLeaderboardMotorPreview({ squares = [], className =
       {shown.map((sq, i) => (
         <span
           key={i}
-          className={`h-3 w-3 rounded-sm sm:h-2.5 sm:w-2.5 ${
-            sq.sensitive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+          className={`h-2 w-2 rounded-[2px] ${
+            sq.sensitive ? 'bg-[#4bb34b]' : 'bg-[#aeb7c2]'
           }`}
           aria-hidden
         />

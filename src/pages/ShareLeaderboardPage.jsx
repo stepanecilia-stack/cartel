@@ -71,7 +71,7 @@ export default function ShareLeaderboardPage() {
           <h1 className={vk.h1Lg}>{payload?.coachDisplayName ?? 'Рейтинг спортсменов'}</h1>
           {isConnected ? (
             <p className="inline-flex items-center gap-1.5 text-[12px] text-[#4bb34b]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#4bb34b]" aria-hidden />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4bb34b]" aria-hidden />
               Обновляется в реальном времени
             </p>
           ) : null}
@@ -86,18 +86,18 @@ export default function ShareLeaderboardPage() {
         ) : null}
 
         {payload ? (
-          <>
+          <section className={`${vk.cardPadded} py-2.5`}>
             <LeaderboardCategoryTabs
               category={category}
               onCategoryChange={setCategory}
               categoriesMeta={categories}
               tabIds={categoryTabs}
             />
-
-            <p className={vk.notice}>{activeMeta?.hint ?? ''}</p>
-
-            <LeaderboardTable rows={rows} categoryId={category} publicMode />
-          </>
+            <p className={`mt-1.5 line-clamp-2 ${vk.mutedXs}`}>{activeMeta?.hint ?? ''}</p>
+            <div className="mt-2">
+              <LeaderboardTable rows={rows} categoryId={category} publicMode />
+            </div>
+          </section>
         ) : null}
       </div>
     </main>

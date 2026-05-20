@@ -166,45 +166,46 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
           />
         ) : null}
 
-        {!editMode ? (
-          <>
-            <LeaderboardCategoryTabs category={category} onCategoryChange={setCategory} />
-
-            <p className={`${vk.mutedXs} px-0.5`}>{activeCategory.hint}</p>
-          </>
-        ) : (
-          <p className={vk.muted}>Отметьте учеников для рейтинга и публичной ссылки.</p>
-        )}
-
         {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
-        {isLoading ? (
-          <p className={`text-center ${vk.muted}`}>Загрузка рейтинга…</p>
-        ) : editMode && !isSchool ? (
-          <LeaderboardTable
-            rows={editListRows}
-            categoryId={category}
-            showCheckboxes
-            curatedSet={curatedSet}
-            onToggleStudent={coach.toggleStudentInCurated}
-          />
-        ) : students.length === 0 ? (
-          <p className={vk.emptyState}>
-            {isSchool
-              ? 'В системе пока нет учеников.'
-              : editMode
-                ? 'Нет учеников для выбора.'
-                : 'Выберите учеников в составе рейтинга или добавьте их на главной.'}
-          </p>
-        ) : (
-          <LeaderboardTable
-            rows={rows}
-            categoryId={category}
-            rawById={rawById}
-            canOpenStudent={canOpenStudent}
-            onOpenStudent={handleOpenStudent}
-          />
-        )}
+        <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
+          {!editMode ? (
+            <>
+              <LeaderboardCategoryTabs category={category} onCategoryChange={setCategory} />
+              <p className={`mt-1.5 line-clamp-2 ${vk.mutedXs}`}>{activeCategory.hint}</p>
+            </>
+          ) : (
+            <p className={vk.mutedXs}>Отметьте учеников для рейтинга.</p>
+          )}
+
+          <div className="mt-2">
+            {isLoading ? (
+              <p className={`py-6 text-center ${vk.mutedXs}`}>Загрузка…</p>
+            ) : editMode && !isSchool ? (
+              <LeaderboardTable
+                rows={editListRows}
+                categoryId={category}
+                showCheckboxes
+                curatedSet={curatedSet}
+                onToggleStudent={coach.toggleStudentInCurated}
+              />
+            ) : students.length === 0 ? (
+              <p className={vk.emptyState}>
+                {isSchool
+                  ? 'В системе пока нет учеников.'
+                  : 'Выберите учеников в составе рейтинга.'}
+              </p>
+            ) : (
+              <LeaderboardTable
+                rows={rows}
+                categoryId={category}
+                rawById={rawById}
+                canOpenStudent={canOpenStudent}
+                onOpenStudent={handleOpenStudent}
+              />
+            )}
+          </div>
+        </section>
       </div>
     </main>
   )

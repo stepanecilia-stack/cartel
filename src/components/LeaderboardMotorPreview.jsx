@@ -16,7 +16,7 @@ export default function LeaderboardMotorPreview({ workLog, className = '' }) {
 
   if (squares.length === 0) {
     return (
-      <span className={`text-[10px] text-slate-400 ${className}`}>нет выполнений</span>
+      <span className={`text-[11px] text-[#aeb7c2] ${className}`}>нет выполнений</span>
     )
   }
 
@@ -28,14 +28,14 @@ export default function LeaderboardMotorPreview({ workLog, className = '' }) {
       {shown.map((sq) => (
         <span
           key={sq.key}
-          className={`h-3 w-3 rounded-sm sm:h-2.5 sm:w-2.5 ${
-            sq.sensitive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+          className={`h-2 w-2 rounded-[2px] ${
+            sq.sensitive ? 'bg-[#4bb34b]' : 'bg-[#aeb7c2]'
           }`}
           aria-hidden
         />
       ))}
       {hidden > 0 ? (
-        <span className="self-center text-[9px] tabular-nums text-slate-400">+{hidden}</span>
+        <span className="self-center text-[10px] tabular-nums text-[#818c99]">+{hidden}</span>
       ) : null}
     </div>
   )
