@@ -38,6 +38,10 @@ export const vk = {
     'inline-flex h-9 touch-manipulation items-center justify-center rounded-lg bg-[#f0f2f5] px-4 text-[14px] font-medium text-[#2d81e0] active:bg-[#ebedf0]',
   btnGhost:
     'inline-flex h-9 touch-manipulation items-center justify-center rounded-lg px-3 text-[14px] font-medium text-[#2d81e0] active:bg-[#f0f2f5]',
+  btnCompact:
+    'inline-flex h-8 shrink-0 touch-manipulation items-center justify-center rounded-lg bg-[#2d81e0] px-2.5 text-[13px] font-medium text-white active:bg-[#2875cc] disabled:opacity-50',
+  btnCompactSecondary:
+    'inline-flex h-8 shrink-0 touch-manipulation items-center justify-center rounded-lg bg-[#f0f2f5] px-2 text-[12px] font-medium text-[#2d81e0] active:bg-[#ebedf0] disabled:opacity-50',
 
   navBar:
     'sticky top-0 z-40 border-b border-[#e7e8ec] bg-white/96 backdrop-blur supports-[backdrop-filter]:bg-white/90',

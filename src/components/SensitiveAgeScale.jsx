@@ -26,11 +26,7 @@ export default function SensitiveAgeScale({
   return (
     <div className={className}>
       {showCaption ? (
-        <p
-          className={`font-medium text-slate-500 dark:text-slate-400 ${
-            compact ? 'mb-1 text-[10px]' : 'mb-1.5 text-[11px]'
-          }`}
-        >
+        <p className={`font-medium text-[#818c99] ${compact ? 'mb-1 text-[10px]' : 'mb-1.5 text-[11px]'}`}>
           Сенситивные периоды ({SENSITIVE_AGE_SCALE_MIN}–{SENSITIVE_AGE_SCALE_MAX} лет)
         </p>
       ) : null}
@@ -43,7 +39,7 @@ export default function SensitiveAgeScale({
               return (
                 <span
                   key={`${start}-${end}`}
-                  className={`absolute top-0 flex items-end justify-center font-semibold leading-none tabular-nums text-emerald-700 dark:text-emerald-400 ${
+                  className={`absolute top-0 flex items-end justify-center font-semibold leading-none tabular-nums text-[#4bb34b] ${
                     compact ? 'text-[8px] sm:text-[9px]' : 'text-[10px]'
                   }`}
                   style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
@@ -58,9 +54,7 @@ export default function SensitiveAgeScale({
         )}
 
         <div
-          className={`flex w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 ${
-            compact ? 'h-2 sm:h-2.5' : 'h-3'
-          }`}
+          className={`flex w-full overflow-hidden rounded-full bg-[#e7e8ec] ${compact ? 'h-2' : 'h-2.5'}`}
           role="img"
           aria-label={`Шкала возраста ${SENSITIVE_AGE_SCALE_MIN}–${SENSITIVE_AGE_SCALE_MAX} лет, сенситивные годы: ${ranges.map((r) => r.label).join(', ') || 'нет'}`}
         >
@@ -68,10 +62,8 @@ export default function SensitiveAgeScale({
             <div
               key={age}
               title={`${age} лет${active.has(age) ? ' — сенситивный' : ''}`}
-              className={`min-w-0 flex-1 border-r border-white/25 last:border-r-0 dark:border-slate-900/30 ${
-                active.has(age)
-                  ? 'bg-emerald-500 dark:bg-emerald-500'
-                  : 'bg-slate-200 dark:bg-slate-600'
+              className={`min-w-0 flex-1 border-r border-white/30 last:border-r-0 ${
+                active.has(age) ? 'bg-[#4bb34b]' : 'bg-[#e7e8ec]'
               }`}
             />
           ))}
@@ -79,7 +71,7 @@ export default function SensitiveAgeScale({
       </div>
 
       <div
-        className={`mt-0.5 flex justify-between tabular-nums text-slate-400 dark:text-slate-500 ${
+        className={`mt-0.5 flex justify-between tabular-nums text-[#818c99] ${
           compact ? 'text-[8px] sm:text-[9px]' : 'text-[10px]'
         }`}
       >

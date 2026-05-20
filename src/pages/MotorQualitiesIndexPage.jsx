@@ -2,34 +2,34 @@ import { Link } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import SensitiveAgeScale from '../components/SensitiveAgeScale'
 import { getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
+import { vk } from '../utils/vkUi.js'
 
 function MotorQualitiesIndexPage() {
   const items = getMotorQualitiesCatalog()
 
   return (
-    <main className="min-h-[calc(100vh-48px)] bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
-      <div className="mx-auto max-w-4xl space-y-2 sm:space-y-3">
+    <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
+      <div className={`${vk.containerMid} max-w-4xl`}>
         <BackToHomeBar />
         <header>
-          <h1 className="text-[17px] font-semibold leading-5 sm:text-xl">Двигательные качества</h1>
+          <h1 className={vk.h1Lg}>База упражнений</h1>
+          <p className={`mt-1 ${vk.muted}`}>Двигательные качества — банк упражнений и объёмов.</p>
         </header>
 
-        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+        <ul className={vk.list}>
           {items.map(({ title, slug, sensitiveAgeSet }) => (
-            <li key={slug}>
+            <li key={slug} className="border-t border-[#e7e8ec] first:border-t-0">
               <Link
                 to={`/qualities/${slug}`}
-                className="block rounded-[10px] bg-white p-2.5 transition active:bg-slate-50 hover:border-blue-200 hover:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:active:bg-slate-800 dark:hover:border-blue-700 sm:rounded-xl sm:p-4"
+                className="block touch-manipulation px-3 py-2.5 active:bg-[#f5f6f8]"
               >
-                <span className="text-sm font-semibold leading-snug text-slate-900 sm:text-base dark:text-slate-100">
-                  {title}
-                </span>
+                <span className={vk.listItemTitle}>{title}</span>
                 {sensitiveAgeSet?.size > 0 ? (
                   <SensitiveAgeScale
                     sensitiveAges={sensitiveAgeSet}
                     compact
                     showCaption={false}
-                    className="mt-2 sm:mt-3"
+                    className="mt-1.5"
                   />
                 ) : null}
               </Link>
