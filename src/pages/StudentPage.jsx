@@ -50,6 +50,7 @@ import {
   updateStudentData,
 } from '../services/firebaseService'
 import TechnicalAtomRow from '../components/TechnicalAtomRow.jsx'
+import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
@@ -235,7 +236,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const [activeTab, setActiveTab] = useState('anthropometry')
   const [allNorms, setAllNorms] = useState([])
-  const [technicalAtoms, setTechnicalAtoms] = useState([])
+  const [programAtomsCache, setProgramAtomsCache] = useState(() => getTechnicalProgramAtomsCache())
+  const technicalAtoms = programAtomsCache.level1
   const [technicalCombinations, setTechnicalCombinations] = useState([])
   const [comboModalOpen, setComboModalOpen] = useState(false)
   const [comboDraftName, setComboDraftName] = useState('')
@@ -265,7 +267,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [isAnthropometrySaving, setIsAnthropometrySaving] = useState(false)
   const [normSavingKey, setNormSavingKey] = useState('')
   const [technicalSavingKey, setTechnicalSavingKey] = useState('')
-  const [openTechnicalVideoId, setOpenTechnicalVideoId] = useState(null)
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -274,11 +275,20 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
+    const syncAtomsFromCache = () => setProgramAtomsCache(getTechnicalProgramAtomsCache())
+    syncAtomsFromCache()
+    const unsubCache = subscribeTechnicalProgramAtomsCache(syncAtomsFromCache)
+
     const loadLegacyData = async () => {
       try {
         const [norms, atoms] = await Promise.all([loadLegacyNorms(), loadLegacyTechnicalAtoms()])
         setAllNorms(norms)
-        setTechnicalAtoms(atoms)
+        if (atoms.length > 0) {
+          setProgramAtomsCache((prev) => ({
+            level1: atoms,
+            level2: prev.level2.length > 0 ? prev.level2 : getTechnicalProgramAtomsCache().level2,
+          }))
+        }
         setNormsError('')
       } catch (error) {
         console.error('Ошибка загрузки legacy данных:', error)
@@ -290,6 +300,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       }
     }
     loadLegacyData()
+    return () => unsubCache()
   }, [])
 
   useEffect(() => {
@@ -320,7 +331,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setTechnicalTierTab('level1')
     setShareFlash(false)
     setShareUrl('')
-    setOpenTechnicalVideoId(null)
     setSaveError('')
     setSaveOk(false)
     setAnthropometrySaveError('')
@@ -547,7 +557,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     if (!atoms.length) {
       try {
         atoms = await loadLegacyTechnicalAtoms()
-        setTechnicalAtoms(atoms)
+        setProgramAtomsCache((prev) => ({
+          level1: atoms,
+          level2: prev.level2.length > 0 ? prev.level2 : getTechnicalProgramAtomsCache().level2,
+        }))
       } catch {
         atoms = []
       }
@@ -1351,6 +1364,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const orderedTechnicalAtoms = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
 
+  const level2Atoms = useMemo(() => {
+    const fromCache = programAtomsCache.level2
+    return fromCache.length > 0 ? fromCache : TECHNIQUE_LEVEL2_ATOMS
+  }, [programAtomsCache])
+
   const technicalLocksById = useMemo(
     () => buildTechnicalLocksById(orderedTechnicalAtoms, technicalData),
     [orderedTechnicalAtoms, technicalData],
@@ -1643,24 +1661,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                               key={atom.id}
                               atom={atom}
                               levelKey={atomLevelKey}
-                              comment={technicalData[atom.id]?.comment ?? ''}
                               locked={isLockedBySequence}
                               saving={technicalSavingKey === `technical:${atom.id}`}
                               canSave={Boolean(student?.id)}
-                              videoOpen={openTechnicalVideoId === atom.id}
-                              onToggleVideo={() =>
-                                setOpenTechnicalVideoId((id) => (id === atom.id ? null : atom.id))
-                              }
                               onLevelChange={(level) =>
                                 setTechnicalData((prev) => ({
                                   ...prev,
                                   [atom.id]: { ...(prev[atom.id] ?? {}), level },
-                                }))
-                              }
-                              onCommentChange={(comment) =>
-                                setTechnicalData((prev) => ({
-                                  ...prev,
-                                  [atom.id]: { ...(prev[atom.id] ?? {}), comment },
                                 }))
                               }
                               onSave={() => handleSaveTechnicalAtom(atom)}
@@ -1673,26 +1680,19 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
                     {technicalTierTab === 'level2' && (
                       <ul className={vk.list}>
-                        {TECHNIQUE_LEVEL2_ATOMS.map((atom) => {
+                        {level2Atoms.map((atom) => {
                           const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
                           return (
                             <TechnicalAtomRow
                               key={atom.id}
                               atom={atom}
                               levelKey={atomLevelKey}
-                              comment={technicalData[atom.id]?.comment ?? ''}
                               saving={technicalSavingKey === `technical:${atom.id}`}
                               canSave={Boolean(student?.id)}
                               onLevelChange={(level) =>
                                 setTechnicalData((prev) => ({
                                   ...prev,
                                   [atom.id]: { ...(prev[atom.id] ?? {}), level },
-                                }))
-                              }
-                              onCommentChange={(comment) =>
-                                setTechnicalData((prev) => ({
-                                  ...prev,
-                                  [atom.id]: { ...(prev[atom.id] ?? {}), comment },
                                 }))
                               }
                               onSave={() => handleSaveTechnicalAtom(atom)}
@@ -1762,9 +1762,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                   <p className={`mt-0.5 line-clamp-2 ${vk.mutedXs}`} title={chain}>
                                     {chain}
                                   </p>
-                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                  <div className="mt-1.5 flex items-center gap-1.5">
                                     <select
-                                      className={`${vk.select} min-w-[6.5rem] max-w-[10rem] flex-1`}
+                                      className={`${vk.select} min-w-0 flex-1`}
                                       value={atomLevelKey}
                                       aria-label="Уровень освоения"
                                       onChange={(e) =>
@@ -1780,18 +1780,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                                         </option>
                                       ))}
                                     </select>
-                                    <input
-                                      type="text"
-                                      className={`${vk.input} min-w-0 flex-1`}
-                                      placeholder="Комментарий"
-                                      value={technicalData[combo.id]?.comment ?? ''}
-                                      onChange={(e) =>
-                                        setTechnicalData((prev) => ({
-                                          ...prev,
-                                          [combo.id]: { ...(prev[combo.id] ?? {}), comment: e.target.value },
-                                        }))
-                                      }
-                                    />
                                     <button
                                       type="button"
                                       disabled={!student?.id || comboSaving}

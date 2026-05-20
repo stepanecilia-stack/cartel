@@ -12,6 +12,7 @@ import RegisterCoach from './pages/RegisterCoach'
 import ShareProgressPage from './pages/ShareProgressPage'
 import ShareLeaderboardPage from './pages/ShareLeaderboardPage'
 import StudentPage from './pages/StudentPage'
+import TechnicalElementsPage from './pages/TechnicalElementsPage'
 import WelcomePage from './pages/WelcomePage'
 import {
   getCoachProfile,
@@ -19,6 +20,7 @@ import {
   subscribeToAuth,
 } from './services/firebaseService'
 import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
+import { subscribeTechnicalProgramAtoms } from './services/technicalProgramAtomsService.js'
 import { vk } from './utils/vkUi.js'
 
 function LeaderboardNavIcon({ className = '' }) {
@@ -77,6 +79,9 @@ function Navbar({ user, coachProfile }) {
             <>
               <Link to="/qualities" className={`hidden shrink-0 sm:inline ${vk.linkNav}`}>
                 Качества
+              </Link>
+              <Link to="/technical-elements" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
+                Элементы
               </Link>
               <Link to="/bulk-norms" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Норматив
@@ -194,6 +199,10 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
           element={<ProtectedRoute user={authUser} element={<MotorQualitiesIndexPage />} />}
         />
         <Route
+          path="/technical-elements"
+          element={<ProtectedRoute user={authUser} element={<TechnicalElementsPage />} />}
+        />
+        <Route
           path="/qualities/:slug"
           element={
             <ProtectedRoute
@@ -274,7 +283,12 @@ function App() {
 
   useEffect(() => {
     if (!authUser) return undefined
-    return subscribeMotorQualityExercises()
+    const unsubExercises = subscribeMotorQualityExercises()
+    const unsubAtoms = subscribeTechnicalProgramAtoms()
+    return () => {
+      unsubExercises()
+      unsubAtoms()
+    }
   }, [authUser])
 
   if (authUser === undefined) {

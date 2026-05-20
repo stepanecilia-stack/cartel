@@ -169,6 +169,13 @@ function HomePage({ onSelectStudent, coachId }) {
       iconClass: 'bg-[#f0ebfa] text-[#735ce6] text-base',
       to: '/qualities',
     },
+    {
+      key: 'elements',
+      label: 'Элементы техники',
+      icon: '▣',
+      iconClass: 'bg-[#fff8e6] text-[#e6a817] text-base',
+      to: '/technical-elements',
+    },
   ]
 
   const vkTileClass =
