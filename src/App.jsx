@@ -25,6 +25,7 @@ import {
   stopCoachStudentsSync,
 } from './data/coachStudentsCache.js'
 import { loadNormsOnce } from './data/normsCache.js'
+import { subscribeLegacyNorms } from './services/legacyNormsService.js'
 import {
   logoutCoach,
   subscribeCoachProfile,
@@ -372,10 +373,12 @@ function App() {
 
   useEffect(() => {
     if (!authUser) return undefined
+    const unsubNorms = subscribeLegacyNorms()
     loadNormsOnce().catch(() => {})
     const unsubExercises = subscribeMotorQualityExercises()
     const unsubAtoms = subscribeTechnicalProgramAtoms()
     return () => {
+      unsubNorms()
       unsubExercises()
       unsubAtoms()
     }

@@ -4,6 +4,12 @@ import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
 import { loadNormsOnce } from '../data/normsCache.js'
 import {
+  getLegacyNormsSource,
+  getLegacyNormsSyncError,
+  publishLegacyNormsFromSheet,
+} from '../services/legacyNormsService.js'
+import { isProgramAdmin } from '../utils/coachRoles.js'
+import {
   getCoachProfile,
   getCurrentCoachId,
   getStudentById,
@@ -63,6 +69,36 @@ export default function BulkNormSessionPage({ coachId }) {
   const [saveOk, setSaveOk] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [programAdmin, setProgramAdmin] = useState(false)
+  const [normsPublishBusy, setNormsPublishBusy] = useState(false)
+  const [normsPublishNote, setNormsPublishNote] = useState('')
+
+  useEffect(() => {
+    const coachAuthId = getCurrentCoachId()
+    if (!coachAuthId) {
+      setProgramAdmin(false)
+      return
+    }
+    getCoachProfile(coachAuthId)
+      .then((profile) => setProgramAdmin(isProgramAdmin(profile)))
+      .catch(() => setProgramAdmin(false))
+  }, [coachId])
+
+  const handlePublishNormsToFirestore = async () => {
+    setNormsPublishNote('')
+    setNormsPublishBusy(true)
+    try {
+      const count = await publishLegacyNormsFromSheet()
+      setNormsPublishNote(`В Firestore загружено ${count} нормативов. Все тренеры получат их из облака.`)
+      const norms = await loadNormsOnce()
+      setAllNorms(norms)
+    } catch (err) {
+      console.error(err)
+      setNormsPublishNote(err instanceof Error ? err.message : 'Не удалось опубликовать нормативы.')
+    } finally {
+      setNormsPublishBusy(false)
+    }
+  }
 
   const loadData = useCallback(async () => {
     if (!coachId) {
@@ -297,6 +333,27 @@ export default function BulkNormSessionPage({ coachId }) {
 
         {loadError ? <p className={vk.error}>{loadError}</p> : null}
         {normsError ? <p className={vk.noticeWarn}>{normsError}</p> : null}
+        {getLegacyNormsSyncError() ? (
+          <p className={vk.noticeWarn}>{getLegacyNormsSyncError()}</p>
+        ) : null}
+        {programAdmin ? (
+          <div className={`${vk.notice} space-y-2`}>
+            <p className="text-[13px] text-[#2c2d2e]">
+              Справочник нормативов:{' '}
+              <strong>{getLegacyNormsSource() === 'firestore' ? 'Firestore' : 'Google Sheets (резерв)'}</strong>
+              . Один раз опубликуйте таблицу в облако — дальше приложение не тянет CSV при каждом старте.
+            </p>
+            <button
+              type="button"
+              disabled={normsPublishBusy}
+              onClick={() => void handlePublishNormsToFirestore()}
+              className={vk.btnSecondary}
+            >
+              {normsPublishBusy ? 'Публикация…' : 'Опубликовать нормативы в Firestore'}
+            </button>
+            {normsPublishNote ? <p className={vk.mutedXs}>{normsPublishNote}</p> : null}
+          </div>
+        ) : null}
         {isLoading ? <p className={`text-center ${vk.muted}`}>Загрузка…</p> : null}
 
         <section className={`${vk.cardPadded} space-y-3`}>

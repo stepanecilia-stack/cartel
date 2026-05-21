@@ -1,6 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  TECH_DOMINANCE_OPTIONS,
   calculateEffectiveKSR,
   calculateKD,
   calculateKsrAndKsp,
@@ -14,7 +13,13 @@ import {
   TECHNIQUE_LEVEL2_ATOMS,
 } from '../utils/ksrUtils'
 import { buildTechnicalLocksById, orderTechnicalAtomsForProgram } from '../utils/technicalProgramProgress.js'
-import { buildFullTechnicalProgramAtoms, normalizeTechnicalCombinations, buildAtomLookupById, buildComboChainPreview, mergeWithRequiredLevel3Combinations, isRequiredLevel3ComboId, REQUIRED_LEVEL3_COMBO_IDS } from '../utils/techniqueCatalog.js'
+import {
+  buildFullTechnicalProgramAtoms,
+  normalizeTechnicalCombinations,
+  buildAtomLookupById,
+  mergeWithRequiredLevel3Combinations,
+  isRequiredLevel3ComboId,
+} from '../utils/techniqueCatalog.js'
 import {
   anthropometryFieldToInputString,
   birthDateMatchesBirthYear,
@@ -49,8 +54,9 @@ import {
   setPublicStudentShareDocument,
   updateStudentData,
 } from '../services/firebaseService'
+import StudentAnthropometryForm from '../components/student/StudentAnthropometryForm.jsx'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
-import StudentTechnicalAtomsList from '../components/student/StudentTechnicalAtomsList.jsx'
+import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
@@ -1229,6 +1235,64 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [handleSaveNormAcceptance],
   )
 
+  const handleAnthropometryChange = useCallback((patch) => {
+    setAnthropometry((prev) => ({ ...prev, ...patch }))
+  }, [])
+
+  const handleComboLevelChange = useCallback((comboId, level) => {
+    setTechnicalData((prev) => ({
+      ...prev,
+      [comboId]: { ...(prev[comboId] ?? {}), level },
+    }))
+  }, [])
+
+  const handleSaveCombo = useCallback(
+    (combo) =>
+      handleSaveTechnicalAtom({
+        id: combo.id,
+        number: 'III',
+        name: combo.name,
+        embedUrl: '',
+        howTo: '',
+        whyHowTo: '',
+        mistakes: '',
+        whyMistakes: '',
+      }),
+    [handleSaveTechnicalAtom],
+  )
+
+  const handleOpenComboModal = useCallback(() => {
+    setComboDraftName('')
+    setComboDraftSteps([])
+    setComboPickTier('1')
+    setComboPickAtomId('')
+    setComboModalOpen(true)
+  }, [])
+
+  const handleComboAddStep = useCallback(() => {
+    if (!comboPickAtomId) return
+    setComboDraftSteps((s) => [...s, comboPickAtomId])
+  }, [comboPickAtomId])
+
+  const handleComboMoveStep = useCallback((index, direction) => {
+    setComboDraftSteps((s) => {
+      if (direction === 'up') {
+        if (index === 0) return s
+        const c = [...s]
+        ;[c[index - 1], c[index]] = [c[index], c[index - 1]]
+        return c
+      }
+      if (index >= s.length - 1) return s
+      const c = [...s]
+      ;[c[index + 1], c[index]] = [c[index], c[index + 1]]
+      return c
+    })
+  }, [])
+
+  const handleComboRemoveStep = useCallback((index) => {
+    setComboDraftSteps((s) => s.filter((_, i) => i !== index))
+  }, [])
+
   const handleConfirmNewCombination = async () => {
     const name = comboDraftName.trim()
     if (!student?.id) {
@@ -1285,6 +1349,56 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     delete technicalMerged[comboId]
     await persistTechnicalBundle(`technical:del:${comboId}`, technicalMerged, nextCombos)
   }
+
+  const technicalCombosSectionProps = useMemo(
+    () => ({
+      combinations: technicalCombinationsResolved,
+      atomByIdLookup,
+      technicalData,
+      technicalSavingKey,
+      canSave: Boolean(student?.id),
+      onLevelChange: handleComboLevelChange,
+      onSaveCombo: handleSaveCombo,
+      onDeleteCombo: handleDeleteCombination,
+      onOpenCreateModal: handleOpenComboModal,
+      modalOpen: comboModalOpen,
+      onCloseModal: () => setComboModalOpen(false),
+      draftName: comboDraftName,
+      onDraftNameChange: setComboDraftName,
+      draftSteps: comboDraftSteps,
+      pickTier: comboPickTier,
+      onPickTierChange: setComboPickTier,
+      pickAtomId: comboPickAtomId,
+      onPickAtomIdChange: setComboPickAtomId,
+      pickOptions: comboPickOptions,
+      onAddStep: handleComboAddStep,
+      onMoveStep: handleComboMoveStep,
+      onRemoveStep: handleComboRemoveStep,
+      onConfirmCreate: handleConfirmNewCombination,
+      createBusy: Boolean(technicalSavingKey),
+    }),
+    [
+      technicalCombinationsResolved,
+      atomByIdLookup,
+      technicalData,
+      technicalSavingKey,
+      student?.id,
+      handleComboLevelChange,
+      handleSaveCombo,
+      handleDeleteCombination,
+      handleOpenComboModal,
+      comboModalOpen,
+      comboDraftName,
+      comboDraftSteps,
+      comboPickTier,
+      comboPickAtomId,
+      comboPickOptions,
+      handleComboAddStep,
+      handleComboMoveStep,
+      handleComboRemoveStep,
+      handleConfirmNewCombination,
+    ],
+  )
 
   const orderedTechnicalAtoms = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
 
@@ -1402,125 +1516,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
           <div className="mt-2 space-y-2">
             {activeTab === 'anthropometry' && (
-              <div className={vk.formGrid2}>
-                <label className="block">
-                  <span className={vk.label}>Год рожд.</span>
-                  <input
-                    type="number"
-                    min={1900}
-                    max={new Date().getFullYear()}
-                    placeholder="2013"
-                    className={vk.input}
-                    value={anthropometry.birthYear}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, birthYear: e.target.value }))
-                    }
-                  />
-                  {formatBirthYearRu(anthropometry.birthYear) ? (
-                    <span className={`mt-0.5 block ${vk.mutedXs}`}>
-                      {formatBirthYearRu(anthropometry.birthYear)}
-                    </span>
-                  ) : null}
-                </label>
-                <label className="block">
-                  <span className={vk.label}>Дата рожд.</span>
-                  <input
-                    type="date"
-                    min="1900-01-01"
-                    max={new Date().toISOString().slice(0, 10)}
-                    className={vk.input}
-                    value={anthropometry.birthDate}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, birthDate: e.target.value }))
-                    }
-                  />
-                  {anthropometry.birthDate ? (
-                    <button
-                      type="button"
-                      className={`mt-0.5 ${vk.link}`}
-                      onClick={() => setAnthropometry((prev) => ({ ...prev, birthDate: '' }))}
-                    >
-                      Очистить
-                    </button>
-                  ) : null}
-                </label>
-                <label className="block">
-                  <span className={vk.label}>Рост, см</span>
-                  <input
-                    type="number"
-                    className={vk.input}
-                    value={anthropometry.height}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, height: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="block">
-                  <span className={vk.label}>Вес, кг</span>
-                  <input
-                    type="number"
-                    className={vk.input}
-                    value={anthropometry.weight}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, weight: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="block">
-                  <span className={vk.label}>Размах, см</span>
-                  <input
-                    type="number"
-                    className={vk.input}
-                    value={anthropometry.reach}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, reach: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="block">
-                  <span className={vk.label}>Пол</span>
-                  <select
-                    className={vk.select}
-                    value={anthropometry.gender}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, gender: e.target.value }))
-                    }
-                  >
-                    <option value="M">М</option>
-                    <option value="F">Ж</option>
-                  </select>
-                </label>
-                <label className="col-span-2 block">
-                  <span className={vk.label}>Дата измерения</span>
-                  <input
-                    type="date"
-                    className={vk.input}
-                    value={anthropometry.date}
-                    onChange={(e) =>
-                      setAnthropometry((prev) => ({ ...prev, date: e.target.value }))
-                    }
-                  />
-                </label>
-
-                <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-[#e7e8ec] pt-2">
-                  {anthropometrySaveError ? (
-                    <p className={`flex-1 ${vk.error}`} role="alert">
-                      {anthropometrySaveError}
-                    </p>
-                  ) : null}
-                  {anthropometrySaveOk && !anthropometrySaveError ? (
-                    <p className={`flex-1 ${vk.success}`}>Сохранено</p>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={isAnthropometrySaving || !student?.id}
-                    onClick={handleSaveProfile}
-                    className={`ml-auto ${vk.btnPrimary}`}
-                  >
-                    {isAnthropometrySaving ? '…' : 'Сохранить'}
-                  </button>
-                </div>
-              </div>
+              <StudentAnthropometryForm
+                anthropometry={anthropometry}
+                onChange={handleAnthropometryChange}
+                saveError={anthropometrySaveError}
+                saveOk={anthropometrySaveOk}
+                isSaving={isAnthropometrySaving}
+                canSave={Boolean(student?.id)}
+                onSave={handleSaveProfile}
+              />
             )}
 
             {activeTab === 'physical' && (
@@ -1554,330 +1558,22 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             )}
 
             {activeTab === 'technical' && (
-              <div className="space-y-2">
-                {technicalAtoms.length === 0 && !loadingNorms ? (
-                  <p className={vk.mutedXs}>
-                    Список не загрузился — проверьте интернет и обновите страницу.
-                  </p>
-                ) : (
-                  <>
-                    <nav className={vk.segmentBar} aria-label="Разделы техники">
-                      <button
-                        type="button"
-                        onClick={() => setTechnicalTierTab('level1')}
-                        aria-current={technicalTierTab === 'level1' ? 'page' : undefined}
-                        className={`${vk.segmentBtn} flex-1 ${
-                          technicalTierTab === 'level1' ? vk.segmentBtnActive : vk.segmentBtnInactive
-                        }`}
-                      >
-                        Ур.1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTechnicalTierTab('level2')}
-                        aria-current={technicalTierTab === 'level2' ? 'page' : undefined}
-                        className={`${vk.segmentBtn} flex-1 ${
-                          technicalTierTab === 'level2' ? vk.segmentBtnActive : vk.segmentBtnInactive
-                        }`}
-                      >
-                        Ур.2
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTechnicalTierTab('combos')}
-                        aria-current={technicalTierTab === 'combos' ? 'page' : undefined}
-                        className={`${vk.segmentBtn} flex-1 ${
-                          technicalTierTab === 'combos' ? vk.segmentBtnActive : vk.segmentBtnInactive
-                        }`}
-                      >
-                        Комб.
-                        {technicalCombinationsResolved.length > 0 ? (
-                          <span className="ml-0.5 tabular-nums">{technicalCombinationsResolved.length}</span>
-                        ) : null}
-                      </button>
-                    </nav>
-
-                    {technicalTierTab === 'level1' && (
-                      <StudentTechnicalAtomsList
-                        atoms={orderedTechnicalAtoms}
-                        technicalData={technicalData}
-                        technicalLocksById={technicalLocksById}
-                        technicalSavingKey={technicalSavingKey}
-                        canSave={Boolean(student?.id)}
-                        showMethodDetails
-                        onLevelChange={handleTechnicalLevelChange}
-                        onSaveAtom={handleSaveTechnicalAtom}
-                      />
-                    )}
-
-                    {technicalTierTab === 'level2' && (
-                      <StudentTechnicalAtomsList
-                        atoms={level2Atoms}
-                        technicalData={technicalData}
-                        technicalLocksById={technicalLocksById}
-                        technicalSavingKey={technicalSavingKey}
-                        canSave={Boolean(student?.id)}
-                        onLevelChange={handleTechnicalLevelChange}
-                        onSaveAtom={handleSaveTechnicalAtom}
-                      />
-                    )}
-
-                    {technicalTierTab === 'combos' && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={vk.mutedXs}>Обязательные: двойка подшаг, двойка толчок</p>
-                          <button
-                            type="button"
-                            disabled={!student?.id}
-                            onClick={() => {
-                              setComboDraftName('')
-                              setComboDraftSteps([])
-                              setComboPickTier('1')
-                              setComboPickAtomId('')
-                              setComboModalOpen(true)
-                            }}
-                            className={vk.btnSecondary}
-                          >
-                            + Комбинация
-                          </button>
-                        </div>
-                        <ul className={vk.list}>
-                          {technicalCombinationsResolved.map((combo) => {
-                            const chain = buildComboChainPreview(combo.steps, atomByIdLookup)
-                            const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[combo.id]?.level)
-                            const reqNum = REQUIRED_LEVEL3_COMBO_IDS.indexOf(combo.id)
-                            const isRequiredCombo = reqNum >= 0
-                            const comboSaving = technicalSavingKey === `technical:${combo.id}`
-                            return (
-                              <li
-                                key={combo.id}
-                                id={`technical-combo-${combo.id}`}
-                                className={`scroll-mt-40 border-t border-[#e7e8ec] first:border-t-0 ${
-                                  isRequiredCombo ? 'bg-[#fffbeb]' : 'bg-white'
-                                }`}
-                              >
-                                <div className="px-2.5 py-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <h3 className="min-w-0 flex-1 truncate text-[15px] font-medium text-[#2c2d2e]">
-                                      {isRequiredCombo ? (
-                                        <span className="mr-1 text-[10px] font-bold text-amber-800">
-                                          #{reqNum + 1}
-                                        </span>
-                                      ) : (
-                                        <span className="mr-0.5 text-[#6f3ff5]">∑</span>
-                                      )}
-                                      {combo.name}
-                                    </h3>
-                                    {!isRequiredCombo ? (
-                                      <button
-                                        type="button"
-                                        disabled={!student?.id || Boolean(technicalSavingKey)}
-                                        onClick={() => handleDeleteCombination(combo.id)}
-                                        className="shrink-0 text-[12px] font-medium text-[#e64646] disabled:opacity-40"
-                                      >
-                                        Удалить
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                  <p className={`mt-0.5 line-clamp-2 ${vk.mutedXs}`} title={chain}>
-                                    {chain}
-                                  </p>
-                                  <div className="mt-1.5 flex items-center gap-1.5">
-                                    <select
-                                      className={`${vk.select} min-w-0 flex-1`}
-                                      value={atomLevelKey}
-                                      aria-label="Уровень освоения"
-                                      onChange={(e) =>
-                                        setTechnicalData((prev) => ({
-                                          ...prev,
-                                          [combo.id]: { ...(prev[combo.id] ?? {}), level: e.target.value },
-                                        }))
-                                      }
-                                    >
-                                      {TECH_DOMINANCE_OPTIONS.map((opt) => (
-                                        <option key={opt.key} value={opt.key}>
-                                          {opt.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      type="button"
-                                      disabled={!student?.id || comboSaving}
-                                      onClick={() =>
-                                        handleSaveTechnicalAtom({
-                                          id: combo.id,
-                                          number: 'III',
-                                          name: combo.name,
-                                          embedUrl: '',
-                                          howTo: '',
-                                          whyHowTo: '',
-                                          mistakes: '',
-                                          whyMistakes: '',
-                                        })
-                                      }
-                                      className={vk.btnCompact}
-                                    >
-                                      {comboSaving ? '…' : 'Сохранить'}
-                                    </button>
-                                  </div>
-                                </div>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {comboModalOpen && (
-                  <div
-                    className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-3 sm:items-center"
-                    role="presentation"
-                    onClick={() => setComboModalOpen(false)}
-                  >
-                    <div
-                      role="dialog"
-                      aria-modal="true"
-                      aria-labelledby="combo-modal-title"
-                      className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl sm:p-5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <h4 id="combo-modal-title" className="text-base font-semibold text-slate-900">
-                        Новая комбинация
-                      </h4>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Выберите атомы уровня 1 или 2 и выстройте цепочку слева направо, как на тренировке.
-                      </p>
-                      <label className="mt-4 block space-y-1">
-                        <span className="text-xs font-semibold text-slate-700">Название</span>
-                        <input
-                          type="text"
-                          value={comboDraftName}
-                          onChange={(e) => setComboDraftName(e.target.value)}
-                          placeholder="Например: двойка подшаг"
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-200"
-                        />
-                      </label>
-                      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Конструктор</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <select
-                            value={comboPickTier}
-                            onChange={(e) => {
-                              setComboPickTier(e.target.value)
-                              setComboPickAtomId('')
-                            }}
-                            className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                          >
-                            <option value="1">Уровень 1</option>
-                            <option value="2">Уровень 2</option>
-                          </select>
-                          <select
-                            value={comboPickAtomId}
-                            onChange={(e) => setComboPickAtomId(e.target.value)}
-                            className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"
-                          >
-                            <option value="">— выберите блок —</option>
-                            {comboPickOptions.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            disabled={!comboPickAtomId}
-                            onClick={() => {
-                              if (!comboPickAtomId) return
-                              setComboDraftSteps((s) => [...s, comboPickAtomId])
-                            }}
-                            className="rounded-md bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-40"
-                          >
-                            В цепочку
-                          </button>
-                        </div>
-                        {comboDraftSteps.length > 0 ? (
-                          <ul className="mt-3 flex flex-wrap items-center gap-1.5">
-                            {comboDraftSteps.map((stepId, idx) => {
-                              const label = atomByIdLookup.get(stepId)?.name ?? stepId
-                              return (
-                                <li
-                                  key={`${stepId}-${idx}`}
-                                  className="inline-flex items-center gap-0.5 rounded-md border border-violet-200 bg-white px-1.5 py-1 text-[11px]"
-                                >
-                                  <span className="max-w-[140px] truncate" title={label}>
-                                    {label}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    className="rounded px-0.5 text-slate-500 hover:text-slate-800:text-slate-200"
-                                    aria-label="Выше"
-                                    disabled={idx === 0}
-                                    onClick={() =>
-                                      setComboDraftSteps((s) => {
-                                        if (idx === 0) return s
-                                        const c = [...s]
-                                        ;[c[idx - 1], c[idx]] = [c[idx], c[idx - 1]]
-                                        return c
-                                      })
-                                    }
-                                  >
-                                    ↑
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="rounded px-0.5 text-slate-500 hover:text-slate-800:text-slate-200"
-                                    aria-label="Ниже"
-                                    disabled={idx >= comboDraftSteps.length - 1}
-                                    onClick={() =>
-                                      setComboDraftSteps((s) => {
-                                        if (idx >= s.length - 1) return s
-                                        const c = [...s]
-                                        ;[c[idx + 1], c[idx]] = [c[idx], c[idx + 1]]
-                                        return c
-                                      })
-                                    }
-                                  >
-                                    ↓
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="rounded px-0.5 text-red-600 hover:text-red-800"
-                                    aria-label="Убрать из цепочки"
-                                    onClick={() => setComboDraftSteps((s) => s.filter((_, i) => i !== idx))}
-                                  >
-                                    ×
-                                  </button>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        ) : (
-                          <p className="mt-3 text-xs text-slate-500">Цепочка пока пуста.</p>
-                        )}
-                      </div>
-                      <div className="mt-4 flex flex-wrap justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setComboModalOpen(false)}
-                          className={vk.btnSecondary}
-                        >
-                          Отмена
-                        </button>
-                        <button
-                          type="button"
-                          disabled={Boolean(technicalSavingKey)}
-                          onClick={() => void handleConfirmNewCombination()}
-                          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-45"
-                        >
-                          Сохранить комбинацию
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <StudentTechnicalTab
+                loadingNorms={loadingNorms}
+                technicalAtomsCount={technicalAtoms.length}
+                technicalTierTab={technicalTierTab}
+                onTierTabChange={setTechnicalTierTab}
+                combinationsCount={technicalCombinationsResolved.length}
+                level1Atoms={orderedTechnicalAtoms}
+                level2Atoms={level2Atoms}
+                technicalData={technicalData}
+                technicalLocksById={technicalLocksById}
+                technicalSavingKey={technicalSavingKey}
+                canSave={Boolean(student?.id)}
+                onLevelChange={handleTechnicalLevelChange}
+                onSaveAtom={handleSaveTechnicalAtom}
+                combosProps={technicalCombosSectionProps}
+              />
             )}
           </div>
 
