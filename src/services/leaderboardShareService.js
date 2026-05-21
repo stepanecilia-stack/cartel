@@ -1,11 +1,11 @@
 import {
   generateOpaqueShareToken,
   getCoachProfile,
-  getCoachStudents,
   setPublicLeaderboardShareDocument,
 } from './firebaseService.js'
+import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
 import { getTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
-import { loadLegacyNorms } from '../utils/ksrUtils.js'
+import { loadNormsOnce } from '../data/normsCache.js'
 import { loadTechnicalProgramAtomsOnce } from './technicalProgramAtomsService.js'
 import {
   buildPublicLeaderboardPayload,
@@ -20,7 +20,7 @@ async function getNormsAndAtoms() {
   if (normsCache && atomsCache) return { norms: normsCache, atoms: atomsCache }
   if (!normsAtomsPromise) {
     normsAtomsPromise = Promise.all([
-      loadLegacyNorms().catch(() => []),
+      loadNormsOnce().catch(() => []),
       loadTechnicalProgramAtomsOnce()
         .then(() => getTechnicalProgramAtomsCache().level1)
         .catch(() => getTechnicalProgramAtomsCache().level1),
@@ -72,7 +72,7 @@ export async function publishLeaderboardShare(coachId, options = {}) {
     token = generateOpaqueShareToken()
   }
 
-  const allStudents = options.students ?? (await getCoachStudents(coachId))
+  const allStudents = options.students ?? (await getCoachStudentsForCoach(coachId))
   const allIds = allStudents.map((s) => s.id)
   const curatedIds = resolveCuratedStudentIds(allIds, options.curatedStudentIds ?? profile.leaderboardCuratedStudentIds)
   const curatedSet = new Set(curatedIds)
@@ -120,5 +120,5 @@ export function scheduleLeaderboardShareSync(coachId) {
         console.warn('[scheduleLeaderboardShareSync]', id, e)
       }
     }
-  }, 900)
+  }, 4500)
 }

@@ -1,19 +1,30 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import RouteFallback from './components/RouteFallback.jsx'
 import AddStudent from './pages/AddStudent'
-import BulkNormSessionPage from './pages/BulkNormSessionPage'
-import GroupTrainingPage from './pages/GroupTrainingPage'
 import HomePage from './pages/HomePage'
-import LeaderboardPage from './pages/LeaderboardPage'
-import MotorQualitiesIndexPage from './pages/MotorQualitiesIndexPage'
-import MotorQualityDetailPage from './pages/MotorQualityDetailPage'
 import LoginCoach from './pages/LoginCoach'
 import RegisterCoach from './pages/RegisterCoach'
 import ShareProgressPage from './pages/ShareProgressPage'
 import ShareLeaderboardPage from './pages/ShareLeaderboardPage'
-import StudentPage from './pages/StudentPage'
-import TechnicalElementsPage from './pages/TechnicalElementsPage'
 import WelcomePage from './pages/WelcomePage'
+
+const StudentPage = lazy(() => import('./pages/StudentPage'))
+const BulkNormSessionPage = lazy(() => import('./pages/BulkNormSessionPage'))
+const GroupTrainingPage = lazy(() => import('./pages/GroupTrainingPage'))
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
+const MotorQualitiesIndexPage = lazy(() => import('./pages/MotorQualitiesIndexPage'))
+const MotorQualityDetailPage = lazy(() => import('./pages/MotorQualityDetailPage'))
+const TechnicalElementsPage = lazy(() => import('./pages/TechnicalElementsPage'))
+import {
+  clearCoachProfileCache,
+  setCoachProfileCache,
+} from './data/coachProfileCache.js'
+import {
+  startCoachStudentsSync,
+  stopCoachStudentsSync,
+} from './data/coachStudentsCache.js'
+import { loadNormsOnce } from './data/normsCache.js'
 import {
   logoutCoach,
   subscribeCoachProfile,
@@ -140,6 +151,10 @@ function AdminRoute({ user, coachProfile, element }) {
   return element
 }
 
+function LazyRoute({ label, children }) {
+  return <Suspense fallback={<RouteFallback label={label} />}>{children}</Suspense>
+}
+
 function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile }) {
   const programAdmin = isProgramAdmin(coachProfile)
   const location = useLocation()
@@ -175,13 +190,15 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
               user={authUser}
               element={
                 selectedStudent ? (
-                  <StudentPage
-                    student={selectedStudent}
-                    onBack={() => setSelectedStudent(null)}
-                    onStudentUpdated={(patch) =>
-                      setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : null))
-                    }
-                  />
+                  <LazyRoute label="Карточка ученика…">
+                    <StudentPage
+                      student={selectedStudent}
+                      onBack={() => setSelectedStudent(null)}
+                      onStudentUpdated={(patch) =>
+                        setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : null))
+                      }
+                    />
+                  </LazyRoute>
                 ) : (
                   <HomePage
                     onSelectStudent={setSelectedStudent}
@@ -202,7 +219,11 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
           element={
             <ProtectedRoute
               user={authUser}
-              element={<GroupTrainingPage coachId={authUser?.uid} />}
+              element={
+                <LazyRoute label="Групповая тренировка…">
+                  <GroupTrainingPage coachId={authUser?.uid} />
+                </LazyRoute>
+              }
             />
           }
         />
@@ -211,13 +232,26 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
           element={
             <ProtectedRoute
               user={authUser}
-              element={<BulkNormSessionPage coachId={authUser?.uid} />}
+              element={
+                <LazyRoute label="Нормативы…">
+                  <BulkNormSessionPage coachId={authUser?.uid} />
+                </LazyRoute>
+              }
             />
           }
         />
         <Route
           path="/qualities"
-          element={<ProtectedRoute user={authUser} element={<MotorQualitiesIndexPage />} />}
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={
+                <LazyRoute label="Качества…">
+                  <MotorQualitiesIndexPage />
+                </LazyRoute>
+              }
+            />
+          }
         />
         <Route
           path="/technical-elements"
@@ -225,7 +259,11 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
             <AdminRoute
               user={authUser}
               coachProfile={coachProfile}
-              element={<TechnicalElementsPage />}
+              element={
+                <LazyRoute label="Элементы…">
+                  <TechnicalElementsPage />
+                </LazyRoute>
+              }
             />
           }
         />
@@ -235,10 +273,12 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
             <ProtectedRoute
               user={authUser}
               element={
-                <MotorQualityDetailPage
-                  coachId={authUser?.uid}
-                  onOpenStudent={openStudentFromQualityPage}
-                />
+                <LazyRoute label="Качество…">
+                  <MotorQualityDetailPage
+                    coachId={authUser?.uid}
+                    onOpenStudent={openStudentFromQualityPage}
+                  />
+                </LazyRoute>
               }
             />
           }
@@ -249,11 +289,13 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
             <ProtectedRoute
               user={authUser}
               element={
-                <LeaderboardPage
-                  scope="coach"
-                  coachId={authUser?.uid}
-                  onSelectStudent={openStudentFromLeaderboard}
-                />
+                <LazyRoute label="Рейтинг…">
+                  <LeaderboardPage
+                    scope="coach"
+                    coachId={authUser?.uid}
+                    onSelectStudent={openStudentFromLeaderboard}
+                  />
+                </LazyRoute>
               }
             />
           }
@@ -263,7 +305,11 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
           element={
             <ProtectedRoute
               user={authUser}
-              element={<LeaderboardPage scope="school" />}
+              element={
+                <LazyRoute label="Рейтинг школы…">
+                  <LeaderboardPage scope="school" />
+                </LazyRoute>
+              }
             />
           }
         />
@@ -295,6 +341,8 @@ function App() {
       if (!user) {
         setCoachProfile(null)
         setSelectedStudent(null)
+        clearCoachProfileCache()
+        stopCoachStudentsSync()
       }
     })
     return () => unsubscribe()
@@ -304,16 +352,27 @@ function App() {
     if (!authUser?.uid) return undefined
     return subscribeCoachProfile(
       authUser.uid,
-      (profile) => setCoachProfile(profile),
+      (profile) => {
+        setCoachProfile(profile)
+        setCoachProfileCache(authUser.uid, profile)
+      },
       (err) => {
         console.error('Не удалось загрузить профиль тренера:', err)
         setCoachProfile(null)
+        clearCoachProfileCache()
       },
     )
   }, [authUser?.uid])
 
   useEffect(() => {
+    if (!authUser?.uid) return undefined
+    startCoachStudentsSync(authUser.uid)
+    return () => stopCoachStudentsSync()
+  }, [authUser?.uid])
+
+  useEffect(() => {
     if (!authUser) return undefined
+    loadNormsOnce().catch(() => {})
     const unsubExercises = subscribeMotorQualityExercises()
     const unsubAtoms = subscribeTechnicalProgramAtoms()
     return () => {

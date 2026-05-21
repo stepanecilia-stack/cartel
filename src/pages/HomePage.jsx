@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
-import { getCoachStudents } from '../services/firebaseService'
+import { useCoachStudents } from '../hooks/useCoachStudents.js'
 import { findGoldStandardRow } from '../utils/ksrUtils'
 import { resolveStudentLastChange } from '../utils/studentLastChange.js'
 import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
@@ -31,39 +31,13 @@ function formatDashboardWeightCategoryShort(fullLine) {
 }
 
 function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
-  const [students, setStudents] = useState([])
-  const [loadError, setLoadError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+  const { students, isLoading, loadError } = useCoachStudents(coachId)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [genderFilter, setGenderFilter] = useState('all')
   const [birthYearFilter, setBirthYearFilter] = useState('all')
   const [weightFilter, setWeightFilter] = useState('all')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
-
-  const loadStudents = useCallback(async () => {
-    if (!coachId) {
-      setStudents([])
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const data = await getCoachStudents(coachId)
-      setStudents(data)
-      setLoadError('')
-    } catch (error) {
-      console.error('Ошибка загрузки students:', error)
-      setStudents([])
-      setLoadError('Не удалось загрузить список учеников из интернета. Проверьте связь и вход в аккаунт.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [coachId])
-
-  useEffect(() => {
-    loadStudents()
-  }, [loadStudents])
 
   const studentsWithKsr = useMemo(
     () =>
@@ -221,7 +195,6 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
         onClose={() => setAddModalOpen(false)}
         coachId={coachId}
         studentIds={studentIds}
-        onListChanged={loadStudents}
       />
       <div className="mx-auto max-w-6xl space-y-2">
         <header className="space-y-2">

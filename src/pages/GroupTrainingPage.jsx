@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
-import {
-  getCoachStudents,
-  updateStudentData,
-} from '../services/firebaseService'
+import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
+import { updateStudentData } from '../services/firebaseService'
 import { loadLegacyTechnicalAtoms, TECHNIQUE_LEVEL2_ATOMS } from '../utils/ksrUtils'
 import {
   orderTechnicalAtomsForProgram,
@@ -451,7 +449,7 @@ export default function GroupTrainingPage({ coachId }) {
     const run = async () => {
       try {
         const [data, atoms] = await Promise.all([
-          getCoachStudents(coachId),
+          getCoachStudentsForCoach(coachId),
           loadLegacyTechnicalAtoms(),
         ])
         if (cancelled) return

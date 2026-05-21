@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getCoachStudents } from '../services/firebaseService.js'
+import {
+  getActiveCoachStudentsCoachId,
+  getCoachStudentsCache,
+  getCoachStudentsCacheError,
+  isCoachStudentsCacheReady,
+  startCoachStudentsSync,
+  subscribeCoachStudentsCache,
+} from '../data/coachStudentsCache.js'
 import {
   pickCoachStudentsWithAge,
   pickStudentsInSensitivePeriodForQuality,
@@ -25,49 +32,49 @@ export function useStudentsInSensitivePeriodForQuality(coachId, qualityTitle) {
     setOtherStudents((prev) => prev.map(merge))
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      if (!coachId || !qualityTitle) {
-        setStudents([])
-        setOtherStudents([])
-        setLoading(false)
-        setError('')
-        return
-      }
-
-      setLoading(true)
+  const applyFromCache = useCallback(() => {
+    if (!coachId || !qualityTitle) {
+      setStudents([])
+      setOtherStudents([])
+      setLoading(false)
       setError('')
-      try {
-        const all = await getCoachStudents(coachId)
-        if (cancelled) return
-        const sensitive = pickStudentsInSensitivePeriodForQuality(all, qualityTitle)
-        const withAge = pickCoachStudentsWithAge(all)
-        setStudents(sensitive)
-        setOtherStudents(
-          pickStudentsNotInIdList(
-            withAge,
-            sensitive.map((s) => s.id),
-          ),
-        )
-      } catch (err) {
-        console.error('useStudentsInSensitivePeriodForQuality', err)
-        if (!cancelled) {
-          setStudents([])
-          setOtherStudents([])
-          setError('Не удалось загрузить список спортсменов.')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+      return
+    }
+    if (getActiveCoachStudentsCoachId() !== coachId) return
+
+    if (!isCoachStudentsCacheReady()) {
+      setLoading(true)
+      setError(getCoachStudentsCacheError())
+      return
     }
 
-    load()
-    return () => {
-      cancelled = true
+    const all = getCoachStudentsCache()
+    const sensitive = pickStudentsInSensitivePeriodForQuality(all, qualityTitle)
+    const withAge = pickCoachStudentsWithAge(all)
+    setStudents(sensitive)
+    setOtherStudents(
+      pickStudentsNotInIdList(
+        withAge,
+        sensitive.map((s) => s.id),
+      ),
+    )
+    setLoading(false)
+    setError(getCoachStudentsCacheError())
+  }, [coachId, qualityTitle])
+
+  useEffect(() => {
+    if (!coachId || !qualityTitle) {
+      setStudents([])
+      setOtherStudents([])
+      setLoading(false)
+      setError('')
+      return undefined
     }
-  }, [coachId, qualityTitle, refreshKey])
+
+    startCoachStudentsSync(coachId)
+    applyFromCache()
+    return subscribeCoachStudentsCache(applyFromCache)
+  }, [coachId, qualityTitle, refreshKey, applyFromCache])
 
   return { students, otherStudents, loading, error, reload, patchStudent }
 }

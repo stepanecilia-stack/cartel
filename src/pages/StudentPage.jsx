@@ -8,7 +8,6 @@ import {
   evaluateLegacyTest,
   getNormsForAthlete,
   getWeights,
-  loadLegacyNorms,
   loadLegacyTechnicalAtoms,
   normalizeTechnicalDominanceKey,
   shortTypageLabel,
@@ -32,10 +31,11 @@ import {
 } from '../utils/studentModel'
 import BackToHomeLink from '../components/layout/BackToHomeLink.jsx'
 import { ETALON_MODEL_PANEL_CLASS, vk } from '../utils/vkUi.js'
+import { loadNormsOnce } from '../data/normsCache.js'
 import { buildPublicSharePayload, isValidProgressShareToken } from '../utils/publicSharePayload'
+import { scheduleStudentShareSync } from '../services/studentShareSyncService.js'
 import {
   buildNormAcceptanceHistoryEntry,
-  formatNormAcceptedMeta,
   mergeNormAcceptanceHistory,
 } from '../utils/normAcceptanceHistory'
 import { normAcceptanceSectionLabel, STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections'
@@ -49,20 +49,14 @@ import {
   setPublicStudentShareDocument,
   updateStudentData,
 } from '../services/firebaseService'
-import TechnicalAtomRow from '../components/TechnicalAtomRow.jsx'
+import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
+import StudentTechnicalAtomsList from '../components/student/StudentTechnicalAtomsList.jsx'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
-import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
-import { normCardToneByStatus, normScoreToneByStatus } from '../utils/normCardTone'
 import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
 import SensitivePeriodTimer from '../components/SensitivePeriodTimer'
 import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
-/** Стабильный id карточки норматива на вкладке «Физика» / «Функционал». */
-function normCardDomId(category, testId) {
-  const safe = String(testId ?? '').replace(/[^a-zA-Z0-9_-]/g, '_')
-  return `norm-card-${category}-${safe}`
-}
 
 
 const TAB_ITEMS = [
@@ -281,7 +275,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
     const loadLegacyData = async () => {
       try {
-        const [norms, atoms] = await Promise.all([loadLegacyNorms(), loadLegacyTechnicalAtoms()])
+        const [norms, atoms] = await Promise.all([loadNormsOnce(), loadLegacyTechnicalAtoms()])
         setAllNorms(norms)
         if (atoms.length > 0) {
           setProgramAtomsCache((prev) => ({
@@ -549,7 +543,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     let atoms = technicalAtoms
     if (!norms.length) {
       try {
-        norms = await loadLegacyNorms()
+        norms = await loadNormsOnce()
         setAllNorms(norms)
       } catch {
         norms = []
@@ -801,7 +795,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     return 'bg-emerald-500'
   }
 
-  const updateNormResult = (category, norm, rawValue) => {
+  const updateNormResult = useCallback((category, norm, rawValue) => {
     const set =
       category === 'physical' ? setPhysicalResults : setFunctionalResults
     if (rawValue === '' || rawValue === null || rawValue === undefined) {
@@ -870,7 +864,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         date: new Date().toISOString().slice(0, 10),
       },
     }))
-  }
+  }, [])
 
   const buildStudentUpdatePayload = (
     physicalMerged,
@@ -948,19 +942,17 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
   }
 
-  const syncPublicShareIfNeeded = async (weightHistoryArg, testsExact = null) => {
+  const syncPublicShareIfNeeded = (weightHistoryArg, testsExact = null) => {
     const shareTok =
       typeof student.progressShareToken === 'string' ? student.progressShareToken : ''
     if (!isValidProgressShareToken(shareTok)) return
-    try {
+    scheduleStudentShareSync(shareTok, async () => {
       const sharePayload = await buildSharePayloadForPublic(weightHistoryArg, testsExact)
       await setPublicStudentShareDocument(shareTok, {
         payload: sharePayload,
         ownerCoachIds: ownerCoachIdsForShare,
       })
-    } catch (e) {
-      console.warn('Не удалось обновить публичную страницу прогресса:', e)
-    }
+    })
   }
 
   const resolveCoachDisplayName = async (coachId) => {
@@ -1027,7 +1019,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       setFunctionalResults(functionalMerged)
       setAnthropometrySaveOk(true)
       onStudentUpdated?.(payload)
-      await syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
     } catch (err) {
       console.error(err)
       setAnthropometrySaveError('Не удалось сохранить. Проверьте интернет и права доступа к базе данных.')
@@ -1116,7 +1108,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       else setFunctionalResults(functionalMerged)
       setSaveOk(true)
       onStudentUpdated?.(payload)
-      await syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
     } catch (err) {
       console.error(err)
       setSaveError('Не удалось сохранить норматив.')
@@ -1172,7 +1164,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       setTechnicalCombinations(mergeWithRequiredLevel3Combinations(combinationsList))
       setSaveOk(true)
       onStudentUpdated?.(payload)
-      await syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
       return true
     } catch (err) {
       console.error(err)
@@ -1183,32 +1175,59 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
   }
 
-  const handleSaveTechnicalAtom = async (atom) => {
-    if (!student?.id) {
-      setSaveError('Сначала выберите ученика в списке на главной странице.')
-      return
-    }
-    const atomId = atom?.id
-    if (!atomId) return
-    const fresh = await getStudentById(student.id)
-    if (!fresh) {
-      setSaveError('Ученик не найден в базе.')
-      return
-    }
+  const handleSaveTechnicalAtom = useCallback(
+    async (atom) => {
+      if (!student?.id) {
+        setSaveError('Сначала выберите ученика в списке на главной странице.')
+        return
+      }
+      const atomId = atom?.id
+      if (!atomId) return
+      const fresh = await getStudentById(student.id)
+      if (!fresh) {
+        setSaveError('Ученик не найден в базе.')
+        return
+      }
 
-    const serverTechnical = emptyTechnicalRecord(fresh.technicalData)
-    const localAtom = technicalData[atomId] ?? {}
-    const technicalMerged = {
-      ...serverTechnical,
-      [atomId]: {
-        ...(serverTechnical[atomId] ?? {}),
-        ...localAtom,
-        level: normalizeTechnicalDominanceKey(localAtom.level),
-      },
-    }
+      const serverTechnical = emptyTechnicalRecord(fresh.technicalData)
+      const localAtom = technicalData[atomId] ?? {}
+      const technicalMerged = {
+        ...serverTechnical,
+        [atomId]: {
+          ...(serverTechnical[atomId] ?? {}),
+          ...localAtom,
+          level: normalizeTechnicalDominanceKey(localAtom.level),
+        },
+      }
 
-    await persistTechnicalBundle(`technical:${atomId}`, technicalMerged, technicalCombinations)
-  }
+      await persistTechnicalBundle(`technical:${atomId}`, technicalMerged, technicalCombinations)
+    },
+    [student?.id, technicalData, technicalCombinations],
+  )
+
+  const handleTechnicalLevelChange = useCallback((atomId, level) => {
+    setTechnicalData((prev) => ({
+      ...prev,
+      [atomId]: { ...(prev[atomId] ?? {}), level },
+    }))
+  }, [])
+
+  const handlePhysicalNormChange = useCallback(
+    (norm, raw) => updateNormResult('physical', norm, raw),
+    [updateNormResult],
+  )
+  const handleFunctionalNormChange = useCallback(
+    (norm, raw) => updateNormResult('functional', norm, raw),
+    [updateNormResult],
+  )
+  const handlePhysicalNormSave = useCallback(
+    (norm) => handleSaveNormAcceptance('physical', norm),
+    [handleSaveNormAcceptance],
+  )
+  const handleFunctionalNormSave = useCallback(
+    (norm) => handleSaveNormAcceptance('functional', norm),
+    [handleSaveNormAcceptance],
+  )
 
   const handleConfirmNewCombination = async () => {
     const name = comboDraftName.trim()
@@ -1265,102 +1284,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     const technicalMerged = { ...serverTechnical, ...technicalData }
     delete technicalMerged[comboId]
     await persistTechnicalBundle(`technical:del:${comboId}`, technicalMerged, nextCombos)
-  }
-
-  const renderNormInputs = (category, norms, values) => {
-    if (loadingNorms) {
-      return <p className={vk.muted}>Загрузка…</p>
-    }
-    if (norms.length === 0) {
-      return (
-        <p className={vk.mutedXs}>
-          Нет нормативов для возраста и пола. Укажите год рождения и пол на вкладке «Карта».
-        </p>
-      )
-    }
-    return (
-      <ul className={vk.list}>
-        {norms.map((norm) => {
-          const row = getNormValueByTestId(values, norm.testId)
-          const displayVal =
-            row?.resultRaw ??
-            (row?.result !== undefined && row?.result !== null
-              ? isMinuteSecondNorm(norm)
-                ? formatMinutesToMinuteSecond(row.result)
-                : String(row.result)
-              : '')
-          const inputType = isMinuteSecondNorm(norm) ? 'text' : 'number'
-          const goalLabel =
-            Number.isFinite(norm.gold)
-              ? isMinuteSecondNorm(norm)
-                ? formatMinutesToMinuteSecond(norm.gold)
-                : String(norm.gold)
-              : '—'
-          const cardTone = normCardToneByStatus(row?.status)
-          const scoreTone = normScoreToneByStatus(row?.status)
-          const acceptedMeta = formatNormAcceptedMeta(row)
-          const normBusy = normSavingKey === `${category}:${norm.testId}`
-          const inputPlaceholder = isMinuteSecondNorm(norm) ? 'м:сс' : 'число'
-
-          return (
-            <li
-              key={norm.testId}
-              id={normCardDomId(category, norm.testId)}
-              className={`scroll-mt-40 border-t border-[#e7e8ec] first:border-t-0 ${cardTone}`}
-            >
-              <div className="px-2.5 py-2">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-medium leading-5 text-[#2c2d2e]">{norm.testName}</p>
-                    {norm.description ? (
-                      <p className="line-clamp-1 text-[11px] leading-4 text-[#818c99]">{norm.description}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1" title="Золото">
-                    <NormGoldGoalIcon />
-                    <span className="text-[12px] font-semibold tabular-nums text-amber-800">
-                      {goalLabel}
-                      <span className="ml-0.5 font-normal text-[#818c99]">{norm.unit}</span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <input
-                    type={inputType}
-                    inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
-                    step={inputType === 'number' ? 'any' : undefined}
-                    aria-label={`Результат, ${norm.unit}`}
-                    placeholder={inputPlaceholder}
-                    className={`${vk.input} w-[5.5rem] min-w-0 shrink-0 sm:w-24`}
-                    value={displayVal}
-                    onChange={(e) => updateNormResult(category, norm, e.target.value)}
-                  />
-                  {row && Number.isFinite(row.result) ? (
-                    <span className={`flex items-center gap-1 text-[12px] tabular-nums ${scoreTone}`}>
-                      <span className="font-semibold">{row.normalizedScore}</span>
-                      <NormMedalChip status={row.status} size="sm" />
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={!student?.id || normBusy || !row || !Number.isFinite(row.result)}
-                    onClick={() => handleSaveNormAcceptance(category, norm)}
-                    className={`${vk.btnCompact} ml-auto disabled:opacity-45`}
-                  >
-                    {normBusy ? '…' : 'Сохранить'}
-                  </button>
-                </div>
-
-                {acceptedMeta ? (
-                  <p className={`mt-1 truncate ${vk.mutedXs}`}>{acceptedMeta}</p>
-                ) : null}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    )
   }
 
   const orderedTechnicalAtoms = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
@@ -1601,11 +1524,33 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             )}
 
             {activeTab === 'physical' && (
-              <div className="space-y-2">{renderNormInputs('physical', physicalNorms, physicalResults)}</div>
+              <div className="space-y-2">
+                <StudentNormsSection
+                  category="physical"
+                  norms={physicalNorms}
+                  values={physicalResults}
+                  loadingNorms={loadingNorms}
+                  normSavingKey={normSavingKey}
+                  canSave={Boolean(student?.id)}
+                  onResultChange={handlePhysicalNormChange}
+                  onSaveAcceptance={handlePhysicalNormSave}
+                />
+              </div>
             )}
 
             {activeTab === 'functional' && (
-              <div className="space-y-2">{renderNormInputs('functional', functionalNorms, functionalResults)}</div>
+              <div className="space-y-2">
+                <StudentNormsSection
+                  category="functional"
+                  norms={functionalNorms}
+                  values={functionalResults}
+                  loadingNorms={loadingNorms}
+                  normSavingKey={normSavingKey}
+                  canSave={Boolean(student?.id)}
+                  onResultChange={handleFunctionalNormChange}
+                  onSaveAcceptance={handleFunctionalNormSave}
+                />
+              </div>
             )}
 
             {activeTab === 'technical' && (
@@ -1653,54 +1598,28 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                     </nav>
 
                     {technicalTierTab === 'level1' && (
-                      <ul className={vk.list}>
-                        {orderedTechnicalAtoms.map((atom) => {
-                          const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
-                          const isLockedBySequence = Boolean(technicalLocksById[atom.id])
-                          return (
-                            <TechnicalAtomRow
-                              key={atom.id}
-                              atom={atom}
-                              levelKey={atomLevelKey}
-                              locked={isLockedBySequence}
-                              saving={technicalSavingKey === `technical:${atom.id}`}
-                              canSave={Boolean(student?.id)}
-                              onLevelChange={(level) =>
-                                setTechnicalData((prev) => ({
-                                  ...prev,
-                                  [atom.id]: { ...(prev[atom.id] ?? {}), level },
-                                }))
-                              }
-                              onSave={() => handleSaveTechnicalAtom(atom)}
-                              showMethodDetails
-                            />
-                          )
-                        })}
-                      </ul>
+                      <StudentTechnicalAtomsList
+                        atoms={orderedTechnicalAtoms}
+                        technicalData={technicalData}
+                        technicalLocksById={technicalLocksById}
+                        technicalSavingKey={technicalSavingKey}
+                        canSave={Boolean(student?.id)}
+                        showMethodDetails
+                        onLevelChange={handleTechnicalLevelChange}
+                        onSaveAtom={handleSaveTechnicalAtom}
+                      />
                     )}
 
                     {technicalTierTab === 'level2' && (
-                      <ul className={vk.list}>
-                        {level2Atoms.map((atom) => {
-                          const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
-                          return (
-                            <TechnicalAtomRow
-                              key={atom.id}
-                              atom={atom}
-                              levelKey={atomLevelKey}
-                              saving={technicalSavingKey === `technical:${atom.id}`}
-                              canSave={Boolean(student?.id)}
-                              onLevelChange={(level) =>
-                                setTechnicalData((prev) => ({
-                                  ...prev,
-                                  [atom.id]: { ...(prev[atom.id] ?? {}), level },
-                                }))
-                              }
-                              onSave={() => handleSaveTechnicalAtom(atom)}
-                            />
-                          )
-                        })}
-                      </ul>
+                      <StudentTechnicalAtomsList
+                        atoms={level2Atoms}
+                        technicalData={technicalData}
+                        technicalLocksById={technicalLocksById}
+                        technicalSavingKey={technicalSavingKey}
+                        canSave={Boolean(student?.id)}
+                        onLevelChange={handleTechnicalLevelChange}
+                        onSaveAtom={handleSaveTechnicalAtom}
+                      />
                     )}
 
                     {technicalTierTab === 'combos' && (

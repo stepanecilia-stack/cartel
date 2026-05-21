@@ -21,6 +21,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
+import { getCoachProfileCache } from '../data/coachProfileCache.js'
 import { inferUpdateSectionFromPayload } from '../utils/studentUpdateSections.js'
 
 const trimEnv = (value) => (typeof value === 'string' ? value.trim() : value)
@@ -281,6 +282,16 @@ export async function resolveCurrentCoachAuditFields() {
   const safeAuth = ensureAuth()
   const uid = safeAuth.currentUser?.uid
   if (!uid) return {}
+
+  const cached = getCoachProfileCache(uid)
+  if (cached) {
+    const name = [cached.firstName, cached.lastName].filter(Boolean).join(' ').trim()
+    return {
+      lastUpdatedByCoachId: uid,
+      lastUpdatedByCoachName: name || safeAuth.currentUser?.email || 'Тренер',
+    }
+  }
+
   try {
     const profile = await getCoachProfile(uid)
     const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()

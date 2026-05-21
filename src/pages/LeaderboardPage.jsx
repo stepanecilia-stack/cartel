@@ -11,7 +11,7 @@ import {
   buildLeaderboardRows,
 } from '../utils/leaderboardMetrics.js'
 import { getTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
-import { loadLegacyNorms } from '../utils/ksrUtils.js'
+import { loadNormsOnce } from '../data/normsCache.js'
 import { loadTechnicalProgramAtomsOnce } from '../services/technicalProgramAtomsService.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
 import { vk } from '../utils/vkUi.js'
@@ -44,7 +44,7 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
     setSchoolLoading(true)
     Promise.all([
       getStudents(),
-      loadLegacyNorms().catch(() => []),
+      loadNormsOnce().catch(() => []),
       loadTechnicalProgramAtomsOnce().then(() => getTechnicalProgramAtomsCache().level1),
     ])
       .then(([students, norms, atoms]) => {
@@ -107,7 +107,7 @@ export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
     clearTimeout(syncTimerRef.current)
     syncTimerRef.current = setTimeout(() => {
       coach.syncShareNow(category).catch((e) => console.warn('leaderboard sync', e))
-    }, 700)
+    }, 3000)
     return () => clearTimeout(syncTimerRef.current)
   }, [
     isSchool,

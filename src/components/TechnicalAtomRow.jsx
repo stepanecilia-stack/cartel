@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils'
 import { vk } from '../utils/vkUi.js'
 import TechnicalAtomMedia from './TechnicalAtomMedia.jsx'
@@ -5,7 +6,7 @@ import TechnicalAtomMedia from './TechnicalAtomMedia.jsx'
 /**
  * Строка техники: слева название + уровень + сохранить, справа превью GIF/WebM.
  */
-export default function TechnicalAtomRow({
+function TechnicalAtomRow({
   atom,
   levelKey,
   locked = false,
@@ -85,3 +86,5 @@ export default function TechnicalAtomRow({
     </li>
   )
 }
+
+export default memo(TechnicalAtomRow)

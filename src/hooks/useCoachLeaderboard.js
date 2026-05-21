@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  getActiveCoachStudentsCoachId,
+  getCoachStudentsCache,
+  getCoachStudentsCacheError,
+  isCoachStudentsCacheReady,
+  startCoachStudentsSync,
+  subscribeCoachStudentsCache,
+} from '../data/coachStudentsCache.js'
+import { loadNormsOnce } from '../data/normsCache.js'
+import {
   subscribeCoachProfile,
-  subscribeCoachStudents,
   updateCoachLeaderboardSettings,
 } from '../services/firebaseService.js'
 import {
@@ -9,7 +17,6 @@ import {
   resolveCuratedStudentIds,
 } from '../services/leaderboardShareService.js'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
-import { loadLegacyNorms } from '../utils/ksrUtils.js'
 import { loadTechnicalProgramAtomsOnce } from '../services/technicalProgramAtomsService.js'
 import { isValidLeaderboardShareToken } from '../utils/publicLeaderboardPayload.js'
 
@@ -49,21 +56,20 @@ export function useCoachLeaderboard(coachId) {
       if (studentsReady && profileReady && normsReady) setIsLoading(false)
     }
 
-    const unsubStudents = subscribeCoachStudents(
-      coachId,
-      (list) => {
-        setAllStudents(list)
-        studentsReady = true
+    startCoachStudentsSync(coachId)
+    const syncStudentsFromCache = () => {
+      if (getActiveCoachStudentsCoachId() !== coachId) return
+      setAllStudents(getCoachStudentsCache())
+      studentsReady = isCoachStudentsCacheReady()
+      if (studentsReady) {
         setIsLive(true)
+        const err = getCoachStudentsCacheError()
+        if (err) setLoadError(err)
         maybeDone()
-      },
-      (err) => {
-        console.error(err)
-        setLoadError('Не удалось подписаться на список учеников.')
-        studentsReady = true
-        maybeDone()
-      },
-    )
+      }
+    }
+    syncStudentsFromCache()
+    const unsubStudentsCache = subscribeCoachStudentsCache(syncStudentsFromCache)
 
     const unsubProfile = subscribeCoachProfile(
       coachId,
@@ -85,7 +91,7 @@ export function useCoachLeaderboard(coachId) {
       .then(syncAtomsFromCache)
       .catch(() => syncAtomsFromCache())
 
-    loadLegacyNorms()
+    loadNormsOnce()
       .then((norms) => setAllNorms(norms))
       .catch(() => setAllNorms([]))
       .finally(() => {
@@ -94,7 +100,7 @@ export function useCoachLeaderboard(coachId) {
       })
 
     return () => {
-      unsubStudents()
+      unsubStudentsCache()
       unsubProfile()
       unsubAtomsCache()
       setIsLive(false)

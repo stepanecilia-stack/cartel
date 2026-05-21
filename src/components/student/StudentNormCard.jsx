@@ -1,0 +1,100 @@
+import { memo } from 'react'
+import { NormGoldGoalIcon, NormMedalChip } from '../NormMedals'
+import { normCardToneByStatus, normScoreToneByStatus } from '../../utils/normCardTone'
+import { formatNormAcceptedMeta } from '../../utils/normAcceptanceHistory'
+import { vk } from '../../utils/vkUi.js'
+
+/** @param {string} category @param {string} testId */
+export function normCardDomId(category, testId) {
+  const safe = String(testId ?? '').replace(/[^a-zA-Z0-9_-]/g, '_')
+  return `norm-card-${category}-${safe}`
+}
+
+/**
+ * @param {{
+ *   category: string,
+ *   norm: object,
+ *   row: object | undefined,
+ *   displayVal: string,
+ *   inputType: string,
+ *   goalLabel: string,
+ *   inputPlaceholder: string,
+ *   normBusy: boolean,
+ *   canSave: boolean,
+ *   onResultChange: (value: string) => void,
+ *   onSave: () => void,
+ * }} props
+ */
+function StudentNormCard({
+  category,
+  norm,
+  row,
+  displayVal,
+  inputType,
+  goalLabel,
+  inputPlaceholder,
+  normBusy,
+  canSave,
+  onResultChange,
+  onSave,
+}) {
+  const cardTone = normCardToneByStatus(row?.status)
+  const scoreTone = normScoreToneByStatus(row?.status)
+  const acceptedMeta = formatNormAcceptedMeta(row)
+
+  return (
+    <li
+      id={normCardDomId(category, norm.testId)}
+      className={`scroll-mt-40 border-t border-[#e7e8ec] first:border-t-0 ${cardTone}`}
+    >
+      <div className="px-2.5 py-2">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-medium leading-5 text-[#2c2d2e]">{norm.testName}</p>
+            {norm.description ? (
+              <p className="line-clamp-1 text-[11px] leading-4 text-[#818c99]">{norm.description}</p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-1" title="Золото">
+            <NormGoldGoalIcon />
+            <span className="text-[12px] font-semibold tabular-nums text-amber-800">
+              {goalLabel}
+              <span className="ml-0.5 font-normal text-[#818c99]">{norm.unit}</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <input
+            type={inputType}
+            inputMode={inputType === 'text' ? 'numeric' : 'decimal'}
+            step={inputType === 'number' ? 'any' : undefined}
+            aria-label={`Результат, ${norm.unit}`}
+            placeholder={inputPlaceholder}
+            className={`${vk.input} w-[5.5rem] min-w-0 shrink-0 sm:w-24`}
+            value={displayVal}
+            onChange={(e) => onResultChange(e.target.value)}
+          />
+          {row && Number.isFinite(row.result) ? (
+            <span className={`flex items-center gap-1 text-[12px] tabular-nums ${scoreTone}`}>
+              <span className="font-semibold">{row.normalizedScore}</span>
+              <NormMedalChip status={row.status} size="sm" />
+            </span>
+          ) : null}
+          <button
+            type="button"
+            disabled={!canSave || normBusy || !row || !Number.isFinite(row.result)}
+            onClick={onSave}
+            className={`${vk.btnCompact} ml-auto disabled:opacity-45`}
+          >
+            {normBusy ? '…' : 'Сохранить'}
+          </button>
+        </div>
+
+        {acceptedMeta ? <p className={`mt-1 truncate ${vk.mutedXs}`}>{acceptedMeta}</p> : null}
+      </div>
+    </li>
+  )
+}
+
+export default memo(StudentNormCard)

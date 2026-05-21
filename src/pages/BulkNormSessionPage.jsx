@@ -1,15 +1,16 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
+import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
+import { loadNormsOnce } from '../data/normsCache.js'
 import {
   getCoachProfile,
-  getCoachStudents,
   getCurrentCoachId,
   getStudentById,
   updateStudentData,
 } from '../services/firebaseService'
 import { filterAthletesWithNorm, getAthleteNormForTest, listNormCatalogOptions } from '../utils/bulkNormSession.js'
-import { loadLegacyNorms, loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
+import { loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
 import { formatNormAcceptedMeta } from '../utils/normAcceptanceHistory.js'
 import {
   applyNormRawInput,
@@ -73,8 +74,8 @@ export default function BulkNormSessionPage({ coachId }) {
     setLoadError('')
     try {
       const [list, norms, atoms] = await Promise.all([
-        getCoachStudents(coachId),
-        loadLegacyNorms().catch(() => []),
+        getCoachStudentsForCoach(coachId),
+        loadNormsOnce().catch(() => []),
         loadLegacyTechnicalAtoms().catch(() => []),
       ])
       setStudents(list)
