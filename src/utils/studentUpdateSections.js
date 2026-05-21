@@ -9,6 +9,7 @@ export const STUDENT_UPDATE_SECTION = {
   groupTraining: 'Групповая тренировка',
   publicShare: 'Публичная ссылка',
   motorQualityWork: 'Двигательные качества',
+  competitionPrep: 'Подготовка к старту',
   card: 'Карточка ученика',
 }
 
@@ -54,6 +55,10 @@ export function inferUpdateSectionFromPayload(payload) {
     if (physKeys > 0 && funcKeys === 0) return STUDENT_UPDATE_SECTION.normPhysical
     if (funcKeys > 0 && physKeys === 0) return STUDENT_UPDATE_SECTION.normFunctional
     if (physKeys > 0 || funcKeys > 0) return 'Нормативы'
+  }
+
+  if (payload.competitionDate != null || payload.competitionTitle != null) {
+    return STUDENT_UPDATE_SECTION.competitionPrep
   }
 
   if (

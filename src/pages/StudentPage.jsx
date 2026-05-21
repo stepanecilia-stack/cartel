@@ -55,8 +55,14 @@ import {
   updateStudentData,
 } from '../services/firebaseService'
 import StudentAnthropometryForm from '../components/student/StudentAnthropometryForm.jsx'
+import StudentCompetitionPrepPanel from '../components/student/StudentCompetitionPrepPanel.jsx'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
 import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
+import {
+  competitionDateToInputString,
+  daysUntilCompetition,
+  normalizeCompetitionDateISO,
+} from '../utils/competitionDate.js'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
@@ -67,6 +73,7 @@ import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
 
 const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Карта спортсмена', shortLabel: 'Карта' },
+  { id: 'competition', label: 'Подготовка к старту', shortLabel: 'Старт' },
   { id: 'physical', label: 'Физическое развитие', shortLabel: 'Физика' },
   { id: 'functional', label: 'Функциональная готовность', shortLabel: 'Функционал' },
   { id: 'technical', label: 'Техника', shortLabel: 'Техника' },
@@ -272,6 +279,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareFlash, setShareFlash] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
+  const [competitionDate, setCompetitionDate] = useState('')
+  const [competitionTitle, setCompetitionTitle] = useState('')
+  const [competitionSaveBusy, setCompetitionSaveBusy] = useState(false)
+  const [competitionSaveError, setCompetitionSaveError] = useState('')
+  const [competitionSaveOk, setCompetitionSaveOk] = useState(false)
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -335,6 +347,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setSaveOk(false)
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
+    setCompetitionDate(competitionDateToInputString(student.competitionDate))
+    setCompetitionTitle(typeof student.competitionTitle === 'string' ? student.competitionTitle : '')
+    setCompetitionSaveError('')
+    setCompetitionSaveOk(false)
   }, [student])
 
   useEffect(() => {
@@ -1412,6 +1428,51 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [orderedTechnicalAtoms, technicalData],
   )
 
+  const competitionPrepContext = useMemo(
+    () => ({ ageInt: sensitivePeriods.ageInt }),
+    [sensitivePeriods.ageInt],
+  )
+
+  const daysUntilFight = useMemo(
+    () => daysUntilCompetition(competitionDateToInputString(competitionDate)),
+    [competitionDate],
+  )
+
+  const handleSaveCompetition = async () => {
+    if (!student?.id) {
+      setCompetitionSaveError('Сначала выберите ученика.')
+      return
+    }
+    const iso = normalizeCompetitionDateISO(competitionDate)
+    if (!iso) {
+      setCompetitionSaveError('Укажите корректную дату соревнований (не в далёком прошлом).')
+      return
+    }
+    setCompetitionSaveBusy(true)
+    setCompetitionSaveError('')
+    setCompetitionSaveOk(false)
+    try {
+      await updateStudentData(
+        student.id,
+        {
+          competitionDate: iso,
+          competitionTitle: competitionTitle.trim() || null,
+        },
+        { section: STUDENT_UPDATE_SECTION.competitionPrep },
+      )
+      setCompetitionDate(iso)
+      setCompetitionSaveOk(true)
+      onStudentUpdated?.({
+        competitionDate: iso,
+        competitionTitle: competitionTitle.trim() || null,
+      })
+    } catch (err) {
+      console.error(err)
+      setCompetitionSaveError('Не удалось сохранить дату соревнований.')
+    } finally {
+      setCompetitionSaveBusy(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#edeef0] px-2 py-2 text-[#2c2d2e] sm:px-4 sm:py-3">
@@ -1500,7 +1561,16 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   } ${isTopInfluenceTab ? 'ring-1 ring-[#4bb34b]/60 ring-inset' : ''}`}
                 >
                   <span className="text-[12px] font-medium leading-4">{tab.shortLabel}</span>
-                  {tab.id !== 'anthropometry' ? (
+                  {tab.id === 'competition' && daysUntilFight != null && daysUntilFight >= 0 ? (
+                    <span
+                      className={`text-[10px] font-medium tabular-nums leading-none ${
+                        isActive ? 'text-[#818c99]' : 'text-[#aeb7c2]'
+                      }`}
+                    >
+                      {daysUntilFight}д
+                    </span>
+                  ) : null}
+                  {tab.id !== 'anthropometry' && tab.id !== 'competition' ? (
                     <span
                       className={`text-[10px] font-medium tabular-nums leading-none ${
                         isActive ? 'text-[#818c99]' : 'text-[#aeb7c2]'
@@ -1515,6 +1585,21 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           </nav>
 
           <div className="mt-2 space-y-2">
+            {activeTab === 'competition' && (
+              <StudentCompetitionPrepPanel
+                competitionDate={competitionDate}
+                competitionTitle={competitionTitle}
+                onCompetitionDateChange={setCompetitionDate}
+                onCompetitionTitleChange={setCompetitionTitle}
+                onSave={handleSaveCompetition}
+                saveBusy={competitionSaveBusy}
+                saveError={competitionSaveError}
+                saveOk={competitionSaveOk}
+                canSave={Boolean(student?.id)}
+                prepContext={competitionPrepContext}
+              />
+            )}
+
             {activeTab === 'anthropometry' && (
               <StudentAnthropometryForm
                 anthropometry={anthropometry}
