@@ -29,6 +29,8 @@ function phaseStyle(phaseId) {
  *   ageBandLabel: string,
  *   priorities: string[],
  *   competitionDate?: string,
+ *   hideMethodology?: boolean,
+ *   hideCalendar?: boolean,
  * }} props
  */
 function StudentPrepTimeline({
@@ -38,6 +40,8 @@ function StudentPrepTimeline({
   ageBandLabel,
   priorities,
   competitionDate,
+  hideMethodology = false,
+  hideCalendar = false,
 }) {
   const defaultISO = calendarDays.find((d) => d.isToday)?.dateISO ?? calendarDays[0]?.dateISO ?? ''
   const [selectedISO, setSelectedISO] = useState(defaultISO)
@@ -96,13 +100,15 @@ function StudentPrepTimeline({
         </div>
       ) : null}
 
-      <PrepCalendarGrid
-        calendarDays={calendarDays}
-        selectedISO={selectedISO}
-        onSelect={setSelectedISO}
-      />
+      {!hideCalendar ? (
+        <PrepCalendarGrid
+          calendarDays={calendarDays}
+          selectedISO={selectedISO}
+          onSelect={setSelectedISO}
+        />
+      ) : null}
 
-      {competitionDate ? (
+      {competitionDate && !hideCalendar ? (
         <p className={`text-center ${vk.mutedXs}`}>
           Старт {competitionDate} · в календаре все дни до турнира
         </p>
@@ -162,14 +168,16 @@ function StudentPrepTimeline({
         <p className={`${vk.mutedXs} border-t border-[#e7e8ec] pt-2`}>{priorities.join(' · ')}</p>
       ) : null}
 
-      <details className="rounded-[10px] border border-[#e7e8ec] bg-white">
-        <summary className="cursor-pointer px-2.5 py-2 text-[12px] font-medium text-[#2c2d2e]">
-          Методика этапов
-        </summary>
-        <div className="border-t border-[#e7e8ec] px-1 pb-2 pt-1">
-          <PrepMethodologyBlock activePhaseId={currentPhase.id} />
-        </div>
-      </details>
+      {!hideMethodology ? (
+        <details className="rounded-[10px] border border-[#e7e8ec] bg-white">
+          <summary className="cursor-pointer px-2.5 py-2 text-[12px] font-medium text-[#2c2d2e]">
+            Методика этапов
+          </summary>
+          <div className="border-t border-[#e7e8ec] px-1 pb-2 pt-1">
+            <PrepMethodologyBlock activePhaseId={currentPhase.id} />
+          </div>
+        </details>
+      ) : null}
     </div>
   )
 }

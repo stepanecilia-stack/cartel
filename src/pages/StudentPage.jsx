@@ -55,14 +55,14 @@ import {
   updateStudentData,
 } from '../services/firebaseService'
 import StudentAnthropometryForm from '../components/student/StudentAnthropometryForm.jsx'
-import StudentCompetitionPrepPanel from '../components/student/StudentCompetitionPrepPanel.jsx'
+import StudentYearPrepPanel from '../components/student/StudentYearPrepPanel.jsx'
+import {
+  normalizePlannedCompetitions,
+  pickNearestFutureCompetition,
+} from '../utils/plannedCompetitions.js'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
 import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
-import {
-  competitionDateToInputString,
-  daysUntilCompetition,
-  normalizeCompetitionDateISO,
-} from '../utils/competitionDate.js'
+import { daysUntilCompetition } from '../utils/competitionDate.js'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
@@ -73,7 +73,7 @@ import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
 
 const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Карта спортсмена', shortLabel: 'Карта' },
-  { id: 'competition', label: 'Подготовка к старту', shortLabel: 'Старт' },
+  { id: 'competition', label: 'Сезон и старты', shortLabel: 'Сезон' },
   { id: 'physical', label: 'Физическое развитие', shortLabel: 'Физика' },
   { id: 'functional', label: 'Функциональная готовность', shortLabel: 'Функционал' },
   { id: 'technical', label: 'Техника', shortLabel: 'Техника' },
@@ -279,8 +279,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareFlash, setShareFlash] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
-  const [competitionDate, setCompetitionDate] = useState('')
-  const [competitionTitle, setCompetitionTitle] = useState('')
+  const [plannedCompetitions, setPlannedCompetitions] = useState([])
   const [competitionSaveBusy, setCompetitionSaveBusy] = useState(false)
   const [competitionSaveError, setCompetitionSaveError] = useState('')
   const [competitionSaveOk, setCompetitionSaveOk] = useState(false)
@@ -347,8 +346,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setSaveOk(false)
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
-    setCompetitionDate(competitionDateToInputString(student.competitionDate))
-    setCompetitionTitle(typeof student.competitionTitle === 'string' ? student.competitionTitle : '')
+    setPlannedCompetitions(normalizePlannedCompetitions(student))
     setCompetitionSaveError('')
     setCompetitionSaveOk(false)
   }, [student])
@@ -1433,42 +1431,49 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [sensitivePeriods.ageInt],
   )
 
-  const daysUntilFight = useMemo(
-    () => daysUntilCompetition(competitionDateToInputString(competitionDate)),
-    [competitionDate],
+  const nearestPlanned = useMemo(
+    () => pickNearestFutureCompetition(plannedCompetitions),
+    [plannedCompetitions],
   )
 
-  const handleSaveCompetition = async () => {
+  const daysUntilFight = useMemo(
+    () => (nearestPlanned ? daysUntilCompetition(nearestPlanned.dateISO) : null),
+    [nearestPlanned],
+  )
+
+  const handleSavePlannedCompetitions = async () => {
     if (!student?.id) {
       setCompetitionSaveError('Сначала выберите ученика.')
-      return
-    }
-    const iso = normalizeCompetitionDateISO(competitionDate)
-    if (!iso) {
-      setCompetitionSaveError('Укажите корректную дату соревнований (не в далёком прошлом).')
       return
     }
     setCompetitionSaveBusy(true)
     setCompetitionSaveError('')
     setCompetitionSaveOk(false)
     try {
+      const payloadList = plannedCompetitions.map((c) => ({
+        id: c.id,
+        dateISO: c.dateISO,
+        title: c.title.trim() || null,
+      }))
+      const nearest = pickNearestFutureCompetition(plannedCompetitions)
       await updateStudentData(
         student.id,
         {
-          competitionDate: iso,
-          competitionTitle: competitionTitle.trim() || null,
+          plannedCompetitions: payloadList,
+          competitionDate: nearest?.dateISO ?? null,
+          competitionTitle: nearest?.title?.trim() || null,
         },
         { section: STUDENT_UPDATE_SECTION.competitionPrep },
       )
-      setCompetitionDate(iso)
       setCompetitionSaveOk(true)
       onStudentUpdated?.({
-        competitionDate: iso,
-        competitionTitle: competitionTitle.trim() || null,
+        plannedCompetitions: payloadList,
+        competitionDate: nearest?.dateISO ?? null,
+        competitionTitle: nearest?.title?.trim() || null,
       })
     } catch (err) {
       console.error(err)
-      setCompetitionSaveError('Не удалось сохранить дату соревнований.')
+      setCompetitionSaveError('Не удалось сохранить план стартов.')
     } finally {
       setCompetitionSaveBusy(false)
     }
@@ -1586,12 +1591,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
           <div className="mt-2 space-y-2">
             {activeTab === 'competition' && (
-              <StudentCompetitionPrepPanel
-                competitionDate={competitionDate}
-                competitionTitle={competitionTitle}
-                onCompetitionDateChange={setCompetitionDate}
-                onCompetitionTitleChange={setCompetitionTitle}
-                onSave={handleSaveCompetition}
+              <StudentYearPrepPanel
+                plannedCompetitions={plannedCompetitions}
+                onPlannedChange={setPlannedCompetitions}
+                onSave={handleSavePlannedCompetitions}
                 saveBusy={competitionSaveBusy}
                 saveError={competitionSaveError}
                 saveOk={competitionSaveOk}
