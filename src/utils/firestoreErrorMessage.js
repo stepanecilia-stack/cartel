@@ -8,8 +8,9 @@ export function formatFirestoreErrorMessage(err) {
 
   if (code === 'permission-denied' || /insufficient permissions/i.test(raw)) {
     return (
-      'Нет прав на запись в Firestore. Опубликуйте firestore.rules (коллекция coach_events для календаря). ' +
-      'Команда: npx firebase-tools deploy --only firestore:rules --project ВАШ_PROJECT_ID'
+      'Нет доступа к календарю событий в Firestore (коллекция coach_events). ' +
+      'Опубликуйте актуальные firestore.rules в Firebase Console или командой: ' +
+      'npx firebase-tools deploy --only firestore:rules --project ВАШ_PROJECT_ID'
     )
   }
   if (code === 'unauthenticated') {

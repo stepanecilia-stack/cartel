@@ -76,8 +76,8 @@ function CoachCalendarPage({ coachId }) {
             {loadError ? <p className={vk.noticeWarn}>{loadError}</p> : null}
             <SeasonCalendarPanel
             title="Сезон · все события"
-            hint="В каждом дне — цветные полосы: свой цвет на возрастную группу ориентира. Яркие — ваши события с участниками."
-            showOrientirLegend
+            hint="В календаре — только метки дней; старты по возрастам и лестнице (ПМО → Россия) — внизу. Яркие строки — ваши события."
+            eventListLayout="cohortLadder"
             calendarItems={calendarItems}
             coachEvents={events}
             students={studentOptions}

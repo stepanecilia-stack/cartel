@@ -75,7 +75,7 @@ function StudentYearPrepPanel({ coachId, studentId, studentName = '', ageInt = n
   return (
     <SeasonCalendarPanel
       title={studentName ? `Сезон · ${studentName}` : 'Сезон'}
-      hint={`${orientirHint} События тренера — в общем календаре; серые пунктирные даты — ориентиры Минспорта 2026.`}
+      hint={`${orientirHint} Клик по старту внизу — подсветка дат в календаре.`}
       calendarItems={calendarItems}
       coachEvents={events}
       students={studentOptions}

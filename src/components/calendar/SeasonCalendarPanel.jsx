@@ -53,7 +53,7 @@ const IDLE_PICK = /** @type {AssignPickState} */ ({ phase: 'idle', range: null }
  *   contextStudentId?: string | null,
  *   title?: string,
  *   hint?: string,
- *   showOrientirLegend?: boolean,
+ *   eventListLayout?: 'flat' | 'cohortLadder',
  * }} props
  */
 function SeasonCalendarPanel({
@@ -71,8 +71,9 @@ function SeasonCalendarPanel({
   contextStudentId = null,
   title = 'Календарь сезона',
   hint = '',
-  showOrientirLegend = false,
+  eventListLayout = 'flat',
 }) {
+  const listLayout = eventListLayout
   const [focusId, setFocusId] = useState(null)
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
@@ -337,7 +338,7 @@ function SeasonCalendarPanel({
           monthLabel={monthLabel}
           rangeDraft={displayRangeDraft}
           pickingEnd={pickPhase === 'end'}
-          showOrientirLegend={showOrientirLegend}
+          visualMode="minimal"
           focusId={focusId}
         />
       </div>
@@ -376,7 +377,13 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      <PrepSeasonEventList items={calendarItems} year={year} focusId={focusId} onFocus={focusItem} />
+      <PrepSeasonEventList
+        items={calendarItems}
+        year={year}
+        focusId={focusId}
+        onFocus={focusItem}
+        layout={listLayout}
+      />
 
       <PrepSelectedDayStarts
         dateISO={selectedISO}

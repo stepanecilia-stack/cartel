@@ -4,30 +4,10 @@ import {
   COACH_EVENT_KIND_STYLES,
   getCalendarItemStyle,
 } from '../../data/coachEventKinds.js'
-import { ORIENTIR_COHORT_STYLES } from '../../data/orientirCohortColors.js'
-import { getCompetitionMeta } from '../../data/competitionLevels.js'
-import { orientirDayChipLabel, orientirDisplayTitle } from '../../utils/orientirDisplay.js'
+import { orientirDisplayTitle } from '../../utils/orientirDisplay.js'
 import { isOrientirStart } from '../../utils/plannedCompetitions.js'
 import { buildSeasonMonthWeeks, isIsoInInclusiveRange } from '../../utils/prepSeasonCalendar.js'
 import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
-
-const MAX_DAY_CHIPS = 4
-
-/**
- * @param {import('../../utils/plannedCompetitions.js').PlannedCompetition} c
- */
-function dayChipLabel(c) {
-  const style = getCalendarItemStyle(c)
-  if (isOrientirStart(c)) {
-    const meta = getCompetitionMeta(c)
-    return orientirDayChipLabel(c, meta.short)
-  }
-  if (c.title?.trim()) {
-    const t = c.title.trim()
-    return t.length > 9 ? `${t.slice(0, 8)}…` : t
-  }
-  return style.short
-}
 
 /**
  * @param {{
@@ -45,8 +25,8 @@ function dayChipLabel(c) {
  *   monthLabel?: string,
  *   rangeDraft?: { startISO: string, endISO: string } | null,
  *   pickingEnd?: boolean,
- *   showOrientirLegend?: boolean,
  *   focusId?: string | null,
+ *   visualMode?: 'default' | 'minimal',
  * }} props
  */
 function PrepSeasonCalendar({
@@ -58,27 +38,20 @@ function PrepSeasonCalendar({
   monthLabel,
   rangeDraft = null,
   pickingEnd = false,
-  showOrientirLegend = false,
   focusId = null,
+  visualMode = 'default',
 }) {
+  const minimal = visualMode === 'minimal'
   const { weekHeaders, weeks } = useMemo(() => buildSeasonMonthWeeks(monthDays), [monthDays])
 
   const label =
     monthLabel ?? (monthDays[0] ? monthYearLabelRu(monthDays[0].dateISO) : '')
 
-  const cohortIdsInMonth = useMemo(() => {
-    const ids = new Set()
-    for (const day of monthDays) {
-      for (const c of day.competitions) {
-        if (isOrientirStart(c) && c.orientirCohortId) ids.add(c.orientirCohortId)
-      }
-    }
-    return [...ids].sort()
-  }, [monthDays])
-
   if (!monthDays.length) {
     return <p className="text-center text-[12px] text-[#818c99]">Нет данных за месяц</p>
   }
+
+  const cellMinH = minimal ? 'min-h-[2.75rem]' : 'min-h-[4.25rem]'
 
   return (
     <div>
@@ -95,18 +68,17 @@ function PrepSeasonCalendar({
         {weeks.flatMap((week, wi) =>
           week.map((cell, ci) => {
             if (cell.kind === 'pad') {
-              return <div key={`${wi}-${ci}`} className="min-h-[4.25rem]" />
+              return <div key={`${wi}-${ci}`} className={cellMinH} />
             }
             const day = cell.day
             const chips = day.competitions
             const hasEvents = chips.length > 0
+            const hasCoachEvent = chips.some((c) => !isOrientirStart(c))
             const isSelected = day.dateISO === selectedISO
             const dayNum = new Date(day.dateISO + 'T12:00:00').getDate()
             const inDraftRange =
               rangeDraft &&
               isIsoInInclusiveRange(day.dateISO, rangeDraft.startISO, rangeDraft.endISO)
-            const visible = chips.slice(0, MAX_DAY_CHIPS)
-            const hiddenCount = chips.length - visible.length
             const isFocusPeriodDay = Boolean(
               focusId && (day.isFocusDay || day.isFocusFightDay),
             )
@@ -134,7 +106,8 @@ function PrepSeasonCalendar({
                     : day.dateISO
                 }
                 className={[
-                  'relative flex min-h-[4.25rem] touch-manipulation flex-col rounded-lg border-2 p-0.5 transition select-none',
+                  'relative flex touch-manipulation flex-col items-center justify-center rounded-lg border-2 p-0.5 transition select-none',
+                  cellMinH,
                   inDraftRange
                     ? CALENDAR_RANGE_PICK_STYLE.chip
                     : isFocusPeriodDay
@@ -149,41 +122,20 @@ function PrepSeasonCalendar({
                     : '',
                 ].join(' ')}
               >
-                <span className="shrink-0 text-center text-[11px] font-bold tabular-nums leading-none">
-                  {dayNum}
-                </span>
-                {hasEvents ? (
-                  <div className="mt-0.5 flex w-full flex-1 flex-col gap-px overflow-hidden">
-                    {visible.map((c) => {
-                      const style = getCalendarItemStyle(c)
-                      const orientir = isOrientirStart(c)
-                      const chipText = dayChipLabel(c)
-                      const isActiveChip = focusId === c.id
-                      const dimChip = isFocusPeriodDay && focusId && !isActiveChip
-                      return (
-                        <div
-                          key={c.id}
-                          className={[
-                            'flex min-h-[11px] items-center gap-0.5 rounded border px-0.5',
-                            style.chip,
-                            orientir ? 'border-dashed' : 'border-solid',
-                            isActiveChip ? 'ring-1 ring-[#2d81e0] shadow-sm' : '',
-                            dimChip ? 'opacity-35' : '',
-                          ].join(' ')}
-                        >
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.bar}`} />
-                          <span className="min-w-0 flex-1 truncate text-[6px] font-bold leading-tight">
-                            {chipText}
-                          </span>
-                        </div>
-                      )
-                    })}
-                    {hiddenCount > 0 ? (
-                      <span className="text-center text-[6px] font-semibold text-[#818c99]">
-                        +{hiddenCount}
-                      </span>
-                    ) : null}
-                  </div>
+                <span className="text-[12px] font-bold tabular-nums leading-none">{dayNum}</span>
+                {minimal && hasEvents ? (
+                  <span
+                    className={[
+                      'mt-0.5 block h-1 w-1 rounded-full',
+                      hasCoachEvent ? 'bg-teal-500' : 'bg-slate-300',
+                    ].join(' ')}
+                    aria-hidden
+                  />
+                ) : null}
+                {!minimal && hasEvents && chips.length > 1 ? (
+                  <span className="absolute right-0.5 top-0.5 text-[8px] font-semibold text-slate-400">
+                    {chips.length}
+                  </span>
                 ) : null}
               </button>
             )
@@ -199,32 +151,22 @@ function PrepSeasonCalendar({
           <span className={`h-2 w-2 rounded-sm ${COACH_EVENT_KIND_STYLES.competition.bar}`} />
           Соревнования
         </span>
+        {minimal ? (
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1 w-1 rounded-full bg-slate-300" />
+            Ориентир Минспорта
+          </span>
+        ) : null}
         <span>
           <span className="font-semibold text-sky-600">Голубой пунктир</span> — выбор периода
         </span>
         {pickingEnd ? (
           <span className="font-semibold text-[#2d81e0]">Выберите конец периода</span>
         ) : null}
+        {minimal ? (
+          <span>Клик по старту внизу — подсветка дат</span>
+        ) : null}
       </div>
-      {showOrientirLegend && cohortIdsInMonth.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 border-t border-[#e7e8ec] pt-2 text-[9px] text-[#818c99]">
-          <span className="w-full font-semibold text-slate-600">Ориентиры Минспорта (цвет = группа):</span>
-          {cohortIdsInMonth.map((id) => {
-            const s = ORIENTIR_COHORT_STYLES[id]
-            if (!s) return null
-            return (
-              <span key={id} className="inline-flex items-center gap-1">
-                <span className={`h-2 w-2 rounded-sm border border-dashed border-slate-300 ${s.bar}`} />
-                {s.short}
-              </span>
-            )
-          })}
-        </div>
-      ) : (
-        <p className="mt-1 text-[9px] text-[#818c99]">
-          Накладки: в дне — несколько цветных полос с подписью возраста и уровня (ПМО, ЧМО…).
-        </p>
-      )}
     </div>
   )
 }

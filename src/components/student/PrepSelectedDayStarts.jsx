@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react'
-import { getCalendarItemStyle } from '../../data/coachEventKinds.js'
+import { getCalendarItemStyle, ORIENTIR_CALENDAR_STYLE } from '../../data/coachEventKinds.js'
 import { formatCompetitionRange } from '../../data/competitionLevels.js'
 import { getCompetitionMeta } from '../../data/competitionLevels.js'
 import { formatOrientirAgeLine, orientirDisplayTitle } from '../../utils/orientirDisplay.js'
@@ -50,9 +50,9 @@ function PrepSelectedDayStarts({
       <p className="mb-1 text-[11px] font-semibold text-[#818c99]">{label}</p>
       <ul className="space-y-1">
         {competitions.map((c) => {
-          const style = getCalendarItemStyle(c)
-          const active = focusId === c.id
           const orientir = isOrientirStart(c)
+          const style = orientir ? ORIENTIR_CALENDAR_STYLE : getCalendarItemStyle(c)
+          const active = focusId === c.id
           const meta = getCompetitionMeta(c)
           const displayName = orientir
             ? orientirDisplayTitle(c)

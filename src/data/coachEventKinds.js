@@ -22,30 +22,19 @@ export const CALENDAR_RANGE_PICK_STYLE = {
   bar: 'bg-sky-400',
 }
 
-import { getOrientirCohortStyle } from './orientirCohortColors.js'
-
-/** Типовой календарь Минспорта — запасной стиль без группы. */
+/** Типовой календарь Минспорта — единый нейтральный стиль. */
 export const ORIENTIR_CALENDAR_STYLE = {
   label: 'Ориентир',
   short: '~',
-  chip: 'bg-slate-50 border-slate-200 border-dashed text-slate-400',
+  chip: 'bg-slate-50 border-slate-200 border-dashed text-slate-500',
   bar: 'bg-slate-300/70',
 }
 
 /**
- * @param {{ eventKind?: CoachEventKind, track?: string, dateStatus?: string, orientirCohortId?: string } | null | undefined} item
+ * @param {{ eventKind?: CoachEventKind, track?: string, dateStatus?: string } | null | undefined} item
  */
 export function getCalendarItemStyle(item) {
   if (item?.dateStatus === 'orientir') {
-    const cohortStyle = getOrientirCohortStyle(item.orientirCohortId)
-    if (cohortStyle) {
-      return {
-        label: 'Ориентир',
-        short: cohortStyle.short,
-        chip: `${cohortStyle.chip} border-dashed`,
-        bar: cohortStyle.bar,
-      }
-    }
     return ORIENTIR_CALENDAR_STYLE
   }
   if (item?.eventKind && COACH_EVENT_KIND_STYLES[item.eventKind]) {

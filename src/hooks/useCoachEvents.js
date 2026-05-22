@@ -24,8 +24,12 @@ export function useCoachEvents(coachId) {
         setEvents(list)
         setReady(true)
       },
-      () => {
-        setError('Не удалось загрузить календарь событий.')
+      (err) => {
+        const msg =
+          err instanceof Error && err.message.trim()
+            ? err.message
+            : 'Не удалось загрузить календарь событий.'
+        setError(msg)
         setReady(true)
       },
     )
