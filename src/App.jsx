@@ -16,6 +16,7 @@ const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const MotorQualitiesIndexPage = lazy(() => import('./pages/MotorQualitiesIndexPage'))
 const MotorQualityDetailPage = lazy(() => import('./pages/MotorQualityDetailPage'))
 const TechnicalElementsPage = lazy(() => import('./pages/TechnicalElementsPage'))
+const CoachCalendarPage = lazy(() => import('./pages/CoachCalendarPage.jsx'))
 import {
   clearCoachProfileCache,
   setCoachProfileCache,
@@ -100,6 +101,9 @@ function Navbar({ user, coachProfile, programAdmin }) {
               ) : null}
               <Link to="/bulk-norms" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Норматив
+              </Link>
+              <Link to="/calendar" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
+                Календарь
               </Link>
               <Link to="/group-training" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
                 Групповая
@@ -223,6 +227,19 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
               element={
                 <LazyRoute label="Групповая тренировка…">
                   <GroupTrainingPage coachId={authUser?.uid} />
+                </LazyRoute>
+              }
+            />
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={
+                <LazyRoute label="Календарь…">
+                  <CoachCalendarPage coachId={authUser?.uid} />
                 </LazyRoute>
               }
             />

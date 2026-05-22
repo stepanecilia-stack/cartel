@@ -1,6 +1,57 @@
 import { competitionDateRange } from '../data/competitionLevels.js'
+import { isOrientirStart } from './plannedCompetitions.js'
 import { localDateISO, monthDateRange } from './prepCalendarGrid.js'
 import { buildPrepCalendarWeeks } from './prepCalendarGrid.js'
+
+/**
+ * @param {string} a
+ * @param {string} b
+ */
+export function normalizeIsoRange(a, b) {
+  const startISO = a <= b ? a : b
+  const dateEndISO = a <= b ? b : a
+  return { dateISO: startISO, dateEndISO }
+}
+
+/**
+ * @param {string} iso
+ * @param {string} startISO
+ * @param {string} endISO
+ */
+export function isIsoInInclusiveRange(iso, startISO, endISO) {
+  return iso >= startISO && iso <= endISO
+}
+
+/** @typedef {'idle' | 'end' | 'form'} AssignPickPhase */
+
+/** @typedef {{ phase: AssignPickPhase, range: { startISO: string, endISO: string } | null }} AssignPickState */
+
+/**
+ * Следующее состояние выбора периода по клику на день.
+ * @param {AssignPickState} state
+ * @param {string} iso
+ * @returns {AssignPickState}
+ */
+export function advanceAssignPickOnDay(state, iso) {
+  if (state.phase === 'form') return state
+  if (state.phase === 'idle') {
+    return { phase: 'end', range: { startISO: iso, endISO: iso } }
+  }
+  if (state.phase === 'end' && state.range) {
+    const norm = normalizeIsoRange(state.range.startISO, iso)
+    return {
+      phase: 'form',
+      range: { startISO: norm.dateISO, endISO: norm.dateEndISO },
+    }
+  }
+  return state
+}
+
+/** @param {string} iso */
+export function formatShortDateRu(iso) {
+  const d = new Date(iso + 'T12:00:00')
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
+}
 
 /**
  * @param {number} year
@@ -42,8 +93,16 @@ export function buildSeasonMonthDays(year, month, planned, focusId, todayIso) {
   const cursor = new Date(start)
   while (cursor <= end) {
     const iso = localDateISO(cursor)
-    const competitions = byIso.get(iso) ?? []
-    const primary = competitions[0] ?? null
+    const competitions = [...(byIso.get(iso) ?? [])].sort((a, b) => {
+      const aCoach = isOrientirStart(a) ? 1 : 0
+      const bCoach = isOrientirStart(b) ? 1 : 0
+      if (aCoach !== bCoach) return aCoach - bCoach
+      const ac = a.orientirCohortId ?? ''
+      const bc = b.orientirCohortId ?? ''
+      if (ac !== bc) return ac.localeCompare(bc)
+      return (a.title ?? '').localeCompare(b.title ?? '')
+    })
+    const primary = competitions.find((c) => !isOrientirStart(c)) ?? competitions[0] ?? null
     days.push({
       dateISO: iso,
       isToday: iso === todayIso,

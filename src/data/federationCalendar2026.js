@@ -216,9 +216,9 @@ export const FEDERATION_CALENDAR_2026 = [
   {
     id: 'M-19-40',
     gender: 'M',
-    minAge: 23,
+    minAge: 19,
     maxAge: 40,
-    label: 'Мужчины 23–40',
+    label: 'Мужчины 19–40',
     events: seniorLadder(
       'M-19-40',
       { dateISO: '2026-05-01', dateEndISO: '2026-05-08' },
@@ -240,9 +240,9 @@ export const FEDERATION_CALENDAR_2026 = [
   {
     id: 'F-19-40',
     gender: 'F',
-    minAge: 23,
+    minAge: 19,
     maxAge: 40,
-    label: 'Женщины 23–40',
+    label: 'Женщины 19–40',
     events: seniorLadder(
       'F-19-40',
       { dateISO: '2026-05-01', dateEndISO: '2026-05-08' },
@@ -263,40 +263,43 @@ export const FEDERATION_CALENDAR_2026 = [
   },
 ]
 
-/** Взрослые: 23–40 (ЧМО). Юниоры 19–22 остаются с ПМО. */
-export const SENIOR_MIN_AGE = 23
+/** Взрослые: 19–40 (ЧМО). С 19 лет — параллельно и юниоры 19–22 (ПМО). */
+export const SENIOR_MIN_AGE = 19
 
 /**
  * @param {number | null | undefined} ageInt
  * @param {AthleteGender | string | null | undefined} gender
  */
-export function matchFederationCalendarCohort(ageInt, gender) {
-  if (ageInt == null || !Number.isFinite(ageInt)) return null
+/**
+ * Все возрастные группы, в которые попадает спортсмен (с 19 лет — и 19–22, и 19–40).
+ * @param {number | null | undefined} ageInt
+ * @param {AthleteGender | string | null | undefined} gender
+ * @returns {FederationCalendarCohort[]}
+ */
+export function matchFederationCalendarCohorts(ageInt, gender) {
+  if (ageInt == null || !Number.isFinite(ageInt)) return []
   const age = Math.floor(ageInt)
-  if (age < 13 || age > 40) return null
+  if (age < 13 || age > 40) return []
   const g = gender === 'F' ? 'F' : 'M'
 
-  let best = null
-  for (const cohort of FEDERATION_CALENDAR_2026) {
-    if (cohort.gender !== g) continue
-    if (age < cohort.minAge || age > cohort.maxAge) continue
-    if (!best || cohort.maxAge - cohort.minAge < best.maxAge - best.minAge) {
-      best = cohort
-    }
-  }
-  return best
+  return FEDERATION_CALENDAR_2026.filter(
+    (cohort) => cohort.gender === g && age >= cohort.minAge && age <= cohort.maxAge,
+  ).sort((a, b) => a.maxAge - a.minAge - (b.maxAge - b.minAge))
+}
+
+/** Узкая группа (для подсказок): самый узкий диапазон. */
+export function matchFederationCalendarCohort(ageInt, gender) {
+  const list = matchFederationCalendarCohorts(ageInt, gender)
+  return list[0] ?? null
 }
 
 /**
- * @param {number | null | undefined} ageInt
- * @param {AthleteGender | string | null | undefined} gender
- * @returns {import('../utils/plannedCompetitions.js').PlannedCompetition[]}
+ * @param {FederationCalendarCohort} cohort
+ * @param {FederationCalendarEvent} e
+ * @param {number} index
  */
-export function buildFederationOrientirCompetitions(ageInt, gender) {
-  const cohort = matchFederationCalendarCohort(ageInt, gender)
-  if (!cohort) return []
-
-  return cohort.events.map((e, index) => ({
+function federationEventToOrientir(cohort, e, index) {
+  return {
     id: e.id,
     dateISO: e.dateISO,
     dateEndISO: e.dateEndISO,
@@ -305,15 +308,56 @@ export function buildFederationOrientirCompetitions(ageInt, gender) {
     stage: e.stage,
     newLadderCycle: index === 0,
     dateStatus: /** @type {'orientir'} */ ('orientir'),
-  }))
+    orientirCohortId: cohort.id,
+    orientirAgeLabels: [cohort.label],
+  }
+}
+
+/**
+ * @param {number | null | undefined} ageInt
+ * @param {AthleteGender | string | null | undefined} gender
+ * @returns {import('../utils/plannedCompetitions.js').PlannedCompetition[]}
+ */
+/** Все ориентиры 2026 — отдельная запись на каждую возрастную группу (накладки видны разными цветами). */
+export function buildAllFederationOrientirCompetitions() {
+  /** @type {import('../utils/plannedCompetitions.js').PlannedCompetition[]} */
+  const out = []
+  for (const cohort of FEDERATION_CALENDAR_2026) {
+    cohort.events.forEach((e, index) => {
+      out.push(federationEventToOrientir(cohort, e, index))
+    })
+  }
+  return out.sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+}
+
+/** Ориентиры для спортсмена: все подходящие группы (19+ — и 19–22, и 19–40). */
+export function buildFederationOrientirCompetitions(ageInt, gender) {
+  const cohorts = matchFederationCalendarCohorts(ageInt, gender)
+  if (!cohorts.length) return []
+
+  /** @type {import('../utils/plannedCompetitions.js').PlannedCompetition[]} */
+  const out = []
+  for (const cohort of cohorts) {
+    cohort.events.forEach((e, index) => {
+      out.push(federationEventToOrientir(cohort, e, index))
+    })
+  }
+  return out.sort((a, b) => a.dateISO.localeCompare(b.dateISO))
 }
 
 export function federationCalendarHint(ageInt, gender) {
-  const cohort = matchFederationCalendarCohort(ageInt, gender)
-  if (!cohort) {
+  const cohorts = matchFederationCalendarCohorts(ageInt, gender)
+  if (!cohorts.length) {
     return 'Возраст 13–40 и пол на вкладке «Карта» — подставим ориентиры 2026 (ПМО/ЧМО → край → зона → Россия).'
   }
+  const labels = cohorts.map((c) => c.label).join(' + ')
+  const hasSenior = cohorts.some((c) => c.id.endsWith('-19-40'))
+  const hasYouth = cohorts.some((c) => !c.id.endsWith('-19-40'))
   const ladder =
-    cohort.minAge >= SENIOR_MIN_AGE ? 'ЧМО → край → зона → Россия' : 'ПМО → край → зона → Россия'
-  return `${cohort.label} · ${ladder} · ориентир 2026. Удалите лишние старты.`
+    hasSenior && hasYouth
+      ? 'ПМО/ЧМО → край → зона → Россия'
+      : hasSenior
+        ? 'ЧМО → край → зона → Россия'
+        : 'ПМО → край → зона → Россия'
+  return `${labels} · ${ladder} · ориентир 2026. Удалите лишние старты.`
 }

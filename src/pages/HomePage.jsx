@@ -124,6 +124,13 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
         onClick: () => setAddModalOpen(true),
       },
       {
+        key: 'calendar',
+        label: 'Календарь сезона',
+        icon: '▦',
+        iconClass: 'bg-[#e0f2f1] text-teal-700 text-base',
+        to: '/calendar',
+      },
+      {
         key: 'group',
         label: 'Прогресс техники',
         icon: '⇉',

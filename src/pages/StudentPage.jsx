@@ -57,16 +57,14 @@ import {
 import StudentAnthropometryForm from '../components/student/StudentAnthropometryForm.jsx'
 import StudentYearPrepPanel from '../components/student/StudentYearPrepPanel.jsx'
 import { DEFAULT_SEASON_GOAL, normalizeSeasonGoal } from '../data/seasonGoals.js'
-import { federationCalendarHint } from '../data/federationCalendar2026.js'
+import { useCoachEvents } from '../hooks/useCoachEvents.js'
 import {
-  dedupePlannedCompetitions,
-  isShowingFederationOrientirDefaults,
-  normalizeSavedPlannedCompetitions,
+  calendarItemsForStudent,
+  mergeCalendarWithOrientirs,
+} from '../utils/coachEvents.js'
+import {
   pickNearestFutureCompetition,
-  plannedCompetitionsToPayload,
-  resolvePlannedCompetitionsForDisplay,
   resolveTypicalSeasonCalendar,
-  usesCustomSeasonCalendar,
 } from '../utils/plannedCompetitions.js'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
 import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
@@ -287,14 +285,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareFlash, setShareFlash] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
-  const [plannedCompetitions, setPlannedCompetitions] = useState([])
   const [seasonGoal, setSeasonGoal] = useState(DEFAULT_SEASON_GOAL)
   const [nextSeasonGoal, setNextSeasonGoal] = useState(DEFAULT_SEASON_GOAL)
   const [ladderClosed, setLadderClosed] = useState(false)
   const [seasonSettingsBusy, setSeasonSettingsBusy] = useState(false)
-  const [competitionSaveBusy, setCompetitionSaveBusy] = useState(false)
-  const [competitionSaveError, setCompetitionSaveError] = useState('')
-  const [competitionSaveOk, setCompetitionSaveOk] = useState(false)
+  const coachId = getCurrentCoachId()
+  const { events: coachEvents } = useCoachEvents(coachId)
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -358,18 +354,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setSaveOk(false)
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
-    const ageInt = computeAthleteAgeYears(
-      normalizeBirthYearNumber(student.birthYear ?? sh.birthYear) || null,
-    )
-    const gender = sh.gender === 'F' ? 'F' : 'M'
-    setPlannedCompetitions(resolvePlannedCompetitionsForDisplay(student, ageInt, gender))
     setSeasonGoal(normalizeSeasonGoal(student?.seasonGoal))
     setNextSeasonGoal(
       normalizeSeasonGoal(student?.nextSeasonGoal ?? student?.seasonGoal ?? DEFAULT_SEASON_GOAL),
     )
     setLadderClosed(Boolean(student?.ladderClosed))
-    setCompetitionSaveError('')
-    setCompetitionSaveOk(false)
   }, [student])
 
   useEffect(() => {
@@ -731,11 +720,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [resolvedBirthYear],
   )
 
-  useEffect(() => {
-    if (!student?.id || usesCustomSeasonCalendar(student)) return
-    const gender = anthropometry.gender === 'F' ? 'F' : 'M'
-    setPlannedCompetitions(resolveTypicalSeasonCalendar(sensitivePeriods.ageInt, gender))
-  }, [student, sensitivePeriods.ageInt, anthropometry.gender])
   const influenceItems = [
     {
       key: 'tech',
@@ -1453,17 +1437,19 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [orderedTechnicalAtoms, technicalData],
   )
 
-  const competitionPrepContext = useMemo(
-    () => ({
-      ageInt: sensitivePeriods.ageInt,
-      studentName: safeStudent?.name ?? null,
-    }),
-    [sensitivePeriods.ageInt, safeStudent?.name],
-  )
+  const studentOrientirs = useMemo(() => {
+    const gender = anthropometry.gender === 'F' ? 'F' : 'M'
+    return resolveTypicalSeasonCalendar(sensitivePeriods.ageInt, gender)
+  }, [sensitivePeriods.ageInt, anthropometry.gender])
+
+  const studentCalendarItems = useMemo(() => {
+    const coachItems = calendarItemsForStudent(coachEvents, student?.id)
+    return mergeCalendarWithOrientirs(coachItems, studentOrientirs)
+  }, [coachEvents, student?.id, studentOrientirs])
 
   const nearestPlanned = useMemo(
-    () => pickNearestFutureCompetition(plannedCompetitions),
-    [plannedCompetitions],
+    () => pickNearestFutureCompetition(studentCalendarItems),
+    [studentCalendarItems],
   )
 
   const daysUntilFight = useMemo(
@@ -1471,108 +1457,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [nearestPlanned],
   )
 
-  const persistPlannedCompetitions = useCallback(
-    async (list) => {
-      if (!student?.id) {
-        setCompetitionSaveError('Сначала выберите ученика.')
-        return false
-      }
-      const deduped = dedupePlannedCompetitions(list)
-      const payloadList = plannedCompetitionsToPayload(deduped)
-      setCompetitionSaveBusy(true)
-      setCompetitionSaveError('')
-      setCompetitionSaveOk(false)
-      try {
-        await updateStudentData(
-          student.id,
-          {
-            plannedCompetitions: payloadList,
-            competitionDate: null,
-            competitionTitle: null,
-            seasonCalendarCustomized: true,
-          },
-          { section: STUDENT_UPDATE_SECTION.competitionPrep },
-        )
-        setPlannedCompetitions(
-          normalizeSavedPlannedCompetitions({
-            plannedCompetitions: payloadList,
-            competitionDate: null,
-            competitionTitle: null,
-            seasonCalendarCustomized: true,
-          }),
-        )
-        setCompetitionSaveOk(true)
-        onStudentUpdatedRef.current?.({
-          plannedCompetitions: payloadList,
-          competitionDate: null,
-          competitionTitle: null,
-          seasonCalendarCustomized: true,
-        })
-        return true
-      } catch (err) {
-        console.error(err)
-        setCompetitionSaveError('Не удалось сохранить план стартов.')
-        return false
-      } finally {
-        setCompetitionSaveBusy(false)
-      }
-    },
-    [student?.id],
-  )
-
-  const handleSavePlannedCompetitions = () => persistPlannedCompetitions(plannedCompetitions)
-
-  const handlePlannedCompetitionsChange = useCallback((list) => {
-    setPlannedCompetitions(dedupePlannedCompetitions(list))
-  }, [])
-
-  const handleRestoreTypicalCalendar = useCallback(async () => {
-    if (!student?.id) return
-    const gender = anthropometry.gender === 'F' ? 'F' : 'M'
-    const template = resolveTypicalSeasonCalendar(sensitivePeriods.ageInt, gender)
-    setPlannedCompetitions(template)
-    setCompetitionSaveBusy(true)
-    setCompetitionSaveError('')
-    try {
-      await updateStudentData(
-        student.id,
-        {
-          plannedCompetitions: [],
-          competitionDate: null,
-          competitionTitle: null,
-          seasonCalendarCustomized: false,
-        },
-        { section: STUDENT_UPDATE_SECTION.competitionPrep },
-      )
-      onStudentUpdatedRef.current?.({
-        plannedCompetitions: [],
-        seasonCalendarCustomized: false,
-        competitionDate: null,
-        competitionTitle: null,
-      })
-      setCompetitionSaveOk(true)
-    } catch (err) {
-      console.error(err)
-      setCompetitionSaveError('Не удалось вернуть типовой календарь.')
-    } finally {
-      setCompetitionSaveBusy(false)
-    }
-  }, [student?.id, anthropometry.gender, sensitivePeriods.ageInt])
-
-  const handleRemovePlannedCompetition = useCallback(
-    async (id) => {
-      const next = plannedCompetitions.filter((c) => c.id !== id)
-      setPlannedCompetitions(next)
-      await persistPlannedCompetitions(next)
-    },
-    [plannedCompetitions, persistPlannedCompetitions],
-  )
-
   const persistSeasonPrepSettings = useCallback(
     async (goal, nextGoal, nextLadderClosed) => {
       if (!student?.id) return false
       setSeasonSettingsBusy(true)
-      setCompetitionSaveError('')
       try {
         await updateStudentData(
           student.id,
@@ -1591,7 +1479,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         return true
       } catch (err) {
         console.error(err)
-        setCompetitionSaveError('Не удалось сохранить задачу сезона.')
         return false
       } finally {
         setSeasonSettingsBusy(false)
@@ -1737,28 +1624,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           <div className="mt-2 space-y-2">
             {activeTab === 'competition' && (
               <StudentYearPrepPanel
-                plannedCompetitions={plannedCompetitions}
-                onPlannedChange={handlePlannedCompetitionsChange}
-                onRemoveCompetition={handleRemovePlannedCompetition}
-                onSave={handleSavePlannedCompetitions}
-                saveBusy={competitionSaveBusy}
-                saveError={competitionSaveError}
-                saveOk={competitionSaveOk}
-                canSave={Boolean(student?.id)}
-                prepContext={competitionPrepContext}
-                federationCalendarHint={federationCalendarHint(
-                  sensitivePeriods.ageInt,
-                  anthropometry.gender,
-                )}
-                showingFederationDefaults={isShowingFederationOrientirDefaults(student)}
-                onRestoreTypicalCalendar={handleRestoreTypicalCalendar}
-                seasonGoal={seasonGoal}
-                nextSeasonGoal={nextSeasonGoal}
-                ladderClosed={ladderClosed}
-                onSeasonGoalChange={handleSeasonGoalChange}
-                onNextSeasonGoalChange={handleNextSeasonGoalChange}
-                onLadderClosedChange={handleLadderClosedChange}
-                seasonSettingsBusy={seasonSettingsBusy}
+                coachId={coachId}
+                studentId={student?.id}
+                studentName={safeStudent.name}
+                ageInt={sensitivePeriods.ageInt}
+                gender={anthropometry.gender === 'F' ? 'F' : 'M'}
               />
             )}
 

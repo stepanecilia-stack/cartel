@@ -40,8 +40,8 @@ export const COMPETITION_TRACKS = [
   },
   {
     id: 'match',
-    label: 'Матчевая',
-    short: 'мат',
+    label: 'Боевая практика',
+    short: 'бп',
     ladder: false,
     microPrep: false,
     chip: 'bg-slate-50 border-slate-200 text-slate-700',

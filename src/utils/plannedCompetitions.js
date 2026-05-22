@@ -51,8 +51,13 @@ export function formatStartWithStatus(c) {
   return isOrientirStart(c) ? `${range} · ориентир` : range
 }
 
-/** @param {{ dateISO: string, dateEndISO?: string, track?: string, stage?: string | null }} c */
+/** @param {{ id?: string, dateISO: string, dateEndISO?: string, track?: string, stage?: string | null, dateStatus?: string, orientirCohortId?: string }} c */
 export function competitionIdentityKey(c) {
+  if (c.dateStatus === 'orientir' && c.id) return c.id
+  if (c.orientirCohortId) {
+    const end = c.dateEndISO || c.dateISO
+    return `${c.orientirCohortId}|${c.dateISO}|${end}|${c.stage ?? ''}`
+  }
   const end = c.dateEndISO || c.dateISO
   return `${c.dateISO}|${end}|${c.track ?? ''}|${c.stage ?? ''}`
 }
