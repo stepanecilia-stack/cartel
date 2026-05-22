@@ -1,11 +1,18 @@
 const WEEK_HEADERS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
 
+const MONTH_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+
 /** @param {Date} d */
 export function localDateISO(d) {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${dd}`
+}
+
+/** @param {number} month 0–11 */
+export function monthShortRu(month) {
+  return MONTH_SHORT[month] ?? ''
 }
 
 /** @param {string} iso */
@@ -29,8 +36,28 @@ export function monthYearLabelRu(iso) {
 }
 
 /**
+ * @param {number} year
+ * @param {number} month 0–11
+ */
+export function monthDateRange(year, month) {
+  const start = new Date(year, month, 1, 12, 0, 0, 0)
+  const end = new Date(year, month + 1, 0, 12, 0, 0, 0)
+  return { start, end }
+}
+
+/**
+ * @param {Array<{ dateISO: string }>} yearDays
+ * @param {number} year
+ * @param {number} month 0–11
+ */
+export function filterYearDaysByMonth(yearDays, year, month) {
+  const prefix = `${year}-${String(month + 1).padStart(2, '0')}`
+  return yearDays.filter((d) => d.dateISO.startsWith(prefix))
+}
+
+/**
  * Сетка календаря: недели пн–вс, padding до полных недель.
- * @param {Array<{ dateISO: string }>} calendarDays — подряд от сегодня до старта
+ * @param {Array<{ dateISO: string }>} calendarDays
  */
 export function buildPrepCalendarWeeks(calendarDays) {
   if (!calendarDays.length) return { weekHeaders: WEEK_HEADERS, weeks: [], monthSpans: [] }
@@ -81,4 +108,18 @@ export function buildPrepCalendarWeeks(calendarDays) {
   }
 
   return { weekHeaders: WEEK_HEADERS, weeks, monthSpans }
+}
+
+/**
+ * Сводка по месяцам года для полоски навигации.
+ * @param {number} year
+ * @param {Array<{ dateISO: string, annualPeriod: { id: string }, isFightDay?: boolean }>} yearDays
+ */
+export function buildYearMonthSummaries(year, yearDays) {
+  return MONTH_SHORT.map((short, month) => {
+    const days = filterYearDaysByMonth(yearDays, year, month)
+    const events = days.filter((d) => d.isFightDay).length
+    const periodId = days[0]?.annualPeriod?.id ?? 'prep-spring'
+    return { month, short, periodId, events, dayCount: days.length }
+  })
 }

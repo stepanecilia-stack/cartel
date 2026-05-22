@@ -5,6 +5,9 @@
  */
 
 import { isPrepTransitionDay } from './cartelPrepMethodology.js'
+import { getMicroCoachBrief } from './prepCoachBriefs.js'
+import { addDaysISO } from './competitionLevels.js'
+import { daysUntilCompetition } from '../utils/competitionDate.js'
 
 export const JUNIOR_PREP_ROUND = '2′15′′'
 export const JUNIOR_REST_BETWEEN_ROUNDS = '1′'
@@ -197,6 +200,7 @@ export function resolveJuniorPrepPhase(daysUntil) {
       rangeLabel: '0 дн.',
       tasks: fightTasks,
       metrics: '',
+      coachBrief: getMicroCoachBrief('fight'),
     }
   }
 
@@ -213,6 +217,7 @@ export function resolveJuniorPrepPhase(daysUntil) {
     metrics: `СТТМ ${vol.partner}×${JUNIOR_PREP_ROUND} · снаряды ${vol.bags}×${JUNIOR_PREP_ROUND}`,
     progress,
     volume: vol,
+    coachBrief: getMicroCoachBrief(def.id),
   }
 }
 
@@ -738,4 +743,65 @@ export function buildJuniorPriorities(band, phase) {
   if (phase.metrics) list.push(phase.metrics)
   list.push(band === '13-14' ? '13–14: координация' : '15–16: ССР, тактика')
   return list
+}
+
+/** Детальный план по дням (утро/день) показываем в этом окне до старта. */
+export const MICRO_PREP_DAILY_HORIZON_DAYS = 42
+
+/** @type {Array<{ id: JuniorPhaseId, daysMin: number, daysMax: number }>} */
+const MICRO_SEGMENT_SPECS = [
+  { id: 'ofp', daysMin: 21, daysMax: 35 },
+  { id: 'sfp', daysMin: 14, daysMax: 20 },
+  { id: 'sttm', daysMin: 7, daysMax: 13 },
+  { id: 'taper', daysMin: 4, daysMax: 6 },
+  { id: 'preFight', daysMin: 1, daysMax: 3 },
+  { id: 'fight', daysMin: 0, daysMax: 0 },
+]
+
+/**
+ * Календарные границы этапов ОФП→СФП→СТТМ от даты старта назад.
+ * @param {string} fightDateISO
+ * @param {string} [todayIso]
+ */
+export function buildMicroCycleSegments(fightDateISO, todayIso) {
+  const today = todayIso ?? ''
+  const daysUntil = daysUntilCompetition(fightDateISO)
+  const currentPhaseId =
+    daysUntil != null && daysUntil >= 0 ? resolveJuniorPrepPhase(daysUntil).id : 'none'
+
+  return MICRO_SEGMENT_SPECS.map((spec) => {
+    const def = PHASE_DEFS.find((d) => d.id === spec.id)
+    const dateEndISO = addDaysISO(fightDateISO, -spec.daysMin)
+    const dateStartISO =
+      spec.id === 'fight' ? fightDateISO : addDaysISO(fightDateISO, -spec.daysMax)
+
+    let status = 'future'
+    if (today) {
+      if (today >= dateStartISO && today <= dateEndISO) status = 'current'
+      else if (today > dateEndISO) status = 'past'
+    }
+    if (spec.id === currentPhaseId && daysUntil != null && daysUntil >= 0) status = 'current'
+
+    return {
+      id: spec.id,
+      label: def?.label ?? spec.id,
+      short: def?.short ?? spec.id,
+      rangeLabel: def?.rangeLabel ?? '',
+      tasks: def?.tasks ?? [],
+      dateStartISO,
+      dateEndISO,
+      daysMin: spec.daysMin,
+      daysMax: spec.daysMax,
+      status,
+      isCurrent: status === 'current',
+    }
+  })
+}
+
+/** @param {string} iso */
+export function formatPrepDateShort(iso) {
+  const d = new Date(iso + 'T12:00:00')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}.${mm}`
 }

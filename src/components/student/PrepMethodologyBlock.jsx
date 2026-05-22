@@ -5,6 +5,8 @@ import {
   CARTEL_PREP_PHASE_MAP,
 } from '../../data/cartelPrepMethodology.js'
 import { JUNIOR_PREP_PHASE_GUIDE, JUNIOR_PREP_PHASE_STYLES } from '../../data/juniorPrepTracks.js'
+import { GlossaryAbbr } from '../GlossaryText.jsx'
+import GlossaryText from '../GlossaryText.jsx'
 import PrepPhaseTasks from './PrepPhaseTasks.jsx'
 
 /**
@@ -30,6 +32,10 @@ function PrepMethodologyBlock({ activePhaseId }) {
       <div className="rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">
           Этапы · задача → средство
+          <span className="ml-1 font-normal normal-case text-[#aeb7c2]">
+            (наведите на <GlossaryAbbr>ОФП</GlossaryAbbr>, <GlossaryAbbr>СФП</GlossaryAbbr>,{' '}
+            <GlossaryAbbr>СТТМ</GlossaryAbbr>…)
+          </span>
         </p>
         <div className="mt-2 divide-y divide-[#e7e8ec]">
           {CARTEL_PREP_PHASE_MAP.map((row) => {
@@ -42,12 +48,12 @@ function PrepMethodologyBlock({ activePhaseId }) {
                 className={`py-1.5 first:pt-0 last:pb-0 ${active ? `rounded-lg border px-2 -mx-0.5 my-1 ${s.chip}` : ''}`}
               >
                 <p className="text-[12px] font-semibold text-[#2c2d2e]">
-                  {row.cartelLabel}
+                  <GlossaryAbbr>{row.cartelLabel}</GlossaryAbbr>
                   <span className="ml-1 font-normal text-[#818c99]">{row.days} дн.</span>
                 </p>
                 <PrepPhaseTasks tasks={tasks} compact />
                 <p className="mt-1 text-[10px] text-[#818c99]">
-                  {row.almanac} · {row.planRef}
+                  <GlossaryText text={`${row.almanac} · ${row.planRef}`} />
                 </p>
               </div>
             )

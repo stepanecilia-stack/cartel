@@ -1,44 +1,90 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { CARTEL_PREP_AUTHORS } from '../../data/cartelPrepMethodology.js'
 import { buildAnnualPrepPlan } from '../../utils/annualPrepPlan.js'
+import { normalizeCompetitionRange } from '../../data/competitionLevels.js'
 import {
+  competitionIdentityKey,
+  competitionUsesMicroPrep,
+  dedupePlannedCompetitions,
+  formatCompetitionRange,
+  getCompetitionMeta,
+  isConfirmedStart,
   newPlannedCompetitionId,
-  normalizePlannedCompetitions,
   pickNearestFutureCompetition,
 } from '../../utils/plannedCompetitions.js'
+import { seasonModeAllowsMicroPrep } from '../../data/seasonGoals.js'
 import { competitionDateToInputString, normalizeCompetitionDateISO } from '../../utils/competitionDate.js'
+import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
+import {
+  buildSeasonMonthDays,
+  countCompetitionsInMonth,
+} from '../../utils/prepSeasonCalendar.js'
 import { vk } from '../../utils/vkUi.js'
+import { PrepCoachMissionFromResolved } from './PrepCoachMission.jsx'
 import PrepMethodologyBlock from './PrepMethodologyBlock.jsx'
-import PrepPhaseTasks from './PrepPhaseTasks.jsx'
-import PrepYearCalendar from './PrepYearCalendar.jsx'
-import StudentPrepTimeline from './StudentPrepTimeline.jsx'
+import PrepDayDetail from './PrepDayDetail.jsx'
+import PrepFocusDayStrip from './PrepFocusDayStrip.jsx'
+import PrepMicroCycleRoadmap from './PrepMicroCycleRoadmap.jsx'
+import PrepMonthEventStrip from './PrepMonthEventStrip.jsx'
+import PrepRoadmapBar from './PrepRoadmapBar.jsx'
+import PrepSeasonCalendar from './PrepSeasonCalendar.jsx'
+import PrepSeasonGoal from './PrepSeasonGoal.jsx'
+import PrepSeasonStarts from './PrepSeasonStarts.jsx'
+import PrepSelectedDayStarts from './PrepSelectedDayStarts.jsx'
 
 /**
  * @param {{
  *   plannedCompetitions: import('../../utils/plannedCompetitions.js').PlannedCompetition[],
  *   onPlannedChange: (list: import('../../utils/plannedCompetitions.js').PlannedCompetition[]) => void,
+ *   onRemoveCompetition: (id: string) => void | Promise<void>,
  *   onSave: () => void,
  *   saveBusy: boolean,
  *   saveError: string,
  *   saveOk: boolean,
  *   canSave: boolean,
- *   prepContext: { ageInt?: number | null },
+ *   prepContext: { ageInt?: number | null, studentName?: string | null },
+ *   seasonGoal: import('../../data/seasonGoals.js').SeasonGoalId,
+ *   nextSeasonGoal: import('../../data/seasonGoals.js').SeasonGoalId,
+ *   ladderClosed: boolean,
+ *   onSeasonGoalChange: (id: import('../../data/seasonGoals.js').SeasonGoalId) => void,
+ *   onNextSeasonGoalChange: (id: import('../../data/seasonGoals.js').SeasonGoalId) => void,
+ *   onLadderClosedChange: (v: boolean) => void,
+ *   seasonSettingsBusy?: boolean,
+ *   federationCalendarHint?: string,
+ *   showingFederationDefaults?: boolean,
+ *   onRestoreTypicalCalendar?: () => void | Promise<void>,
  * }} props
  */
 function StudentYearPrepPanel({
   plannedCompetitions,
   onPlannedChange,
+  onRemoveCompetition,
   onSave,
   saveBusy,
   saveError,
   saveOk,
   canSave,
   prepContext,
+  seasonGoal,
+  nextSeasonGoal,
+  ladderClosed,
+  onSeasonGoalChange,
+  onNextSeasonGoalChange,
+  onLadderClosedChange,
+  seasonSettingsBusy = false,
+  federationCalendarHint = '',
+  showingFederationDefaults = false,
+  onRestoreTypicalCalendar,
 }) {
   const [focusId, setFocusId] = useState(null)
+  const [draftTrack, setDraftTrack] = useState('spartakiad')
+  const [draftStage, setDraftStage] = useState('russia')
   const [draftDate, setDraftDate] = useState('')
+  const [draftEndDate, setDraftEndDate] = useState('')
   const [draftTitle, setDraftTitle] = useState('')
+  const [draftNewCycle, setDraftNewCycle] = useState(false)
+  const [draftDateStatus, setDraftDateStatus] = useState(/** @type {'confirmed' | 'orientir'} */ ('confirmed'))
   const [year, setYear] = useState(() => new Date().getFullYear())
+  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
 
   const nearest = useMemo(
     () => pickNearestFutureCompetition(plannedCompetitions),
@@ -52,6 +98,39 @@ function StudentYearPrepPanel({
     }
   }, [focusId, nearest, plannedCompetitions])
 
+  const todayIso = useMemo(() => {
+    const t = new Date()
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+  }, [])
+
+  const [selectedISO, setSelectedISO] = useState(todayIso)
+
+  useEffect(() => {
+    const today = new Date()
+    setViewMonth(today.getFullYear() === year ? today.getMonth() : 0)
+  }, [year])
+
+  const seasonMonthDays = useMemo(
+    () => buildSeasonMonthDays(year, viewMonth, plannedCompetitions, focusId, todayIso),
+    [year, viewMonth, plannedCompetitions, focusId, todayIso],
+  )
+
+  const monthEventCounts = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, m) => countCompetitionsInMonth(year, m, plannedCompetitions)),
+    [year, plannedCompetitions],
+  )
+
+  const monthLabel = useMemo(() => {
+    const iso = `${year}-${String(viewMonth + 1).padStart(2, '0')}-01`
+    return monthYearLabelRu(iso)
+  }, [year, viewMonth])
+
+  const selectedDayCompetitions = useMemo(() => {
+    const row = seasonMonthDays.find((d) => d.dateISO === selectedISO)
+    return row?.competitions ?? []
+  }, [seasonMonthDays, selectedISO])
+
   const plan = useMemo(
     () =>
       buildAnnualPrepPlan({
@@ -59,263 +138,329 @@ function StudentYearPrepPanel({
         ageInt: prepContext.ageInt ?? null,
         plannedCompetitions,
         focusCompetitionId: focusId,
+        seasonGoal,
+        nextSeasonGoal,
+        ladderClosed,
       }),
-    [year, prepContext.ageInt, plannedCompetitions, focusId],
+    [year, prepContext.ageInt, plannedCompetitions, focusId, seasonGoal, nextSeasonGoal, ladderClosed],
   )
-
-  const calendarCells = useMemo(
-    () =>
-      plan.yearDays.map((d) => ({
-        ...d,
-        useMicroPhase: Boolean(d.inFocusPrep && d.microPhase),
-        microPhase: d.microPhase,
-        phase:
-          d.inFocusPrep && d.microPhase
-            ? d.microPhase
-            : { id: d.annualPeriod.id, short: d.annualPeriod.short },
-      })),
-    [plan.yearDays],
-  )
-
-  const defaultISO =
-    plan.yearDays.find((d) => d.isToday)?.dateISO ?? plan.yearDays[0]?.dateISO ?? ''
-  const [selectedISO, setSelectedISO] = useState(defaultISO)
-
-  useEffect(() => {
-    if (!plan.yearDays.some((d) => d.dateISO === selectedISO)) {
-      setSelectedISO(defaultISO)
-    }
-  }, [plan.yearDays, defaultISO, selectedISO])
 
   const selected = useMemo(
-    () => plan.yearDays.find((d) => d.dateISO === selectedISO) ?? plan.yearDays[0],
+    () => plan.yearDays.find((d) => d.dateISO === selectedISO) ?? null,
     [plan.yearDays, selectedISO],
   )
 
+  const focusLabel = useMemo(() => {
+    const c = plan.focusCompetition
+    if (!c) return null
+    const meta = getCompetitionMeta(c)
+    const range = formatCompetitionRange(c)
+    return `${meta.label} · ${range}${c.title ? ` · ${c.title}` : ''}`
+  }, [plan.focusCompetition])
+
+  const goToday = useCallback(() => {
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    setYear(y)
+    setViewMonth(m)
+    setSelectedISO(iso)
+  }, [])
+
   const addCompetition = useCallback(() => {
     const iso = normalizeCompetitionDateISO(draftDate)
+    const endRaw = competitionDateToInputString(draftEndDate) || iso
     if (!iso) return
-    if (plannedCompetitions.some((c) => c.dateISO === iso)) return
-    const next = [
-      ...plannedCompetitions,
-      { id: newPlannedCompetitionId(iso), dateISO: iso, title: draftTitle.trim() },
-    ].sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+    const range = normalizeCompetitionRange(iso, endRaw)
+    const item = {
+      id: newPlannedCompetitionId(iso),
+      dateISO: range.dateISO,
+      dateEndISO: range.dateEndISO,
+      title: draftTitle.trim(),
+      track: draftTrack,
+      stage: draftTrack === 'experience' || draftTrack === 'match' ? null : draftStage,
+      newLadderCycle:
+        draftTrack === 'federation' && (draftStage === 'pmo' || draftStage === 'chmo') && draftNewCycle,
+      dateStatus: draftDateStatus,
+    }
+    const key = competitionIdentityKey(item)
+    if (plannedCompetitions.some((c) => competitionIdentityKey(c) === key)) return
+    const next = dedupePlannedCompetitions([...plannedCompetitions, item])
     onPlannedChange(next)
-    setFocusId(next.find((c) => c.dateISO === iso)?.id ?? null)
+    setFocusId(item.id)
     setDraftDate('')
+    setDraftEndDate('')
     setDraftTitle('')
+    setDraftNewCycle(false)
+    setSelectedISO(iso)
+    setViewMonth(new Date(iso + 'T12:00:00').getMonth())
     if (!iso.startsWith(String(year))) setYear(Number(iso.slice(0, 4)))
-  }, [draftDate, draftTitle, onPlannedChange, plannedCompetitions, year])
+  }, [
+    draftDate,
+    draftDateStatus,
+    draftEndDate,
+    draftStage,
+    draftTrack,
+    draftNewCycle,
+    draftTitle,
+    onPlannedChange,
+    plannedCompetitions,
+    year,
+  ])
 
   const removeCompetition = useCallback(
     (id) => {
-      const next = plannedCompetitions.filter((c) => c.id !== id)
-      onPlannedChange(next)
-      if (focusId === id) setFocusId(pickNearestFutureCompetition(next)?.id ?? null)
+      if (focusId === id) setFocusId(null)
+      void onRemoveCompetition(id)
     },
-    [focusId, onPlannedChange, plannedCompetitions],
+    [focusId, onRemoveCompetition],
   )
 
-  const showMicroTimeline =
-    plan.focusPrepPlan &&
-    !plan.focusPrepPlan.unsupported &&
-    plan.focusPrepPlan.calendarDays?.length > 0
+  const focusCompetition = useCallback(
+    (c) => {
+      setFocusId(c.id)
+      setSelectedISO(c.dateISO)
+      setViewMonth(new Date(c.dateISO + 'T12:00:00').getMonth())
+      if (!c.dateISO.startsWith(String(year))) setYear(Number(c.dateISO.slice(0, 4)))
+    },
+    [year],
+  )
 
-  const selectedStyle =
-    selected?.inFocusPrep && selected.microPhase ? selected.microPhase : selected?.annualPeriod
+  const focusUsesMicro = plan.focusCompetition ? competitionUsesMicroPrep(plan.focusCompetition) : false
+  const focusCalendarDays = plan.focusPrepPlan?.calendarDays ?? []
+  const showFocusStrip =
+    focusUsesMicro && focusCalendarDays.length > 0 && !plan.focusPrepPlan?.unsupported
+  const daysUntil = plan.focusPrepPlan?.daysUntil
+
+  const microCoachView = useMemo(() => {
+    const focus = plan.focusCompetition
+    if (plan.unsupported) {
+      return {
+        mode: /** @type {'blocked'} */ ('blocked'),
+        blockReason: 'Возраст 13–16 на вкладке «Карта»',
+      }
+    }
+    if (!focus) {
+      return {
+        mode: 'blocked',
+        blockReason: 'Нет старта → добавьте отбор, сделайте фокусом',
+      }
+    }
+    if (!focusUsesMicro) {
+      return {
+        mode: 'blocked',
+        blockReason: 'Водокачка/матч — без ОФП→СТТМ. Нужно первенство или спартакиада',
+        fightDateISO: focus.dateISO,
+      }
+    }
+    if (!isConfirmedStart(focus)) {
+      return {
+        mode: /** @type {'preview'} */ ('preview'),
+        blockReason: 'Дата ориентир → подтвердите для плана по дням',
+        focusCompetition: focus,
+        fightDateISO: focus.dateISO,
+      }
+    }
+    const allowsMicro = seasonModeAllowsMicroPrep(plan.seasonMode, {
+      ladderClosed,
+      focusNewCycle: Boolean(focus.newLadderCycle),
+    })
+    if (!allowsMicro) {
+      return {
+        mode: 'preview',
+        blockReason: ladderClosed
+          ? 'Лестница закрыта → новый город в фокусе'
+          : 'Задача «База» → переключите на «Лестница» или «Пик»',
+        focusCompetition: focus,
+        fightDateISO: focus.dateISO,
+      }
+    }
+    if (plan.focusPrepPlan?.unsupported) {
+      return {
+        mode: 'blocked',
+        blockReason: plan.focusPrepPlan.message ?? 'Микроцикл недоступен для этого возраста.',
+        focusCompetition: focus,
+      }
+    }
+    if (plan.focusPrepPlan && !plan.focusPrepPlan.unsupported) {
+      return {
+        mode: /** @type {'active'} */ ('active'),
+        focusCompetition: focus,
+        focusPrepPlan: plan.focusPrepPlan,
+        fightDateISO: focus.dateISO,
+      }
+    }
+    return {
+      mode: 'blocked',
+      blockReason: 'Не удалось построить план к старту.',
+      focusCompetition: focus,
+    }
+  }, [plan, focusUsesMicro, ladderClosed])
+
+  const coachResolved = selected?.coachResolved ?? null
+  const showMacroCoachMission = microCoachView.mode !== 'active' && coachResolved
+
+  const nearestMeta = nearest ? getCompetitionMeta(nearest) : null
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2">
-        <p className="text-[12px] font-semibold text-[#2c2d2e]">Годичный цикл Cartel</p>
-        <p className="mt-0.5 text-[11px] text-[#818c99]">
-          Методика {CARTEL_PREP_AUTHORS} · весна–лето / осень–зима
-        </p>
-        {plan.todayAnnual ? (
-          <div className={`mt-2 rounded-lg border px-2 py-1.5 ${vk.notice}`}>
-            <p className="text-[12px] font-medium text-[#2c2d2e]">
-              Сейчас: {plan.todayAnnual.label}
-              <span className="text-[#818c99]"> ({plan.todayAnnual.monthsLabel})</span>
-            </p>
-            <PrepPhaseTasks tasks={plan.todayAnnual.tasks} compact />
-          </div>
-        ) : null}
-      </div>
-
-      <div className="rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2">
-        <p className="text-[12px] font-semibold text-[#2c2d2e]">Плановые старты</p>
-        <div className={`mt-2 ${vk.formGrid2}`}>
-          <label className="block">
-            <span className={vk.label}>Дата</span>
-            <input
-              type="date"
-              className={vk.input}
-              value={draftDate}
-              onChange={(e) => setDraftDate(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className={vk.label}>Название</span>
-            <input
-              type="text"
-              className={vk.input}
-              placeholder="Первенство, кубок…"
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-            />
-          </label>
-        </div>
-        <button
-          type="button"
-          className={`mt-2 ${vk.btnSecondary}`}
-          disabled={!competitionDateToInputString(draftDate)}
-          onClick={addCompetition}
-        >
-          Добавить старт
-        </button>
-
-        {plannedCompetitions.length > 0 ? (
-          <ul className="mt-2 space-y-1">
-            {plannedCompetitions.map((c) => (
-              <li
-                key={c.id}
-                className={`flex flex-wrap items-center gap-2 rounded-lg border px-2 py-1.5 ${
-                  focusId === c.id ? 'border-[#2d81e0] bg-[#ecf3fc]' : 'border-[#e7e8ec]'
-                }`}
-              >
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 text-left text-[12px]"
-                  onClick={() => {
-                    setFocusId(c.id)
-                    setSelectedISO(c.dateISO)
-                    if (!c.dateISO.startsWith(String(year))) setYear(Number(c.dateISO.slice(0, 4)))
-                  }}
-                >
-                  <span className="font-medium text-[#2c2d2e]">{c.dateISO}</span>
-                  {c.title ? (
-                    <span className="text-[#818c99]"> · {c.title}</span>
-                  ) : (
-                    <span className="text-[#818c99]"> · старт</span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="text-[11px] text-[#818c99] hover:text-rose-600"
-                  onClick={() => removeCompetition(c.id)}
-                  aria-label="Удалить"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={`mt-2 ${vk.mutedXs}`}>Добавьте предполагаемые даты — на календаре появятся ★</p>
-        )}
-
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={!canSave || saveBusy}
-            onClick={onSave}
-            className={vk.btnPrimary}
-          >
-            {saveBusy ? '…' : 'Сохранить'}
-          </button>
-          {saveError ? <p className={vk.error}>{saveError}</p> : null}
-          {saveOk && !saveError ? <p className={vk.success}>Сохранено</p> : null}
-        </div>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[12px] text-[#818c99]">Год</span>
-        <button
-          type="button"
-          className={vk.btnSecondary}
-          onClick={() => setYear((y) => y - 1)}
-        >
+        <button type="button" className={vk.btnSecondary} onClick={() => setYear((y) => y - 1)} aria-label="Год назад">
           ←
         </button>
-        <span className="text-[13px] font-semibold tabular-nums">{year}</span>
-        <button
-          type="button"
-          className={vk.btnSecondary}
-          onClick={() => setYear((y) => y + 1)}
-        >
+        <span className="min-w-[4rem] text-center text-[15px] font-bold tabular-nums text-[#2c2d2e]">{year}</span>
+        <button type="button" className={vk.btnSecondary} onClick={() => setYear((y) => y + 1)} aria-label="Год вперёд">
           →
         </button>
-        {plan.focusCompetition ? (
-          <span className={`ml-auto ${vk.mutedXs}`}>
-            Фокус: {plan.focusCompetition.title || plan.focusCompetition.dateISO}
+        <button type="button" className={vk.btnSecondary} onClick={goToday}>
+          Сегодня
+        </button>
+        {nearest && nearestMeta ? (
+          <span className="ml-auto text-[11px] text-[#818c99]">
+            Ближайший:{' '}
+            <button
+              type="button"
+              className="font-semibold text-[#2d81e0] underline-offset-2 hover:underline"
+              onClick={() => focusCompetition(nearest)}
+            >
+              {nearestMeta.short} · {formatCompetitionRange(nearest)}
+            </button>
           </span>
         ) : null}
       </div>
 
-      {plan.unsupported ? (
-        <p className={vk.noticeWarn}>Укажите год рождения на вкладке «Карта» (13–16 лет).</p>
-      ) : (
-        <>
-          <PrepYearCalendar
-            yearDays={calendarCells}
-            selectedISO={selectedISO}
-            onSelect={setSelectedISO}
-          />
+      {showingFederationDefaults && federationCalendarHint ? (
+        <p className="text-[11px] leading-snug text-[#818c99]">{federationCalendarHint}</p>
+      ) : null}
 
-          {selected ? (
-            <div className="rounded-[10px] border border-[#e7e8ec] bg-white px-3 py-2">
-              <p className="text-[13px] font-semibold text-[#2c2d2e]">
-                {selected.dateISO}
-                {selected.isFightDay ? (
-                  <span className="ml-1 text-rose-700">
-                    · {selected.competitions?.map((c) => c.title || 'Старт').join(', ')}
-                  </span>
-                ) : null}
-              </p>
-              <p className="text-[12px] text-[#818c99]">
-                {selected.inFocusPrep && selected.microPhase
-                  ? `Микроцикл к старту: ${selected.microPhase.label}`
-                  : `Годичный период: ${selected.annualPeriod.label}`}
-              </p>
-              {selectedStyle?.tasks ? <PrepPhaseTasks tasks={selectedStyle.tasks} compact /> : null}
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {(selected.slots ?? selected.annualSlots)?.map((slot) => (
-                  <div key={slot.id} className="rounded-lg border border-[#e7e8ec] px-2 py-1.5">
-                    <p className="text-[10px] font-semibold uppercase text-[#2d81e0]">{slot.label}</p>
-                    <ul className="mt-0.5 text-[12px] text-[#2c2d2e]">
-                      {slot.items.map((item, i) => (
-                        <li key={i}>· {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+      <PrepMonthEventStrip
+        eventCounts={monthEventCounts}
+        activeMonth={viewMonth}
+        onMonth={setViewMonth}
+      />
 
-          {showMicroTimeline && plan.focusPrepPlan ? (
-            <div className="border-t border-[#e7e8ec] pt-3">
-              <p className="mb-2 text-[12px] font-semibold text-[#2c2d2e]">
-                Подготовка к выбранному старту
-              </p>
-              <StudentPrepTimeline
-                calendarDays={plan.focusPrepPlan.calendarDays}
-                currentPhase={plan.focusPrepPlan.phase}
-                daysUntil={plan.focusPrepPlan.daysUntil}
-                ageBandLabel={plan.focusPrepPlan.ageBandLabel}
-                priorities={plan.focusPrepPlan.priorities}
-                competitionDate={plan.focusPrepPlan.competitionDate}
-                hideMethodology
-                hideCalendar
-              />
-            </div>
-          ) : null}
-        </>
-      )}
+      <div className="rounded-[12px] border border-[#e7e8ec] bg-white p-3 shadow-sm">
+        <PrepSeasonCalendar
+          monthDays={seasonMonthDays}
+          selectedISO={selectedISO}
+          onSelect={(iso) => {
+            setSelectedISO(iso)
+            setViewMonth(new Date(iso + 'T12:00:00').getMonth())
+          }}
+          monthLabel={monthLabel}
+        />
+      </div>
+
+      <PrepSelectedDayStarts
+        dateISO={selectedISO}
+        competitions={selectedDayCompetitions}
+        focusId={focusId}
+        onFocus={focusCompetition}
+      />
 
       <details className="rounded-[10px] border border-[#e7e8ec] bg-white">
         <summary className="cursor-pointer px-2.5 py-2 text-[12px] font-medium text-[#2c2d2e]">
-          Методика этапов (ОФП / СФП / СТТМ)
+          Старты сезона · задача · сохранить
+        </summary>
+        <div className="space-y-2 border-t border-[#e7e8ec] px-2.5 py-2">
+          <PrepSeasonGoal
+            seasonGoal={seasonGoal}
+            nextSeasonGoal={nextSeasonGoal}
+            ladderClosed={ladderClosed}
+            onSeasonGoal={onSeasonGoalChange}
+            onNextSeasonGoal={onNextSeasonGoalChange}
+            onLadderClosed={onLadderClosedChange}
+            disabled={seasonSettingsBusy || !canSave}
+          />
+          <PrepSeasonStarts
+            plannedCompetitions={plannedCompetitions}
+            focusId={focusId}
+            draftTrack={draftTrack}
+            draftStage={draftStage}
+            draftDate={draftDate}
+            draftEndDate={draftEndDate}
+            draftTitle={draftTitle}
+            draftNewCycle={draftNewCycle}
+            draftDateStatus={draftDateStatus}
+            onDraftTrack={setDraftTrack}
+            onDraftStage={setDraftStage}
+            onDraftDate={setDraftDate}
+            onDraftEndDate={setDraftEndDate}
+            onDraftTitle={setDraftTitle}
+            onDraftNewCycle={setDraftNewCycle}
+            onDraftDateStatus={setDraftDateStatus}
+            onAdd={addCompetition}
+            onFocus={focusCompetition}
+            onRemove={removeCompetition}
+            removeBusy={saveBusy}
+            onSave={onSave}
+            saveBusy={saveBusy}
+            saveError={saveError}
+            saveOk={saveOk}
+            canSave={canSave}
+            calendarHint={federationCalendarHint}
+            showingFederationDefaults={showingFederationDefaults}
+            onRestoreTypicalCalendar={onRestoreTypicalCalendar}
+          />
+        </div>
+      </details>
+
+      {microCoachView.mode === 'active' || microCoachView.mode === 'preview' ? (
+        <details className="rounded-[10px] border border-[#e7e8ec] bg-white">
+          <summary className="cursor-pointer px-2.5 py-2 text-[12px] font-medium text-[#2c2d2e]">
+            План к старту (ОФП → СТТМ)
+            {plan.focusCompetition ? (
+              <span className="ml-1 font-normal text-[#818c99]">
+                · {getCompetitionMeta(plan.focusCompetition).short}
+              </span>
+            ) : null}
+          </summary>
+          <div className="space-y-2 border-t border-[#e7e8ec] px-2.5 py-2">
+            <PrepMicroCycleRoadmap
+              mode={microCoachView.mode}
+              blockReason={microCoachView.blockReason ?? null}
+              focusCompetition={microCoachView.focusCompetition ?? plan.focusCompetition}
+              focusPrepPlan={microCoachView.focusPrepPlan ?? null}
+              fightDateISO={microCoachView.fightDateISO ?? null}
+              todayIso={todayIso}
+              studentName={prepContext.studentName}
+            />
+            {showMacroCoachMission ? <PrepCoachMissionFromResolved resolved={coachResolved} /> : null}
+            {plan.unsupported ? (
+              <p className={vk.noticeWarn}>Укажите год рождения на вкладке «Карта» (13–16 лет).</p>
+            ) : (
+              <>
+                {showFocusStrip ? (
+                  <PrepFocusDayStrip
+                    calendarDays={focusCalendarDays}
+                    selectedISO={selectedISO}
+                    onSelect={(iso) => {
+                      setSelectedISO(iso)
+                      setViewMonth(new Date(iso + 'T12:00:00').getMonth())
+                    }}
+                  />
+                ) : null}
+                {selected ? (
+                  <PrepDayDetail
+                    day={selected}
+                    focusLabel={showFocusStrip ? focusLabel : null}
+                    daysUntilFocus={daysUntil}
+                    phaseMetrics={selected?.microPhase?.metrics ?? null}
+                  />
+                ) : null}
+                {plan.roadmap ? (
+                  <PrepRoadmapBar roadmap={plan.roadmap} studentName={prepContext.studentName} />
+                ) : null}
+              </>
+            )}
+          </div>
+        </details>
+      ) : null}
+
+      <details className="rounded-[10px] border border-[#e7e8ec] bg-white">
+        <summary className="cursor-pointer px-2.5 py-2 text-[12px] font-medium text-[#2c2d2e]">
+          Справка по этапам
         </summary>
         <div className="border-t border-[#e7e8ec] px-1 pb-2 pt-1">
           <PrepMethodologyBlock activePhaseId={plan.focusPrepPlan?.phase?.id} />

@@ -59,8 +59,12 @@ export function inferUpdateSectionFromPayload(payload) {
 
   if (
     payload.plannedCompetitions != null ||
+    payload.seasonCalendarCustomized != null ||
     payload.competitionDate != null ||
-    payload.competitionTitle != null
+    payload.competitionTitle != null ||
+    payload.seasonGoal != null ||
+    payload.nextSeasonGoal != null ||
+    payload.ladderClosed != null
   ) {
     return STUDENT_UPDATE_SECTION.competitionPrep
   }

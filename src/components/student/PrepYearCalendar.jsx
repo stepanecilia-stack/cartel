@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react'
 import { annualMacroStyle } from '../../data/annualPrepCycle.js'
 import { JUNIOR_PREP_PHASE_STYLES } from '../../data/juniorPrepTracks.js'
+import { GlossaryAbbr } from '../GlossaryText.jsx'
+import { glossaryTip } from '../../data/boxingGlossary.js'
 import { buildPrepCalendarWeeks } from '../../utils/prepCalendarGrid.js'
 
 function cellStyle(day) {
@@ -89,6 +91,10 @@ function PrepYearCalendar({ yearDays, selectedISO, onSelect }) {
                   : hasEvent
                     ? '★'
                     : day.phase.short
+                const tagTip =
+                  !day.isTransitionDay && !hasEvent && day.phase.short
+                    ? glossaryTip(day.phase.short)
+                    : null
 
                 return (
                   <button
@@ -96,9 +102,11 @@ function PrepYearCalendar({ yearDays, selectedISO, onSelect }) {
                     type="button"
                     onClick={() => onSelect(day.dateISO)}
                     title={
-                      hasEvent
-                        ? day.competitions?.map((c) => c.title || 'Старт').join(', ')
-                        : day.dateISO
+                      tagTip
+                        ? `${day.phase.short}: ${tagTip}`
+                        : hasEvent
+                          ? day.competitions?.map((c) => c.title || 'Старт').join(', ')
+                          : day.dateISO
                     }
                     className={[
                       'relative flex min-h-[2.1rem] flex-col items-center justify-center rounded-[6px] border px-0.5 py-0.5 transition',
@@ -110,7 +118,9 @@ function PrepYearCalendar({ yearDays, selectedISO, onSelect }) {
                   >
                     <span className={`h-0.5 w-full max-w-[1.1rem] rounded-full ${s.bar}`} />
                     <span className="text-[10px] font-semibold tabular-nums leading-none">{dayNum}</span>
-                    <span className="text-[7px] font-medium leading-none">{tag}</span>
+                    <span className="text-[7px] font-medium leading-none">
+                      {tagTip ? <GlossaryAbbr>{tag}</GlossaryAbbr> : tag}
+                    </span>
                   </button>
                 )
               })}

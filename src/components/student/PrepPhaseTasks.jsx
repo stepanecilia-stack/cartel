@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import GlossaryText from '../GlossaryText.jsx'
 
 /**
  * @param {{ tasks: Array<{ task: string, via: string }>, compact?: boolean }} props
@@ -13,8 +14,12 @@ function PrepPhaseTasks({ tasks, compact = false }) {
           key={task}
           className={`grid gap-x-2 ${compact ? 'grid-cols-[1fr_auto] text-[11px]' : 'grid-cols-[minmax(0,1fr)_auto] text-[12px]'}`}
         >
-          <dt className="font-medium text-[#2c2d2e]">{task}</dt>
-          <dd className="text-right font-medium text-[#818c99] tabular-nums">{via}</dd>
+          <dt className="font-medium text-[#2c2d2e]">
+            <GlossaryText text={task} />
+          </dt>
+          <dd className="text-right font-medium text-[#818c99] tabular-nums">
+            <GlossaryText text={via} />
+          </dd>
         </div>
       ))}
     </dl>

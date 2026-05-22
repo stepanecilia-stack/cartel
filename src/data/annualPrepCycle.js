@@ -127,10 +127,67 @@ export function annualMacroStyle(periodId) {
   return ANNUAL_MACRO_STYLES[periodId] ?? ANNUAL_MACRO_STYLES['prep-spring']
 }
 
-/** Ориентир дня вне микроцикла к старту. */
-export function buildAnnualDaySlots(period) {
-  return [
-    { id: 'am', label: 'Утренняя', items: [period.amHint] },
-    { id: 'pm', label: 'Дневная', items: [period.pmHint, '2 тренировки в день — по годичному плану'] },
-  ]
+/**
+ * Прикладной план тренировок вне микроцикла (без пояснительных абзацев).
+ * @param {AnnualMacroPeriod} period
+ * @returns {Array<{ part: string, text: string }>}
+ */
+export function buildAnnualDayTraining(period) {
+  const lines = []
+  if (period.amHint) lines.push({ part: 'Утро', text: period.amHint })
+  if (period.pmHint) lines.push({ part: 'День', text: period.pmHint })
+
+  if (period.id === 'transition-aug' || period.id === 'transition-feb') {
+    lines.push({ part: 'Нагрузка', text: 'лёгкая, одна тренировка' })
+  }
+
+  return lines
+}
+
+/**
+ * @param {AnnualMacroPeriod} period
+ * @param {import('./seasonGoals.js').SeasonMode} seasonMode
+ * @param {{ ladderClosed?: boolean }} [meta]
+ */
+export function buildAnnualDayTrainingForMode(period, seasonMode, meta = {}) {
+  if (meta.ladderClosed) {
+    if (seasonMode === 'peak') {
+      return [
+        { part: 'Утро', text: 'ОФП, школа; элементы СФП по плану моста' },
+        { part: 'День', text: 'Техника, спарринги; опыт — по календарю' },
+        { part: 'Цель', text: 'фундамент пика к следующему сезону' },
+      ]
+    }
+    if (seasonMode === 'advance') {
+      return [
+        { part: 'Утро', text: 'ОФП, школа — объём под лестницу следующего года' },
+        { part: 'День', text: 'Снаряды, СТТМ; водокачки по плану' },
+        { part: 'Цель', text: 'мост к отборам следующего сезона' },
+      ]
+    }
+    return [
+      { part: 'Утро', text: 'ОФП, школа бокса' },
+      { part: 'День', text: 'Снаряды, нормативы' },
+      { part: 'Цель', text: 'база к первым отборам' },
+    ]
+  }
+
+  if (seasonMode === 'foundation') {
+    if (period.id === 'comp-summer' || period.id === 'comp-winter') {
+      return [
+        { part: 'Утро', text: 'Кросс, школа бокса, ОРУ — 150–170' },
+        { part: 'День', text: 'Снаряды, СТТМ — средний темп, качество' },
+        { part: 'Задача', text: 'база сезона, не пик к ПР' },
+      ]
+    }
+    if (period.id === 'prep-spring' || period.id === 'prep-autumn') {
+      return [
+        { part: 'Утро', text: 'ОФП, школа бокса' },
+        { part: 'День', text: 'Снаряды, нормативы' },
+        { part: 'Задача', text: 'техника и физика к первым стартам' },
+      ]
+    }
+  }
+
+  return buildAnnualDayTraining(period)
 }

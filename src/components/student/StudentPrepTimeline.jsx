@@ -6,7 +6,9 @@ import {
 import { vk } from '../../utils/vkUi.js'
 import PrepCalendarGrid from './PrepCalendarGrid.jsx'
 import PrepMethodologyBlock from './PrepMethodologyBlock.jsx'
+import { GlossaryAbbr } from '../GlossaryText.jsx'
 import PrepPhaseTasks from './PrepPhaseTasks.jsx'
+import GlossaryText from '../GlossaryText.jsx'
 
 function phaseStyle(phaseId) {
   return JUNIOR_PREP_PHASE_STYLES[phaseId] ?? JUNIOR_PREP_PHASE_STYLES.none
@@ -93,7 +95,7 @@ function StudentPrepTimeline({
             return (
               <span key={p.id} className="inline-flex items-center gap-1.5 text-[11px] text-[#818c99]">
                 <span className={`h-2 w-2 shrink-0 rounded-full ${s.legend}`} />
-                {p.label}
+                <GlossaryAbbr>{p.label}</GlossaryAbbr>
               </span>
             )
           })}
@@ -126,7 +128,11 @@ function StudentPrepTimeline({
             ) : null}
           </p>
           <span className="text-[12px] font-medium">
-            {selected.isTransitionDay ? 'Переход' : selected.phase.label}
+            {selected.isTransitionDay ? (
+              'Переход'
+            ) : (
+              <GlossaryAbbr>{selected.phase.label}</GlossaryAbbr>
+            )}
             {!selected.isTransitionDay && selected.phase.rangeLabel ? (
               <span className="text-[#818c99]"> · {selected.phase.rangeLabel}</span>
             ) : null}
@@ -139,7 +145,9 @@ function StudentPrepTimeline({
           <PrepPhaseTasks tasks={selected.phase.tasks} />
         ) : null}
         {!selected.isTransitionDay && selected.phase.metrics ? (
-          <p className="mt-1 text-[11px] font-medium text-[#818c99]">{selected.phase.metrics}</p>
+          <p className="mt-1 text-[11px] font-medium text-[#818c99]">
+            <GlossaryText text={selected.phase.metrics} />
+          </p>
         ) : null}
       </div>
 
@@ -156,7 +164,7 @@ function StudentPrepTimeline({
               {slot.items.map((item, idx) => (
                 <li key={idx} className="text-[12px] leading-snug text-[#2c2d2e]">
                   <span className="text-[#818c99]">· </span>
-                  {item}
+                  <GlossaryText text={item} />
                 </li>
               ))}
             </ul>
@@ -165,7 +173,9 @@ function StudentPrepTimeline({
       </div>
 
       {priorities.length > 0 ? (
-        <p className={`${vk.mutedXs} border-t border-[#e7e8ec] pt-2`}>{priorities.join(' · ')}</p>
+        <p className={`${vk.mutedXs} border-t border-[#e7e8ec] pt-2`}>
+          <GlossaryText text={priorities.join(' · ')} />
+        </p>
       ) : null}
 
       {!hideMethodology ? (
