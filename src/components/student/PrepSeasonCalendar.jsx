@@ -1,12 +1,10 @@
 import { useMemo } from 'react'
-import {
-  CALENDAR_RANGE_PICK_STYLE,
-  COACH_EVENT_KIND_STYLES,
-  getCalendarItemStyle,
-} from '../../data/coachEventKinds.js'
+import { annualMacroStyle, resolveAnnualMacroPeriodForDate } from '../../data/annualPrepCycle.js'
+import { COACH_EVENT_KIND_STYLES, getCalendarItemStyle } from '../../data/coachEventKinds.js'
+import { getSeasonPlanStyle } from '../../data/seasonPlanKinds.js'
 import { orientirDisplayTitle } from '../../utils/orientirDisplay.js'
 import { isOrientirStart } from '../../utils/plannedCompetitions.js'
-import { buildSeasonMonthWeeks, isIsoInInclusiveRange } from '../../utils/prepSeasonCalendar.js'
+import { buildSeasonMonthWeeks } from '../../utils/prepSeasonCalendar.js'
 import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
 
 /**
@@ -23,11 +21,10 @@ import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
  *   onDayHover?: (iso: string) => void,
  *   onDayHoverEnd?: () => void,
  *   monthLabel?: string,
- *   rangeDraft?: { startISO: string, endISO: string } | null,
- *   pickingEnd?: boolean,
  *   focusId?: string | null,
  *   visualMode?: 'default' | 'minimal',
  *   emphasizeCoachDays?: boolean,
+ *   showMacroPeriod?: boolean,
  * }} props
  */
 function PrepSeasonCalendar({
@@ -37,14 +34,15 @@ function PrepSeasonCalendar({
   onDayHover,
   onDayHoverEnd,
   monthLabel,
-  rangeDraft = null,
-  pickingEnd = false,
   focusId = null,
   visualMode = 'default',
   emphasizeCoachDays = false,
+  showMacroPeriod = true,
 }) {
   const minimal = visualMode === 'minimal'
   const { weekHeaders, weeks } = useMemo(() => buildSeasonMonthWeeks(monthDays), [monthDays])
+
+  const resolveChipStyle = (item) => getSeasonPlanStyle(item) ?? getCalendarItemStyle(item)
 
   const label =
     monthLabel ?? (monthDays[0] ? monthYearLabelRu(monthDays[0].dateISO) : '')
@@ -78,15 +76,18 @@ function PrepSeasonCalendar({
             const hasCoachEvent = chips.some((c) => !isOrientirStart(c))
             const isSelected = day.dateISO === selectedISO
             const dayNum = new Date(day.dateISO + 'T12:00:00').getDate()
-            const inDraftRange =
-              rangeDraft &&
-              isIsoInInclusiveRange(day.dateISO, rangeDraft.startISO, rangeDraft.endISO)
             const isFocusPeriodDay = Boolean(
               focusId && (day.isFocusDay || day.isFocusFightDay),
             )
-            const coachEvent = chips.find((c) => !isOrientirStart(c))
+            const coachEvent = chips.find((c) => !isOrientirStart(c) && !c.planKind)
+            const planBlock = chips.find((c) => c.planKind === 'block')
+            const planCheckpoint = chips.find((c) => c.planKind === 'checkpoint')
+            const primaryChip = coachEvent ?? planBlock ?? planCheckpoint ?? chips[0] ?? null
+            const primaryStyle = primaryChip ? resolveChipStyle(primaryChip) : null
+            const macro = showMacroPeriod ? resolveAnnualMacroPeriodForDate(day.dateISO) : null
+            const macroStyle = macro ? annualMacroStyle(macro.id) : null
             const coachDayStyle =
-              emphasizeCoachDays && hasCoachEvent && coachEvent && !isFocusPeriodDay && !inDraftRange
+              emphasizeCoachDays && hasCoachEvent && coachEvent && !isFocusPeriodDay
                 ? getCalendarItemStyle(coachEvent)
                 : null
 
@@ -106,7 +107,7 @@ function PrepSeasonCalendar({
                     ? chips
                         .map((x) => {
                           if (isOrientirStart(x)) return `${orientirDisplayTitle(x)} (ориентир Минспорта)`
-                          const s = getCalendarItemStyle(x)
+                          const s = resolveChipStyle(x)
                           return `${s.label}: ${x.title || s.label}`
                         })
                         .join('\n')
@@ -115,15 +116,15 @@ function PrepSeasonCalendar({
                 className={[
                   'relative flex touch-manipulation flex-col items-center justify-center rounded-lg border-2 p-0.5 transition select-none',
                   cellMinH,
-                  inDraftRange
-                    ? CALENDAR_RANGE_PICK_STYLE.chip
-                    : isFocusPeriodDay
+                  isFocusPeriodDay
                       ? 'border-[#2d81e0] bg-sky-50 text-[#2c2d2e] shadow-sm z-[1]'
                       : coachDayStyle
                         ? `${coachDayStyle.chip} border-solid shadow-sm`
                         : hasEvents
                           ? 'border-[#e7e8ec] bg-white text-[#2c2d2e]'
-                          : 'border-transparent bg-[#f4f5f7] text-[#818c99]',
+                          : macroStyle
+                            ? `${macroStyle.chip} border-transparent opacity-90`
+                            : 'border-transparent bg-[#f4f5f7] text-[#818c99]',
                   isSelected ? 'ring-2 ring-[#2d81e0] ring-offset-1 z-10' : '',
                   isFocusPeriodDay && !isSelected ? 'ring-2 ring-[#2d81e0]/70 ring-offset-1' : '',
                   day.isToday && !isSelected && !isFocusPeriodDay
@@ -133,17 +134,35 @@ function PrepSeasonCalendar({
               >
                 <span className="text-[12px] font-bold tabular-nums leading-none">{dayNum}</span>
                 {minimal && hasEvents ? (
-                  <span
-                    className={[
-                      'mt-0.5 block rounded-full',
-                      emphasizeCoachDays && coachEvent
-                        ? `h-1.5 w-1.5 ${coachDayStyle?.bar ?? 'bg-teal-500'}`
-                        : hasCoachEvent
-                          ? 'h-1.5 w-1.5 bg-teal-500'
-                          : 'h-1 w-1 bg-slate-300',
-                    ].join(' ')}
-                    aria-hidden
-                  />
+                  <span className="mt-0.5 flex gap-0.5" aria-hidden>
+                    {coachEvent ? (
+                      <span
+                        className={[
+                          'block h-1.5 w-1.5 rounded-full',
+                          getCalendarItemStyle(coachEvent).bar,
+                        ].join(' ')}
+                      />
+                    ) : null}
+                    {planBlock ? (
+                      <span
+                        className={[
+                          'block h-1.5 w-1.5 rounded-full',
+                          getSeasonPlanStyle(planBlock)?.bar ?? 'bg-emerald-500',
+                        ].join(' ')}
+                      />
+                    ) : null}
+                    {planCheckpoint ? (
+                      <span
+                        className={[
+                          'block h-1 w-1 rotate-45 rounded-sm',
+                          getSeasonPlanStyle(planCheckpoint)?.bar ?? 'bg-rose-500',
+                        ].join(' ')}
+                      />
+                    ) : null}
+                    {!coachEvent && !planBlock && !planCheckpoint && primaryStyle ? (
+                      <span className={['block h-1.5 w-1.5 rounded-full', primaryStyle.bar].join(' ')} />
+                    ) : null}
+                  </span>
                 ) : null}
                 {!minimal && hasEvents && chips.length > 1 ? (
                   <span className="absolute right-0.5 top-0.5 text-[8px] font-semibold text-slate-400">
@@ -155,31 +174,9 @@ function PrepSeasonCalendar({
           }),
         )}
       </div>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#818c99]">
-        <span className="inline-flex items-center gap-1">
-          <span className={`h-2 w-2 rounded-sm ${COACH_EVENT_KIND_STYLES.practice.bar}`} />
-          Боевая практика
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className={`h-2 w-2 rounded-sm ${COACH_EVENT_KIND_STYLES.competition.bar}`} />
-          Соревнования
-        </span>
-        {minimal ? (
-          <span className="inline-flex items-center gap-1">
-            <span className="h-1 w-1 rounded-full bg-slate-300" />
-            Ориентир Минспорта
-          </span>
-        ) : null}
-        <span>
-          <span className="font-semibold text-sky-600">Голубой пунктир</span> — выбор периода
-        </span>
-        {pickingEnd ? (
-          <span className="font-semibold text-[#2d81e0]">Выберите конец периода</span>
-        ) : null}
-        {minimal ? (
-          <span>Клик по старту внизу — подсветка дат</span>
-        ) : null}
-      </div>
+      {minimal ? (
+        <p className="mt-2 text-[10px] text-[#818c99]">Точка — старт · зелёная полоска — подготовка к бою</p>
+      ) : null}
     </div>
   )
 }

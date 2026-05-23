@@ -68,6 +68,42 @@ export const normalizeTechnicalDominanceKey = (level) => {
 export const dominanceCoeffForLevel = (level) =>
   DOMINANCE_COEFFICIENTS[normalizeTechnicalDominanceKey(level)] ?? 0.25
 
+const DOMINANCE_RANK = {
+  NOT_LEARNED: 0,
+  KNOWLEDGE: 1,
+  MOTOR_SKILL_LEVEL_1: 2,
+  MOTOR_SKILL_LEVEL_2: 3,
+  AUTOMATED: 4,
+}
+
+/** Порядок уровня освоения (для сравнения «не ниже Умение»). */
+export const dominanceRank = (level) =>
+  DOMINANCE_RANK[normalizeTechnicalDominanceKey(level)] ?? 0
+
+/** Уровень не ниже minKey (по умолчанию «Умение»; Навык и Автоматизм тоже проходят). */
+export const isAtOrAboveDominanceLevel = (level, minKey = 'MOTOR_SKILL_LEVEL_1') =>
+  dominanceRank(level) >= dominanceRank(minKey)
+
+/**
+ * Сколько элементов программы на «Умение» или выше.
+ * @param {object[]} programAtoms
+ * @param {Record<string, { level?: unknown }>} technicalData
+ * @param {keyof typeof DOMINANCE_COEFFICIENTS} [minKey]
+ */
+export const countProgramAtomsAtOrAboveSkill = (
+  programAtoms,
+  technicalData,
+  minKey = 'MOTOR_SKILL_LEVEL_1',
+) => {
+  const atoms = Array.isArray(programAtoms) ? programAtoms : []
+  const data = technicalData && typeof technicalData === 'object' ? technicalData : {}
+  let count = 0
+  for (const atom of atoms) {
+    if (atom?.id && isAtOrAboveDominanceLevel(data[atom.id]?.level, minKey)) count += 1
+  }
+  return { count, total: atoms.length }
+}
+
 /**
  * КД — среднее коэффициентов по всем атомам программы (из technicalAtoms).
  * Без списка атомов — среднее по заполненным в technicalData (дашборд / черновик).

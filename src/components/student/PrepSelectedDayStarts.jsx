@@ -41,7 +41,7 @@ function PrepSelectedDayStarts({
   if (!competitions.length) {
     return (
       <p className="rounded-lg border border-[#e7e8ec] bg-[#fafbfc] px-2.5 py-2 text-[12px] text-[#818c99]">
-        {label} — нет событий. Кликните день начала, затем конец (или «Один день» / «Готово»).
+        {label} — нет событий на этот день.
       </p>
     )
   }

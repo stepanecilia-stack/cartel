@@ -55,8 +55,13 @@ import {
   updateStudentData,
 } from '../services/firebaseService'
 import StudentAnthropometryForm from '../components/student/StudentAnthropometryForm.jsx'
-import StudentYearPrepPanel from '../components/student/StudentYearPrepPanel.jsx'
-import { DEFAULT_SEASON_GOAL, normalizeSeasonGoal } from '../data/seasonGoals.js'
+import StudentSeasonPanel from '../components/student/StudentSeasonPanel.jsx'
+import {
+  normalizeSeasonBlocks,
+  normalizeSeasonCheckpoints,
+} from '../utils/seasonPlan.js'
+import { normalizeCartelStage } from '../data/cartelParticipation.js'
+import { computeTechniqueLeaderboardMetrics } from '../utils/leaderboardMetrics.js'
 import { useCoachEvents } from '../hooks/useCoachEvents.js'
 import {
   calendarItemsForStudent,
@@ -296,10 +301,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [shareFlash, setShareFlash] = useState(false)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
-  const [seasonGoal, setSeasonGoal] = useState(DEFAULT_SEASON_GOAL)
-  const [nextSeasonGoal, setNextSeasonGoal] = useState(DEFAULT_SEASON_GOAL)
-  const [ladderClosed, setLadderClosed] = useState(false)
-  const [seasonSettingsBusy, setSeasonSettingsBusy] = useState(false)
+  const [seasonPlanSaveBusy, setSeasonPlanSaveBusy] = useState(false)
+  const [seasonPlanSaveError, setSeasonPlanSaveError] = useState('')
+  const [cartelStageSaveBusy, setCartelStageSaveBusy] = useState(false)
   const coachId = getCurrentCoachId()
   const { events: coachEvents } = useCoachEvents(coachId)
   const shortIdDeniedRef = useRef(new Set())
@@ -364,11 +368,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     setSaveOk(false)
     setAnthropometrySaveError('')
     setAnthropometrySaveOk(false)
-    setSeasonGoal(normalizeSeasonGoal(student?.seasonGoal))
-    setNextSeasonGoal(
-      normalizeSeasonGoal(student?.nextSeasonGoal ?? student?.seasonGoal ?? DEFAULT_SEASON_GOAL),
-    )
-    setLadderClosed(Boolean(student?.ladderClosed))
   }, [student])
 
   useEffect(() => {
@@ -1398,58 +1397,85 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [nearestPlanned],
   )
 
-  const persistSeasonPrepSettings = useCallback(
-    async (goal, nextGoal, nextLadderClosed) => {
-      if (!student?.id) return false
-      setSeasonSettingsBusy(true)
+  const techniqueLeaderboard = useMemo(
+    () =>
+      student?.id && technicalAtoms.length
+        ? computeTechniqueLeaderboardMetrics(student, technicalAtoms)
+        : null,
+    [student, technicalAtoms],
+  )
+
+  const handleSaveCartelDocuments = useCallback(
+    async (cartelDocuments) => {
+      if (!student?.id) return
+      setCartelStageSaveBusy(true)
       try {
         await updateStudentData(
           student.id,
-          {
-            seasonGoal: goal,
-            nextSeasonGoal: nextGoal,
-            ladderClosed: nextLadderClosed,
-          },
+          { cartelDocuments },
           { section: STUDENT_UPDATE_SECTION.competitionPrep },
         )
-        onStudentUpdatedRef.current?.({
-          seasonGoal: goal,
-          nextSeasonGoal: nextGoal,
-          ladderClosed: nextLadderClosed,
-        })
-        return true
+        onStudentUpdatedRef.current?.({ cartelDocuments })
       } catch (err) {
         console.error(err)
-        return false
+        throw err
       } finally {
-        setSeasonSettingsBusy(false)
+        setCartelStageSaveBusy(false)
       }
     },
     [student?.id],
   )
 
-  const handleSeasonGoalChange = useCallback(
-    (id) => {
-      setSeasonGoal(id)
-      void persistSeasonPrepSettings(id, nextSeasonGoal, ladderClosed)
+  const handleCartelStageChange = useCallback(
+    async (stage, opts = {}) => {
+      if (!student?.id) return
+      const cartelStage = normalizeCartelStage(stage)
+      const patch = {
+        cartelStage,
+        cartelEarlyAccess: Boolean(opts.earlyAccess),
+        cartelStageNote:
+          typeof opts.note === 'string' && opts.note.trim() ? opts.note.trim() : '',
+      }
+      setCartelStageSaveBusy(true)
+      try {
+        await updateStudentData(student.id, patch, {
+          section: STUDENT_UPDATE_SECTION.competitionPrep,
+        })
+        onStudentUpdatedRef.current?.(patch)
+      } catch (err) {
+        console.error(err)
+        throw err
+      } finally {
+        setCartelStageSaveBusy(false)
+      }
     },
-    [nextSeasonGoal, ladderClosed, persistSeasonPrepSettings],
+    [student?.id],
   )
 
-  const handleNextSeasonGoalChange = useCallback(
-    (id) => {
-      setNextSeasonGoal(id)
-      void persistSeasonPrepSettings(seasonGoal, id, ladderClosed)
+  const persistSeasonPlan = useCallback(
+    async ({ blocks, checkpoints }) => {
+      if (!student?.id) return false
+      const patch = {
+        seasonBlocks: normalizeSeasonBlocks(blocks),
+        seasonCheckpoints: normalizeSeasonCheckpoints(checkpoints),
+      }
+      setSeasonPlanSaveBusy(true)
+      setSeasonPlanSaveError('')
+      try {
+        await updateStudentData(student.id, patch, {
+          section: STUDENT_UPDATE_SECTION.competitionPrep,
+        })
+        onStudentUpdatedRef.current?.(patch)
+        return true
+      } catch (err) {
+        console.error(err)
+        setSeasonPlanSaveError('Не удалось сохранить план сезона.')
+        throw err
+      } finally {
+        setSeasonPlanSaveBusy(false)
+      }
     },
-    [seasonGoal, ladderClosed, persistSeasonPrepSettings],
-  )
-
-  const handleLadderClosedChange = useCallback(
-    (v) => {
-      setLadderClosed(v)
-      void persistSeasonPrepSettings(seasonGoal, nextSeasonGoal, v)
-    },
-    [seasonGoal, nextSeasonGoal, persistSeasonPrepSettings],
+    [student?.id],
   )
 
   return (
@@ -1564,12 +1590,34 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
           <div className="mt-2 space-y-2">
             {activeTab === 'competition' && (
-              <StudentYearPrepPanel
+              <StudentSeasonPanel
                 coachId={coachId}
                 studentId={student?.id}
+                student={student}
                 studentName={safeStudent.name}
                 ageInt={sensitivePeriods.ageInt}
                 gender={anthropometry.gender === 'F' ? 'F' : 'M'}
+                allNorms={allNorms}
+                kd={kdBundle.kd}
+                techniquePercent={tabProgress.technical ?? 0}
+                atomsAtSkill={techniqueLeaderboard?.atomsAtSkill ?? 0}
+                totalAtoms={techniqueLeaderboard?.totalAtoms ?? programAtomsFull.length}
+                effectiveKsr={effectiveKSR}
+                seasonBlocks={student?.seasonBlocks}
+                seasonCheckpoints={student?.seasonCheckpoints}
+                onSaveSeasonPlan={persistSeasonPlan}
+                onCartelStageChange={handleCartelStageChange}
+                onSaveCartelDocuments={handleSaveCartelDocuments}
+                onOpenTab={(tabId) => {
+                  if (tabId === 'motor') {
+                    window.location.assign('/qualities')
+                    return
+                  }
+                  setActiveTab(tabId)
+                }}
+                planSaveBusy={seasonPlanSaveBusy}
+                planSaveError={seasonPlanSaveError}
+                stageSaveBusy={cartelStageSaveBusy}
               />
             )}
 

@@ -94,10 +94,11 @@ export function mergeCalendarWithOrientirs(coachItems, orientirItems) {
  * @param {string} endISO
  * @param {CoachEventKind} kind
  */
-export function hasOverlappingCoachEvent(events, startISO, endISO, kind) {
+export function hasOverlappingCoachEvent(events, startISO, endISO, kind, excludeEventId = null) {
   const range = normalizeCompetitionRange(startISO, endISO)
   return events.some(
     (e) =>
+      e.id !== excludeEventId &&
       e.kind === kind &&
       e.dateISO === range.dateISO &&
       e.dateEndISO === range.dateEndISO,

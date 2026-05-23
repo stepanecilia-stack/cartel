@@ -6,9 +6,18 @@ import { monthShortRu } from '../../utils/prepCalendarGrid.js'
  *   eventCounts: number[],
  *   activeMonth: number,
  *   onMonth: (m: number) => void,
+ *   countLabel?: (count: number) => string,
  * }} props
  */
-function PrepMonthEventStrip({ eventCounts, activeMonth, onMonth }) {
+function PrepMonthEventStrip({ eventCounts, activeMonth, onMonth, countLabel }) {
+  const formatCount =
+    countLabel ??
+    ((count) => {
+      if (count === 0) return '—'
+      if (count === 1) return '1 старт'
+      if (count < 5) return `${count} старта`
+      return `${count} стартов`
+    })
   return (
     <div className="grid grid-cols-6 gap-1 sm:grid-cols-12">
       {eventCounts.map((count, month) => {
@@ -28,13 +37,13 @@ function PrepMonthEventStrip({ eventCounts, activeMonth, onMonth }) {
             <span className="text-[10px] font-semibold uppercase text-[#818c99]">
               {monthShortRu(month)}
             </span>
-            {count > 0 ? (
-              <span className="mt-1 text-[11px] font-bold tabular-nums text-rose-600">
-                {count} старт{count === 1 ? '' : count < 5 ? 'а' : 'ов'}
-              </span>
-            ) : (
-              <span className="mt-1 text-[10px] text-[#c4c8cc]">—</span>
-            )}
+            <span
+              className={`mt-1 text-[10px] font-bold tabular-nums leading-tight ${
+                count > 0 ? 'text-[#2d81e0]' : 'text-[#c4c8cc]'
+              }`}
+            >
+              {formatCount(count)}
+            </span>
           </button>
         )
       })}

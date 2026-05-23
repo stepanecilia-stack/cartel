@@ -1,32 +1,47 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { COACH_EVENT_KIND_STYLES, getCalendarItemStyle } from '../../data/coachEventKinds.js'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { getCalendarItemStyle } from '../../data/coachEventKinds.js'
 import { normalizeCompetitionRange } from '../../data/competitionLevels.js'
-import { normalizeCompetitionDateISO } from '../../utils/competitionDate.js'
 import { formatCompetitionRange } from '../../data/competitionLevels.js'
 import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.js'
 import { hasOverlappingCoachEvent } from '../../utils/coachEvents.js'
 import { isOrientirStart } from '../../utils/plannedCompetitions.js'
 import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
 import {
-  advanceAssignPickOnDay,
   buildSeasonMonthDays,
   countCompetitionsInMonth,
+  formatShortDateRu,
   normalizeIsoRange,
 } from '../../utils/prepSeasonCalendar.js'
 import { pickNearestFutureCompetition } from '../../utils/plannedCompetitions.js'
+import {
+  generateRecommendedBlocksForEvent,
+  mergeSeasonPlanCalendarItems,
+  newSeasonBlockId,
+  newSeasonCheckpointId,
+  normalizeSeasonBlocks,
+  normalizeSeasonCheckpoints,
+  planItemsOnDay,
+  removeSeasonBlocksForYear,
+  removeSeasonCheckpointsForYear,
+  seasonBlockToCalendarItem,
+  seasonCheckpointToCalendarItem,
+} from '../../utils/seasonPlan.js'
 import { vk } from '../../utils/vkUi.js'
 import CoachEventDetails from './CoachEventDetails.jsx'
 import CoachEventEditor from './CoachEventEditor.jsx'
+import SeasonBlockDetails from './SeasonBlockDetails.jsx'
+import SeasonBlockEditor from './SeasonBlockEditor.jsx'
+import SeasonCheckpointEditor from './SeasonCheckpointEditor.jsx'
 import PrepMonthEventStrip from '../student/PrepMonthEventStrip.jsx'
 import PrepSeasonCalendar from '../student/PrepSeasonCalendar.jsx'
-import PrepSeasonRangeBar from '../student/PrepSeasonRangeBar.jsx'
 import PrepSeasonEventList from '../student/PrepSeasonEventList.jsx'
+import PrepSeasonPlanList from '../student/PrepSeasonPlanList.jsx'
 import PrepSelectedDayStarts from '../student/PrepSelectedDayStarts.jsx'
+import SeasonCoachGuide from './SeasonCoachGuide.jsx'
+import { buildCartelCoachDirective } from '../../utils/cartelCoachDirective.js'
+import { buildSeasonCoachView } from '../../utils/seasonCoachView.js'
 
-/** @typedef {import('../../utils/prepSeasonCalendar.js').AssignPickState} AssignPickState */
 /** @typedef {import('../../utils/coachEvents.js').CoachEvent} CoachEvent */
-
-const IDLE_PICK = /** @type {AssignPickState} */ ({ phase: 'idle', range: null })
 
 /**
  * @param {{
@@ -46,6 +61,8 @@ const IDLE_PICK = /** @type {AssignPickState} */ ({ phase: 'idle', range: null }
  *   onUpdateEvent: (eventId: string, payload: {
  *     title: string,
  *     kind: 'practice' | 'competition',
+ *     dateISO: string,
+ *     dateEndISO: string,
  *     participantIds: string[],
  *   }) => void | Promise<void>,
  *   onRemoveFromEvent: (eventId: string, studentId: string) => void | Promise<void>,
@@ -55,6 +72,32 @@ const IDLE_PICK = /** @type {AssignPickState} */ ({ phase: 'idle', range: null }
  *   title?: string,
  *   hint?: string,
  *   eventListLayout?: 'flat' | 'cohortLadder',
+ *   seasonBlocks?: import('../../utils/seasonPlan.js').SeasonBlock[],
+ *   seasonCheckpoints?: import('../../utils/seasonPlan.js').SeasonCheckpoint[],
+ *   onSaveSeasonPlan?: (payload: {
+ *     blocks: import('../../utils/seasonPlan.js').SeasonBlock[],
+ *     checkpoints: import('../../utils/seasonPlan.js').SeasonCheckpoint[],
+ *   }) => void | Promise<void>,
+ *   planSaveBusy?: boolean,
+ *   planSaveError?: string,
+ *   ageInt?: number | null,
+ *   student?: Record<string, unknown> | null,
+ *   allNorms?: object[],
+ *   kd?: number,
+ *   techniquePercent?: number,
+ *   atomsAtSkill?: number,
+ *   totalAtoms?: number,
+ *   effectiveKsr?: number,
+ *   onCartelStageChange?: (
+ *     stage: import('../../data/cartelParticipation.js').CartelStageId,
+ *     opts?: { earlyAccess?: boolean, note?: string },
+ *   ) => void | Promise<void>,
+ *   onOpenTab?: (tabId: string) => void,
+ *   onAddSparring?: () => void | Promise<void>,
+ *   onAddMatch?: () => void | Promise<void>,
+ *   onToggleSpecialPass?: () => void | Promise<void>,
+ *   onSaveCartelDocuments?: (docs: import('../../data/cartelDocuments.js').CartelDocumentsMap) => void | Promise<void>,
+ *   stageSaveBusy?: boolean,
  * }} props
  */
 function SeasonCalendarPanel({
@@ -73,42 +116,70 @@ function SeasonCalendarPanel({
   title = 'Календарь сезона',
   hint = '',
   eventListLayout = 'flat',
+  seasonBlocks: seasonBlocksProp = [],
+  seasonCheckpoints: seasonCheckpointsProp = [],
+  onSaveSeasonPlan,
+  planSaveBusy = false,
+  planSaveError = '',
+  ageInt = null,
+  student = null,
+  allNorms = [],
+  kd = 0.25,
+  techniquePercent = 0,
+  atomsAtSkill = 0,
+  totalAtoms = 0,
+  effectiveKsr = 0,
+  onCartelStageChange,
+  onOpenTab,
+  onAddSparring,
+  onAddMatch,
+  onToggleSpecialPass,
+  onSaveCartelDocuments,
+  stageSaveBusy = false,
 }) {
   const listLayout = eventListLayout
   const [focusId, setFocusId] = useState(null)
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
-  const assignPickRef = useRef(IDLE_PICK)
-  const [assignPick, setAssignPick] = useState(IDLE_PICK)
-  const [hoverEndISO, setHoverEndISO] = useState(/** @type {string | null} */ (null))
   const [assignError, setAssignError] = useState('')
   const [editingEventId, setEditingEventId] = useState(/** @type {string | null} */ (null))
+  const [editingBlockId, setEditingBlockId] = useState(/** @type {string | null} */ (null))
+  const [editingCheckpointId, setEditingCheckpointId] = useState(/** @type {string | null} */ (null))
+  const [planCreateMode, setPlanCreateMode] = useState(
+    /** @type {'block' | 'checkpoint' | null} */ (null),
+  )
+  const [createRange, setCreateRange] = useState(
+    /** @type {{ startISO: string, endISO: string } | null} */ (null),
+  )
+  const [planCreateRange, setPlanCreateRange] = useState(
+    /** @type {{ startISO: string, endISO: string } | null} */ (null),
+  )
 
-  const syncAssignPick = useCallback((next) => {
-    assignPickRef.current = next
-    setAssignPick(next)
-  }, [])
+  const blocks = useMemo(() => normalizeSeasonBlocks(seasonBlocksProp), [seasonBlocksProp])
+  const checkpoints = useMemo(
+    () => normalizeSeasonCheckpoints(seasonCheckpointsProp),
+    [seasonCheckpointsProp],
+  )
 
-  const pickPhase = assignPick.phase
-  const rangeDraft = assignPick.range
+  const mergedCalendarItems = useMemo(
+    () => mergeSeasonPlanCalendarItems(calendarItems, blocks, checkpoints),
+    [calendarItems, blocks, checkpoints],
+  )
 
-  const displayRangeDraft = useMemo(() => {
-    if (!rangeDraft) return null
-    if (pickPhase !== 'end') return rangeDraft
-    const endISO = hoverEndISO ?? rangeDraft.endISO
-    const norm = normalizeIsoRange(rangeDraft.startISO, endISO)
-    return { startISO: norm.dateISO, endISO: norm.dateEndISO }
-  }, [rangeDraft, pickPhase, hoverEndISO])
-
-  const nearest = useMemo(() => pickNearestFutureCompetition(calendarItems), [calendarItems])
+  const nearest = useMemo(
+    () => pickNearestFutureCompetition(calendarItems),
+    [calendarItems],
+  )
 
   useEffect(() => {
     if (!focusId && nearest) setFocusId(nearest.id)
-    if (focusId && !calendarItems.some((c) => c.id === focusId)) {
+    if (focusId && !mergedCalendarItems.some((c) => c.id === focusId)) {
       setFocusId(nearest?.id ?? null)
       setEditingEventId(null)
+      setEditingBlockId(null)
+      setEditingCheckpointId(null)
     }
-  }, [focusId, nearest, calendarItems])
+  }, [focusId, nearest, mergedCalendarItems])
 
   const todayIso = useMemo(() => {
     const t = new Date()
@@ -118,14 +189,13 @@ function SeasonCalendarPanel({
   const [selectedISO, setSelectedISO] = useState(todayIso)
 
   useEffect(() => {
-    if (assignPickRef.current.phase !== 'idle') return
     const today = new Date()
     setViewMonth(today.getFullYear() === year ? today.getMonth() : 0)
   }, [year])
 
   const seasonMonthDays = useMemo(
-    () => buildSeasonMonthDays(year, viewMonth, calendarItems, focusId, todayIso),
-    [year, viewMonth, calendarItems, focusId, todayIso],
+    () => buildSeasonMonthDays(year, viewMonth, mergedCalendarItems, focusId, todayIso),
+    [year, viewMonth, mergedCalendarItems, focusId, todayIso],
   )
 
   const monthEventCounts = useMemo(
@@ -140,46 +210,87 @@ function SeasonCalendarPanel({
 
   const selectedDayCompetitions = useMemo(() => {
     const row = seasonMonthDays.find((d) => d.dateISO === selectedISO)
-    return row?.competitions ?? []
+    return (row?.competitions ?? []).filter((c) => !c.planKind)
   }, [seasonMonthDays, selectedISO])
 
-  const eventCounts = useMemo(() => {
-    const practice = calendarItems.filter((c) => c.eventKind === 'practice').length
-    const competition = calendarItems.filter((c) => c.eventKind === 'competition').length
-    return { practice, competition, total: calendarItems.length }
-  }, [calendarItems])
+  const selectedDayPlan = useMemo(
+    () => planItemsOnDay(selectedISO, blocks, checkpoints),
+    [selectedISO, blocks, checkpoints],
+  )
 
   const editingEvent = useMemo(
     () => coachEvents.find((e) => e.id === editingEventId) ?? null,
     [coachEvents, editingEventId],
   )
 
+  const focusedCalendarItem = useMemo(
+    () => mergedCalendarItems.find((c) => c.id === focusId) ?? null,
+    [mergedCalendarItems, focusId],
+  )
+
   const focusedCoachEvent = useMemo(() => {
-    if (!focusId) return null
-    const item = calendarItems.find((c) => c.id === focusId)
-    if (!item?.coachEventId || isOrientirStart(item)) return null
-    return coachEvents.find((e) => e.id === item.coachEventId) ?? null
-  }, [focusId, calendarItems, coachEvents])
+    if (!focusedCalendarItem?.coachEventId || isOrientirStart(focusedCalendarItem)) return null
+    return coachEvents.find((e) => e.id === focusedCalendarItem.coachEventId) ?? null
+  }, [focusedCalendarItem, coachEvents])
 
-  const resetAssign = useCallback(() => {
-    syncAssignPick(IDLE_PICK)
-    setHoverEndISO(null)
+  const focusedBlock = useMemo(
+    () => (focusId ? blocks.find((b) => b.id === focusId) ?? null : null),
+    [focusId, blocks],
+  )
+
+  const focusedCheckpoint = useMemo(
+    () => (focusId ? checkpoints.find((c) => c.id === focusId) ?? null : null),
+    [focusId, checkpoints],
+  )
+
+  const mesoAnchorItem = useMemo(() => {
+    if (!focusedCalendarItem || isOrientirStart(focusedCalendarItem)) return null
+    if (focusedCalendarItem.coachEventId) return focusedCalendarItem
+    return null
+  }, [focusedCalendarItem])
+
+  const closeCreateForm = useCallback(() => {
+    setCreateRange(null)
     setAssignError('')
-    setEditingEventId(null)
-  }, [syncAssignPick])
+  }, [])
 
-  const commitRangeToForm = useCallback(
-    (startISO, endISO) => {
-      const norm = normalizeIsoRange(startISO, endISO)
-      syncAssignPick({
-        phase: 'form',
-        range: { startISO: norm.dateISO, endISO: norm.dateEndISO },
-      })
-      setHoverEndISO(null)
+  const closePlanCreate = useCallback(() => {
+    setPlanCreateMode(null)
+    setPlanCreateRange(null)
+    setAssignError('')
+  }, [])
+
+  const persistPlan = useCallback(
+    async (
+      nextBlocks,
+      nextCheckpoints,
+    ) => {
+      if (!onSaveSeasonPlan || !canSave) return
       setAssignError('')
-      setEditingEventId(null)
+      try {
+        await onSaveSeasonPlan({
+          blocks: normalizeSeasonBlocks(nextBlocks),
+          checkpoints: normalizeSeasonCheckpoints(nextCheckpoints),
+        })
+        closePlanCreate()
+        setEditingBlockId(null)
+        setEditingCheckpointId(null)
+      } catch (err) {
+        setAssignError(formatFirestoreErrorMessage(err))
+        throw err
+      }
     },
-    [syncAssignPick],
+    [onSaveSeasonPlan, canSave, closePlanCreate],
+  )
+
+  const openCreateForm = useCallback(
+    (iso) => {
+      const norm = normalizeIsoRange(iso, iso)
+      setCreateRange({ startISO: norm.dateISO, endISO: norm.dateEndISO })
+      setEditingEventId(null)
+      setAssignError('')
+    },
+    [],
   )
 
   const goToday = useCallback(() => {
@@ -190,8 +301,8 @@ function SeasonCalendarPanel({
     setYear(y)
     setViewMonth(m)
     setSelectedISO(iso)
-    resetAssign()
-  }, [resetAssign])
+    closeCreateForm()
+  }, [closeCreateForm])
 
   const focusItem = useCallback(
     (c) => {
@@ -200,10 +311,26 @@ function SeasonCalendarPanel({
       setViewMonth(new Date(c.dateISO + 'T12:00:00').getMonth())
       if (!c.dateISO.startsWith(String(year))) setYear(Number(c.dateISO.slice(0, 4)))
       setEditingEventId(null)
-      syncAssignPick(IDLE_PICK)
-      setHoverEndISO(null)
+      setEditingBlockId(null)
+      setEditingCheckpointId(null)
+      closeCreateForm()
+      closePlanCreate()
     },
-    [year, syncAssignPick],
+    [year, closeCreateForm, closePlanCreate],
+  )
+
+  const focusBlock = useCallback(
+    (block) => {
+      focusItem(seasonBlockToCalendarItem(block))
+    },
+    [focusItem],
+  )
+
+  const focusCheckpoint = useCallback(
+    (cp) => {
+      focusItem(seasonCheckpointToCalendarItem(cp))
+    },
+    [focusItem],
   )
 
   const handleDayClick = useCallback(
@@ -212,21 +339,15 @@ function SeasonCalendarPanel({
       const m = new Date(iso + 'T12:00:00').getMonth()
       if (m !== viewMonth) setViewMonth(m)
       if (!iso.startsWith(String(year))) setYear(Number(iso.slice(0, 4)))
-
-      const next = advanceAssignPickOnDay(assignPickRef.current, iso)
-      syncAssignPick(next)
-      setHoverEndISO(null)
-      setAssignError('')
-      if (next.phase === 'form') setEditingEventId(null)
     },
-    [syncAssignPick, viewMonth, year],
+    [viewMonth, year],
   )
 
   const handleCreateSave = useCallback(
-    async ({ title, kind, participantIds }) => {
-      if (!rangeDraft || !canSave) return
+    async ({ title, kind, dateISO, dateEndISO, participantIds }) => {
+      if (!canSave) return
       setAssignError('')
-      const range = normalizeCompetitionRange(rangeDraft.startISO, rangeDraft.endISO)
+      const range = normalizeCompetitionRange(dateISO, dateEndISO)
       if (hasOverlappingCoachEvent(coachEvents, range.dateISO, range.dateEndISO, kind)) {
         setAssignError('На эти даты уже есть событие с такой категорией.')
         return
@@ -239,26 +360,40 @@ function SeasonCalendarPanel({
           dateEndISO: range.dateEndISO,
           participantIds,
         })
-        resetAssign()
+        closeCreateForm()
       } catch (err) {
         setAssignError(formatFirestoreErrorMessage(err))
       }
     },
-    [rangeDraft, canSave, coachEvents, onCreateEvent, resetAssign],
+    [canSave, coachEvents, onCreateEvent, closeCreateForm],
   )
 
   const handleEditSave = useCallback(
-    async ({ title, kind, participantIds }) => {
+    async ({ title, kind, dateISO, dateEndISO, participantIds }) => {
       if (!editingEvent || !canSave) return
       setAssignError('')
+      const range = normalizeCompetitionRange(dateISO, dateEndISO)
+      if (
+        hasOverlappingCoachEvent(coachEvents, range.dateISO, range.dateEndISO, kind, editingEvent.id)
+      ) {
+        setAssignError('На эти даты уже есть событие с такой категорией.')
+        return
+      }
       try {
-        await onUpdateEvent(editingEvent.id, { title, kind, participantIds })
-        resetAssign()
+        await onUpdateEvent(editingEvent.id, {
+          title,
+          kind,
+          dateISO: range.dateISO,
+          dateEndISO: range.dateEndISO,
+          participantIds,
+        })
+        setEditingEventId(null)
+        setAssignError('')
       } catch {
         setAssignError('Не удалось сохранить событие.')
       }
     },
-    [editingEvent, canSave, onUpdateEvent, resetAssign],
+    [editingEvent, canSave, coachEvents, onUpdateEvent],
   )
 
   const handleRemoveItem = useCallback(
@@ -277,11 +412,113 @@ function SeasonCalendarPanel({
     [canSave, contextStudentId, focusId, onDeleteEvent, onRemoveFromEvent],
   )
 
-  const displayError = assignError || saveError
-  const nearestStyle = nearest ? getCalendarItemStyle(nearest) : null
+  const cartelDirective = useMemo(
+    () =>
+      buildCartelCoachDirective({
+        student,
+        allNorms,
+        confirmedStage: student?.cartelStage,
+        kd,
+        techniquePercent,
+        atomsAtSkill,
+        totalAtoms,
+        effectiveKsr,
+        seasonCheckpoints: checkpoints,
+        seasonBlocks: blocks,
+        calendarItems,
+        year,
+        ageInt,
+        focusCompetitionId: focusId,
+        selectedISO,
+      }),
+    [
+      student,
+      allNorms,
+      kd,
+      techniquePercent,
+      atomsAtSkill,
+      totalAtoms,
+      effectiveKsr,
+      checkpoints,
+      blocks,
+      calendarItems,
+      year,
+      ageInt,
+      focusId,
+      selectedISO,
+    ],
+  )
 
+  const coachView = cartelDirective.seasonView
+
+  const handleApplyRecommendedPlan = useCallback(async () => {
+    const focus = coachView.focus
+    if (!focus || !canSave || !onSaveSeasonPlan) return
+    const anchorId = focus.coachEventId ?? focus.id
+    const ok = window.confirm(
+      `Расставить подготовку к «${focus.title || 'старту'}» на календаре? Три периода (база → темп → спарринги) посчитает приложение. Старые полосы этого старта заменятся.`,
+    )
+    if (!ok) return
+    const nextBlocks = generateRecommendedBlocksForEvent({
+      anchorEventId: anchorId,
+      eventTitle: focus.title || 'Старт',
+      fightDateISO: focus.dateISO,
+      existingBlocks: blocks,
+      todayIso,
+    })
+    await persistPlan(nextBlocks, checkpoints)
+  }, [coachView.focus, canSave, onSaveSeasonPlan, blocks, checkpoints, persistPlan, todayIso])
+
+  const handleClearPlanYear = useCallback(async () => {
+    if (!canSave) return
+    const ok = window.confirm(`Удалить все блоки и контрольные точки за ${year}?`)
+    if (!ok) return
+    await persistPlan(removeSeasonBlocksForYear(blocks, year), removeSeasonCheckpointsForYear(checkpoints, year))
+    setFocusId(null)
+  }, [canSave, year, blocks, checkpoints, persistPlan])
+
+  const handleClearAllPlan = useCallback(async () => {
+    if (!canSave || (blocks.length === 0 && checkpoints.length === 0)) return
+    const ok = window.confirm('Удалить все блоки и контрольные точки?')
+    if (!ok) return
+    await persistPlan([], [])
+    setFocusId(null)
+  }, [canSave, blocks.length, checkpoints.length, persistPlan])
+
+  const displayError = assignError || saveError || planSaveError
+  const planBusy = planSaveBusy
   return (
     <div className="space-y-3">
+      {!canSave ? <p className={vk.noticeWarn}>Выберите ученика, чтобы сохранять сезон.</p> : null}
+
+      <SeasonCoachGuide
+        student={student}
+        allNorms={allNorms}
+        kd={kd}
+        techniquePercent={techniquePercent}
+        atomsAtSkill={atomsAtSkill}
+        totalAtoms={totalAtoms}
+        effectiveKsr={effectiveKsr}
+        year={year}
+        ageInt={ageInt}
+        calendarItems={calendarItems}
+        focusCompetitionId={focusId}
+        selectedISO={selectedISO}
+        seasonBlocks={blocks}
+        seasonCheckpoints={checkpoints}
+        canSave={canSave}
+        onOpenTab={onOpenTab}
+        onConfirmCartelStage={onCartelStageChange}
+        onAddSparring={onAddSparring}
+        onAddMatch={onAddMatch}
+        onToggleSpecialPass={onToggleSpecialPass}
+        onSaveCartelDocuments={onSaveCartelDocuments}
+        onApplyRecommendedPlan={onSaveSeasonPlan ? handleApplyRecommendedPlan : undefined}
+        onAddEvent={() => openCreateForm(selectedISO)}
+        stageBusy={stageSaveBusy}
+        applyBusy={planBusy}
+      />
+
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-[15px] font-semibold text-[#2c2d2e]">{title}</h2>
         <button type="button" className={vk.btnSecondary} onClick={() => setYear((y) => y - 1)} aria-label="Год назад">
@@ -296,70 +533,93 @@ function SeasonCalendarPanel({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 text-[11px]">
-        <span className="inline-flex items-center gap-1">
-          <span className={`h-2.5 w-2.5 rounded-sm ${COACH_EVENT_KIND_STYLES.practice.bar}`} />
-          Боевая практика: <strong>{eventCounts.practice}</strong>
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className={`h-2.5 w-2.5 rounded-sm ${COACH_EVENT_KIND_STYLES.competition.bar}`} />
-          Соревнования: <strong>{eventCounts.competition}</strong>
-        </span>
-      </div>
-
-      {hint ? <p className="text-[11px] leading-snug text-[#818c99]">{hint}</p> : null}
-      {!canSave ? <p className={vk.noticeWarn}>Войдите и выберите ученика для сохранения.</p> : null}
-
-      {nearest && nearestStyle ? (
-        <p className="text-[11px] text-[#818c99]">
-          Ближайшее:{' '}
-          <button
-            type="button"
-            className="font-semibold text-[#2d81e0] hover:underline"
-            onClick={() => focusItem(nearest)}
-          >
-            {nearest.title || nearestStyle.label} · {formatCompetitionRange(nearest)}
-          </button>
-        </p>
-      ) : null}
+      <p className="text-[12px] text-[#818c99]">
+        Календарь: точки — старты, зелёное — подготовка.{' '}
+        {cartelDirective.calendarLocked
+          ? 'Календарь стартов откроет тренер на этапе «Соревнования» (или досрочный допуск).'
+          : null}
+      </p>
 
       <PrepMonthEventStrip eventCounts={monthEventCounts} activeMonth={viewMonth} onMonth={setViewMonth} />
-
-      {pickPhase === 'end' && rangeDraft ? (
-        <PrepSeasonRangeBar
-          startISO={rangeDraft.startISO}
-          endISO={hoverEndISO ?? rangeDraft.endISO}
-          onEndISO={(raw) => setHoverEndISO(normalizeCompetitionDateISO(raw) || raw)}
-          onConfirm={() => commitRangeToForm(rangeDraft.startISO, hoverEndISO ?? rangeDraft.endISO)}
-          onOneDay={() => commitRangeToForm(rangeDraft.startISO, rangeDraft.startISO)}
-          onCancel={resetAssign}
-        />
-      ) : null}
 
       <div className="rounded-[12px] border border-[#e7e8ec] bg-white p-3 shadow-sm">
         <PrepSeasonCalendar
           monthDays={seasonMonthDays}
           selectedISO={selectedISO}
           onSelect={handleDayClick}
-          onDayHover={pickPhase === 'end' ? (iso) => setHoverEndISO(iso) : undefined}
-          onDayHoverEnd={() => setHoverEndISO(null)}
           monthLabel={monthLabel}
-          rangeDraft={displayRangeDraft}
-          pickingEnd={pickPhase === 'end'}
           visualMode="minimal"
           emphasizeCoachDays={listLayout === 'cohortLadder'}
           focusId={focusId}
         />
       </div>
 
-      {pickPhase === 'form' && rangeDraft ? (
+      {canSave && onSaveSeasonPlan ? (
+        <details className="rounded-lg border border-[#e7e8ec] bg-[#fafbfc] px-2.5 py-2">
+          <summary className="cursor-pointer text-[12px] font-medium text-[#818c99]">
+            Дополнительно: свой блок, контрольная точка, очистка
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={vk.btnSecondary}
+              disabled={planBusy}
+              onClick={() => {
+                const norm = normalizeIsoRange(selectedISO, selectedISO)
+                setPlanCreateRange({ startISO: norm.dateISO, endISO: norm.dateEndISO })
+                setPlanCreateMode('block')
+                setEditingBlockId(null)
+                closeCreateForm()
+              }}
+            >
+              Свой блок
+            </button>
+            <button
+              type="button"
+              className={vk.btnSecondary}
+              disabled={planBusy}
+              onClick={() => {
+                setPlanCreateRange({ startISO: selectedISO, endISO: selectedISO })
+                setPlanCreateMode('checkpoint')
+                setEditingCheckpointId(null)
+                closeCreateForm()
+              }}
+            >
+              Контрольная точка
+            </button>
+            {blocks.length > 0 || checkpoints.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  className="text-[12px] text-rose-600"
+                  disabled={planBusy}
+                  onClick={() => void handleClearPlanYear()}
+                >
+                  Очистить план за {year}
+                </button>
+                <button
+                  type="button"
+                  className="text-[12px] text-rose-600"
+                  disabled={planBusy}
+                  onClick={() => void handleClearAllPlan()}
+                >
+                  Очистить весь план
+                </button>
+              </>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+
+      {createRange ? (
         <CoachEventEditor
+          key={`create-${createRange.startISO}`}
           mode="create"
-          dateISO={rangeDraft.startISO}
-          dateEndISO={rangeDraft.endISO}
+          dateISO={createRange.startISO}
+          dateEndISO={createRange.endISO}
           students={students}
           initialParticipantIds={defaultParticipantIds}
-          onCancel={resetAssign}
+          onCancel={closeCreateForm}
           onSave={handleCreateSave}
           busy={saveBusy}
           error={displayError}
@@ -367,7 +627,204 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      {focusedCoachEvent && !editingEvent && pickPhase !== 'form' ? (
+      {planCreateMode === 'block' && planCreateRange && onSaveSeasonPlan ? (
+        <SeasonBlockEditor
+          key={`block-create-${planCreateRange.startISO}`}
+          mode="create"
+          dateISO={planCreateRange.startISO}
+          dateEndISO={planCreateRange.endISO}
+          onCancel={closePlanCreate}
+          onSave={async (payload) => {
+            await persistPlan(
+              [
+                ...blocks,
+                {
+                  id: newSeasonBlockId(),
+                  title: payload.title,
+                  phase: payload.phase,
+                  dateISO: payload.dateISO,
+                  dateEndISO: payload.dateEndISO,
+                  anchorEventId: mesoAnchorItem?.coachEventId ?? mesoAnchorItem?.id ?? null,
+                  done: payload.done,
+                },
+              ],
+              checkpoints,
+            )
+          }}
+          busy={planBusy}
+          error={displayError}
+          disabled={!canSave}
+        />
+      ) : null}
+
+      {planCreateMode === 'checkpoint' && planCreateRange && onSaveSeasonPlan ? (
+        <SeasonCheckpointEditor
+          key={`cp-create-${planCreateRange.startISO}`}
+          mode="create"
+          dateISO={planCreateRange.startISO}
+          onCancel={closePlanCreate}
+          onSave={async (payload) => {
+            await persistPlan(blocks, [
+              ...checkpoints,
+              {
+                id: newSeasonCheckpointId(),
+                title: payload.title,
+                kind: payload.kind,
+                dateISO: payload.dateISO,
+                done: payload.done,
+              },
+            ])
+          }}
+          busy={planBusy}
+          error={displayError}
+          disabled={!canSave}
+        />
+      ) : null}
+
+      {focusedBlock && !editingBlockId && !planCreateMode ? (
+        <SeasonBlockDetails
+          block={focusedBlock}
+          onClose={() => setFocusId(null)}
+          onEdit={() => setEditingBlockId(focusedBlock.id)}
+          onToggleDone={async (done) => {
+            await persistPlan(
+              blocks.map((b) => (b.id === focusedBlock.id ? { ...b, done } : b)),
+              checkpoints,
+            )
+          }}
+          onDelete={async () => {
+            await persistPlan(
+              blocks.filter((b) => b.id !== focusedBlock.id),
+              checkpoints,
+            )
+            setFocusId(null)
+          }}
+          busy={planBusy}
+          canSave={canSave && Boolean(onSaveSeasonPlan)}
+        />
+      ) : null}
+
+      {editingBlockId && onSaveSeasonPlan ? (
+        (() => {
+          const block = blocks.find((b) => b.id === editingBlockId)
+          if (!block) return null
+          return (
+            <SeasonBlockEditor
+              key={block.id}
+              mode="edit"
+              dateISO={block.dateISO}
+              dateEndISO={block.dateEndISO}
+              initialTitle={block.title}
+              initialPhase={block.phase}
+              initialDone={block.done}
+              onCancel={() => setEditingBlockId(null)}
+              onSave={async (payload) => {
+                await persistPlan(
+                  blocks.map((b) =>
+                    b.id === block.id
+                      ? {
+                          ...b,
+                          title: payload.title,
+                          phase: payload.phase,
+                          dateISO: payload.dateISO,
+                          dateEndISO: payload.dateEndISO,
+                          done: payload.done,
+                        }
+                      : b,
+                  ),
+                  checkpoints,
+                )
+              }}
+              onDelete={async () => {
+                await persistPlan(
+                  blocks.filter((b) => b.id !== block.id),
+                  checkpoints,
+                )
+                setFocusId(null)
+              }}
+              busy={planBusy}
+              error={displayError}
+              disabled={!canSave}
+            />
+          )
+        })()
+      ) : null}
+
+      {editingCheckpointId && onSaveSeasonPlan ? (
+        (() => {
+          const cp = checkpoints.find((c) => c.id === editingCheckpointId)
+          if (!cp) return null
+          return (
+            <SeasonCheckpointEditor
+              key={cp.id}
+              mode="edit"
+              dateISO={cp.dateISO}
+              initialTitle={cp.title}
+              initialKind={cp.kind}
+              initialDone={cp.done}
+              onCancel={() => setEditingCheckpointId(null)}
+              onSave={async (payload) => {
+                await persistPlan(
+                  blocks,
+                  checkpoints.map((row) =>
+                    row.id === cp.id
+                      ? {
+                          ...row,
+                          title: payload.title,
+                          kind: payload.kind,
+                          dateISO: payload.dateISO,
+                          done: payload.done,
+                        }
+                      : row,
+                  ),
+                )
+              }}
+              onDelete={async () => {
+                await persistPlan(
+                  blocks,
+                  checkpoints.filter((row) => row.id !== cp.id),
+                )
+                setFocusId(null)
+              }}
+              busy={planBusy}
+              error={displayError}
+              disabled={!canSave}
+            />
+          )
+        })()
+      ) : null}
+
+      {focusedCheckpoint && !editingCheckpointId && !planCreateMode ? (
+        <div className={`rounded-lg border p-2.5 ${displayError ? '' : ''}`}>
+          <p className="text-[12px] font-semibold text-[#2c2d2e]">{focusedCheckpoint.title}</p>
+          <p className="text-[11px] text-[#818c99]">{focusedCheckpoint.dateISO}</p>
+          {canSave && onSaveSeasonPlan ? (
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className={vk.btnPrimary}
+                onClick={() => setEditingCheckpointId(focusedCheckpoint.id)}
+              >
+                Изменить
+              </button>
+              <button
+                type="button"
+                className="text-[13px] text-rose-600"
+                onClick={() =>
+                  void persistPlan(
+                    blocks,
+                    checkpoints.filter((c) => c.id !== focusedCheckpoint.id),
+                  ).then(() => setFocusId(null))
+                }
+              >
+                Удалить
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {focusedCoachEvent && !editingEvent && !createRange && !focusedBlock && !focusedCheckpoint ? (
         <CoachEventDetails
           event={focusedCoachEvent}
           students={students}
@@ -383,7 +840,7 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      {editingEvent && pickPhase !== 'form' ? (
+      {editingEvent && !createRange ? (
         <CoachEventEditor
           key={editingEvent.id}
           mode="edit"
@@ -405,6 +862,11 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
+      <details className="rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2">
+        <summary className="cursor-pointer text-[12px] font-medium text-[#2c2d2e]">
+          Все старты и периоды списком
+        </summary>
+        <div className="mt-2 space-y-2">
       <PrepSeasonEventList
         items={calendarItems}
         year={year}
@@ -413,6 +875,42 @@ function SeasonCalendarPanel({
         layout={listLayout}
         orientirsCollapsedDefault={listLayout === 'cohortLadder'}
       />
+
+      {onSaveSeasonPlan ? (
+        <PrepSeasonPlanList
+          blocks={blocks}
+          checkpoints={checkpoints}
+          year={year}
+          focusId={focusId}
+          onFocusBlock={focusBlock}
+          onFocusCheckpoint={focusCheckpoint}
+          onDeleteBlock={
+            canSave
+              ? (id) =>
+                  void persistPlan(
+                    blocks.filter((b) => b.id !== id),
+                    checkpoints,
+                  ).then(() => {
+                    if (focusId === id) setFocusId(null)
+                  })
+              : undefined
+          }
+          onDeleteCheckpoint={
+            canSave
+              ? (id) =>
+                  void persistPlan(
+                    blocks,
+                    checkpoints.filter((c) => c.id !== id),
+                  ).then(() => {
+                    if (focusId === id) setFocusId(null)
+                  })
+              : undefined
+          }
+          deleteBusy={planBusy}
+        />
+      ) : null}
+        </div>
+      </details>
 
       <PrepSelectedDayStarts
         dateISO={selectedISO}
@@ -431,6 +929,7 @@ function SeasonCalendarPanel({
         removeLabel={contextStudentId ? 'Убрать из события' : 'Удалить'}
         students={students}
       />
+
     </div>
   )
 }

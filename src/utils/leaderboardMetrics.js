@@ -3,6 +3,7 @@ import {
   calculateKsrAndKsp,
   calculateKD,
   calculateLegacySectionScores,
+  countProgramAtomsAtOrAboveSkill,
   getNormsForAthlete,
   normalizeTechnicalDominanceKey,
 } from './ksrUtils.js'
@@ -70,7 +71,8 @@ export function countNormMedalsForStudent(student, allNorms, category) {
   }
 
   const points = medals.gold * 100 + medals.silver * 40 + medals.bronze * 15
-  return { ...medals, points, applicable: norms.length }
+  const passed = medals.gold + medals.silver + medals.bronze
+  return { ...medals, passed, points, applicable: norms.length }
 }
 
 /**
@@ -112,6 +114,7 @@ export function computeTechniqueLeaderboardMetrics(student, technicalAtoms) {
     skillSum += { NOT_LEARNED: 0, KNOWLEDGE: 1, MOTOR_SKILL_LEVEL_1: 2, MOTOR_SKILL_LEVEL_2: 3, AUTOMATED: 4 }[key] ?? 0
   }
 
+  const { count: atomsAtSkill } = countProgramAtomsAtOrAboveSkill(programAtoms, data)
   const totalAtoms = programAtoms.length
   const kdPercent = Math.round((kdBundle.kd ?? 0.25) * 100)
 
@@ -119,6 +122,7 @@ export function computeTechniqueLeaderboardMetrics(student, technicalAtoms) {
 
   return {
     studiedCount,
+    atomsAtSkill,
     totalAtoms,
     automatedCount: kdBundle.automatedCount,
     kd: kdBundle.kd,
