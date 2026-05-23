@@ -15,7 +15,7 @@ import {
 import { resolveTypicalSeasonCalendar } from '../../utils/plannedCompetitions.js'
 import { federationCalendarHint } from '../../data/federationCalendar2026.js'
 import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.js'
-import { displayNameFromStudent } from '../../utils/studentModel.js'
+import { toCoachEventStudentOption } from '../../utils/coachEventStudents.js'
 
 /**
  * @param {{
@@ -33,11 +33,7 @@ function StudentYearPrepPanel({ coachId, studentId, studentName = '', ageInt = n
   const [saveError, setSaveError] = useState('')
 
   const studentOptions = useMemo(
-    () =>
-      students.map((s) => ({
-        id: String(s.id),
-        name: displayNameFromStudent(s),
-      })),
+    () => students.map((s) => toCoachEventStudentOption(s)),
     [students],
   )
 

@@ -2,32 +2,17 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
 import { useCoachStudents } from '../hooks/useCoachStudents.js'
-import { findGoldStandardRow } from '../utils/ksrUtils'
 import { resolveStudentLastChange } from '../utils/studentLastChange.js'
+import {
+  formatAthleteWeightCategory,
+  formatAthleteWeightCategoryShort,
+} from '../utils/athleteWeightCategory.js'
 import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
 
 function normalizeSearchText(value) {
   return String(value ?? '')
     .toLowerCase()
     .trim()
-}
-
-/** Понятная подпись веса по таблице программы (возраст + пол + вес из анкеты). */
-function formatDashboardWeightCategory(athleteShaped) {
-  const w = Number(athleteShaped.weight ?? 0)
-  if (!w || w < 20) return '—'
-  const m = findGoldStandardRow(athleteShaped)
-  if (!m) return `${Math.round(w)} кг (вес из анкеты)`
-  const row = m.row
-  if (row.openTop) return `свыше ${Math.floor(row.weightMin)} кг`
-  if (row.weightMin === row.weightMax) return `${row.weightMin} кг`
-  return `${row.weightMin}–${row.weightMax} кг`
-}
-
-/** Короткая подпись веса для узких экранов. */
-function formatDashboardWeightCategoryShort(fullLine) {
-  if (!fullLine || fullLine === '—') return fullLine
-  return fullLine.replace(/\s*\(вес из анкеты\)/i, '').trim()
 }
 
 function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
@@ -45,8 +30,8 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
         const shaped = studentAthleteShape(raw)
         const birthYearNum = Number(shaped.birthYear) || null
         const birthYearLabel = formatBirthYearRu(shaped.birthYear) || 'не указан'
-        const weightCategoryLine = formatDashboardWeightCategory(shaped)
-        const weightCategoryShort = formatDashboardWeightCategoryShort(weightCategoryLine)
+        const weightCategoryLine = formatAthleteWeightCategory(shaped, { fallbackToWeight: true })
+        const weightCategoryShort = formatAthleteWeightCategoryShort(weightCategoryLine)
         const gender = shaped.gender === 'F' ? 'F' : 'M'
         return {
           ...raw,

@@ -1,9 +1,10 @@
 import { memo, useMemo } from 'react'
+import { formatCoachEventParticipantMeta } from '../../utils/coachEventStudents.js'
 import { vk } from '../../utils/vkUi.js'
 
 /**
  * @param {{
- *   students: Array<{ id: string, name: string }>,
+ *   students: import('../../utils/coachEventStudents.js').CoachEventStudentOption[],
  *   selectedIds: string[],
  *   onChange: (ids: string[]) => void,
  *   disabled?: boolean,
@@ -56,7 +57,12 @@ function CoachEventParticipants({ students, selectedIds, onChange, disabled = fa
                       )
                     }}
                   />
-                  <span className="truncate">{s.name}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{s.name}</span>
+                    <span className="block truncate text-[11px] text-[#818c99]">
+                      {formatCoachEventParticipantMeta(s)}
+                    </span>
+                  </span>
                 </label>
               </li>
             )

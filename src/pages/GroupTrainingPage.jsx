@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
+import { useGroupTrainingSession } from '../hooks/useGroupTrainingSession.js'
 import { updateStudentData } from '../services/firebaseService'
 import { loadLegacyTechnicalAtoms, TECHNIQUE_LEVEL2_ATOMS } from '../utils/ksrUtils'
 import {
@@ -15,6 +16,12 @@ import {
   buildTechnicalOnlyUpdatePayload,
   countLeadingMasteredAtoms,
 } from '../utils/studentTechnicalUpdate.js'
+import {
+  endGroupTrainingSession,
+  getGroupTrainingSession,
+  startGroupTrainingSession,
+  updateGroupTrainingSessionSliders,
+} from '../utils/groupTrainingSession.js'
 import { displayNameFromStudent } from '../utils/studentModel'
 import { vk } from '../utils/vkUi.js'
 
@@ -70,7 +77,9 @@ function ComposePhase({
   toggleAll,
   allSelectedInView,
   onStartTraining,
+  onResumeTraining,
   filteredStudents,
+  hasActiveSession,
 }) {
   const selectedCount = selectedIds.size
   const totalInView = filteredStudents.length
@@ -81,6 +90,18 @@ function ComposePhase({
         <h1 className={vk.h1Lg}>Прогресс техники</h1>
         <p className={`mt-1 ${vk.muted}`}>Шаг 1: отметьте, кто на тренировке.</p>
       </header>
+
+      {hasActiveSession ? (
+        <div className="rounded-lg border border-[#2d81e0]/35 bg-[#ecf3fc] px-3 py-2">
+          <p className="text-[13px] font-medium text-[#2c2d2e]">Тренировка не завершена</p>
+          <p className={`mt-0.5 ${vk.mutedXs}`}>
+            Состав и ползунки сохранены — можно продолжить с любой страницы.
+          </p>
+          <button type="button" onClick={onResumeTraining} className={`mt-2 ${vk.btnPrimary}`}>
+            Продолжить тренировку
+          </button>
+        </div>
+      ) : null}
 
       {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
@@ -160,7 +181,7 @@ function ComposePhase({
   )
 }
 
-function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
+function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessionTiers }) {
   const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
   const orderedL3 = useMemo(
     () => mergeWithRequiredLevel3Combinations(student.technicalCombinations),
@@ -173,12 +194,16 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
 
   const data = student.technicalData ?? {}
 
-  const initial1 = useMemo(() => countLeadingMasteredAtoms(orderedL1, data), [orderedL1, data])
-  const initial2 = useMemo(() => countLeadingMasteredAtoms(orderedL2, data), [orderedL2, data])
-  const initial3 = useMemo(
+  const baseline1 = useMemo(() => countLeadingMasteredAtoms(orderedL1, data), [orderedL1, data])
+  const baseline2 = useMemo(() => countLeadingMasteredAtoms(orderedL2, data), [orderedL2, data])
+  const baseline3 = useMemo(
     () => countLeadingMasteredAtoms(orderedL3.map((c) => ({ id: c.id })), data),
     [orderedL3, data],
   )
+
+  const initial1 = sessionTiers?.l1 != null ? sessionTiers.l1 : baseline1
+  const initial2 = sessionTiers?.l2 != null ? sessionTiers.l2 : baseline2
+  const initial3 = sessionTiers?.l3 != null ? sessionTiers.l3 : baseline3
 
   const [slider1, setSlider1] = useState(initial1)
   const [slider2, setSlider2] = useState(initial2)
@@ -321,7 +346,15 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus }) {
   )
 }
 
-function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }) {
+function ProgressPhase({
+  coachId,
+  studentsForSession,
+  orderedL1,
+  onBack,
+  onCompleteTraining,
+  technicalAtoms,
+  slidersByStudentId,
+}) {
   const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
   const pendingTiersRef = useRef(new Map())
   const [savingStatusById, setSavingStatusById] = useState({})
@@ -338,14 +371,6 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
       }
     }
   }, [studentsForSession])
-
-  useEffect(
-    () => () => {
-      for (const handle of debounceRef.current.values()) clearTimeout(handle)
-      debounceRef.current.clear()
-    },
-    [],
-  )
 
   const setStatus = useCallback((studentId, status) => {
     setSavingStatusById((prev) => ({ ...prev, [studentId]: status }))
@@ -381,9 +406,38 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
     [orderedL1, orderedL2, setStatus, technicalAtoms],
   )
 
+  const flushPendingSaves = useCallback(() => {
+    for (const handle of debounceRef.current.values()) clearTimeout(handle)
+    debounceRef.current.clear()
+    for (const [studentId, tiers] of pendingTiersRef.current.entries()) {
+      void commitSliderChange(studentId, tiers)
+    }
+    pendingTiersRef.current.clear()
+  }, [commitSliderChange])
+
+  useEffect(
+    () => () => {
+      flushPendingSaves()
+    },
+    [flushPendingSaves],
+  )
+
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushPendingSaves()
+    }
+    window.addEventListener('pagehide', flushPendingSaves)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', flushPendingSaves)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [flushPendingSaves])
+
   const handleSliderChange = useCallback(
     (studentId, tiers) => {
       pendingTiersRef.current.set(studentId, tiers)
+      if (coachId) updateGroupTrainingSessionSliders(coachId, studentId, tiers)
       setStatus(studentId, 'saving')
       const prevHandle = debounceRef.current.get(studentId)
       if (prevHandle) clearTimeout(prevHandle)
@@ -394,8 +448,13 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
       }, SAVE_DEBOUNCE_MS)
       debounceRef.current.set(studentId, handle)
     },
-    [commitSliderChange, setStatus],
+    [coachId, commitSliderChange, setStatus],
   )
+
+  const handleComplete = useCallback(() => {
+    flushPendingSaves()
+    onCompleteTraining()
+  }, [flushPendingSaves, onCompleteTraining])
 
   return (
     <div className="space-y-2">
@@ -409,9 +468,14 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
             </span>
           </p>
         </div>
-        <button type="button" onClick={onBack} className={vk.btnSecondary}>
-          Состав
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-1.5">
+          <button type="button" onClick={onBack} className={vk.btnSecondary}>
+            Состав
+          </button>
+          <button type="button" onClick={handleComplete} className={vk.btnPrimary}>
+            Завершить тренировку
+          </button>
+        </div>
       </header>
 
       {orderedL1.length === 0 ? (
@@ -426,6 +490,7 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
             orderedL1={orderedL1}
             onChange={handleSliderChange}
             savingStatus={savingStatusById[student.id] ?? 'idle'}
+            sessionTiers={slidersByStudentId[student.id]}
           />
         ))}
       </ul>
@@ -435,6 +500,7 @@ function ProgressPhase({ studentsForSession, orderedL1, onBack, technicalAtoms }
 
 export default function GroupTrainingPage({ coachId }) {
   const navigate = useNavigate()
+  const activeSession = useGroupTrainingSession(coachId)
   const [phase, setPhase] = useState('compose')
   const [students, setStudents] = useState([])
   const [technicalAtoms, setTechnicalAtoms] = useState([])
@@ -442,6 +508,7 @@ export default function GroupTrainingPage({ coachId }) {
   const [loadError, setLoadError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const sessionRestoredRef = useRef(false)
 
   useEffect(() => {
     if (!coachId) return undefined
@@ -481,6 +548,15 @@ export default function GroupTrainingPage({ coachId }) {
     }
   }, [coachId])
 
+  useEffect(() => {
+    if (!coachId || isLoading || sessionRestoredRef.current) return
+    const session = getGroupTrainingSession(coachId)
+    if (!session?.selectedIds.length) return
+    sessionRestoredRef.current = true
+    setSelectedIds(new Set(session.selectedIds))
+    setPhase('progress')
+  }, [coachId, isLoading])
+
   const orderedAtoms = useMemo(
     () => orderTechnicalAtomsForProgram(technicalAtoms),
     [technicalAtoms],
@@ -519,22 +595,40 @@ export default function GroupTrainingPage({ coachId }) {
     [filteredStudents],
   )
 
-  const studentsForSession = useMemo(
-    () =>
-      students
-        .filter((student) => selectedIds.has(student.id))
-        .map((student) => ({ ...student })),
-    [students, selectedIds],
-  )
+  const studentsForSession = useMemo(() => {
+    const ids =
+      phase === 'progress' && activeSession?.selectedIds.length
+        ? activeSession.selectedIds
+        : [...selectedIds]
+    const idSet = new Set(ids)
+    return students.filter((student) => idSet.has(student.id)).map((student) => ({ ...student }))
+  }, [students, selectedIds, phase, activeSession])
 
   const handleStartTraining = useCallback(() => {
-    if (selectedIds.size === 0) return
+    if (selectedIds.size === 0 || !coachId) return
+    startGroupTrainingSession(coachId, selectedIds)
     setPhase('progress')
-  }, [selectedIds])
+  }, [selectedIds, coachId])
+
+  const handleResumeTraining = useCallback(() => {
+    if (!coachId) return
+    const session = getGroupTrainingSession(coachId)
+    if (session?.selectedIds.length) {
+      setSelectedIds(new Set(session.selectedIds))
+    }
+    setPhase('progress')
+  }, [coachId])
 
   const handleBackToCompose = useCallback(() => {
     setPhase('compose')
   }, [])
+
+  const handleCompleteTraining = useCallback(() => {
+    if (coachId) endGroupTrainingSession(coachId)
+    setPhase('compose')
+    setSelectedIds(new Set())
+    sessionRestoredRef.current = false
+  }, [coachId])
 
   if (!coachId) {
     return (
@@ -568,14 +662,19 @@ export default function GroupTrainingPage({ coachId }) {
             toggleAll={toggleAll}
             allSelectedInView={allSelectedInView}
             onStartTraining={handleStartTraining}
+            onResumeTraining={handleResumeTraining}
+            hasActiveSession={Boolean(activeSession?.selectedIds.length)}
             filteredStudents={filteredStudents}
           />
         ) : (
           <ProgressPhase
+            coachId={coachId}
             studentsForSession={studentsForSession}
             orderedL1={orderedAtoms}
             technicalAtoms={technicalAtoms}
             onBack={handleBackToCompose}
+            onCompleteTraining={handleCompleteTraining}
+            slidersByStudentId={activeSession?.slidersByStudentId ?? {}}
           />
         )}
       </div>

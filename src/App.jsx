@@ -34,7 +34,9 @@ import {
 } from './services/firebaseService'
 import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
 import { subscribeTechnicalProgramAtoms } from './services/technicalProgramAtomsService.js'
+import { useGroupTrainingSession } from './hooks/useGroupTrainingSession.js'
 import { isProgramAdmin } from './utils/coachRoles.js'
+import { clearGroupTrainingSession } from './utils/groupTrainingSession.js'
 import { vk } from './utils/vkUi.js'
 
 function LeaderboardNavIcon({ className = '' }) {
@@ -61,8 +63,26 @@ function LeaderboardNavIcon({ className = '' }) {
 
 function Navbar({ user, coachProfile, programAdmin }) {
   const location = useLocation()
+  const trainingSession = useGroupTrainingSession(user?.uid)
   const isLeaderboard =
     location.pathname === '/leaderboard' || location.pathname === '/leaderboard/school'
+  const isGroupTraining = location.pathname === '/group-training'
+  const trainingCount = trainingSession?.selectedIds.length ?? 0
+  const trainingActive = trainingCount > 0
+
+  const trainingNavClass = (compact) => {
+    const active = isGroupTraining
+    if (compact) {
+      return `inline-flex h-8 shrink-0 touch-manipulation items-center gap-1 rounded-lg px-2 text-[13px] font-medium ${
+        active || trainingActive
+          ? 'bg-[#ecf3fc] text-[#2d81e0]'
+          : 'text-[#818c99] active:bg-[#f0f2f5]'
+      }`
+    }
+    return `hidden shrink-0 sm:inline ${vk.linkNav} ${
+      trainingActive ? '!font-semibold !text-[#2d81e0]' : ''
+    }`
+  }
 
   return (
     <header className={vk.navBar}>
@@ -76,18 +96,32 @@ function Navbar({ user, coachProfile, programAdmin }) {
             Cartel
           </Link>
           {user ? (
-            <Link
-              to="/leaderboard"
-              className={`inline-flex h-8 shrink-0 touch-manipulation items-center gap-1 rounded-lg px-2 text-[13px] font-medium md:hidden ${
-                isLeaderboard
-                  ? 'bg-[#ecf3fc] text-[#2d81e0]'
-                  : 'text-[#818c99] active:bg-[#f0f2f5]'
-              }`}
-              aria-current={isLeaderboard ? 'page' : undefined}
-            >
-              <LeaderboardNavIcon />
-              <span>Рейтинг</span>
-            </Link>
+            <>
+              {trainingActive ? (
+                <Link
+                  to="/group-training"
+                  className={`${trainingNavClass(true)} md:hidden`}
+                  aria-current={isGroupTraining ? 'page' : undefined}
+                >
+                  <span>Тренировка</span>
+                  <span className="rounded-full bg-[#2d81e0] px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                    {trainingCount}
+                  </span>
+                </Link>
+              ) : null}
+              <Link
+                to="/leaderboard"
+                className={`inline-flex h-8 shrink-0 touch-manipulation items-center gap-1 rounded-lg px-2 text-[13px] font-medium md:hidden ${
+                  isLeaderboard
+                    ? 'bg-[#ecf3fc] text-[#2d81e0]'
+                    : 'text-[#818c99] active:bg-[#f0f2f5]'
+                }`}
+                aria-current={isLeaderboard ? 'page' : undefined}
+              >
+                <LeaderboardNavIcon />
+                <span>Рейтинг</span>
+              </Link>
+            </>
           ) : null}
           {user ? (
             <>
@@ -105,8 +139,21 @@ function Navbar({ user, coachProfile, programAdmin }) {
               <Link to="/calendar" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Календарь
               </Link>
-              <Link to="/group-training" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
-                Групповая
+              <Link
+                to="/group-training"
+                className={trainingNavClass(false)}
+                aria-current={isGroupTraining ? 'page' : undefined}
+              >
+                {trainingActive ? (
+                  <>
+                    Тренировка
+                    <span className="ml-1 rounded-full bg-[#2d81e0] px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                      {trainingCount}
+                    </span>
+                  </>
+                ) : (
+                  'Групповая'
+                )}
               </Link>
               <Link to="/leaderboard" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Рейтинг
@@ -361,6 +408,7 @@ function App() {
         setSelectedStudent(null)
         clearCoachProfileCache()
         stopCoachStudentsSync()
+        clearGroupTrainingSession()
       }
     })
     return () => unsubscribe()

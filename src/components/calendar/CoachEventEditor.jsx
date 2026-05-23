@@ -12,7 +12,7 @@ import CoachEventParticipants from './CoachEventParticipants.jsx'
  *   initialTitle?: string,
  *   initialKind?: 'practice' | 'competition',
  *   initialParticipantIds?: string[],
- *   students: Array<{ id: string, name: string }>,
+ *   students: import('../../utils/coachEventStudents.js').CoachEventStudentOption[],
  *   onCancel: () => void,
  *   onSave: (payload: {
  *     title: string,

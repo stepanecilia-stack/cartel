@@ -15,6 +15,7 @@ import {
 } from '../../utils/prepSeasonCalendar.js'
 import { pickNearestFutureCompetition } from '../../utils/plannedCompetitions.js'
 import { vk } from '../../utils/vkUi.js'
+import CoachEventDetails from './CoachEventDetails.jsx'
 import CoachEventEditor from './CoachEventEditor.jsx'
 import PrepMonthEventStrip from '../student/PrepMonthEventStrip.jsx'
 import PrepSeasonCalendar from '../student/PrepSeasonCalendar.jsx'
@@ -31,7 +32,7 @@ const IDLE_PICK = /** @type {AssignPickState} */ ({ phase: 'idle', range: null }
  * @param {{
  *   calendarItems: Array<import('../../utils/plannedCompetitions.js').PlannedCompetition & { eventKind?: string, coachEventId?: string, participantIds?: string[] }>,
  *   coachEvents: CoachEvent[],
- *   students: Array<{ id: string, name: string }>,
+ *   students: import('../../utils/coachEventStudents.js').CoachEventStudentOption[],
  *   canSave?: boolean,
  *   saveBusy?: boolean,
  *   saveError?: string,
@@ -153,6 +154,13 @@ function SeasonCalendarPanel({
     [coachEvents, editingEventId],
   )
 
+  const focusedCoachEvent = useMemo(() => {
+    if (!focusId) return null
+    const item = calendarItems.find((c) => c.id === focusId)
+    if (!item?.coachEventId || isOrientirStart(item)) return null
+    return coachEvents.find((e) => e.id === item.coachEventId) ?? null
+  }, [focusId, calendarItems, coachEvents])
+
   const resetAssign = useCallback(() => {
     syncAssignPick(IDLE_PICK)
     setHoverEndISO(null)
@@ -191,7 +199,7 @@ function SeasonCalendarPanel({
       setSelectedISO(c.dateISO)
       setViewMonth(new Date(c.dateISO + 'T12:00:00').getMonth())
       if (!c.dateISO.startsWith(String(year))) setYear(Number(c.dateISO.slice(0, 4)))
-      setEditingEventId(c.coachEventId && !isOrientirStart(c) ? c.coachEventId : null)
+      setEditingEventId(null)
       syncAssignPick(IDLE_PICK)
       setHoverEndISO(null)
     },
@@ -359,6 +367,22 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
+      {focusedCoachEvent && !editingEvent && pickPhase !== 'form' ? (
+        <CoachEventDetails
+          event={focusedCoachEvent}
+          students={students}
+          onClose={() => setFocusId(null)}
+          onEdit={() => setEditingEventId(focusedCoachEvent.id)}
+          onDelete={async () => {
+            await onDeleteEvent(focusedCoachEvent.id)
+            setFocusId(null)
+            setEditingEventId(null)
+          }}
+          busy={saveBusy}
+          canSave={canSave}
+        />
+      ) : null}
+
       {editingEvent && pickPhase !== 'form' ? (
         <CoachEventEditor
           key={editingEvent.id}
@@ -371,7 +395,10 @@ function SeasonCalendarPanel({
           students={students}
           onCancel={() => setEditingEventId(null)}
           onSave={handleEditSave}
-          onDelete={() => onDeleteEvent(editingEvent.id)}
+          onDelete={async () => {
+            await onDeleteEvent(editingEvent.id)
+            setFocusId(null)
+          }}
           busy={saveBusy}
           error={displayError}
           disabled={!canSave}

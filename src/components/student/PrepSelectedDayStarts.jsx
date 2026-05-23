@@ -4,6 +4,7 @@ import { formatCompetitionRange } from '../../data/competitionLevels.js'
 import { getCompetitionMeta } from '../../data/competitionLevels.js'
 import { formatOrientirAgeLine, orientirDisplayTitle } from '../../utils/orientirDisplay.js'
 import { formatStartWithStatus, isOrientirStart } from '../../utils/plannedCompetitions.js'
+import { formatCoachEventParticipantMeta } from '../../utils/coachEventStudents.js'
 import { vk } from '../../utils/vkUi.js'
 
 /**
@@ -15,7 +16,7 @@ import { vk } from '../../utils/vkUi.js'
  *   onRemove?: (id: string) => void,
  *   removeBusy?: boolean,
  *   removeLabel?: string,
- *   students?: Array<{ id: string, name: string }>,
+ *   students?: import('../../utils/coachEventStudents.js').CoachEventStudentOption[],
  * }} props
  */
 function PrepSelectedDayStarts({
@@ -28,8 +29,8 @@ function PrepSelectedDayStarts({
   removeLabel = 'Удалить',
   students = [],
 }) {
-  const nameById = useMemo(
-    () => Object.fromEntries(students.map((s) => [s.id, s.name])),
+  const studentById = useMemo(
+    () => Object.fromEntries(students.map((s) => [s.id, s])),
     [students],
   )
 
@@ -58,7 +59,7 @@ function PrepSelectedDayStarts({
             ? orientirDisplayTitle(c)
             : c.title?.trim() || style.label
           const participants = (c.participantIds ?? [])
-            .map((id) => nameById[id])
+            .map((id) => studentById[id])
             .filter(Boolean)
           return (
             <li key={c.id} className="flex gap-1">
@@ -83,8 +84,12 @@ function PrepSelectedDayStarts({
                     : ''}
                 </span>
                 {participants.length > 0 ? (
-                  <span className="mt-0.5 block text-[10px] text-[#818c99]">
-                    Участники: {participants.join(', ')}
+                  <span className="mt-0.5 block space-y-0.5 text-[10px] text-[#818c99]">
+                    {participants.map((p) => (
+                      <span key={p.id} className="block">
+                        {p.name} · {formatCoachEventParticipantMeta(p)}
+                      </span>
+                    ))}
                   </span>
                 ) : null}
               </button>

@@ -15,7 +15,7 @@ import {
   mergeCalendarWithOrientirs,
 } from '../utils/coachEvents.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
-import { displayNameFromStudent } from '../utils/studentModel.js'
+import { toCoachEventStudentOption } from '../utils/coachEventStudents.js'
 import { vk } from '../utils/vkUi.js'
 
 /**
@@ -28,11 +28,7 @@ function CoachCalendarPage({ coachId }) {
   const [saveError, setSaveError] = useState('')
 
   const studentOptions = useMemo(
-    () =>
-      students.map((s) => ({
-        id: String(s.id),
-        name: displayNameFromStudent(s),
-      })),
+    () => students.map((s) => toCoachEventStudentOption(s)),
     [students],
   )
 
