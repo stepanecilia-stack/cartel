@@ -72,6 +72,7 @@ import { daysUntilCompetition } from '../utils/competitionDate.js'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
+import { migrateStudentTests } from '../utils/normsCategory.js'
 import { getSensitiveMotorQualities } from '../utils/sensitivePeriods'
 import SensitivePeriodTimer from '../components/SensitivePeriodTimer'
 import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
@@ -81,13 +82,11 @@ const TAB_ITEMS = [
   { id: 'anthropometry', label: 'Карта спортсмена', shortLabel: 'Карта' },
   { id: 'competition', label: 'Сезон и старты', shortLabel: 'Сезон' },
   { id: 'physical', label: 'Физическое развитие', shortLabel: 'Физика' },
-  { id: 'functional', label: 'Функциональная готовность', shortLabel: 'Функционал' },
   { id: 'technical', label: 'Техника', shortLabel: 'Техника' },
 ]
 
 const TAB_PROGRESS_LABELS = {
   physical: 'Физика',
-  functional: 'Функционал',
   technical: 'Техника',
 }
 
@@ -98,6 +97,15 @@ function emptyTestsRecord(raw) {
     if (v && typeof v === 'object' && ('result' in v || 'normalizedScore' in v)) out[k] = v
   }
   return out
+}
+
+/** Слияние сохранённых tests.functional в physical перед записью в Firestore. */
+function mergePhysicalTestsDraft(freshStudent, physicalDraft) {
+  const migrated = migrateStudentTests(freshStudent?.tests)
+  return {
+    ...migrated.physical,
+    ...emptyTestsRecord(physicalDraft),
+  }
 }
 
 function normalizeLegacyTestId(id) {
@@ -248,6 +256,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   }, [student])
 
   const [activeTab, setActiveTab] = useState('anthropometry')
+
+  useEffect(() => {
+    if (activeTab === 'functional') setActiveTab('physical')
+  }, [activeTab])
   const [allNorms, setAllNorms] = useState([])
   const [programAtomsCache, setProgramAtomsCache] = useState(() => getTechnicalProgramAtomsCache())
   const technicalAtoms = programAtomsCache.level1
@@ -262,7 +274,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [loadingNorms, setLoadingNorms] = useState(true)
   const [normsError, setNormsError] = useState('')
   const [physicalResults, setPhysicalResults] = useState({})
-  const [functionalResults, setFunctionalResults] = useState({})
   const [technicalData, setTechnicalData] = useState({})
   const [anthropometry, setAnthropometry] = useState({
     height: '',
@@ -338,8 +349,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           : new Date().toISOString().slice(0, 10),
       gender: sh.gender === 'F' ? 'F' : 'M',
     })
-    setPhysicalResults(emptyTestsRecord(tests.physical))
-    setFunctionalResults(emptyTestsRecord(tests.functional))
+    setPhysicalResults(migrateStudentTests(tests).physical)
     setTechnicalData(emptyTechnicalRecord(student.technicalData))
     setTechnicalCombinations(mergeWithRequiredLevel3Combinations(student.technicalCombinations))
     setComboModalOpen(false)
@@ -436,11 +446,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     () => getNormsForAthlete(allNorms, athleteForNorms, 'physical'),
     [allNorms, athleteForNorms],
   )
-  const functionalNorms = useMemo(
-    () => getNormsForAthlete(allNorms, athleteForNorms, 'functional'),
-    [allNorms, athleteForNorms],
-  )
-
   const technicalCombinationsResolved = useMemo(
     () => mergeWithRequiredLevel3Combinations(technicalCombinations),
     [technicalCombinations],
@@ -466,20 +471,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     () =>
       calculateLegacySectionScores({
         physicalNorms,
-        functionalNorms,
+        functionalNorms: [],
         physicalResults,
-        functionalResults,
+        functionalResults: {},
         technicalData,
         technicalProgramAtoms: programAtomsFull,
       }),
-    [
-      functionalNorms,
-      functionalResults,
-      physicalNorms,
-      physicalResults,
-      technicalData,
-      programAtomsFull,
-    ],
+    [physicalNorms, physicalResults, technicalData, programAtomsFull],
   )
 
   const dynamicStudent = useMemo(() => {
@@ -593,11 +591,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     const atomsForShare = buildFullTechnicalProgramAtoms(atoms, technicalCombinationsResolved)
 
     const physicalMerged = testsExact
-      ? testsExact.physical
-      : { ...emptyTestsRecord(student?.tests?.physical), ...physicalResults }
-    const functionalMerged = testsExact
-      ? testsExact.functional
-      : { ...emptyTestsRecord(student?.tests?.functional), ...functionalResults }
+      ? { ...testsExact.physical, ...testsExact.functional }
+      : mergePhysicalTestsDraft(student, physicalResults)
     const technicalMerged = {
       ...emptyTechnicalRecord(student?.technicalData),
       ...technicalData,
@@ -615,7 +610,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       allNorms: norms,
       athleteForNorms,
       physicalResults: physicalMerged,
-      functionalResults: functionalMerged,
+      functionalResults: {},
       technicalAtoms: atomsForShare,
       technicalData: technicalMerged,
     })
@@ -729,12 +724,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     {
       key: 'physical',
       label: 'Физическое развитие',
-      value: Math.round(weights.P * 100),
-    },
-    {
-      key: 'functional',
-      label: 'Функциональная готовность',
-      value: Math.round(weights.F * 100),
+      value: Math.round((weights.P + weights.F) * 100),
     },
   ]
   const maxInfluenceValue = Math.max(...influenceItems.map((item) => item.value))
@@ -743,7 +733,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     .map((item) => item.key)
   const tabIdToInfluenceKey = {
     physical: 'physical',
-    functional: 'functional',
     technical: 'tech',
   }
   const smartStyleDisplay =
@@ -780,15 +769,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )
         : 0
 
-    const functionalTotal = functionalNorms.length
-    const functionalPercent =
-      functionalTotal > 0
-        ? Math.round(
-            functionalNorms.reduce((acc, norm) => acc + normPercent(norm, getNormValueByTestId(functionalResults, norm.testId)), 0) /
-              functionalTotal,
-          )
-        : 0
-
     const technicalLevelToPercent = (level) => {
       const key = normalizeTechnicalDominanceKey(level)
       if (key === 'KNOWLEDGE') return 30
@@ -815,10 +795,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
     return {
       physical: Math.max(0, Math.min(100, physicalPercent)),
-      functional: Math.max(0, Math.min(100, functionalPercent)),
       technical: Math.max(0, Math.min(100, technicalPercent)),
     }
-  }, [functionalNorms, functionalResults, physicalNorms, physicalResults, programAtomsFull, technicalData])
+  }, [physicalNorms, physicalResults, programAtomsFull, technicalData])
 
   const progressColorClass = (value) => {
     if (value <= 30) return 'bg-red-500'
@@ -827,8 +806,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   }
 
   const updateNormResult = useCallback((category, norm, rawValue) => {
-    const set =
-      category === 'physical' ? setPhysicalResults : setFunctionalResults
+    const set = setPhysicalResults
     if (rawValue === '' || rawValue === null || rawValue === undefined) {
       set((prev) => {
         return removeNormValueByTestId(prev, norm.testId)
@@ -899,7 +877,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const buildStudentUpdatePayload = (
     physicalMerged,
-    functionalMerged,
     weightHistoryArg,
     technicalDataOverride = technicalData,
     combinationsOverride = technicalCombinations,
@@ -923,9 +900,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     const programAtoms = buildFullTechnicalProgramAtoms(technicalAtoms, combinationsOverride)
     const nextScores = calculateLegacySectionScores({
       physicalNorms,
-      functionalNorms,
+      functionalNorms: [],
       physicalResults: physicalMerged,
-      functionalResults: functionalMerged,
+      functionalResults: {},
       technicalData: technicalDataOverride,
       technicalProgramAtoms: programAtoms,
     })
@@ -948,7 +925,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       weightHistory: weightHistoryArg,
       tests: {
         physical: physicalMerged,
-        functional: functionalMerged,
+        functional: {},
       },
       technicalData: technicalDataOverride,
       technicalCombinations: normalizeTechnicalCombinations(
@@ -1026,14 +1003,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         setAnthropometrySaveError('Ученик не найден в базе.')
         return
       }
-      const physicalMerged = {
-        ...emptyTestsRecord(fresh.tests?.physical),
-        ...emptyTestsRecord(physicalResults),
-      }
-      const functionalMerged = {
-        ...emptyTestsRecord(fresh.tests?.functional),
-        ...emptyTestsRecord(functionalResults),
-      }
+      const physicalMerged = mergePhysicalTestsDraft(fresh, physicalResults)
       const weight = Number(anthropometry.weight) || 0
       const prevHistory = Array.isArray(fresh.weightHistory) ? [...fresh.weightHistory] : []
       const measureDate = anthropometry.date || new Date().toISOString().slice(0, 10)
@@ -1044,13 +1014,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           weightHistory = [...prevHistory, { date: measureDate, weight }].slice(-36)
         }
       }
-      const payload = buildStudentUpdatePayload(physicalMerged, functionalMerged, weightHistory)
+      const payload = buildStudentUpdatePayload(physicalMerged, weightHistory)
       await updateStudentData(student.id, payload, { section: STUDENT_UPDATE_SECTION.profile })
       setPhysicalResults(physicalMerged)
-      setFunctionalResults(functionalMerged)
       setAnthropometrySaveOk(true)
       onStudentUpdated?.(payload)
-      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: {} })
     } catch (err) {
       console.error(err)
       setAnthropometrySaveError('Не удалось сохранить. Проверьте интернет и права доступа к базе данных.')
@@ -1059,7 +1028,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     }
   }
 
-  const handleSaveNormAcceptance = async (category, norm) => {
+  const handleSaveNormAcceptance = async (_category, norm) => {
     if (!student?.id) {
       setSaveError('Сначала выберите ученика в списке на главной странице.')
       return
@@ -1069,15 +1038,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       setSaveError('Войдите в аккаунт тренера, чтобы зафиксировать норматив.')
       return
     }
-    const localRow =
-      category === 'physical'
-        ? getNormValueByTestId(physicalResults, norm.testId)
-        : getNormValueByTestId(functionalResults, norm.testId)
+    const localRow = getNormValueByTestId(physicalResults, norm.testId)
     if (!localRow || !Number.isFinite(localRow.result)) {
       setSaveError('Введите результат норматива перед сохранением.')
       return
     }
-    const busyKey = `${category}:${norm.testId}`
+    const busyKey = `physical:${norm.testId}`
     setSaveError('')
     setSaveOk(false)
     setNormSavingKey(busyKey)
@@ -1087,16 +1053,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         setSaveError('Ученик не найден в базе.')
         return
       }
-      const physicalMerged = {
-        ...emptyTestsRecord(fresh.tests?.physical),
-        ...emptyTestsRecord(physicalResults),
-      }
-      const functionalMerged = {
-        ...emptyTestsRecord(fresh.tests?.functional),
-        ...emptyTestsRecord(functionalResults),
-      }
-      const bucket = category === 'physical' ? physicalMerged : functionalMerged
-      const serverRow = getNormValueByTestId(bucket, norm.testId)
+      const physicalMerged = mergePhysicalTestsDraft(fresh, physicalResults)
+      const serverRow = getNormValueByTestId(physicalMerged, norm.testId)
       const coachName = await resolveCoachDisplayName(coachId)
       const evaluated = {
         result: localRow.result,
@@ -1106,7 +1064,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       }
       const entry = buildNormAcceptanceHistoryEntry({
         norm,
-        category,
+        category: 'physical',
         coachId,
         coachName,
         evaluated,
@@ -1118,7 +1076,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         acceptedByCoachName: coachName,
         acceptanceHistory: mergeNormAcceptanceHistory(serverRow?.acceptanceHistory, entry),
       }
-      bucket[norm.testId] = mergedRow
+      physicalMerged[norm.testId] = mergedRow
 
       const weight = Number(anthropometry.weight) || 0
       const prevHistory = Array.isArray(fresh.weightHistory) ? [...fresh.weightHistory] : []
@@ -1131,15 +1089,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         }
       }
 
-      const payload = buildStudentUpdatePayload(physicalMerged, functionalMerged, weightHistory)
+      const payload = buildStudentUpdatePayload(physicalMerged, weightHistory)
       await updateStudentData(student.id, payload, {
-        section: normAcceptanceSectionLabel(category, norm),
+        section: normAcceptanceSectionLabel('physical', norm),
       })
-      if (category === 'physical') setPhysicalResults(physicalMerged)
-      else setFunctionalResults(functionalMerged)
+      setPhysicalResults(physicalMerged)
       setSaveOk(true)
       onStudentUpdated?.(payload)
-      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: {} })
     } catch (err) {
       console.error(err)
       setSaveError('Не удалось сохранить норматив.')
@@ -1163,14 +1120,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         return false
       }
 
-      const physicalMerged = {
-        ...emptyTestsRecord(fresh.tests?.physical),
-        ...emptyTestsRecord(physicalResults),
-      }
-      const functionalMerged = {
-        ...emptyTestsRecord(fresh.tests?.functional),
-        ...emptyTestsRecord(functionalResults),
-      }
+      const physicalMerged = mergePhysicalTestsDraft(fresh, physicalResults)
 
       const weight = Number(anthropometry.weight) || 0
       const prevHistory = Array.isArray(fresh.weightHistory) ? [...fresh.weightHistory] : []
@@ -1185,7 +1135,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
       const payload = buildStudentUpdatePayload(
         physicalMerged,
-        functionalMerged,
         weightHistory,
         technicalMerged,
         combinationsList,
@@ -1195,7 +1144,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       setTechnicalCombinations(mergeWithRequiredLevel3Combinations(combinationsList))
       setSaveOk(true)
       onStudentUpdated?.(payload)
-      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: functionalMerged })
+      syncPublicShareIfNeeded(weightHistory, { physical: physicalMerged, functional: {} })
       return true
     } catch (err) {
       console.error(err)
@@ -1247,16 +1196,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     (norm, raw) => updateNormResult('physical', norm, raw),
     [updateNormResult],
   )
-  const handleFunctionalNormChange = useCallback(
-    (norm, raw) => updateNormResult('functional', norm, raw),
-    [updateNormResult],
-  )
   const handlePhysicalNormSave = useCallback(
     (norm) => handleSaveNormAcceptance('physical', norm),
-    [handleSaveNormAcceptance],
-  )
-  const handleFunctionalNormSave = useCallback(
-    (norm) => handleSaveNormAcceptance('functional', norm),
     [handleSaveNormAcceptance],
   )
 
@@ -1655,21 +1596,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                   canSave={Boolean(student?.id)}
                   onResultChange={handlePhysicalNormChange}
                   onSaveAcceptance={handlePhysicalNormSave}
-                />
-              </div>
-            )}
-
-            {activeTab === 'functional' && (
-              <div className="space-y-2">
-                <StudentNormsSection
-                  category="functional"
-                  norms={functionalNorms}
-                  values={functionalResults}
-                  loadingNorms={loadingNorms}
-                  normSavingKey={normSavingKey}
-                  canSave={Boolean(student?.id)}
-                  onResultChange={handleFunctionalNormChange}
-                  onSaveAcceptance={handleFunctionalNormSave}
                 />
               </div>
             )}

@@ -96,7 +96,7 @@ export function resolveStudentLastChange(student) {
 
   const tests = student.tests && typeof student.tests === 'object' ? student.tests : {}
   collectFromTestsBucket(candidates, tests.physical, 'Норматив · физика')
-  collectFromTestsBucket(candidates, tests.functional, 'Норматив · функционал')
+  collectFromTestsBucket(candidates, tests.functional, 'Норматив · физика')
 
   const createdMs = instantToMs(student.createdAt)
   if (createdMs != null) {

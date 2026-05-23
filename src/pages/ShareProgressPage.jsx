@@ -13,13 +13,11 @@ import { ETALON_MODEL_PANEL_CLASS, vk } from '../utils/vkUi.js'
 const TAB_ITEMS = [
   { id: 'anthropometry', shortLabel: 'Карта' },
   { id: 'physical', shortLabel: 'Физика' },
-  { id: 'functional', shortLabel: 'Функционал' },
   { id: 'technical', shortLabel: 'Техника' },
 ]
 
 const tabIdToInfluenceKey = {
   physical: 'physical',
-  functional: 'functional',
   technical: 'tech',
 }
 
@@ -283,8 +281,11 @@ export default function ShareProgressPage() {
   const influenceItems = useMemo(
     () => [
       { key: 'tech', label: 'Техника', value: Math.round(weights.T * 100) },
-      { key: 'physical', label: 'Физика', value: Math.round(weights.P * 100) },
-      { key: 'functional', label: 'Функционал', value: Math.round(weights.F * 100) },
+      {
+        key: 'physical',
+        label: 'Физика',
+        value: Math.round((weights.P + weights.F) * 100),
+      },
     ],
     [weights],
   )
@@ -499,18 +500,12 @@ export default function ShareProgressPage() {
                 ) : null}
 
                 {activeTab === 'physical' ? (
-                  (p.physical?.items ?? []).length === 0 ? (
+                  [...(p.physical?.items ?? []), ...(p.functional?.items ?? [])].length === 0 ? (
                     <p className={vk.mutedXs}>Нет нормативов для отображения.</p>
                   ) : (
-                    (p.physical?.items ?? []).map((item) => <ShareNormRow key={item.id} item={item} />)
-                  )
-                ) : null}
-
-                {activeTab === 'functional' ? (
-                  (p.functional?.items ?? []).length === 0 ? (
-                    <p className={vk.mutedXs}>Нет нормативов для отображения.</p>
-                  ) : (
-                    (p.functional?.items ?? []).map((item) => <ShareNormRow key={item.id} item={item} />)
+                    [...(p.physical?.items ?? []), ...(p.functional?.items ?? [])].map((item) => (
+                      <ShareNormRow key={item.id} item={item} />
+                    ))
                   )
                 ) : null}
 

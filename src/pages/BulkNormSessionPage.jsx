@@ -48,10 +48,7 @@ function normScoreTone(status) {
   return 'text-[#e64646]'
 }
 
-const CATEGORY_TABS = [
-  { id: 'physical', label: 'Физика', full: 'Физическое развитие' },
-  { id: 'functional', label: 'Функционал', full: 'Функциональная готовность' },
-]
+const CATEGORY_TABS = [{ id: 'physical', label: 'Физика', full: 'Физическое развитие и беговые нормативы' }]
 
 export default function BulkNormSessionPage({ coachId }) {
   const [students, setStudents] = useState([])
@@ -262,37 +259,29 @@ export default function BulkNormSessionPage({ coachId }) {
           continue
         }
 
-        const { physical: physicalBase, functional: functionalBase } = mergeStudentTestBuckets(
-          fresh,
-          {},
-          {},
-        )
-        const bucket = category === 'physical' ? physicalBase : functionalBase
-        const serverRow = getStoredNormRow(fresh, category, testId)
+        const { physical: physicalBase } = mergeStudentTestBuckets(fresh, {}, {})
+        const serverRow = getStoredNormRow(fresh, 'physical', testId)
         const acceptedRow = mergeNormAcceptanceIntoTests({
-          testsBucket: bucket,
+          testsBucket: physicalBase,
           serverRow,
           norm,
-          category,
+          category: 'physical',
           evaluated: draftRow,
           coachId: coachAuthId,
           coachName,
         })
-        bucket[norm.testId] = acceptedRow
-
-        const physicalMerged = category === 'physical' ? bucket : physicalBase
-        const functionalMerged = category === 'functional' ? bucket : functionalBase
+        physicalBase[norm.testId] = acceptedRow
 
         const payload = buildStudentTestsUpdatePayload({
           student: fresh,
           allNorms,
           technicalAtoms,
-          physicalMerged,
-          functionalMerged,
+          physicalMerged: physicalBase,
+          functionalMerged: {},
         })
 
         await updateStudentData(athlete.id, payload, {
-          section: normAcceptanceSectionLabel(category, norm),
+          section: normAcceptanceSectionLabel('physical', norm),
         })
         nextSaved[athlete.id] = acceptedRow
         setStudents((prev) =>

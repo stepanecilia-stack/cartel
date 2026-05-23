@@ -11,6 +11,7 @@ import {
   YOUNG_ATHLETE_REFERENCE_AGE_GROUP,
 } from './standards.js'
 import { computeAthleteAgeYears, normalizeBirthYearNumber } from './studentModel.js'
+import { isPhysicalNormCategory, normalizeNormCategory } from './normsCategory.js'
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
@@ -372,11 +373,9 @@ export {
  */
 export const calculateTrainingProgress = (studentData = {}, scores = {}) => {
   const w = getWeights(studentData)
-  return (
-    Number(scores.техника ?? 0) * w.T +
-    Number(scores.физика ?? 0) * w.P +
-    Number(scores.функционал ?? 0) * w.F
-  )
+  const tech = Number(scores.техника ?? 0)
+  const phys = Number(scores.физика ?? 0)
+  return tech * w.T + phys * (w.P + w.F)
 }
 
 /**
@@ -463,7 +462,7 @@ export const loadLegacyNorms = async () => {
   return rows
     .filter((row) => row.length >= 11 && row[2])
     .map((row) => ({
-      category: row[0],
+      category: normalizeNormCategory(row[0]),
       testId: row[1],
       testName: row[2],
       description: row[3],
@@ -478,9 +477,15 @@ export const loadLegacyNorms = async () => {
 }
 
 export const getNormsForAthlete = (allNorms, athlete, category) => {
+  if (category === 'functional') return []
   const age = computeAthleteAgeYears(athlete.birthYear) ?? 0
   return allNorms.filter((norm) => {
-    if (norm.category !== category || norm.gender !== athlete.gender) return false
+    if (category === 'physical') {
+      if (!isPhysicalNormCategory(norm)) return false
+    } else if (norm.category !== category) {
+      return false
+    }
+    if (norm.gender !== athlete.gender) return false
     const [minAge, maxAge] = norm.ageGroup.split('-').map(Number)
     return age >= minAge && age <= maxAge
   })
@@ -532,9 +537,16 @@ export const calculateLegacySectionScores = ({
           )
   }
 
+  const mergedPhysicalResults = {
+    ...physicalResults,
+    ...functionalResults,
+  }
+  const mergedPhysicalNorms =
+    functionalNorms.length > 0 ? [...physicalNorms, ...functionalNorms] : physicalNorms
+
   return {
-    физика: averageNormScore(physicalNorms, physicalResults),
-    функционал: averageNormScore(functionalNorms, functionalResults),
+    физика: averageNormScore(mergedPhysicalNorms, mergedPhysicalResults),
+    функционал: 0,
     техника: technicalScore,
   }
 }

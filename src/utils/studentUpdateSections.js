@@ -3,7 +3,6 @@
 export const STUDENT_UPDATE_SECTION = {
   profile: 'Антропометрия и КСР',
   normPhysical: 'Норматив · физика',
-  normFunctional: 'Норматив · функционал',
   technique: 'Техника',
   bulkNorms: 'Сдать норматив',
   groupTraining: 'Групповая тренировка',
@@ -18,7 +17,7 @@ export const STUDENT_UPDATE_SECTION = {
  * @param {{ testName?: string, testId?: string }} norm
  */
 export function normAcceptanceSectionLabel(category, norm) {
-  const base = category === 'physical' ? STUDENT_UPDATE_SECTION.normPhysical : STUDENT_UPDATE_SECTION.normFunctional
+  const base = STUDENT_UPDATE_SECTION.normPhysical
   const name = typeof norm?.testName === 'string' ? norm.testName.trim() : ''
   return name ? `${base}: ${name}` : base
 }
@@ -52,9 +51,7 @@ export function inferUpdateSectionFromPayload(payload) {
     const func = payload.tests.functional
     const physKeys = phys && typeof phys === 'object' ? Object.keys(phys).length : 0
     const funcKeys = func && typeof func === 'object' ? Object.keys(func).length : 0
-    if (physKeys > 0 && funcKeys === 0) return STUDENT_UPDATE_SECTION.normPhysical
-    if (funcKeys > 0 && physKeys === 0) return STUDENT_UPDATE_SECTION.normFunctional
-    if (physKeys > 0 || funcKeys > 0) return 'Нормативы'
+    if (physKeys > 0 || funcKeys > 0) return STUDENT_UPDATE_SECTION.normPhysical
   }
 
   if (

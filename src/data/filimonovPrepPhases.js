@@ -93,7 +93,7 @@ export function formatPrepDayLabel(d) {
 export function buildFilimonovDaySlots(phaseId, dayIndex, loadTier, weakIds) {
   const weakTech = weakIds.includes('technical') || weakIds.includes('kd')
   const weakPhys = weakIds.includes('physical')
-  const weakFunc = weakIds.includes('functional')
+  const weakFunc = false
 
   const bagRounds = (base) => {
     let n = base

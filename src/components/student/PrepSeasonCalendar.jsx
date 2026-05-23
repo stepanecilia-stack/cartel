@@ -27,6 +27,7 @@ import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
  *   pickingEnd?: boolean,
  *   focusId?: string | null,
  *   visualMode?: 'default' | 'minimal',
+ *   emphasizeCoachDays?: boolean,
  * }} props
  */
 function PrepSeasonCalendar({
@@ -40,6 +41,7 @@ function PrepSeasonCalendar({
   pickingEnd = false,
   focusId = null,
   visualMode = 'default',
+  emphasizeCoachDays = false,
 }) {
   const minimal = visualMode === 'minimal'
   const { weekHeaders, weeks } = useMemo(() => buildSeasonMonthWeeks(monthDays), [monthDays])
@@ -82,6 +84,11 @@ function PrepSeasonCalendar({
             const isFocusPeriodDay = Boolean(
               focusId && (day.isFocusDay || day.isFocusFightDay),
             )
+            const coachEvent = chips.find((c) => !isOrientirStart(c))
+            const coachDayStyle =
+              emphasizeCoachDays && hasCoachEvent && coachEvent && !isFocusPeriodDay && !inDraftRange
+                ? getCalendarItemStyle(coachEvent)
+                : null
 
             return (
               <button
@@ -112,9 +119,11 @@ function PrepSeasonCalendar({
                     ? CALENDAR_RANGE_PICK_STYLE.chip
                     : isFocusPeriodDay
                       ? 'border-[#2d81e0] bg-sky-50 text-[#2c2d2e] shadow-sm z-[1]'
-                      : hasEvents
-                        ? 'border-[#e7e8ec] bg-white text-[#2c2d2e]'
-                        : 'border-transparent bg-[#f4f5f7] text-[#818c99]',
+                      : coachDayStyle
+                        ? `${coachDayStyle.chip} border-solid shadow-sm`
+                        : hasEvents
+                          ? 'border-[#e7e8ec] bg-white text-[#2c2d2e]'
+                          : 'border-transparent bg-[#f4f5f7] text-[#818c99]',
                   isSelected ? 'ring-2 ring-[#2d81e0] ring-offset-1 z-10' : '',
                   isFocusPeriodDay && !isSelected ? 'ring-2 ring-[#2d81e0]/70 ring-offset-1' : '',
                   day.isToday && !isSelected && !isFocusPeriodDay
@@ -126,8 +135,12 @@ function PrepSeasonCalendar({
                 {minimal && hasEvents ? (
                   <span
                     className={[
-                      'mt-0.5 block h-1 w-1 rounded-full',
-                      hasCoachEvent ? 'bg-teal-500' : 'bg-slate-300',
+                      'mt-0.5 block rounded-full',
+                      emphasizeCoachDays && coachEvent
+                        ? `h-1.5 w-1.5 ${coachDayStyle?.bar ?? 'bg-teal-500'}`
+                        : hasCoachEvent
+                          ? 'h-1.5 w-1.5 bg-teal-500'
+                          : 'h-1 w-1 bg-slate-300',
                     ].join(' ')}
                     aria-hidden
                   />

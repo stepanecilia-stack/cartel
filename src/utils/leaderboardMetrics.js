@@ -9,9 +9,10 @@ import {
 import { buildFullTechnicalProgramAtoms, mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
 import { getNormValueByTestId } from './normTestsStorage.js'
 import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
+import { migrateStudentTests } from './normsCategory.js'
 import { studentAthleteShape } from './studentModel.js'
 
-/** @typedef {'motor' | 'physical' | 'functional' | 'technical'} LeaderboardCategoryId */
+/** @typedef {'motor' | 'physical' | 'technical'} LeaderboardCategoryId */
 
 export const LEADERBOARD_CATEGORIES = [
   {
@@ -24,13 +25,7 @@ export const LEADERBOARD_CATEGORIES = [
     id: 'physical',
     label: 'Физическая подготовка',
     shortLabel: 'Физика',
-    hint: 'Медали по нормативам физики: золото, серебро, бронза (только подходящие по возрасту и полу).',
-  },
-  {
-    id: 'functional',
-    label: 'Функциональная готовность',
-    shortLabel: 'Функционал',
-    hint: 'Медали по функциональным нормативам.',
+    hint: 'Медали по нормативам физики и бега (золото, серебро, бронза) по возрасту и полу.',
   },
   {
     id: 'technical',
@@ -61,11 +56,8 @@ export function countMotorQualitySquares(workLog) {
  */
 export function countNormMedalsForStudent(student, allNorms, category) {
   const athlete = studentAthleteShape(student)
-  const norms = getNormsForAthlete(allNorms, athlete, category)
-  const tests =
-    student.tests && typeof student.tests === 'object' && student.tests[category]
-      ? student.tests[category]
-      : {}
+  const norms = getNormsForAthlete(allNorms, athlete, 'physical')
+  const { physical: tests } = migrateStudentTests(student.tests)
 
   const medals = { gold: 0, silver: 0, bronze: 0, red: 0, filled: 0 }
   for (const norm of norms) {
@@ -156,9 +148,8 @@ export function buildLeaderboardMetric(student, allNorms, technicalAtoms, catego
         motor: { total, sensitive, outside },
       }
     }
-    case 'physical':
-    case 'functional': {
-      const medals = countNormMedalsForStudent(student, allNorms, categoryId)
+    case 'physical': {
+      const medals = countNormMedalsForStudent(student, allNorms, 'physical')
       return {
         sortValue: medals.points,
         primaryLabel: `${medals.gold}`,

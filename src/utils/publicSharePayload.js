@@ -173,16 +173,14 @@ export function buildPublicSharePayload({
   technicalData = {},
 }) {
   const physicalNorms = getNormsForAthlete(allNorms, athleteForNorms, 'physical')
-  const functionalNorms = getNormsForAthlete(allNorms, athleteForNorms, 'functional')
+  const mergedPhysicalResults = { ...physicalResults, ...functionalResults }
 
-  const physicalItems = mapNormRows(physicalNorms, physicalResults)
-  const functionalItems = mapNormRows(functionalNorms, functionalResults)
+  const physicalItems = mapNormRows(physicalNorms, mergedPhysicalResults)
+  const functionalItems = []
 
   const countFilled = (items) => items.filter((i) => i.hasResult).length
   const physicalTotal = Math.max(physicalItems.length, 1)
-  const functionalTotal = Math.max(functionalItems.length, 1)
   const physicalFilled = countFilled(physicalItems)
-  const functionalFilled = countFilled(functionalItems)
 
   const technicalItems = technicalAtoms.map((atom) => {
     const row = technicalData[atom.id] ?? {}
@@ -306,7 +304,7 @@ export function buildPublicSharePayload({
     tabProgress: {
       anthropometry: anthropometryPct,
       physical: Math.round((physicalFilled / physicalTotal) * 100),
-      functional: Math.round((functionalFilled / functionalTotal) * 100),
+      functional: 0,
       technical: technicalFillPct,
     },
     physical: {
@@ -317,9 +315,9 @@ export function buildPublicSharePayload({
     },
     functional: {
       items: functionalItems,
-      fillPct: Math.round((functionalFilled / functionalTotal) * 100),
-      filled: functionalFilled,
-      total: functionalTotal,
+      fillPct: 0,
+      filled: 0,
+      total: 1,
     },
     technical: {
       atoms: technicalItems,

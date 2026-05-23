@@ -1,12 +1,19 @@
 import { getNormsForAthlete } from './ksrUtils.js'
+import { isPhysicalNormCategory } from './normsCategory.js'
 import { normalizeLegacyTestId } from './normTestsStorage.js'
 import { studentAthleteShape } from './studentModel.js'
 
 /** Уникальные нормативы категории для выпадающего списка. */
 export function listNormCatalogOptions(allNorms, category) {
+  if (category === 'functional') return []
   const map = new Map()
   for (const norm of allNorms) {
-    if (norm.category !== category || !norm.testId) continue
+    if (category === 'physical') {
+      if (!isPhysicalNormCategory(norm)) continue
+    } else if (norm.category !== category) {
+      continue
+    }
+    if (!norm.testId) continue
     const key = normalizeLegacyTestId(norm.testId)
     if (!key || map.has(key)) continue
     map.set(key, {

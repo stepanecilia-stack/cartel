@@ -1,3 +1,5 @@
+import { normalizeNormCategory } from './normsCategory.js'
+
 /** @param {object} norm */
 export function legacyNormDocId(norm) {
   const safe = (value) =>
@@ -14,7 +16,7 @@ export function legacyNormFromFirestore(data) {
   const silver = Number(data.silver)
   const bronze = Number(data.bronze)
   return {
-    category: String(data.category ?? '').trim(),
+    category: normalizeNormCategory(String(data.category ?? '').trim()),
     testId: String(data.testId ?? '').trim(),
     testName: String(data.testName ?? '').trim(),
     description: String(data.description ?? '').trim(),

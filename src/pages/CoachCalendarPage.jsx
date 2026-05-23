@@ -76,7 +76,7 @@ function CoachCalendarPage({ coachId }) {
             {loadError ? <p className={vk.noticeWarn}>{loadError}</p> : null}
             <SeasonCalendarPanel
             title="Сезон · все события"
-            hint="В календаре — только метки дней; старты по возрастам и лестнице (ПМО → Россия) — внизу. Яркие строки — ваши события."
+            hint="Яркие дни и блок «Ваши события» — то, что вы создали. Ориентиры Минспорта — свёрнуты, раскройте при необходимости."
             eventListLayout="cohortLadder"
             calendarItems={calendarItems}
             coachEvents={events}

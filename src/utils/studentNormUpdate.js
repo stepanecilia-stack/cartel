@@ -10,6 +10,7 @@ import {
   getNormsForAthlete,
   getWeights,
 } from './ksrUtils.js'
+import { migrateStudentTests } from './normsCategory.js'
 import { emptyTestsRecord, getNormValueByTestId } from './normTestsStorage.js'
 import { formatBirthYearRu, studentAthleteShape } from './studentModel.js'
 import { normalizeTechnicalDataForSave } from './studentTechnicalUpdate.js'
@@ -64,18 +65,19 @@ export function buildStudentTestsUpdatePayload({
 }) {
   const shape = studentAthleteShape(student)
   const physicalNorms = getNormsForAthlete(allNorms, shape, 'physical')
-  const functionalNorms = getNormsForAthlete(allNorms, shape, 'functional')
+  const functionalNorms = []
   const technicalData = normalizeTechnicalDataForSave(student?.technicalData)
   const combinations = normalizeTechnicalCombinations(
     mergeWithRequiredLevel3Combinations(student?.technicalCombinations),
   )
   const programAtoms = buildFullTechnicalProgramAtoms(technicalAtoms, combinations)
 
+  const physicalBucket = { ...physicalMerged, ...functionalMerged }
   const nextScores = calculateLegacySectionScores({
     physicalNorms,
     functionalNorms,
-    physicalResults: physicalMerged,
-    functionalResults: functionalMerged,
+    physicalResults: physicalBucket,
+    functionalResults: {},
     technicalData,
     technicalProgramAtoms: programAtoms,
   })
@@ -89,8 +91,8 @@ export function buildStudentTestsUpdatePayload({
 
   return {
     tests: {
-      physical: physicalMerged,
-      functional: functionalMerged,
+      physical: physicalBucket,
+      functional: {},
     },
     scores: nextScores,
     archetype: w.archetype,
@@ -114,22 +116,22 @@ export function buildStudentTestsUpdatePayload({
 }
 
 /** Слить сохранённые тесты ученика с облака и локальным черновиком. */
-export function mergeStudentTestBuckets(student, physicalDraft, functionalDraft) {
-  const tests = student?.tests && typeof student.tests === 'object' ? student.tests : {}
+export function mergeStudentTestBuckets(student, physicalDraft, functionalDraft = {}) {
+  const migrated = migrateStudentTests(student?.tests)
   return {
     physical: {
-      ...emptyTestsRecord(tests.physical),
+      ...migrated.physical,
       ...emptyTestsRecord(physicalDraft),
-    },
-    functional: {
-      ...emptyTestsRecord(tests.functional),
       ...emptyTestsRecord(functionalDraft),
     },
+    functional: {},
   }
 }
 
 export function getStoredNormRow(student, category, testId) {
+  const { physical } = migrateStudentTests(student?.tests)
+  if (category === 'functional') return getNormValueByTestId(emptyTestsRecord(physical), testId)
   const tests = student?.tests && typeof student.tests === 'object' ? student.tests : {}
-  const bucket = category === 'physical' ? tests.physical : tests.functional
+  const bucket = category === 'physical' ? physical : tests[category]
   return getNormValueByTestId(emptyTestsRecord(bucket), testId)
 }

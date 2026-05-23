@@ -339,6 +339,7 @@ function SeasonCalendarPanel({
           rangeDraft={displayRangeDraft}
           pickingEnd={pickPhase === 'end'}
           visualMode="minimal"
+          emphasizeCoachDays={listLayout === 'cohortLadder'}
           focusId={focusId}
         />
       </div>
@@ -383,6 +384,7 @@ function SeasonCalendarPanel({
         focusId={focusId}
         onFocus={focusItem}
         layout={listLayout}
+        orientirsCollapsedDefault={listLayout === 'cohortLadder'}
       />
 
       <PrepSelectedDayStarts
