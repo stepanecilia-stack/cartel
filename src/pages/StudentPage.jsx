@@ -21,6 +21,7 @@ import {
   mergeWithRequiredLevel3Combinations,
   isRequiredLevel3ComboId,
 } from '../utils/techniqueCatalog.js'
+import { applyNormRawInput } from '../utils/normTestsStorage.js'
 import {
   anthropometryFieldToInputString,
   birthDateMatchesBirthYear,
@@ -813,70 +814,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const updateNormResult = useCallback((category, norm, rawValue) => {
     const set = setPhysicalResults
     if (rawValue === '' || rawValue === null || rawValue === undefined) {
-      set((prev) => {
-        return removeNormValueByTestId(prev, norm.testId)
-      })
+      set((prev) => removeNormValueByTestId(prev, norm.testId))
       return
     }
-    const trimmed = String(rawValue ?? '').trim()
-
-    if (isMinuteSecondNorm(norm)) {
-      const complete = parseAnyCompleteMinuteSecond(trimmed)
-      if (complete) {
-        const result = complete.value
-        if (!Number.isFinite(result)) return
-        const evaluated = evaluateLegacyTest(result, norm)
-        set((prev) => ({
-          ...removeNormValueByTestId(prev, norm.testId),
-          [norm.testId]: {
-            ...evaluated,
-            result,
-            resultRaw: complete.display,
-            date: new Date().toISOString().slice(0, 10),
-          },
-        }))
-        return
-      }
-      if (isPartialMinuteSecondInput(trimmed)) {
-        set((prev) => ({
-          ...removeNormValueByTestId(prev, norm.testId),
-          [norm.testId]: {
-            resultRaw: trimmed,
-            date: new Date().toISOString().slice(0, 10),
-          },
-        }))
-        return
-      }
-      // Дробные минуты с точкой не разбираем здесь — иначе «8.3» при вводе 8.30 станет числом; 8,5 — норма.
-      if (trimmed.includes('.') && !parseAnyCompleteMinuteSecond(trimmed)) return
-      const numericRaw = trimmed.replace(',', '.')
-      const result = Number(numericRaw)
-      if (!Number.isFinite(result)) return
-      const evaluated = evaluateLegacyTest(result, norm)
-      set((prev) => ({
-        ...removeNormValueByTestId(prev, norm.testId),
-        [norm.testId]: {
-          ...evaluated,
-          result,
-          date: new Date().toISOString().slice(0, 10),
-        },
-      }))
-      return
-    }
-
-    const minuteSecond = parseMinuteSecondToMinutes(trimmed)
-    const numericRaw = trimmed.replace(',', '.')
-    const result = minuteSecond ? minuteSecond.value : Number(numericRaw)
-    if (!Number.isFinite(result)) return
-    const evaluated = evaluateLegacyTest(result, norm)
+    const row = applyNormRawInput(norm, rawValue)
+    if (!row) return
     set((prev) => ({
       ...removeNormValueByTestId(prev, norm.testId),
-      [norm.testId]: {
-        ...evaluated,
-        result,
-        resultRaw: minuteSecond?.display,
-        date: new Date().toISOString().slice(0, 10),
-      },
+      [norm.testId]: row,
     }))
   }, [])
 

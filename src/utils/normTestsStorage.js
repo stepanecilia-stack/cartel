@@ -29,7 +29,16 @@ export function getNormValueByTestId(values, testId) {
 
 export function isMinuteSecondNorm(norm) {
   const unit = String(norm?.unit ?? '').toLowerCase()
-  return unit.includes('мин') || unit.includes('mm:ss') || unit.includes('м:с')
+  const name = String(norm?.testName ?? norm?.name ?? '').toLowerCase()
+  if (unit.includes('мин') || unit.includes('mm:ss') || unit.includes('м:с')) return true
+  // Беговые дистанции (1500 м и т.п.) вводят как мм:сс, даже если в таблице только «сек»
+  if (/бег|run/.test(name) && (unit.includes('сек') || unit.includes('sec') || unit.includes('мин'))) {
+    return true
+  }
+  if (/бег\s+на|\d+\s*м\b|\d+\s*км/.test(name) && !unit.includes('кг') && !unit.includes('раз')) {
+    return true
+  }
+  return false
 }
 
 function parseMinuteSecondToMinutes(rawValue) {
@@ -88,13 +97,16 @@ function parseAnyCompleteMinuteSecond(rawValue) {
 function isPartialMinuteSecondInput(trimmed) {
   if (!trimmed) return false
   if (/^\d+$/.test(trimmed)) return true
-  if (/^\d+\s*:\s*$/.test(trimmed)) return true
-  if (/^\d+\s*:\s*\d{1}$/.test(trimmed)) return true
-  if (/^\d+\s+\d{1}$/.test(trimmed)) return true
+  if (/^\d+\s*:\s*\d{0,2}$/.test(trimmed)) return true
+  if (/^\d+\s+\d{0,2}$/.test(trimmed)) return true
+  if (/^\d+[.,]\d{0,2}$/.test(trimmed)) return true
   if (/^\d+[.,]\s*$/.test(trimmed)) return true
-  if (/^\d+\.\d{1}$/.test(trimmed)) return true
-  if (/^\d+[.,]\d{3,}$/.test(trimmed)) return true
   return false
+}
+
+/** Черновик ввода времени: не отбрасывать при незавершённом мм:сс. */
+function minuteSecondDraftRow(trimmed, date) {
+  return { resultRaw: trimmed, date }
 }
 
 export function formatMinutesToMinuteSecond(value) {
@@ -133,6 +145,21 @@ export function applyNormRawInput(norm, rawValue) {
   const trimmed = String(rawValue ?? '').trim()
   const date = new Date().toISOString().slice(0, 10)
 
+  if (trimmed.includes(':')) {
+    const complete = parseAnyCompleteMinuteSecond(trimmed)
+    if (complete) {
+      const result = complete.value
+      if (!Number.isFinite(result)) return null
+      return {
+        ...evaluateLegacyTest(result, norm),
+        result,
+        resultRaw: complete.display,
+        date,
+      }
+    }
+    return minuteSecondDraftRow(trimmed, date)
+  }
+
   if (isMinuteSecondNorm(norm)) {
     const complete = parseAnyCompleteMinuteSecond(trimmed)
     if (complete) {
@@ -146,7 +173,7 @@ export function applyNormRawInput(norm, rawValue) {
       }
     }
     if (isPartialMinuteSecondInput(trimmed)) {
-      return { resultRaw: trimmed, date }
+      return minuteSecondDraftRow(trimmed, date)
     }
     if (trimmed.includes('.') && !parseAnyCompleteMinuteSecond(trimmed)) return null
     const numericRaw = trimmed.replace(',', '.')

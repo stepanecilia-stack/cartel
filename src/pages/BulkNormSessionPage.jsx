@@ -160,6 +160,7 @@ export default function BulkNormSessionPage({ coachId }) {
   const [testId, setTestId] = useState('')
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [drafts, setDrafts] = useState({})
+  const [draftInputs, setDraftInputs] = useState({})
   const [savedRows, setSavedRows] = useState({})
   const [saveError, setSaveError] = useState('')
   const [saveOk, setSaveOk] = useState(false)
@@ -251,6 +252,7 @@ export default function BulkNormSessionPage({ coachId }) {
     setTestId('')
     setSelectedIds(new Set())
     setDrafts({})
+    setDraftInputs({})
     setSavedRows({})
     setSaveOk(false)
     setSaveError('')
@@ -260,6 +262,7 @@ export default function BulkNormSessionPage({ coachId }) {
   useEffect(() => {
     setSelectedIds(new Set())
     setDrafts({})
+    setDraftInputs({})
     setSavedRows({})
     setSaveOk(false)
     setSaveError('')
@@ -305,6 +308,12 @@ export default function BulkNormSessionPage({ coachId }) {
     const student = students.find((s) => s.id === studentId)
     const norm = student ? getAthleteNormForTest(allNorms, student, category, testId) : null
     if (!norm) return
+    setDraftInputs((prev) => {
+      const next = { ...prev }
+      if (raw === '') delete next[studentId]
+      else next[studentId] = raw
+      return next
+    })
     const row = raw === '' ? null : applyNormRawInput(norm, raw)
     setDrafts((prev) => {
       const next = { ...prev }
@@ -393,6 +402,11 @@ export default function BulkNormSessionPage({ coachId }) {
           section: normAcceptanceSectionLabel('physical', norm),
         })
         nextSaved[athlete.id] = acceptedRow
+        setDraftInputs((prev) => {
+          const next = { ...prev }
+          delete next[athlete.id]
+          return next
+        })
         setStudents((prev) =>
           prev.map((s) => (s.id === athlete.id ? { ...s, ...payload } : s)),
         )
@@ -650,11 +664,12 @@ export default function BulkNormSessionPage({ coachId }) {
                   const draft = drafts[student.id]
                   const saved = savedRows[student.id]
                   const inputVal =
-                    draft && !Number.isFinite(draft.result) && draft.resultRaw
-                      ? draft.resultRaw
+                    draftInputs[student.id] ??
+                    (draft?.resultRaw != null && draft.resultRaw !== ''
+                      ? String(draft.resultRaw)
                       : draft
                         ? formatNormResultDisplay(norm, draft)
-                        : ''
+                        : '')
 
                   return (
                     <NormSessionResultCard

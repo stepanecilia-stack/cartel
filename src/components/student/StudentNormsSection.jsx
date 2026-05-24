@@ -35,12 +35,13 @@ function StudentNormsSection({
       norms.map((norm) => {
         const row = getNormValueByTestId(values, norm.testId)
         const displayVal =
-          row?.resultRaw ??
-          (row?.result !== undefined && row?.result !== null
-            ? isMinuteSecondNorm(norm)
-              ? formatMinutesToMinuteSecond(row.result)
-              : String(row.result)
-            : '')
+          row?.resultRaw != null && row.resultRaw !== ''
+            ? String(row.resultRaw)
+            : row?.result !== undefined && row?.result !== null
+              ? isMinuteSecondNorm(norm)
+                ? formatMinutesToMinuteSecond(row.result)
+                : String(row.result)
+              : ''
         const goalLabel =
           Number.isFinite(norm.gold)
             ? isMinuteSecondNorm(norm)
