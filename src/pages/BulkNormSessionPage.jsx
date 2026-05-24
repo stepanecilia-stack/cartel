@@ -22,7 +22,9 @@ import {
   applyNormRawInput,
   formatNormGoldLabel,
   formatNormResultDisplay,
+  getNormResultInputProps,
   isMinuteSecondNorm,
+  normalizeMinuteSecondFieldInput,
 } from '../utils/normTestsStorage.js'
 import { StudentPickTile } from '../components/student/StudentPickTile.jsx'
 import {
@@ -86,6 +88,8 @@ function NormSessionResultCard({
   const lastSavedText =
     saved && Number.isFinite(saved.result) ? `Сохранено: ${formatNormResultDisplay(norm, saved)}` : null
   const acceptedMeta = saved ? formatNormAcceptedMeta(saved) : null
+  const minuteSecond = isMinuteSecondNorm(norm)
+  const inputProps = getNormResultInputProps(norm)
 
   return (
     <li className="rounded-lg border border-[#e7e8ec] bg-[#f7f8fa] p-2.5">
@@ -128,14 +132,21 @@ function NormSessionResultCard({
       <label className="mt-2 block">
         <span className="sr-only">Результат ({norm.unit})</span>
         <input
-          type={isMinuteSecondNorm(norm) ? 'text' : 'number'}
-          inputMode={isMinuteSecondNorm(norm) ? 'numeric' : 'decimal'}
-          step={isMinuteSecondNorm(norm) ? undefined : 'any'}
+          {...inputProps}
           className={vk.input}
           value={inputVal}
-          onChange={(e) => onResultChange(e.target.value)}
-          placeholder={isMinuteSecondNorm(norm) ? 'м:сс' : `результат, ${norm.unit || ''}`.trim()}
+          onChange={(e) =>
+            onResultChange(
+              minuteSecond ? normalizeMinuteSecondFieldInput(e.target.value) : e.target.value,
+            )
+          }
+          placeholder={minuteSecond ? '12:20' : `результат, ${norm.unit || ''}`.trim()}
         />
+        {minuteSecond ? (
+          <p className={`mt-1 ${vk.mutedXs}`}>
+            На iPhone: введите цифрами (1220 = 12:20) или с двоеточием 12:20
+          </p>
+        ) : null}
       </label>
       {lastSavedText ? (
         <p className="mt-1.5 text-[12px] font-medium text-[#4bb34b]">
