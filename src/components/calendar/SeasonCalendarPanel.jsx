@@ -106,6 +106,7 @@ import { buildSeasonCoachView } from '../../utils/seasonCoachView.js'
  *   techniquePercent?: number,
  *   atomsAtSkill?: number,
  *   totalAtoms?: number,
+ *   level1Atoms?: object[],
  *   effectiveKsr?: number,
  *   onCartelStageChange?: (
  *     stage: import('../../data/cartelParticipation.js').CartelStageId,
@@ -151,6 +152,7 @@ function SeasonCalendarPanel({
   techniquePercent = 0,
   atomsAtSkill = 0,
   totalAtoms = 0,
+  level1Atoms = [],
   effectiveKsr = 0,
   onCartelStageChange,
   onOpenTab,
@@ -589,6 +591,7 @@ function SeasonCalendarPanel({
           techniquePercent={techniquePercent}
           atomsAtSkill={atomsAtSkill}
           totalAtoms={totalAtoms}
+          level1Atoms={level1Atoms}
           effectiveKsr={effectiveKsr}
           year={year}
           ageInt={ageInt}

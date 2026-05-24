@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { loadNormsOnce } from '../data/normsCache.js'
+import { loadLegacyTechnicalAtoms } from '../utils/ksrUtils.js'
 import { migrateStudentTests } from '../utils/normsCategory.js'
 import SeasonCalendarPanel from './calendar/SeasonCalendarPanel.jsx'
 
@@ -16,15 +17,22 @@ const noop = () => {}
  */
 function ShareSeasonPanel({ season, displayName = '', athlete = null, physicalItems = [] }) {
   const [allNorms, setAllNorms] = useState([])
+  const [level1Atoms, setLevel1Atoms] = useState([])
 
   useEffect(() => {
     let cancelled = false
-    loadNormsOnce()
-      .then((norms) => {
-        if (!cancelled) setAllNorms(norms)
+    Promise.all([loadNormsOnce(), loadLegacyTechnicalAtoms()])
+      .then(([norms, atoms]) => {
+        if (!cancelled) {
+          setAllNorms(norms)
+          setLevel1Atoms(Array.isArray(atoms) ? atoms : [])
+        }
       })
       .catch(() => {
-        if (!cancelled) setAllNorms([])
+        if (!cancelled) {
+          setAllNorms([])
+          setLevel1Atoms([])
+        }
       })
     return () => {
       cancelled = true
@@ -93,6 +101,7 @@ function ShareSeasonPanel({ season, displayName = '', athlete = null, physicalIt
       ageInt={season.ageInt}
       student={studentRecord}
       allNorms={allNorms}
+      level1Atoms={level1Atoms}
       kd={metrics.kd ?? 0.25}
       techniquePercent={metrics.techniquePercent ?? 0}
       atomsAtSkill={metrics.atomsAtSkill ?? 0}

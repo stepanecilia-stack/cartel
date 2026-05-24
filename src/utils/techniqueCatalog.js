@@ -22,6 +22,23 @@ export const REQUIRED_LEVEL3_COMBO_TEMPLATES = [
 
 export const REQUIRED_LEVEL3_COMBO_IDS = REQUIRED_LEVEL3_COMBO_TEMPLATES.map((t) => t.id)
 
+/** База Cartel: ур.1 + ур.2 + 2 обязательные комбинации (19 + 8 + 2 = 29). */
+export function buildBaseCartelProgramAtoms(level1Atoms) {
+  const l1 = orderTechnicalAtomsForProgram(level1Atoms || [])
+  const comboAtoms = REQUIRED_LEVEL3_COMBO_TEMPLATES.map((t) => ({
+    id: t.id,
+    number: 'III',
+    name: t.name,
+    kind: 'combo',
+  }))
+  return [...l1, ...TECHNIQUE_LEVEL2_ATOMS, ...comboAtoms]
+}
+
+/** @param {object[]} [level1Atoms] */
+export function baseCartelProgramAtomCount(level1Atoms) {
+  return buildBaseCartelProgramAtoms(level1Atoms).length
+}
+
 export function isRequiredLevel3ComboId(id) {
   return REQUIRED_LEVEL3_COMBO_IDS.includes(String(id ?? ''))
 }

@@ -41,6 +41,7 @@ import {
  *   techniquePercent?: number,
  *   atomsAtSkill?: number,
  *   totalAtoms?: number,
+ *   level1Atoms?: object[],
  *   effectiveKsr?: number,
  *   seasonBlocks?: import('../../utils/seasonPlan.js').SeasonBlock[],
  *   seasonCheckpoints?: import('../../utils/seasonPlan.js').SeasonCheckpoint[],
@@ -68,6 +69,7 @@ function StudentSeasonPanel({
   techniquePercent = 0,
   atomsAtSkill = 0,
   totalAtoms = 0,
+  level1Atoms = [],
   effectiveKsr = 0,
   seasonBlocks = [],
   seasonCheckpoints = [],
@@ -195,6 +197,7 @@ function StudentSeasonPanel({
       techniquePercent={techniquePercent}
       atomsAtSkill={atomsAtSkill}
       totalAtoms={totalAtoms}
+      level1Atoms={level1Atoms}
       effectiveKsr={effectiveKsr}
       seasonBlocks={blocks}
       seasonCheckpoints={checkpoints}

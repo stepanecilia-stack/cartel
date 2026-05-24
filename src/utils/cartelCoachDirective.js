@@ -52,6 +52,7 @@ function trainingFromSeasonView(seasonView) {
  *   techniquePercent?: number,
  *   atomsAtSkill?: number,
  *   totalAtoms?: number,
+ *   level1Atoms?: object[],
  *   effectiveKsr?: number,
  *   seasonCheckpoints?: import('./seasonPlan.js').SeasonCheckpoint[],
  *   seasonBlocks?: import('./seasonPlan.js').SeasonBlock[],

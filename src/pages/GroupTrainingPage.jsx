@@ -15,8 +15,9 @@ import {
   applyProgressSliderToTechnicalData,
   buildTechnicalOnlyUpdatePayload,
   countLeadingMasteredAtoms,
-  isLevel1BaseProgramComplete,
+  isBaseCartelProgramComplete,
 } from '../utils/studentTechnicalUpdate.js'
+import { baseCartelProgramAtomCount } from '../utils/techniqueCatalog.js'
 import {
   endGroupTrainingSession,
   getGroupTrainingSession,
@@ -160,7 +161,7 @@ function ComposePhase({
               >
                 ✓
               </span>
-              — {orderedL1.length} приёмов на «Умение»
+              — {baseCartelProgramAtomCount(orderedL1)} приёмов базы на «Умение»
             </span>
           ) : null}
           {searchQuery.trim() && totalInView !== students.length ? (
@@ -195,7 +196,7 @@ function ComposePhase({
                   student={student}
                   checked={selectedIds.has(student.id)}
                   onToggle={() => toggleStudent(student.id)}
-                  baseProgramComplete={isLevel1BaseProgramComplete(orderedL1, student.technicalData)}
+                  baseProgramComplete={isBaseCartelProgramComplete(orderedL1, student.technicalData)}
                 />
               ))}
             </div>
@@ -293,7 +294,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
   })()
 
   const baseComplete = useMemo(
-    () => isLevel1BaseProgramComplete(orderedL1, data),
+    () => isBaseCartelProgramComplete(orderedL1, data),
     [orderedL1, data],
   )
 
@@ -359,7 +360,7 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
         {baseComplete ? (
           <span
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] font-bold text-white"
-            title="29 базовых приёмов на «Умение»"
+            title="29 приёмов базы Cartel на «Умение»"
             aria-label="База программы закрыта"
           >
             ✓

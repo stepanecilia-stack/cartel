@@ -9,7 +9,10 @@ import {
   CARTEL_GATES,
   compareCartelStage,
 } from '../data/cartelParticipation.js'
+import { countProgramAtomsAtOrAboveSkill } from './ksrUtils.js'
 import { countNormMedalsForStudent } from './leaderboardMetrics.js'
+import { buildBaseCartelProgramAtoms } from './techniqueCatalog.js'
+import { normalizeStudentTechnicalData } from './technicalProgramProgress.js'
 import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
 import { isOrientirStart } from './plannedCompetitions.js'
 
@@ -73,6 +76,7 @@ export function countMotorQualityPasses(workLog) {
  *   allNorms?: object[],
  *   atomsAtSkill?: number,
  *   totalAtoms?: number,
+ *   level1Atoms?: object[],
  *   seasonCheckpoints?: import('./seasonPlan.js').SeasonCheckpoint[],
  *   seasonBlocks?: import('./seasonPlan.js').SeasonBlock[],
  *   calendarItems?: import('./plannedCompetitions.js').PlannedCompetition[],
@@ -91,10 +95,19 @@ export function buildCartelMetrics(input) {
   const hasCoachStart = coachStarts.length > 0
   const hasPlanBlocks = (input.seasonBlocks ?? []).length > 0
 
+  let atomsAtSkill = input.atomsAtSkill ?? 0
+  let totalAtoms = input.totalAtoms ?? 0
+  if (Array.isArray(input.level1Atoms) && input.level1Atoms.length > 0 && input.student) {
+    const data = normalizeStudentTechnicalData(input.student.technicalData)
+    const base = countProgramAtomsAtOrAboveSkill(buildBaseCartelProgramAtoms(input.level1Atoms), data)
+    atomsAtSkill = base.count
+    totalAtoms = base.total
+  }
+
   return {
     norms,
-    atomsAtSkill: input.atomsAtSkill ?? 0,
-    totalAtoms: input.totalAtoms ?? 0,
+    atomsAtSkill,
+    totalAtoms,
     motorQualityPasses: countMotorQualityPasses(input.student?.motorQualityWorkLog),
     specialPassDone: hasCartelSpecialPass(checkpoints),
     sparringDone: countDoneCheckpointsByKind(checkpoints, 'sparring'),
@@ -158,7 +171,10 @@ export function checklistForCartelStage(stage, metrics) {
       const atSkill = metrics.atomsAtSkill ?? 0
       return [
         {
-          label: total > 0 ? `${total} приёмов на «Умение»: ${atSkill}/${total}` : 'Вся программа на «Умение»',
+          label:
+            total > 0
+              ? `Приёмы базы на «Умение»: ${atSkill}/${total}`
+              : 'Вся база на «Умение»',
           done: isBaseTechniqueReady(metrics),
         },
         {

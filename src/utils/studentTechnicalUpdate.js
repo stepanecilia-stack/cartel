@@ -8,7 +8,11 @@ import {
   normalizeTechnicalDominanceKey,
 } from './ksrUtils.js'
 import { studentAthleteShape } from './studentModel.js'
-import { buildFullTechnicalProgramAtoms, mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
+import {
+  buildBaseCartelProgramAtoms,
+  buildFullTechnicalProgramAtoms,
+  mergeWithRequiredLevel3Combinations,
+} from './techniqueCatalog.js'
 
 /**
  * Нормализация technicalData к виду, который ждёт Firestore.
@@ -28,10 +32,16 @@ export function normalizeTechnicalDataForSave(raw) {
  * Сколько первых атомов программы (в каноническом порядке) уже на «Умение»+.
  * Используется для стартового положения ползунка прогресса по программе.
  */
-/** Все приёмы программы ур.1 (29 базовых) на «Умение» или выше. */
-export function isLevel1BaseProgramComplete(orderedLevel1Atoms, technicalData) {
-  const { count, total } = countProgramAtomsAtOrAboveSkill(orderedLevel1Atoms, technicalData)
+/** Все 29 элементов базы Cartel (ур.1 + ур.2 + 2 комбо) на «Умение» или выше. */
+export function isBaseCartelProgramComplete(level1Atoms, technicalData) {
+  const atoms = buildBaseCartelProgramAtoms(level1Atoms)
+  const { count, total } = countProgramAtomsAtOrAboveSkill(atoms, technicalData)
   return total > 0 && count >= total
+}
+
+/** @deprecated используйте isBaseCartelProgramComplete */
+export function isLevel1BaseProgramComplete(level1Atoms, technicalData) {
+  return isBaseCartelProgramComplete(level1Atoms, technicalData)
 }
 
 export function countLeadingMasteredAtoms(orderedAtoms, technicalData) {

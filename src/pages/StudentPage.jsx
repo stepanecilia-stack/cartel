@@ -1657,6 +1657,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 techniquePercent={tabProgress.technical ?? 0}
                 atomsAtSkill={techniqueLeaderboard?.atomsAtSkill ?? 0}
                 totalAtoms={techniqueLeaderboard?.totalAtoms ?? programAtomsFull.length}
+                level1Atoms={technicalAtoms}
                 effectiveKsr={effectiveKSR}
                 seasonBlocks={student?.seasonBlocks}
                 seasonCheckpoints={student?.seasonCheckpoints}
