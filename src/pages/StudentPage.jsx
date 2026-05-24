@@ -40,6 +40,13 @@ import BackToHomeLink from '../components/layout/BackToHomeLink.jsx'
 import { ETALON_MODEL_PANEL_CLASS, vk } from '../utils/vkUi.js'
 import { loadNormsOnce } from '../data/normsCache.js'
 import { buildPublicSharePayload, isValidProgressShareToken } from '../utils/publicSharePayload'
+import { buildShareSeasonSnapshot } from '../utils/shareSeasonSnapshot.js'
+import { useOrientirParticipation } from '../hooks/useOrientirParticipation.js'
+import {
+  applyOrientirParticipations,
+  mergeOrientirExternalCamps,
+  participationByOrientirId,
+} from '../utils/orientirParticipation.js'
 import { scheduleStudentShareSync } from '../services/studentShareSyncService.js'
 import {
   buildNormAcceptanceHistoryEntry,
@@ -86,10 +93,10 @@ import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
 
 
 const TAB_ITEMS = [
-  { id: 'anthropometry', label: 'Карта спортсмена', shortLabel: 'Карта' },
   { id: 'competition', label: 'Сезон и старты', shortLabel: 'Сезон' },
-  { id: 'physical', label: 'Физическое развитие', shortLabel: 'Физика' },
   { id: 'technical', label: 'Техника', shortLabel: 'Техника' },
+  { id: 'physical', label: 'Физическое развитие', shortLabel: 'Физика' },
+  { id: 'anthropometry', label: 'Карта спортсмена', shortLabel: 'Карта' },
 ]
 
 const TAB_PROGRESS_LABELS = {
@@ -262,7 +269,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     return { id: student.id, ...studentAthleteShape(student) }
   }, [student])
 
-  const [activeTab, setActiveTab] = useState('anthropometry')
+  const [activeTab, setActiveTab] = useState('competition')
 
   useEffect(() => {
     if (activeTab === 'functional') setActiveTab('physical')
@@ -313,6 +320,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [cartelStageSaveBusy, setCartelStageSaveBusy] = useState(false)
   const coachId = getCurrentCoachId()
   const { events: coachEvents } = useCoachEvents(coachId)
+  const { participations: orientirParticipations } = useOrientirParticipation(coachId)
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -606,6 +614,21 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
     const measureDate = anthropometry.date || new Date().toISOString().slice(0, 10)
     const w = Number(anthropometry.weight) || 0
+    const seasonSnapshot = buildShareSeasonSnapshot({
+      studentId: student?.id,
+      calendarItems: studentCalendarItems,
+      seasonBlocks: student?.seasonBlocks,
+      seasonCheckpoints: student?.seasonCheckpoints,
+      daysUntilFight,
+      ageInt: sensitivePeriods.ageInt,
+      student,
+      kd: kdBundle.kd,
+      techniquePercent: tabProgress.technical ?? 0,
+      atomsAtSkill: techniqueLeaderboard?.atomsAtSkill ?? 0,
+      totalAtoms: techniqueLeaderboard?.totalAtoms ?? atomsForShare.length,
+      effectiveKsr: effectiveKSR,
+    })
+
     return buildPublicSharePayload({
       displayName: displayNameFromStudent(student),
       photoURL: studentPhotoUrl(student),
@@ -619,6 +642,20 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       functionalResults: {},
       technicalAtoms: atomsForShare,
       technicalData: technicalMerged,
+      season: seasonSnapshot,
+      etalonExtras: {
+        kspPercent,
+        basePercent,
+        tacticDistanceDisplay,
+        tacticMode: weights.tacticMode ?? '',
+        tacticAdvice: weights.tacticAdvice ?? '',
+        isYoungHistoricalPreview,
+        historicalReferenceLabel,
+        referenceHeight,
+        referenceReach,
+        referenceWeightKg,
+      },
+      motorQualityWorkLog: student?.motorQualityWorkLog ?? null,
     })
   }
 
@@ -1380,8 +1417,13 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const studentCalendarItems = useMemo(() => {
     const coachItems = calendarItemsForStudent(coachEvents, student?.id)
-    return mergeCalendarWithOrientirs(coachItems, studentOrientirs)
-  }, [coachEvents, student?.id, studentOrientirs])
+    const merged = mergeCalendarWithOrientirs(coachItems, studentOrientirs)
+    const participationsByOrientir = participationByOrientirId(orientirParticipations)
+    const withParticipants = applyOrientirParticipations(merged, participationsByOrientir)
+    return mergeOrientirExternalCamps(withParticipants, orientirParticipations, {
+      studentId: student?.id,
+    })
+  }, [coachEvents, student?.id, studentOrientirs, orientirParticipations])
 
   const nearestPlanned = useMemo(
     () => pickNearestFutureCompetition(studentCalendarItems),

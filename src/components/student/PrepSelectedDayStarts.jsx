@@ -81,7 +81,7 @@ function PrepSelectedDayStarts({
                 <span className="font-semibold text-[#2c2d2e]">{displayName}</span>
                 <span className="block text-[11px] text-[#818c99]">
                   {externalCamp
-                    ? `${style?.label} (не клуб)`
+                    ? style?.label
                     : orientir
                       ? 'Ориентир Минспорта'
                       : style?.label}{' '}

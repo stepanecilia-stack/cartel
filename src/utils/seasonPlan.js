@@ -24,6 +24,7 @@ import { isIsoInInclusiveRange } from './prepSeasonCalendar.js'
  *   kind: SeasonCheckpointKind,
  *   dateISO: string,
  *   done?: boolean,
+ *   calendarOnly?: boolean,
  * }} SeasonCheckpoint
  */
 
@@ -94,6 +95,7 @@ export function normalizeSeasonCheckpoints(raw) {
       kind: normalizeCheckpointKind(row.kind),
       dateISO,
       done: Boolean(row.done),
+      calendarOnly: row.calendarOnly === true,
     })
   }
   return out.sort((a, b) => a.dateISO.localeCompare(b.dateISO) || a.title.localeCompare(b.title))
@@ -131,6 +133,7 @@ export function seasonCheckpointToCalendarItem(cp) {
     planKind: 'checkpoint',
     checkpointKind: cp.kind,
     planDone: cp.done,
+    calendarOnly: cp.calendarOnly === true,
   }
 }
 

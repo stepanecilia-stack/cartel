@@ -4,12 +4,14 @@ import { normalizeCompetitionRange } from '../../data/competitionLevels.js'
 import { formatCompetitionRange, getCompetitionMeta } from '../../data/competitionLevels.js'
 import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.js'
 import { hasOverlappingCoachEvent } from '../../utils/coachEvents.js'
+import { participationRecordByOrientirId } from '../../utils/orientirParticipation.js'
 import {
-  participationRecordByOrientirId,
-  pickNearestStudentExternalCamp,
-} from '../../utils/orientirParticipation.js'
-import { getExternalCampStyle } from '../../data/externalCampKinds.js'
-import { getSeasonPlanStyle, SEASON_CHECKPOINT_KIND_STYLES } from '../../data/seasonPlanKinds.js'
+  buildStudentSeasonTimeline,
+  studentTimelineDateLabel,
+  studentTimelineTitle,
+  studentTimelineTypeDotClass,
+  studentTimelineTypeLabel,
+} from '../../utils/studentSeasonTimeline.js'
 import { isOrientirStart } from '../../utils/plannedCompetitions.js'
 import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
 import {
@@ -18,10 +20,7 @@ import {
   formatShortDateRu,
   normalizeIsoRange,
 } from '../../utils/prepSeasonCalendar.js'
-import {
-  pickNearestFutureCompetition,
-  pickNearestStudentParticipation,
-} from '../../utils/plannedCompetitions.js'
+import { pickNearestFutureCompetition } from '../../utils/plannedCompetitions.js'
 import { daysUntilCompetition } from '../../utils/competitionDate.js'
 import {
   generateRecommendedBlocksForEvent,
@@ -30,7 +29,6 @@ import {
   newSeasonCheckpointId,
   normalizeSeasonBlocks,
   normalizeSeasonCheckpoints,
-  planItemsOnDay,
   removeSeasonBlocksForYear,
   removeSeasonCheckpointsForYear,
   seasonBlockToCalendarItem,
@@ -43,6 +41,7 @@ import OrientirEventPanel from './OrientirEventPanel.jsx'
 import SeasonBlockDetails from './SeasonBlockDetails.jsx'
 import SeasonBlockEditor from './SeasonBlockEditor.jsx'
 import SeasonCheckpointEditor from './SeasonCheckpointEditor.jsx'
+import StudentCheckpointEditor from './StudentCheckpointEditor.jsx'
 import PrepMonthEventStrip from '../student/PrepMonthEventStrip.jsx'
 import PrepSeasonCalendar from '../student/PrepSeasonCalendar.jsx'
 import PrepSeasonEventList from '../student/PrepSeasonEventList.jsx'
@@ -118,6 +117,7 @@ import { buildSeasonCoachView } from '../../utils/seasonCoachView.js'
  *   onToggleSpecialPass?: () => void | Promise<void>,
  *   onSaveCartelDocuments?: (docs: import('../../data/cartelDocuments.js').CartelDocumentsMap) => void | Promise<void>,
  *   stageSaveBusy?: boolean,
+ *   shareReadOnly?: boolean,
  * }} props
  */
 function SeasonCalendarPanel({
@@ -159,6 +159,7 @@ function SeasonCalendarPanel({
   onToggleSpecialPass,
   onSaveCartelDocuments,
   stageSaveBusy = false,
+  shareReadOnly = false,
 }) {
   const listLayout = eventListLayout
   const isStudentSeason = Boolean(contextStudentId)
@@ -195,22 +196,6 @@ function SeasonCalendarPanel({
     [calendarItems],
   )
 
-  const nearestStudentStart = useMemo(
-    () =>
-      contextStudentId
-        ? pickNearestStudentParticipation(calendarItems, contextStudentId)
-        : null,
-    [calendarItems, contextStudentId],
-  )
-
-  const nearestStudentCamp = useMemo(
-    () =>
-      contextStudentId
-        ? pickNearestStudentExternalCamp(calendarItems, contextStudentId)
-        : null,
-    [calendarItems, contextStudentId],
-  )
-
   const formatDaysUntilLabel = useCallback((dateISO) => {
     if (!dateISO) return ''
     const days = daysUntilCompetition(dateISO)
@@ -221,34 +206,10 @@ function SeasonCalendarPanel({
     return ' · идёт сейчас'
   }, [])
 
-  const nearestStudentDaysLabel = useMemo(
-    () => formatDaysUntilLabel(nearestStudentStart?.dateISO),
-    [nearestStudentStart, formatDaysUntilLabel],
-  )
-
-  const nearestStudentCampDaysLabel = useMemo(
-    () => formatDaysUntilLabel(nearestStudentCamp?.dateISO),
-    [nearestStudentCamp, formatDaysUntilLabel],
-  )
-
-  const nearestStudentCheckpoint = useMemo(() => {
-    if (!isStudentSeason) return null
-    const items = mergedCalendarItems.filter((c) => c.planKind === 'checkpoint')
-    return pickNearestFutureCompetition(items)
-  }, [isStudentSeason, mergedCalendarItems])
-
-  const nearestStudentCheckpointDaysLabel = useMemo(
-    () => formatDaysUntilLabel(nearestStudentCheckpoint?.dateISO),
-    [nearestStudentCheckpoint, formatDaysUntilLabel],
-  )
-
-  const openCheckpointCreate = useCallback(() => {
-    closeCreateForm()
-    setEditingCheckpointId(null)
-    setEditingBlockId(null)
-    setPlanCreateRange({ startISO: selectedISO, endISO: selectedISO })
-    setPlanCreateMode('checkpoint')
-  }, [selectedISO, closeCreateForm])
+  const studentTimeline = useMemo(() => {
+    if (!isStudentSeason || !contextStudentId) return []
+    return buildStudentSeasonTimeline(mergedCalendarItems, contextStudentId)
+  }, [isStudentSeason, contextStudentId, mergedCalendarItems])
 
   useEffect(() => {
     if (!focusId && nearest) setFocusId(nearest.id)
@@ -294,9 +255,9 @@ function SeasonCalendarPanel({
     )
   }, [seasonMonthDays, selectedISO])
 
-  const selectedDayPlan = useMemo(
-    () => planItemsOnDay(selectedISO, blocks, checkpoints),
-    [selectedISO, blocks, checkpoints],
+  const selectedDayCheckpoints = useMemo(
+    () => checkpoints.filter((c) => c.dateISO === selectedISO),
+    [checkpoints, selectedISO],
   )
 
   const editingEvent = useMemo(
@@ -360,6 +321,14 @@ function SeasonCalendarPanel({
     setAssignError('')
   }, [])
 
+  const openCheckpointCreate = useCallback(() => {
+    closeCreateForm()
+    setEditingCheckpointId(null)
+    setEditingBlockId(null)
+    setPlanCreateRange({ startISO: selectedISO, endISO: selectedISO })
+    setPlanCreateMode('checkpoint')
+  }, [selectedISO, closeCreateForm])
+
   const persistPlan = useCallback(
     async (
       nextBlocks,
@@ -381,6 +350,16 @@ function SeasonCalendarPanel({
       }
     },
     [onSaveSeasonPlan, canSave, closePlanCreate],
+  )
+
+  const setCheckpointCalendarOnly = useCallback(
+    async (checkpointId, calendarOnly) => {
+      await persistPlan(
+        blocks,
+        checkpoints.map((c) => (c.id === checkpointId ? { ...c, calendarOnly } : c)),
+      )
+    },
+    [blocks, checkpoints, persistPlan],
   )
 
   const openCreateForm = useCallback(
@@ -598,7 +577,9 @@ function SeasonCalendarPanel({
   const planBusy = planSaveBusy
   return (
     <div className="space-y-3">
-      {!canSave ? <p className={vk.noticeWarn}>Выберите ученика, чтобы сохранять сезон.</p> : null}
+      {!canSave && !shareReadOnly ? (
+        <p className={vk.noticeWarn}>Выберите ученика, чтобы сохранять сезон.</p>
+      ) : null}
 
       {student ? (
         <SeasonCoachGuide
@@ -626,6 +607,7 @@ function SeasonCalendarPanel({
           onAddEvent={() => openCreateForm(selectedISO)}
           stageBusy={stageSaveBusy}
           applyBusy={planBusy}
+          shareReadOnly={shareReadOnly}
         />
       ) : null}
 
@@ -645,84 +627,89 @@ function SeasonCalendarPanel({
 
       {contextStudentId ? (
         <div className="space-y-2">
-          {nearestStudentCamp ? (
-            <button
-              type="button"
-              onClick={() => focusItem(nearestStudentCamp)}
-              className={[
-                'block w-full rounded-lg border-2 px-2.5 py-2 text-left shadow-sm transition hover:brightness-[0.98]',
-                getExternalCampStyle(nearestStudentCamp)?.chip ??
-                  'border-violet-400 bg-violet-50',
-              ].join(' ')}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-wide text-violet-900">
-                Ближайшие сборы
-              </span>
-              <span className="mt-0.5 block text-[13px] font-medium text-[#2c2d2e]">
-                {nearestStudentCamp.title?.trim() ||
-                  getExternalCampStyle(nearestStudentCamp)?.label ||
-                  'Сборы'}
-                <span className="font-normal text-[#818c99]">
-                  {' '}
-                  · {formatCompetitionRange(nearestStudentCamp)}
-                  {nearestStudentCampDaysLabel}
-                </span>
-              </span>
-              <span className="mt-0.5 block text-[11px] text-violet-900/85">
-                Не клуб · организатор края или федерации
-              </span>
-            </button>
-          ) : null}
-          {nearestStudentStart ? (
-            <button
-              type="button"
-              onClick={() => focusItem(nearestStudentStart)}
-              className="block w-full rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2 text-left shadow-sm transition hover:border-[#2d81e0]/40 hover:bg-[#f7f8fa]"
-            >
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#818c99]">
-                Ближайший старт
-              </span>
-              <span className="mt-0.5 block text-[13px] font-medium text-[#2c2d2e]">
-                {nearestStudentStart.title?.trim() || getCompetitionMeta(nearestStudentStart).label}
-                <span className="font-normal text-[#818c99]">
-                  {' '}
-                  · {formatCompetitionRange(nearestStudentStart)}
-                  {nearestStudentDaysLabel}
-                </span>
-              </span>
-            </button>
-          ) : null}
-          {nearestStudentCheckpoint ? (
-            <button
-              type="button"
-              onClick={() => focusItem(nearestStudentCheckpoint)}
-              className={[
-                'block w-full rounded-lg border-2 px-2.5 py-2 text-left shadow-sm transition hover:brightness-[0.98]',
-                getSeasonPlanStyle(nearestStudentCheckpoint)?.chip ??
-                  'border-rose-300 bg-rose-50',
-              ].join(' ')}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-wide text-rose-900">
-                Ближайшая контрольная точка
-              </span>
-              <span className="mt-0.5 block text-[13px] font-medium text-[#2c2d2e]">
-                {nearestStudentCheckpoint.title?.trim() ||
-                  SEASON_CHECKPOINT_KIND_STYLES[nearestStudentCheckpoint.checkpointKind ?? 'other']
-                    ?.label ||
-                  'Контрольная точка'}
-                <span className="font-normal text-[#818c99]">
-                  {' '}
-                  · {formatShortDateRu(nearestStudentCheckpoint.dateISO)}
-                  {nearestStudentCheckpointDaysLabel}
-                </span>
-              </span>
-            </button>
-          ) : null}
-          {!nearestStudentCamp && !nearestStudentStart && !nearestStudentCheckpoint ? (
+          {studentTimeline.length > 0 ? (
+            <div className="overflow-hidden rounded-lg border border-[#e7e8ec] bg-white shadow-sm">
+              {studentTimeline.map((entry, index) => {
+                const daysLabel = formatDaysUntilLabel(entry.dateISO)
+                const active = focusId === entry.item.id
+                const rowClass = [
+                  'flex w-full items-center gap-2 px-2.5 py-2 transition',
+                  index > 0 ? 'border-t border-[#e7e8ec]' : '',
+                  active ? 'bg-sky-50' : 'hover:bg-[#f7f8fa]',
+                ].join(' ')
+
+                if (entry.kind === 'checkpoint') {
+                  return (
+                    <div key={entry.item.id} className={rowClass}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCheckpointId(entry.item.id)
+                          focusItem(entry.item)
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                      >
+                        <span
+                          className={[
+                            'h-2 w-2 shrink-0 rounded-full',
+                            studentTimelineTypeDotClass(entry),
+                          ].join(' ')}
+                          aria-hidden
+                        />
+                        <span className="text-[13px] font-medium text-[#2c2d2e]">
+                          {studentTimelineTitle(entry)}
+                        </span>
+                      </button>
+                      <label
+                        className="flex shrink-0 items-center"
+                        title="Только в календаре"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-[#2d81e0]"
+                          disabled={planBusy}
+                          onChange={(e) =>
+                            void setCheckpointCalendarOnly(entry.item.id, e.target.checked)
+                          }
+                        />
+                      </label>
+                    </div>
+                  )
+                }
+
+                return (
+                  <button
+                    key={entry.item.id}
+                    type="button"
+                    onClick={() => focusItem(entry.item)}
+                    className={[rowClass, 'gap-2.5 text-left'].join(' ')}
+                  >
+                    <span
+                      className={[
+                        'h-2 w-2 shrink-0 rounded-full',
+                        studentTimelineTypeDotClass(entry),
+                      ].join(' ')}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium text-[#2c2d2e]">
+                        {studentTimelineTitle(entry)}
+                      </span>
+                      <span className="block text-[11px] text-[#818c99]">
+                        {studentTimelineTypeLabel(entry)} · {studentTimelineDateLabel(entry)}
+                        {daysLabel}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
             <p className="rounded-lg border border-[#e7e8ec] bg-[#fafbfc] px-2.5 py-2 text-[12px] text-[#818c99]">
-              Нет предстоящих сборов, стартов и контрольных точек.
+              Нет предстоящих событий.
             </p>
-          ) : null}
+          )}
           {canSave && onSaveSeasonPlan && !planCreateMode && !editingCheckpointId ? (
             <button
               type="button"
@@ -741,9 +728,8 @@ function SeasonCalendarPanel({
       )}
 
       {isStudentSeason && planCreateMode === 'checkpoint' && planCreateRange && onSaveSeasonPlan ? (
-        <SeasonCheckpointEditor
+        <StudentCheckpointEditor
           key={`cp-create-student-${planCreateRange.startISO}`}
-          mode="create"
           dateISO={planCreateRange.startISO}
           onCancel={closePlanCreate}
           onSave={async (payload) => {
@@ -752,14 +738,14 @@ function SeasonCalendarPanel({
               {
                 id: newSeasonCheckpointId(),
                 title: payload.title,
-                kind: payload.kind,
-                dateISO: payload.dateISO,
-                done: payload.done,
+                kind: 'other',
+                dateISO: planCreateRange.startISO,
+                done: false,
+                calendarOnly: payload.calendarOnly,
               },
             ])
           }}
           busy={planBusy}
-          error={displayError}
           disabled={!canSave}
         />
       ) : null}
@@ -769,13 +755,11 @@ function SeasonCalendarPanel({
             const cp = checkpoints.find((row) => row.id === editingCheckpointId)
             if (!cp) return null
             return (
-              <SeasonCheckpointEditor
+              <StudentCheckpointEditor
                 key={cp.id}
-                mode="edit"
                 dateISO={cp.dateISO}
                 initialTitle={cp.title}
-                initialKind={cp.kind}
-                initialDone={cp.done}
+                initialCalendarOnly={cp.calendarOnly}
                 onCancel={() => setEditingCheckpointId(null)}
                 onSave={async (payload) => {
                   await persistPlan(
@@ -785,9 +769,7 @@ function SeasonCalendarPanel({
                         ? {
                             ...row,
                             title: payload.title,
-                            kind: payload.kind,
-                            dateISO: payload.dateISO,
-                            done: payload.done,
+                            calendarOnly: payload.calendarOnly,
                           }
                         : row,
                     ),
@@ -801,7 +783,6 @@ function SeasonCalendarPanel({
                   setFocusId(null)
                 }}
                 busy={planBusy}
-                error={displayError}
                 disabled={!canSave}
               />
             )
@@ -821,6 +802,43 @@ function SeasonCalendarPanel({
           focusId={focusId}
         />
       </div>
+
+      {isStudentSeason && selectedDayCheckpoints.length > 0 ? (
+        <ul className="overflow-hidden rounded-lg border border-[#e7e8ec] bg-white shadow-sm">
+          {selectedDayCheckpoints.map((cp, index) => (
+            <li
+              key={cp.id}
+              className={[
+                'flex items-center gap-2 px-2.5 py-2',
+                index > 0 ? 'border-t border-[#e7e8ec]' : '',
+              ].join(' ')}
+            >
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left text-[13px] font-medium text-[#2c2d2e] hover:text-[#2d81e0]"
+                onClick={() => {
+                  setEditingCheckpointId(cp.id)
+                  focusCheckpoint(cp)
+                }}
+              >
+                {cp.title}
+              </button>
+              <label
+                className="flex shrink-0 items-center"
+                title="Только в календаре"
+              >
+                <input
+                  type="checkbox"
+                  className="accent-[#2d81e0]"
+                  checked={cp.calendarOnly}
+                  disabled={planBusy}
+                  onChange={(e) => void setCheckpointCalendarOnly(cp.id, e.target.checked)}
+                />
+              </label>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {separateOrientirsBlock ? (
         <PrepSeasonEventList
@@ -1099,37 +1117,6 @@ function SeasonCalendarPanel({
               </button>
             </div>
           ) : null}
-        </div>
-      ) : null}
-
-      {isStudentSeason &&
-      focusedCheckpoint &&
-      !editingCheckpointId &&
-      !planCreateMode &&
-      canSave &&
-      onSaveSeasonPlan ? (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={vk.btnSecondary}
-            disabled={planBusy}
-            onClick={() => setEditingCheckpointId(focusedCheckpoint.id)}
-          >
-            Изменить «{focusedCheckpoint.title}»
-          </button>
-          <button
-            type="button"
-            className="text-[13px] text-rose-600"
-            disabled={planBusy}
-            onClick={() =>
-              void persistPlan(
-                blocks,
-                checkpoints.filter((c) => c.id !== focusedCheckpoint.id),
-              ).then(() => setFocusId(null))
-            }
-          >
-            Удалить точку
-          </button>
         </div>
       ) : null}
 

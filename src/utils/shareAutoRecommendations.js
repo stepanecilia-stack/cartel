@@ -48,7 +48,7 @@ export function buildShareAutoRecommendations({
     const name = String(n.name || 'норматив').trim()
     if (n.status === 'red') {
       bullets.push(
-        `По «${name}» сейчас зона роста: результат необходимо подтянуть к целям норматива — опирайтесь на задания тренера и регулярность занятий.`,
+        `По «${name}» сейчас ниже нормы: результат необходимо подтянуть к целям норматива — опирайтесь на задания тренера и регулярность занятий.`,
       )
     } else if (n.status === 'bronze') {
       bullets.push(

@@ -113,7 +113,7 @@ function mapNormRows(norms, results) {
       if (status === 'gold') tierLabel = 'Золото'
       else if (status === 'silver') tierLabel = 'Серебро'
       else if (status === 'bronze') tierLabel = 'Бронза'
-      else if (critical) tierLabel = 'Зона роста'
+      else if (critical) tierLabel = 'Ниже нормы'
       else tierLabel = 'Есть запас для улучшения'
     }
     const passedDisplay = status === 'gold' || status === 'silver' || status === 'bronze'
@@ -171,6 +171,9 @@ export function buildPublicSharePayload({
   functionalResults = {},
   technicalAtoms = [],
   technicalData = {},
+  season = null,
+  etalonExtras = null,
+  motorQualityWorkLog = null,
 }) {
   const physicalNorms = getNormsForAthlete(allNorms, athleteForNorms, 'physical')
   const mergedPhysicalResults = { ...physicalResults, ...functionalResults }
@@ -277,8 +280,28 @@ export function buildPublicSharePayload({
     duelRows,
   })
 
+  const etalon =
+    etalonExtras && typeof etalonExtras === 'object'
+      ? {
+          kspPercent: Number(etalonExtras.kspPercent) || 0,
+          basePercent: Number(etalonExtras.basePercent) || 0,
+          tacticDistanceDisplay:
+            typeof etalonExtras.tacticDistanceDisplay === 'string' ? etalonExtras.tacticDistanceDisplay : '',
+          tacticMode: typeof etalonExtras.tacticMode === 'string' ? etalonExtras.tacticMode : '',
+          tacticAdvice: typeof etalonExtras.tacticAdvice === 'string' ? etalonExtras.tacticAdvice : '',
+          isYoungHistoricalPreview: Boolean(etalonExtras.isYoungHistoricalPreview),
+          historicalReferenceLabel:
+            typeof etalonExtras.historicalReferenceLabel === 'string'
+              ? etalonExtras.historicalReferenceLabel
+              : 'Эталон',
+          referenceHeight: Number(etalonExtras.referenceHeight) || referenceHeight,
+          referenceReach: Number(etalonExtras.referenceReach) || referenceReach,
+          referenceWeightKg: etalonExtras.referenceWeightKg ?? standardPassport.referenceWeightKg,
+        }
+      : null
+
   return {
-    v: 7,
+    v: 8,
     displayName: displayName || 'Спортсмен',
     photoURL: typeof photoURL === 'string' ? photoURL : '',
     currentWeight: cw,
@@ -326,6 +349,9 @@ export function buildPublicSharePayload({
       automatedCount: techAutomated,
       total: techTotal,
     },
+    season: season && typeof season === 'object' ? season : null,
+    etalon,
+    motorQualityWorkLog: motorQualityWorkLog ?? null,
   }
 }
 

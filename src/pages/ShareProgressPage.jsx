@@ -2,24 +2,22 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { subscribePublicStudentShareByToken } from '../services/firebaseService'
-import { getWeights } from '../utils/ksrUtils'
 import { technicalLevelInterpolationPercent } from '../utils/publicSharePayload'
 import StandardDuelSilhouettes from '../components/StandardDuelSilhouettes'
 import ShareSensitivePeriodsMap from '../components/ShareSensitivePeriodsMap'
+import ShareSeasonPanel from '../components/ShareSeasonPanel.jsx'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { normScoreToneByStatus } from '../utils/normCardTone'
 import { ETALON_MODEL_PANEL_CLASS, vk } from '../utils/vkUi.js'
+import BiometricPotentialBar from '../components/BiometricPotentialBar'
+import MotorQualityWorkLogPanel from '../components/MotorQualityWorkLogPanel'
 
 const TAB_ITEMS = [
-  { id: 'anthropometry', shortLabel: 'Карта' },
-  { id: 'physical', shortLabel: 'Физика' },
+  { id: 'competition', shortLabel: 'Сезон' },
   { id: 'technical', shortLabel: 'Техника' },
+  { id: 'physical', shortLabel: 'Физика' },
+  { id: 'anthropometry', shortLabel: 'Карта' },
 ]
-
-const tabIdToInfluenceKey = {
-  physical: 'physical',
-  technical: 'tech',
-}
 
 function progressBarClass(value) {
   if (value <= 30) return 'bg-[#e64646]'
@@ -28,9 +26,9 @@ function progressBarClass(value) {
 }
 
 function WeightLineChartCompact({ points }) {
-  const w = 480
-  const h = 140
-  const pad = 20
+  const w = 320
+  const h = 52
+  const pad = 10
   const sorted = useMemo(
     () =>
       [...(points || [])]
@@ -39,14 +37,14 @@ function WeightLineChartCompact({ points }) {
     [points],
   )
   const pathData = useMemo(() => {
-    if (sorted.length === 0) return { d: '', circles: [] }
+    if (sorted.length < 2) return { d: '', circles: [] }
     const weights = sorted.map((p) => p.weight)
     const minW = Math.min(...weights)
     const maxW = Math.max(...weights)
     const span = Math.max(maxW - minW, 1)
     const n = sorted.length
     const coords = sorted.map((p, i) => {
-      const x = pad + (n === 1 ? (w - 2 * pad) / 2 : ((w - 2 * pad) * i) / (n - 1))
+      const x = pad + ((w - 2 * pad) * i) / (n - 1)
       const y = pad + (1 - (p.weight - minW) / span) * (h - 2 * pad)
       return { x, y, ...p }
     })
@@ -55,12 +53,21 @@ function WeightLineChartCompact({ points }) {
   }, [sorted])
 
   if (sorted.length === 0) {
-    return <p className={vk.mutedXs}>Пока нет записей веса для графика.</p>
+    return <p className={vk.mutedXs}>Пока нет записей веса.</p>
+  }
+
+  if (sorted.length === 1) {
+    const p = sorted[0]
+    return (
+      <p className="rounded-lg bg-[#f0f2f5] px-2.5 py-1.5 text-[12px] text-[#818c99]">
+        {p.date}: <span className="font-semibold tabular-nums text-[#2c2d2e]">{p.weight} кг</span>
+      </p>
+    )
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg bg-[#f0f2f5] p-2">
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mx-auto max-w-full text-[#2d81e0]">
+    <div className="rounded-lg bg-[#f0f2f5] px-2 py-1.5">
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="mx-auto block max-w-full text-[#2d81e0]">
         <defs>
           <linearGradient id="share-w-vk" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#2d81e0" />
@@ -72,22 +79,25 @@ function WeightLineChartCompact({ points }) {
             d={pathData.d}
             fill="none"
             stroke="url(#share-w-vk)"
-            strokeWidth="2.5"
+            strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         ) : null}
         {pathData.circles.map((c) => (
-          <circle key={`${c.date}-${c.weight}`} cx={c.x} cy={c.y} r="4" fill="white" stroke="#2d81e0" strokeWidth="2" />
+          <circle key={`${c.date}-${c.weight}`} cx={c.x} cy={c.y} r="3" fill="white" stroke="#2d81e0" strokeWidth="1.5" />
         ))}
       </svg>
-      <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[11px] text-[#818c99]">
-        {sorted.map((p) => (
-          <span key={`${p.date}-${p.weight}`}>
-            {p.date}: <span className="font-semibold tabular-nums text-[#2c2d2e]">{p.weight} кг</span>
+      <p className="mt-1 text-center text-[10px] text-[#818c99]">
+        {sorted[sorted.length - 1].date}:{' '}
+        <span className="font-semibold tabular-nums text-[#2c2d2e]">{sorted[sorted.length - 1].weight} кг</span>
+        {sorted.length > 1 ? (
+          <span className="text-[#aeb7c2]">
+            {' '}
+            · было {sorted[0].weight} кг ({sorted[0].date})
           </span>
-        ))}
-      </div>
+        ) : null}
+      </p>
     </div>
   )
 }
@@ -203,7 +213,7 @@ export default function ShareProgressPage() {
   const [error, setError] = useState('')
   const [doc, setDoc] = useState(null)
   const [live, setLive] = useState(false)
-  const [activeTab, setActiveTab] = useState('anthropometry')
+  const [activeTab, setActiveTab] = useState('competition')
 
   useEffect(() => {
     if (!token) {
@@ -261,43 +271,11 @@ export default function ShareProgressPage() {
     }
   }, [p])
 
-  const studentForWeights = useMemo(() => {
-    if (!p) return { height: 0, reach: 0, weight: 0, birthYear: 0, gender: 'M' }
-    const a = p.athleteSnapshot
-    if (a && typeof a === 'object') {
-      return {
-        height: Number(a.height) || 0,
-        reach: Number(a.reach) || 0,
-        weight: Number(a.weight) || 0,
-        birthYear: Number(a.birthYear) || 0,
-        gender: a.gender === 'F' ? 'F' : 'M',
-      }
-    }
-    return { height: 0, reach: 0, weight: Number(p.currentWeight) || 0, birthYear: 0, gender: 'M' }
-  }, [p])
-
-  const weights = useMemo(() => getWeights(studentForWeights), [studentForWeights])
-
-  const influenceItems = useMemo(
-    () => [
-      { key: 'tech', label: 'Техника', value: Math.round(weights.T * 100) },
-      {
-        key: 'physical',
-        label: 'Физика',
-        value: Math.round((weights.P + weights.F) * 100),
-      },
-    ],
-    [weights],
-  )
-
-  const maxInfluenceValue = Math.max(...influenceItems.map((item) => item.value))
-  const dominantInfluenceKeys = influenceItems
-    .filter((item) => item.value === maxInfluenceValue && maxInfluenceValue > 0)
-    .map((item) => item.key)
-
   const athlete = p?.athleteSnapshot
   const duelRows = p?.duelRows
   const standardPassport = p?.standardPassport
+  const etalon = p?.etalon
+  const daysUntilFight = p?.season?.daysUntilFight
 
   const attestationLabel = p?.nextAttestationDate
     ? new Date(p.nextAttestationDate + 'T12:00:00').toLocaleDateString('ru-RU', {
@@ -306,6 +284,10 @@ export default function ShareProgressPage() {
         year: 'numeric',
       })
     : 'уточняйте у тренера'
+
+  const referenceLabel = etalon?.historicalReferenceLabel || 'Эталон'
+  const kspPercent = etalon?.kspPercent ?? null
+  const basePercent = etalon?.basePercent ?? null
 
   return (
     <main className={`${vk.page} ${vk.pagePad}`}>
@@ -353,103 +335,17 @@ export default function ShareProgressPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-2.5">
+              <div className="mt-2 border-t border-[#e7e8ec] pt-2">
                 <p className={`mb-1 ${vk.label}`}>Динамика веса</p>
                 <WeightLineChartCompact points={p.weightHistory || []} />
               </div>
             </section>
 
-            <ShareSensitivePeriodsMap birthYear={athlete?.birthYear} birthDate={athlete?.birthDate} />
-
-            {duelRows?.length > 0 && standardPassport ? (
-              <section className={`${vk.cardPadded} py-2.5`}>
-                <h2 className={vk.h2}>Эталон и биометрия</h2>
-                <div className={`${ETALON_MODEL_PANEL_CLASS} mt-2 rounded-lg bg-[#f0f2f5] px-2 py-2`}>
-                  <StandardDuelSilhouettes
-                    flat
-                    athleteLabel={p.displayName || 'Спортсмен'}
-                    referenceLabel="Эталон"
-                    athleteHeightCm={athlete?.height ?? 0}
-                    athleteReachCm={athlete?.reach ?? 0}
-                    athleteWeightKg={athlete?.weight ?? 0}
-                    referenceHeightCm={duelRows?.[0]?.referenceValue ?? 0}
-                    referenceReachCm={duelRows?.[1]?.referenceValue ?? duelRows?.[0]?.referenceValue ?? 0}
-                    referenceWeightKg={standardPassport?.referenceWeightKg ?? null}
-                  />
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">
-                  <span className="rounded-md bg-[#f0f2f5] px-2 py-1">
-                    Вес: <strong>{standardPassport.weightCategory} кг</strong>
-                  </span>
-                  <span className="rounded-md bg-[#f0f2f5] px-2 py-1">
-                    Возраст: <strong>{standardPassport.ageGroup}</strong>
-                  </span>
-                  <span className="rounded-md bg-[#f0f2f5] px-2 py-1">
-                    Типаж: <strong>{standardPassport.archetype}</strong>
-                  </span>
-                </div>
-                <ul className="mt-2 space-y-1">
-                  {duelRows.map((row) => {
-                    const deltaTone =
-                      !Number.isFinite(row.delta) || row.delta === 0
-                        ? 'text-[#818c99]'
-                        : row.delta > 0
-                          ? 'text-[#4bb34b]'
-                          : 'text-[#e64646]'
-                    return (
-                      <li
-                        key={row.key}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2 text-[12px]"
-                      >
-                        <span className="font-medium text-[#2c2d2e]">{row.label}</span>
-                        <span className="tabular-nums text-[#818c99]">
-                          {Number.isFinite(row.athleteValue) && row.athleteValue > 0 ? row.athleteValue : '—'} /{' '}
-                          {Number.isFinite(row.referenceValue) && row.referenceValue > 0 ? row.referenceValue : '—'}{' '}
-                          {row.unit}
-                        </span>
-                        <span className={`shrink-0 font-semibold tabular-nums ${deltaTone}`}>
-                          {Number.isFinite(row.delta)
-                            ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)}`
-                            : '—'}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            ) : null}
-
-            <section className={`${vk.cardPadded} py-2.5`}>
+            <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
               <h2 className={vk.h2}>Тесты и техника</h2>
-              <p className={`mt-0.5 ${vk.mutedXs}`}>Доли в формуле балла (Smart Weights). Заполненность — на вкладках.</p>
 
-              <div className="mt-2 grid grid-cols-3 gap-1">
-                {[...influenceItems]
-                  .sort((a, b) => b.value - a.value)
-                  .map((item) => {
-                    const isTop = item.value === maxInfluenceValue && maxInfluenceValue > 0
-                    return (
-                      <div
-                        key={item.key}
-                        className={`rounded-lg px-2 py-1.5 ${isTop ? 'bg-[#ecf3fc] ring-1 ring-[#aec8e8]' : 'bg-[#f0f2f5]'}`}
-                      >
-                        <p className="text-[10px] leading-3 text-[#818c99]">{item.label}</p>
-                        <p className="text-[15px] font-semibold tabular-nums text-[#2c2d2e]">{item.value}%</p>
-                        <div className={`${vk.progressTrack} mt-1 block`}>
-                          <span
-                            className={`block h-full rounded-full ${progressBarClass(item.value)}`}
-                            style={{ width: `${item.value}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-              </div>
-
-              <nav className={`${vk.studentTabBar} mt-2`} aria-label="Разделы прогресса">
+              <nav className={`${vk.studentTabBar} mt-2`} aria-label="Разделы карточки">
                 {TAB_ITEMS.map((tab) => {
-                  const infKey = tabIdToInfluenceKey[tab.id]
-                  const isTopInfluenceTab = infKey && dominantInfluenceKeys.includes(infKey)
                   const isActive = activeTab === tab.id
                   return (
                     <button
@@ -459,10 +355,19 @@ export default function ShareProgressPage() {
                       aria-current={isActive ? 'page' : undefined}
                       className={`${vk.studentTabBtn} ${
                         isActive ? vk.studentTabBtnActive : vk.studentTabBtnIdle
-                      } ${isTopInfluenceTab ? 'ring-1 ring-[#4bb34b]/50 ring-inset' : ''}`}
+                      }`}
                     >
                       <span className="text-[12px] font-medium leading-4">{tab.shortLabel}</span>
-                      {tab.id !== 'anthropometry' ? (
+                      {tab.id === 'competition' && daysUntilFight != null && daysUntilFight >= 0 ? (
+                        <span
+                          className={`text-[10px] font-medium tabular-nums leading-none ${
+                            isActive ? 'text-[#818c99]' : 'text-[#aeb7c2]'
+                          }`}
+                        >
+                          {daysUntilFight}д
+                        </span>
+                      ) : null}
+                      {tab.id !== 'anthropometry' && tab.id !== 'competition' ? (
                         <span
                           className={`text-[10px] font-medium tabular-nums leading-none ${
                             isActive ? 'text-[#818c99]' : 'text-[#aeb7c2]'
@@ -477,6 +382,10 @@ export default function ShareProgressPage() {
               </nav>
 
               <div className="mt-2 space-y-2">
+                {activeTab === 'competition' ? (
+                  <ShareSeasonPanel season={p.season} displayName={p.displayName} />
+                ) : null}
+
                 {activeTab === 'anthropometry' && athlete ? (
                   <div className={vk.formGrid2}>
                     {[
@@ -518,6 +427,124 @@ export default function ShareProgressPage() {
                 ) : null}
               </div>
             </section>
+
+            {duelRows?.length > 0 && standardPassport ? (
+              <section className={`${ETALON_MODEL_PANEL_CLASS} ${vk.cardPadded} py-2.5 sm:py-3`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h2 className={vk.h2}>Эталон и КБП</h2>
+                    <p className={vk.mutedXs}>
+                      {etalon?.isYoungHistoricalPreview
+                        ? 'Ориентир 13–14 лет по весу'
+                        : 'Категория, сравнение роста и потолок потенциала'}
+                    </p>
+                  </div>
+                  {kspPercent != null ? (
+                    <p className="shrink-0 text-right">
+                      <span className="block text-[11px] text-[#818c99]">КБП</span>
+                      <span className="text-[17px] font-semibold tabular-nums text-[#2d81e0]">{kspPercent}%</span>
+                    </p>
+                  ) : null}
+                </div>
+
+                {etalon?.isYoungHistoricalPreview ? (
+                  <p className={`mt-1.5 ${vk.noticeInfo} px-2 py-1.5 text-[12px]`} role="note">
+                    Эталон 13–14 лет по весу.
+                  </p>
+                ) : null}
+
+                <div className="standard-duel-stage mt-1.5 rounded-lg bg-[#f0f2f5] px-2 py-2">
+                  <StandardDuelSilhouettes
+                    flat
+                    athleteLabel={p.displayName || 'Спортсмен'}
+                    referenceLabel={referenceLabel}
+                    athleteHeightCm={athlete?.height ?? 0}
+                    athleteReachCm={athlete?.reach ?? 0}
+                    athleteWeightKg={athlete?.weight ?? 0}
+                    referenceHeightCm={etalon?.referenceHeight ?? duelRows?.[0]?.referenceValue ?? 0}
+                    referenceReachCm={etalon?.referenceReach ?? duelRows?.[1]?.referenceValue ?? duelRows?.[0]?.referenceValue ?? 0}
+                    referenceWeightKg={etalon?.referenceWeightKg ?? standardPassport?.referenceWeightKg ?? null}
+                  />
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1 border-t border-[#e7e8ec] pt-2 text-[12px] leading-4">
+                  <div className="min-w-0">
+                    <p className={vk.mutedXs}>Категория</p>
+                    <p className="mt-0.5 font-medium text-[#2c2d2e]">
+                      {standardPassport.weightCategory} кг
+                      <span className="font-normal text-[#818c99]"> · {standardPassport.ageGroup}</span>
+                    </p>
+                    <p className="text-[#2c2d2e]">{standardPassport.archetype}</p>
+                  </div>
+                  <div className="min-w-0 border-l border-[#e7e8ec] pl-2">
+                    <p className={vk.mutedXs}>Эталон</p>
+                    <p className="mt-0.5 text-[#2c2d2e]">
+                      {etalon?.referenceHeight || duelRows?.[0]?.referenceValue || '—'} /{' '}
+                      {etalon?.referenceReach || duelRows?.[1]?.referenceValue || '—'} см
+                    </p>
+                  </div>
+                  <div className="min-w-0 border-l border-[#e7e8ec] pl-2">
+                    <p className={vk.mutedXs}>Дистанция</p>
+                    <p className="mt-0.5 font-semibold text-[#2d81e0]">
+                      {etalon?.tacticDistanceDisplay || '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {etalon?.tacticMode === 'infighter' && etalon?.tacticAdvice ? (
+                  <p
+                    className="mt-1.5 rounded-[10px] bg-[#fff0f0] px-2 py-1.5 text-[12px] font-medium text-[#e64646]"
+                    role="alert"
+                  >
+                    {etalon.tacticAdvice}
+                  </p>
+                ) : null}
+                {etalon?.tacticMode === 'outfighter' && etalon?.tacticAdvice ? (
+                  <p className={`mt-1.5 ${vk.noticeInfo} px-2 py-1.5 text-[12px]`} role="status">
+                    {etalon.tacticAdvice}
+                  </p>
+                ) : null}
+
+                {kspPercent != null && basePercent != null ? (
+                  <div className="mt-2 border-t border-[#e7e8ec] pt-2">
+                    <BiometricPotentialBar embedded kspPercent={kspPercent} basePercent={basePercent} />
+                  </div>
+                ) : null}
+
+                <ul className="mt-2 space-y-1">
+                  {duelRows.map((row) => {
+                    const deltaTone =
+                      !Number.isFinite(row.delta) || row.delta === 0
+                        ? 'text-[#818c99]'
+                        : row.delta > 0
+                          ? 'text-[#4bb34b]'
+                          : 'text-[#e64646]'
+                    return (
+                      <li
+                        key={row.key}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2 text-[12px]"
+                      >
+                        <span className="font-medium text-[#2c2d2e]">{row.label}</span>
+                        <span className="tabular-nums text-[#818c99]">
+                          {Number.isFinite(row.athleteValue) && row.athleteValue > 0 ? row.athleteValue : '—'} /{' '}
+                          {Number.isFinite(row.referenceValue) && row.referenceValue > 0 ? row.referenceValue : '—'}{' '}
+                          {row.unit}
+                        </span>
+                        <span className={`shrink-0 font-semibold tabular-nums ${deltaTone}`}>
+                          {Number.isFinite(row.delta)
+                            ? `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)}`
+                            : '—'}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ) : null}
+
+            <MotorQualityWorkLogPanel workLog={p.motorQualityWorkLog} />
+
+            <ShareSensitivePeriodsMap birthYear={athlete?.birthYear} birthDate={athlete?.birthDate} />
 
             <p className={`text-center ${vk.mutedXs}`}>Вопросы по прогрессу — к тренеру в зале</p>
           </>
