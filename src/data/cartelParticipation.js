@@ -13,7 +13,8 @@ export const CARTEL_STAGES = [
   {
     id: 'functional',
     title: 'Функционал',
-    subtitle: 'Золото по нормативам, качества, спецзачёт по плану подготовки.',
+    subtitle:
+      'Минимум: 3 серебра и 1 бронза по нормативам (золото — в приоритете). Качества и спецзачёт.',
   },
   {
     id: 'combat',
@@ -35,6 +36,10 @@ export const CARTEL_STAGES = [
 export const CARTEL_RULE_TEXT =
   'Этапы и календарь стартов открывает только тренер. Приложение считает зачёты и подсказывает, что закрыть; досрочный допуск — в исключительных случаях.'
 
+/** Пояснение к порогу нормативов на этапе «Функционал». */
+export const CARTEL_FUNCTIONAL_NORMS_NOTE =
+  'Минимум для этапа — 3 серебра и 1 бронза; золото по нормативам — главная цель и всегда в приоритете.'
+
 /** Пороги подсказки «по цифрам можно следующий этап» (решение за тренером). */
 export const CARTEL_GATES = {
   base: {
@@ -42,8 +47,9 @@ export const CARTEL_GATES = {
     normsPassedMin: 3,
   },
   functional: {
-    normsGoldMin: 4,
-    motorQualityPassesMin: 20,
+    normsSilverMin: 3,
+    normsBronzeMin: 1,
+    motorQualityPassesMin: 13,
     requireSpecialPass: true,
   },
   combat: {
@@ -119,9 +125,9 @@ export function defaultTrainingForStage(stage) {
       }
     case 'functional':
       return {
-        focus: 'Функционал: золото, качества, спецзачёт.',
+        focus: 'Функционал: минимум 3 серебра и 1 бронза; цель — золото по нормативам.',
         training: [
-          'Нормативы на золото по возрасту',
+          'Нормативы: в приоритете золото; для этапа — минимум 3 серебра и 1 бронза',
           'Упражнения из банка качеств — отмечать зачёты',
           'Спецзачёт — по «Плану подготовки» (отметка тренера)',
         ],

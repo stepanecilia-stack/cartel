@@ -107,9 +107,12 @@ export async function updateCoachEvent(eventId, patch) {
   if (patch.participantIds != null) {
     data.participantIds = [...new Set(patch.participantIds)]
   }
-  if (patch.dateISO != null) {
-    const end = competitionDateToInputString(patch.dateEndISO) || patch.dateISO
-    const range = normalizeCompetitionRange(patch.dateISO, end)
+  if (patch.dateISO != null || patch.dateEndISO != null) {
+    const startRaw = patch.dateISO ?? patch.dateEndISO
+    const endRaw = patch.dateEndISO ?? patch.dateISO
+    const start = competitionDateToInputString(startRaw) || String(startRaw ?? '').trim()
+    const end = competitionDateToInputString(endRaw) || start
+    const range = normalizeCompetitionRange(start, end)
     data.dateISO = range.dateISO
     data.dateEndISO = range.dateEndISO
   }

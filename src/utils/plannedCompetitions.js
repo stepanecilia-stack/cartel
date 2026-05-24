@@ -244,6 +244,21 @@ export function competitionStillRelevant(c) {
   return end.getTime() >= today.getTime()
 }
 
+/**
+ * Ближайший старт, где ученик указан участником (событие тренера или ориентир).
+ * @param {PlannedCompetition[]} list
+ * @param {string | null | undefined} studentId
+ */
+export function pickNearestStudentParticipation(list, studentId) {
+  if (!studentId) return pickNearestFutureCompetition(list)
+  const participating = list.filter((c) => {
+    const ids = c.participantIds
+    if (!Array.isArray(ids) || !ids.includes(studentId)) return false
+    return Boolean(c.coachEventId) || isOrientirStart(c)
+  })
+  return pickNearestFutureCompetition(participating)
+}
+
 /** @param {PlannedCompetition[]} list — @deprecated duplicate, use pickNextSeasonAnchor for ladder */
 export function pickNearestFutureCompetition(list) {
   const today = new Date()

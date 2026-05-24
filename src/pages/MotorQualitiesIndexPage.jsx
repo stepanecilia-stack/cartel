@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
-import SensitiveAgeScale from '../components/SensitiveAgeScale'
+import MotorQualityListRow from '../components/motor/MotorQualityListRow.jsx'
 import { getMotorQualitiesCatalog } from '../data/motorQualitiesCatalog'
 import {
   getMotorQualityExercisesBySlug,
@@ -40,35 +39,18 @@ function MotorQualitiesIndexPage() {
           <p className={`mt-1 ${vk.muted}`}>Двигательные качества — банк упражнений и объёмов.</p>
         </header>
 
-        <ul className={vk.list}>
+        <ul className="space-y-2">
           {items.map(({ title, slug, sensitiveAgeSet }) => {
             const count = countBySlug[slug] ?? 0
             return (
-            <li key={slug} className="border-t border-[#e7e8ec] first:border-t-0">
-              <Link
-                to={`/qualities/${slug}`}
-                className="block touch-manipulation px-3 py-2.5 active:bg-[#f5f6f8]"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={`min-w-0 ${vk.listItemTitle}`}>{title}</span>
-                  <span
-                    className={`shrink-0 text-[12px] tabular-nums leading-4 ${
-                      count > 0 ? 'font-medium text-[#818c99]' : 'text-[#aeb7c2]'
-                    }`}
-                  >
-                    {count} {exercisesCountLabel(count)}
-                  </span>
-                </div>
-                {sensitiveAgeSet?.size > 0 ? (
-                  <SensitiveAgeScale
-                    sensitiveAges={sensitiveAgeSet}
-                    compact
-                    showCaption={false}
-                    className="mt-1.5"
-                  />
-                ) : null}
-              </Link>
-            </li>
+              <MotorQualityListRow
+                key={slug}
+                title={title}
+                slug={slug}
+                exerciseCount={count}
+                exerciseCountLabel={exercisesCountLabel(count)}
+                sensitiveAgeSet={sensitiveAgeSet}
+              />
             )
           })}
         </ul>

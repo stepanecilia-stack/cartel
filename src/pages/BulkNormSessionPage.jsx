@@ -3,12 +3,7 @@ import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
 import { loadNormsOnce } from '../data/normsCache.js'
-import {
-  getLegacyNormsSource,
-  getLegacyNormsSyncError,
-  publishLegacyNormsFromSheet,
-} from '../services/legacyNormsService.js'
-import { isProgramAdmin } from '../utils/coachRoles.js'
+import { getLegacyNormsSyncError } from '../services/legacyNormsService.js'
 import {
   getCoachProfile,
   getCurrentCoachId,
@@ -24,6 +19,7 @@ import {
   formatNormResultDisplay,
   isMinuteSecondNorm,
 } from '../utils/normTestsStorage.js'
+import { NormPickTile } from '../components/student/NormPickTile.jsx'
 import { StudentPickTile } from '../components/student/StudentPickTile.jsx'
 import {
   displayNameFromStudent,
@@ -166,38 +162,10 @@ export default function BulkNormSessionPage({ coachId }) {
   const [saveOk, setSaveOk] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [programAdmin, setProgramAdmin] = useState(false)
-  const [normsPublishBusy, setNormsPublishBusy] = useState(false)
-  const [normsPublishNote, setNormsPublishNote] = useState('')
   const [rosterExpanded, setRosterExpanded] = useState(true)
+  const [normPickerExpanded, setNormPickerExpanded] = useState(true)
+  const [normSearchQuery, setNormSearchQuery] = useState('')
   const resultsSectionRef = useRef(null)
-
-  useEffect(() => {
-    const coachAuthId = getCurrentCoachId()
-    if (!coachAuthId) {
-      setProgramAdmin(false)
-      return
-    }
-    getCoachProfile(coachAuthId)
-      .then((profile) => setProgramAdmin(isProgramAdmin(profile)))
-      .catch(() => setProgramAdmin(false))
-  }, [coachId])
-
-  const handlePublishNormsToFirestore = async () => {
-    setNormsPublishNote('')
-    setNormsPublishBusy(true)
-    try {
-      const count = await publishLegacyNormsFromSheet()
-      setNormsPublishNote(`В Firestore загружено ${count} нормативов. Все тренеры получат их из облака.`)
-      const norms = await loadNormsOnce()
-      setAllNorms(norms)
-    } catch (err) {
-      console.error(err)
-      setNormsPublishNote(err instanceof Error ? err.message : 'Не удалось опубликовать нормативы.')
-    } finally {
-      setNormsPublishBusy(false)
-    }
-  }
 
   const loadData = useCallback(async () => {
     if (!coachId) {
@@ -257,6 +225,8 @@ export default function BulkNormSessionPage({ coachId }) {
     setSaveOk(false)
     setSaveError('')
     setRosterExpanded(true)
+    setNormPickerExpanded(true)
+    setNormSearchQuery('')
   }, [category])
 
   useEffect(() => {
@@ -267,6 +237,12 @@ export default function BulkNormSessionPage({ coachId }) {
     setSaveOk(false)
     setSaveError('')
     setRosterExpanded(true)
+    setNormSearchQuery('')
+  }, [testId])
+
+  useEffect(() => {
+    if (testId) setNormPickerExpanded(false)
+    else setNormPickerExpanded(true)
   }, [testId])
 
   useEffect(() => {
@@ -439,6 +415,17 @@ export default function BulkNormSessionPage({ coachId }) {
     [selectedAthletes, drafts],
   )
 
+  const filteredNormOptions = useMemo(() => {
+    const q = normalizeSearchText(normSearchQuery)
+    if (!q) return normOptions
+    return normOptions.filter((n) => {
+      const name = normalizeSearchText(n.testName)
+      const desc = normalizeSearchText(n.description)
+      const unit = normalizeSearchText(n.unit)
+      return name.includes(q) || desc.includes(q) || unit.includes(q)
+    })
+  }, [normOptions, normSearchQuery])
+
   const selectedNamesPreview = useMemo(() => {
     if (selectedAthletes.length === 0) return ''
     const names = selectedAthletes.slice(0, 2).map((s) => s.displayName)
@@ -471,51 +458,83 @@ export default function BulkNormSessionPage({ coachId }) {
         {getLegacyNormsSyncError() ? (
           <p className={vk.noticeWarn}>{getLegacyNormsSyncError()}</p>
         ) : null}
-        {programAdmin ? (
-          <div className={`${vk.notice} space-y-2`}>
-            <p className="text-[13px] text-[#2c2d2e]">
-              Справочник нормативов:{' '}
-              <strong>{getLegacyNormsSource() === 'firestore' ? 'Firestore' : 'Google Sheets (резерв)'}</strong>
-              . Один раз опубликуйте таблицу в облако — дальше приложение не тянет CSV при каждом старте.
-            </p>
-            <button
-              type="button"
-              disabled={normsPublishBusy}
-              onClick={() => void handlePublishNormsToFirestore()}
-              className={vk.btnSecondary}
-            >
-              {normsPublishBusy ? 'Публикация…' : 'Опубликовать нормативы в Firestore'}
-            </button>
-            {normsPublishNote ? <p className={vk.mutedXs}>{normsPublishNote}</p> : null}
-          </div>
-        ) : null}
         <section className={`${vk.cardPadded} space-y-2.5`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 1</p>
-            <span className="rounded-full bg-[#ecf3fc] px-2 py-0.5 text-[11px] font-semibold text-[#2d81e0]">
-              Физика
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 1</p>
+              <span className="rounded-full bg-[#ecf3fc] px-2 py-0.5 text-[11px] font-semibold text-[#2d81e0]">
+                Физика
+              </span>
+            </div>
+            {testId && !normPickerExpanded ? (
+              <button type="button" onClick={() => setNormPickerExpanded(true)} className={vk.btnGhost}>
+                Изменить тест
+              </button>
+            ) : null}
           </div>
-          <label className="block">
-            <span className={vk.label}>Упражнение / тест</span>
-            <select
-              value={testId}
-              onChange={(e) => setTestId(e.target.value)}
-              disabled={isLoading || normOptions.length === 0}
-              className={vk.select}
-            >
-              <option value="">— выберите тест —</option>
-              {normOptions.map((n) => (
-                <option key={n.testId} value={n.testId}>
-                  {n.testName}
-                </option>
-              ))}
-            </select>
-          </label>
-          {isLoading ? <p className={vk.mutedXs}>Загрузка нормативов…</p> : null}
-          {selectedNormMeta?.description ? (
-            <p className={vk.mutedXs}>{selectedNormMeta.description}</p>
-          ) : null}
+
+          {isLoading ? (
+            <p className={vk.mutedXs}>Загрузка нормативов…</p>
+          ) : normOptions.length === 0 ? (
+            <p className={vk.muted}>Справочник нормативов пуст. Проверьте загрузку таблицы.</p>
+          ) : testId && !normPickerExpanded && selectedNormMeta ? (
+            <div className="rounded-lg border border-[#e7e8ec] bg-[#f7f8fa] px-3 py-2.5">
+              <p className="text-[14px] font-semibold leading-snug text-[#2c2d2e]">
+                {selectedNormMeta.testName}
+              </p>
+              {selectedNormMeta.unit ? (
+                <p className={`mt-0.5 ${vk.mutedXs}`}>{selectedNormMeta.unit}</p>
+              ) : null}
+              {selectedNormMeta.description ? (
+                <p className={`mt-1 line-clamp-2 ${vk.mutedXs}`}>{selectedNormMeta.description}</p>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <label className="relative block">
+                <span className="sr-only">Поиск норматива</span>
+                <span
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#818c99]"
+                  aria-hidden
+                >
+                  ⌕
+                </span>
+                <input
+                  type="search"
+                  value={normSearchQuery}
+                  onChange={(e) => setNormSearchQuery(e.target.value)}
+                  placeholder="Поиск по названию"
+                  disabled={normOptions.length === 0}
+                  className={`${vk.input} pl-8`}
+                />
+              </label>
+              <p className={`${vk.mutedXs} tabular-nums`}>
+                {filteredNormOptions.length === normOptions.length
+                  ? `${normOptions.length} тестов`
+                  : `${filteredNormOptions.length} из ${normOptions.length}`}
+              </p>
+              {filteredNormOptions.length === 0 ? (
+                <p className={`py-4 text-center ${vk.muted}`}>По запросу ничего не найдено.</p>
+              ) : (
+                <div
+                  className="-mx-0.5 max-h-[min(42vh,16rem)] overflow-y-auto overscroll-contain pr-0.5"
+                  role="listbox"
+                  aria-label="Выбор норматива"
+                >
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {filteredNormOptions.map((norm) => (
+                      <NormPickTile
+                        key={norm.testId}
+                        norm={norm}
+                        selected={testId === norm.testId}
+                        onSelect={() => setTestId(norm.testId)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         {testId ? (

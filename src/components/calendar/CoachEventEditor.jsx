@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { COACH_EVENT_KIND_STYLES } from '../../data/coachEventKinds.js'
 import { formatCompetitionRange, normalizeCompetitionRange } from '../../data/competitionLevels.js'
 import { vk } from '../../utils/vkUi.js'
@@ -43,9 +43,12 @@ function CoachEventEditor({
   error = '',
   disabled = false,
 }) {
-  const initialRange = normalizeCompetitionRange(dateISO, dateEndISO)
-  const [range, setRange] = useState(initialRange)
+  const [range, setRange] = useState(() => normalizeCompetitionRange(dateISO, dateEndISO))
   const rangeLabel = formatCompetitionRange(range)
+
+  useEffect(() => {
+    setRange(normalizeCompetitionRange(dateISO, dateEndISO))
+  }, [dateISO, dateEndISO])
 
   const [participantIds, setParticipantIds] = useState(initialParticipantIds)
 

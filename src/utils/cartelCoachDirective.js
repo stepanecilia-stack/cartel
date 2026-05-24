@@ -108,7 +108,7 @@ export function buildCartelCoachDirective(ctx) {
       secondaryAction = { type: 'open_physical', label: 'Сдать норматив' }
       break
     case 'functional':
-      primaryAction = { type: 'open_physical', label: 'Нормативы (золото)' }
+      primaryAction = { type: 'open_physical', label: 'Нормативы (мин., золото — цель)' }
       secondaryAction = { type: 'open_motor', label: 'Зачёты по качествам' }
       if (!metrics.specialPassDone) {
         secondaryAction = { type: 'toggle_special_pass', label: 'Отметить спецзачёт' }

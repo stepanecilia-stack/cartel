@@ -2,7 +2,6 @@ import { memo, useMemo } from 'react'
 import { CARTEL_STAGES } from '../../data/cartelParticipation.js'
 import { buildCartelCoachDirective } from '../../utils/cartelCoachDirective.js'
 import { vk } from '../../utils/vkUi.js'
-import CartelCoachStageControl from './CartelCoachStageControl.jsx'
 import CartelStageProgress from './CartelStageProgress.jsx'
 
 /**
@@ -54,7 +53,6 @@ function SeasonCoachGuide({
   seasonCheckpoints,
   canSave = true,
   onOpenTab,
-  onConfirmCartelStage,
   onAddSparring,
   onAddMatch,
   onToggleSpecialPass,
@@ -134,36 +132,30 @@ function SeasonCoachGuide({
   }
 
   const stageIndex = CARTEL_STAGES.findIndex((s) => s.id === d.confirmedStage)
+  const busy = stageBusy || applyBusy
 
   return (
-    <div className="space-y-3">
-      <section className="rounded-[12px] border-2 border-[#2d81e0] bg-white p-3 shadow-sm">
-        <p className="text-[12px] leading-relaxed text-[#818c99]">{d.cartelRule}</p>
+    <section className="rounded-[10px] border border-[#e7e8ec] bg-white p-3 shadow-sm">
+      <div className="flex gap-1">
+        {CARTEL_STAGES.map((s, i) => (
+          <div
+            key={s.id}
+            title={s.subtitle}
+            className={`h-1.5 flex-1 rounded-full ${i <= stageIndex ? 'bg-[#2d81e0]' : 'bg-[#e7e8ec]'}`}
+          />
+        ))}
+      </div>
+      <p className="mt-1.5 text-[12px] text-[#818c99]">
+        Этап {stageIndex + 1}/5: <span className="font-semibold text-[#2c2d2e]">{d.stageTitle}</span>
+        {d.earlyAccess ? (
+          <span className="ml-1 font-medium text-amber-800"> · досрочно</span>
+        ) : null}
+      </p>
 
-        <div className="mt-3 flex gap-1">
-          {CARTEL_STAGES.map((s, i) => (
-            <div
-              key={s.id}
-              title={s.subtitle}
-              className={`h-1.5 flex-1 rounded-full ${
-                i <= stageIndex ? 'bg-[#2d81e0]' : 'bg-[#e7e8ec]'
-              }`}
-            />
-          ))}
-        </div>
-        <p className="mt-1 text-[11px] text-[#818c99]">
-          Этап {stageIndex + 1}/5: <span className="font-semibold text-[#2c2d2e]">{d.stageTitle}</span> —{' '}
-          {d.stageSubtitle}
-          {d.earlyAccess ? (
-            <span className="ml-1 font-semibold text-amber-800"> · досрочный допуск</span>
-          ) : null}
-        </p>
-
-        <h3 className="mt-3 text-[16px] font-bold text-[#2c2d2e]">{d.headline}</h3>
-        <p className="mt-1.5 text-[14px] leading-relaxed text-[#2c2d2e]">{d.lead}</p>
-
-        {d.checklist.length > 0 ? (
-          <ul className="mt-3 space-y-1.5">
+      {d.checklist.length > 0 ? (
+        <>
+          <h3 className="mt-3 text-[14px] font-semibold text-[#2c2d2e]">{d.headline}</h3>
+          <ul className="mt-2 space-y-1.5">
             {d.checklist.map((item) => (
               <li key={item.label} className="flex items-start gap-2 text-[13px]">
                 <span
@@ -174,82 +166,50 @@ function SeasonCoachGuide({
                 >
                   {item.done ? '✓' : ''}
                 </span>
-                <span className={item.done ? 'text-[#818c99] line-through' : 'text-[#2c2d2e]'}>
-                  {item.label}
+                <span className="min-w-0">
+                  <span className={item.done ? 'text-[#818c99] line-through' : 'text-[#2c2d2e]'}>
+                    {item.label}
+                  </span>
+                  {item.hint ? (
+                    <span className="mt-0.5 block text-[11px] text-[#818c99]">{item.hint}</span>
+                  ) : null}
                 </span>
               </li>
             ))}
           </ul>
-        ) : null}
+        </>
+      ) : null}
 
-        <CartelStageProgress
-          stage={d.confirmedStage}
-          documents={d.cartelMetrics?.documents}
-          canSave={canSave}
-          busy={stageBusy || applyBusy}
-          onSaveDocuments={onSaveCartelDocuments}
-        />
+      <CartelStageProgress
+        stage={d.confirmedStage}
+        documents={d.cartelMetrics?.documents}
+        canSave={canSave}
+        busy={busy}
+        onSaveDocuments={onSaveCartelDocuments}
+      />
 
-        <div className="mt-3 rounded-lg bg-[#f5f9ff] px-3 py-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-[#2d81e0]">Сегодня в зале</p>
-          <ul className="mt-2 space-y-1.5 text-[14px] leading-snug text-[#2c2d2e]">
-            {d.trainingToday.map((line) => (
-              <li key={line} className="flex gap-2">
-                <span className="text-[#2d81e0]">•</span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-          {d.checkToday ? (
-            <p className="mt-2 border-t border-[#2d81e0]/15 pt-2 text-[12px] text-[#818c99]">
-              Проверка: {d.checkToday}
-            </p>
-          ) : null}
-        </div>
+      {d.primaryAction ? (
+        <button
+          type="button"
+          className={`${vk.btnPrimary} mt-3 w-full`}
+          disabled={!canSave || busy}
+          onClick={() => runAction(d.primaryAction)}
+        >
+          {d.primaryAction.label}
+        </button>
+      ) : null}
 
-        {d.primaryAction ? (
-          <button
-            type="button"
-            className={`${vk.btnPrimary} mt-4 w-full`}
-            disabled={!canSave || stageBusy || applyBusy}
-            onClick={() => runAction(d.primaryAction)}
-          >
-            {d.primaryAction.label}
-          </button>
-        ) : null}
-
-        {d.secondaryAction ? (
-          <button
-            type="button"
-            className={`${vk.btnSecondary} mt-2 w-full`}
-            disabled={!canSave || stageBusy || applyBusy}
-            onClick={() => runAction(d.secondaryAction)}
-          >
-            {d.secondaryAction.label}
-          </button>
-        ) : null}
-
-        {d.coachMetricsHint ? (
-          <p className="mt-3 text-[12px] leading-snug text-[#818c99]">{d.coachMetricsHint}</p>
-        ) : null}
-
-        {d.calendarLocked && d.calendarLockReason ? (
-          <p className="mt-3 text-[12px] leading-snug text-amber-950">{d.calendarLockReason}</p>
-        ) : null}
-
-        {canSave && onConfirmCartelStage ? (
-          <CartelCoachStageControl
-            currentStage={d.confirmedStage}
-            eligibleStage={d.eligibleStage}
-            earlyAccess={d.earlyAccess}
-            stageNote={d.stageNote}
-            canSave={canSave}
-            busy={stageBusy}
-            onSetStage={onConfirmCartelStage}
-          />
-        ) : null}
-      </section>
-    </div>
+      {d.secondaryAction ? (
+        <button
+          type="button"
+          className={`${vk.btnSecondary} mt-2 w-full`}
+          disabled={!canSave || busy}
+          onClick={() => runAction(d.secondaryAction)}
+        >
+          {d.secondaryAction.label}
+        </button>
+      ) : null}
+    </section>
   )
 }
 

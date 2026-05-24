@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import SeasonCalendarPanel from '../calendar/SeasonCalendarPanel.jsx'
 import { useCoachEvents } from '../../hooks/useCoachEvents.js'
+import { useOrientirParticipation } from '../../hooks/useOrientirParticipation.js'
 import { useCoachStudents } from '../../hooks/useCoachStudents.js'
 import {
   createCoachEvent,
@@ -15,6 +16,11 @@ import {
 import { resolveTypicalSeasonCalendar } from '../../utils/plannedCompetitions.js'
 import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.js'
 import { toCoachEventStudentOption } from '../../utils/coachEventStudents.js'
+import {
+  applyOrientirParticipations,
+  mergeOrientirExternalCamps,
+  participationByOrientirId,
+} from '../../utils/orientirParticipation.js'
 import { localDateISO } from '../../utils/prepCalendarGrid.js'
 import {
   newSeasonCheckpointId,
@@ -75,6 +81,7 @@ function StudentSeasonPanel({
 }) {
   const { students } = useCoachStudents(coachId)
   const { events } = useCoachEvents(coachId)
+  const { participations } = useOrientirParticipation(coachId)
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -88,10 +95,17 @@ function StudentSeasonPanel({
     [ageInt, gender],
   )
 
+  const participationsByOrientir = useMemo(
+    () => participationByOrientirId(participations),
+    [participations],
+  )
+
   const calendarItems = useMemo(() => {
     const coachItems = calendarItemsForStudent(events, studentId)
-    return mergeCalendarWithOrientirs(coachItems, orientirs)
-  }, [events, studentId, orientirs])
+    const merged = mergeCalendarWithOrientirs(coachItems, orientirs)
+    const withParticipants = applyOrientirParticipations(merged, participationsByOrientir)
+    return mergeOrientirExternalCamps(withParticipants, participations, { studentId })
+  }, [events, studentId, orientirs, participationsByOrientir, participations])
 
   const blocks = useMemo(() => normalizeSeasonBlocks(seasonBlocks), [seasonBlocks])
   const checkpoints = useMemo(

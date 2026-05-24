@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
 import { getCalendarItemStyle, ORIENTIR_CALENDAR_STYLE } from '../../data/coachEventKinds.js'
+import { getExternalCampStyle } from '../../data/externalCampKinds.js'
 import { formatCompetitionRange } from '../../data/competitionLevels.js'
 import { getCompetitionMeta } from '../../data/competitionLevels.js'
 import { formatOrientirAgeLine, orientirDisplayTitle } from '../../utils/orientirDisplay.js'
@@ -52,12 +53,19 @@ function PrepSelectedDayStarts({
       <ul className="space-y-1">
         {competitions.map((c) => {
           const orientir = isOrientirStart(c)
-          const style = orientir ? ORIENTIR_CALENDAR_STYLE : getCalendarItemStyle(c)
+          const externalCamp = c.planKind === 'external_camp'
+          const style = externalCamp
+            ? getExternalCampStyle(c)
+            : orientir
+              ? ORIENTIR_CALENDAR_STYLE
+              : getCalendarItemStyle(c)
           const active = focusId === c.id
           const meta = getCompetitionMeta(c)
-          const displayName = orientir
-            ? orientirDisplayTitle(c)
-            : c.title?.trim() || style.label
+          const displayName = externalCamp
+            ? c.title?.trim() || style?.label
+            : orientir
+              ? orientirDisplayTitle(c)
+              : c.title?.trim() || style?.label
           const participants = (c.participantIds ?? [])
             .map((id) => studentById[id])
             .filter(Boolean)
@@ -66,13 +74,19 @@ function PrepSelectedDayStarts({
               <button
                 type="button"
                 onClick={() => onFocus(c)}
-                className={`min-w-0 flex-1 rounded-md border-2 px-2 py-1.5 text-left text-[12px] ${style.chip} ${
+                className={`min-w-0 flex-1 rounded-md border-2 px-2 py-1.5 text-left text-[12px] ${style?.chip ?? ''} ${
                   active ? 'ring-2 ring-[#2d81e0]/50' : ''
                 }`}
               >
                 <span className="font-semibold text-[#2c2d2e]">{displayName}</span>
                 <span className="block text-[11px] text-[#818c99]">
-                  {orientir ? 'Ориентир Минспорта' : style.label} · {formatStartWithStatus(c)}
+                  {externalCamp
+                    ? `${style?.label} (не клуб)`
+                    : orientir
+                      ? 'Ориентир Минспорта'
+                      : style?.label}{' '}
+                  · {formatCompetitionRange(c)}
+                  {!externalCamp ? ` · ${formatStartWithStatus(c)}` : ''}
                   {orientir && meta.short ? ` · ${meta.short}` : ''}
                   {orientir && c.orientirAgeLabels?.length ? (
                     <span className="block text-[10px] font-medium text-slate-500">

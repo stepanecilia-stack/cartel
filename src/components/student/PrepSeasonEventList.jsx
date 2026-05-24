@@ -20,8 +20,10 @@ const ROW_ACTIVE = 'ring-2 ring-[#2d81e0] border-[#2d81e0] bg-sky-50'
  *   year: number,
  *   focusId: string | null,
  *   onFocus: (c: import('../../utils/plannedCompetitions.js').PlannedCompetition) => void,
- *   layout?: 'flat' | 'cohortLadder',
+ *   layout?: 'flat' | 'cohortLadder' | 'orientirsOnly' | 'coachOnly',
  *   orientirsCollapsedDefault?: boolean,
+ *   orientirsProminent?: boolean,
+ *   showOrientirsInLadder?: boolean,
  * }} props
  */
 function PrepSeasonEventList({
@@ -31,11 +33,16 @@ function PrepSeasonEventList({
   onFocus,
   layout = 'flat',
   orientirsCollapsedDefault = false,
+  orientirsProminent = false,
+  showOrientirsInLadder = true,
 }) {
   const [orientirsOpen, setOrientirsOpen] = useState(!orientirsCollapsedDefault)
 
   const ladderView = useMemo(
-    () => (layout === 'cohortLadder' ? buildCoachSeasonLadderView(items, year) : null),
+    () =>
+      layout === 'cohortLadder' || layout === 'orientirsOnly' || layout === 'coachOnly'
+        ? buildCoachSeasonLadderView(items, year)
+        : null,
     [items, year, layout],
   )
 
@@ -50,13 +57,24 @@ function PrepSeasonEventList({
       )
   }, [items, year, layout])
 
-  if (layout === 'cohortLadder' && ladderView) {
+  if (ladderView && (layout === 'cohortLadder' || layout === 'orientirsOnly' || layout === 'coachOnly')) {
     const { coachEvents, genderBlocks } = ladderView
     const orientirCount = genderBlocks.reduce(
       (n, b) => n + b.cohorts.reduce((s, c) => s + c.events.length, 0),
       0,
     )
     const hasOrientirs = orientirCount > 0
+    const showCoach = layout !== 'orientirsOnly'
+    const showOrientirs =
+      layout !== 'coachOnly' && hasOrientirs && (layout === 'orientirsOnly' || showOrientirsInLadder)
+
+    if (layout === 'orientirsOnly' && !hasOrientirs) {
+      return (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">
+          Нет ориентиров Минспорта в {year}.
+        </p>
+      )
+    }
 
     if (!hasOrientirs && !coachEvents.length) {
       return (
@@ -66,13 +84,75 @@ function PrepSeasonEventList({
       )
     }
 
+    const orientirSectionClass = orientirsProminent
+      ? 'rounded-lg border-2 border-amber-400 bg-amber-50/90 shadow-sm'
+      : 'rounded-lg border border-dashed border-[#e7e8ec]'
+
+    const orientirBody = (
+      <div className="space-y-3 px-2 pb-2 pt-1.5">
+        {genderBlocks.map((block) => (
+          <div key={block.gender} className="mb-2 last:mb-0">
+            <p
+              className={[
+                'mb-1 text-[12px] font-medium',
+                orientirsProminent ? 'text-amber-950' : 'text-slate-600',
+              ].join(' ')}
+            >
+              {block.title}
+            </p>
+            {block.cohorts.map(({ cohort, events }) => (
+              <div key={cohort.id} className="mb-1.5 last:mb-0">
+                <p
+                  className={[
+                    'mb-0.5 pl-0.5 text-[11px]',
+                    orientirsProminent ? 'text-amber-900/90' : 'text-slate-500',
+                  ].join(' ')}
+                >
+                  {extractAgeRangeFromCohortLabel(cohort.label)}
+                </p>
+                <ul
+                  className={[
+                    'space-y-0.5 border-l pl-2',
+                    orientirsProminent ? 'border-amber-300' : 'border-[#e7e8ec]',
+                  ].join(' ')}
+                >
+                  {events.map((c) => (
+                    <EventRow key={c.id} c={c} focusId={focusId} onFocus={onFocus} prominent={orientirsProminent} />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    )
+
+    if (layout === 'orientirsOnly') {
+      return (
+        <div className={orientirSectionClass}>
+          <div className="flex items-start justify-between gap-2 border-b border-amber-300/80 px-2.5 py-2">
+            <div>
+              <p className="text-[13px] font-bold text-amber-950">Ориентиры Минспорта 2026</p>
+              <p className="text-[11px] text-amber-900/85">
+                Календарь федерации · клик по старту — даты в сетке и назначение учеников
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950">
+              {orientirCount}
+            </span>
+          </div>
+          <div className="max-h-[22rem] overflow-y-auto pr-0.5">{orientirBody}</div>
+        </div>
+      )
+    }
+
     return (
       <div className="rounded-lg border border-[#e7e8ec] bg-white px-2 py-2">
         <p className="mb-2 text-[11px] font-semibold text-[#818c99]">
           Старты {year} · клик — подсветка дат в календаре
         </p>
         <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-0.5">
-          {coachEvents.length > 0 ? (
+          {showCoach && coachEvents.length > 0 ? (
             <section className="rounded-lg border-2 border-[#2d81e0]/30 bg-[#ecf3fc]/40 px-2 py-1.5">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#2d81e0]">
                 Ваши события
@@ -85,44 +165,40 @@ function PrepSeasonEventList({
             </section>
           ) : null}
 
-          {hasOrientirs ? (
-            <section className="rounded-lg border border-dashed border-[#e7e8ec]">
-              <button
-                type="button"
-                onClick={() => setOrientirsOpen((v) => !v)}
-                className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left hover:bg-[#fafbfc]"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wide text-[#818c99]">
-                  Ориентиры Минспорта 2026
-                </span>
-                <span className="shrink-0 text-[10px] text-[#818c99]">
-                  {orientirCount} старт{orientirCount === 1 ? '' : orientirCount < 5 ? 'а' : 'ов'}{' '}
-                  <span className="text-[#2c2d2e]" aria-hidden>
-                    {orientirsOpen ? '▾' : '▸'}
-                  </span>
-                </span>
-              </button>
-              {orientirsOpen ? (
-                <div className="space-y-3 border-t border-dashed border-[#e7e8ec] px-2 pb-2 pt-1.5">
-                  {genderBlocks.map((block) => (
-                    <div key={block.gender} className="mb-2 last:mb-0">
-                      <p className="mb-1 text-[12px] font-medium text-slate-600">{block.title}</p>
-                      {block.cohorts.map(({ cohort, events }) => (
-                        <div key={cohort.id} className="mb-1.5 last:mb-0">
-                          <p className="mb-0.5 pl-0.5 text-[11px] text-slate-500">
-                            {extractAgeRangeFromCohortLabel(cohort.label)}
-                          </p>
-                          <ul className="space-y-0.5 border-l border-[#e7e8ec] pl-2">
-                            {events.map((c) => (
-                              <EventRow key={c.id} c={c} focusId={focusId} onFocus={onFocus} />
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+          {showOrientirs ? (
+            <section className={orientirSectionClass}>
+              {orientirsProminent ? (
+                <>
+                  <div className="flex items-center justify-between gap-2 border-b border-amber-300/80 px-2 py-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-amber-950">
+                      Ориентиры Минспорта 2026
+                    </span>
+                    <span className="text-[10px] font-semibold text-amber-900">{orientirCount} стартов</span>
+                  </div>
+                  {orientirBody}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setOrientirsOpen((v) => !v)}
+                    className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left hover:bg-[#fafbfc]"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-[#818c99]">
+                      Ориентиры Минспорта 2026
+                    </span>
+                    <span className="shrink-0 text-[10px] text-[#818c99]">
+                      {orientirCount} старт{orientirCount === 1 ? '' : orientirCount < 5 ? 'а' : 'ов'}{' '}
+                      <span className="text-[#2c2d2e]" aria-hidden>
+                        {orientirsOpen ? '▾' : '▸'}
+                      </span>
+                    </span>
+                  </button>
+                  {orientirsOpen ? (
+                    <div className="border-t border-dashed border-[#e7e8ec]">{orientirBody}</div>
+                  ) : null}
+                </>
+              )}
             </section>
           ) : null}
         </div>
@@ -158,14 +234,20 @@ function PrepSeasonEventList({
  *   focusId: string | null,
  *   onFocus: (c: import('../../utils/plannedCompetitions.js').PlannedCompetition) => void,
  *   coach?: boolean,
+ *   prominent?: boolean,
  * }} props
  */
-function EventRow({ c, focusId, onFocus, coach = false }) {
+function EventRow({ c, focusId, onFocus, coach = false, prominent = false }) {
   const active = focusId === c.id
   const orientir = isOrientirStart(c)
   const meta = getCompetitionMeta(c)
   const title = c.title?.trim() || meta.label
   const coachStyle = coach ? getCalendarItemStyle(c) : null
+  const participantCount = c.participantIds?.length ?? 0
+
+  const orientirRowClass = prominent
+    ? 'flex w-full items-baseline gap-2 rounded-md border border-amber-300 bg-white px-2 py-1.5 text-left text-[11px] shadow-sm transition hover:bg-amber-50'
+    : ROW_ORIENTIR
 
   return (
     <li>
@@ -175,7 +257,7 @@ function EventRow({ c, focusId, onFocus, coach = false }) {
         className={[
           coach && coachStyle
             ? `flex w-full items-baseline gap-2 rounded-md border-2 px-2 py-1.5 text-left text-[11px] shadow-sm transition hover:brightness-[0.97] ${coachStyle.chip}`
-            : ROW_ORIENTIR,
+            : orientirRowClass,
           active ? ROW_ACTIVE : '',
         ].join(' ')}
       >
@@ -198,6 +280,11 @@ function EventRow({ c, focusId, onFocus, coach = false }) {
           <span className="ml-1 text-[10px] text-[#818c99]">
             {formatCompetitionRange(c)} · {formatStartWithStatus(c)}
           </span>
+          {orientir && participantCount > 0 ? (
+            <span className="ml-1 inline-flex rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-semibold text-emerald-800">
+              {participantCount} уч.
+            </span>
+          ) : null}
         </span>
       </button>
     </li>

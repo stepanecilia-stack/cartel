@@ -108,7 +108,12 @@ export function buildSeasonMonthDays(year, month, planned, focusId, todayIso) {
       isToday: iso === todayIso,
       competitions,
       primaryCompetition: primary,
-      isFocusDay: Boolean(focusId && competitions.some((c) => c.id === focusId)),
+      isFocusDay: Boolean(
+        focusId &&
+          competitions.some(
+            (c) => c.id === focusId || c.anchorOrientirId === focusId,
+          ),
+      ),
     })
     cursor.setDate(cursor.getDate() + 1)
   }

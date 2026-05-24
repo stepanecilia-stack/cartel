@@ -4,7 +4,11 @@ import {
   isCartelDocumentComplete,
   normalizeCartelDocuments,
 } from '../data/cartelDocuments.js'
-import { CARTEL_GATES, compareCartelStage } from '../data/cartelParticipation.js'
+import {
+  CARTEL_FUNCTIONAL_NORMS_NOTE,
+  CARTEL_GATES,
+  compareCartelStage,
+} from '../data/cartelParticipation.js'
 import { countNormMedalsForStudent } from './leaderboardMetrics.js'
 import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
 import { isOrientirStart } from './plannedCompetitions.js'
@@ -22,6 +26,18 @@ export function isBaseStageReady(metrics) {
   return (
     isBaseTechniqueReady(metrics) &&
     (metrics.norms?.passed ?? 0) >= g.normsPassedMin
+  )
+}
+
+/** Этап «Функционал»: минимум 3 серебра и 1 бронза (+ качества, спецзачёт). Золото — цель, не порог. */
+export function isFunctionalStageReady(metrics) {
+  const g = CARTEL_GATES.functional
+  const n = metrics.norms ?? { silver: 0, bronze: 0 }
+  return (
+    (n.silver ?? 0) >= g.normsSilverMin &&
+    (n.bronze ?? 0) >= g.normsBronzeMin &&
+    metrics.motorQualityPasses >= g.motorQualityPassesMin &&
+    (!g.requireSpecialPass || metrics.specialPassDone)
   )
 }
 
@@ -103,12 +119,7 @@ export function computeEligibleCartelStage(confirmed, metrics) {
     eligible = 'functional'
   }
 
-  if (
-    compareCartelStage(eligible, 'functional') >= 0 &&
-    (metrics.norms?.gold ?? 0) >= g.functional.normsGoldMin &&
-    metrics.motorQualityPasses >= g.functional.motorQualityPassesMin &&
-    (!g.functional.requireSpecialPass || metrics.specialPassDone)
-  ) {
+  if (compareCartelStage(eligible, 'functional') >= 0 && isFunctionalStageReady(metrics)) {
     eligible = 'combat'
   }
 
@@ -159,8 +170,11 @@ export function checklistForCartelStage(stage, metrics) {
     case 'functional':
       return [
         {
-          label: `Зачёты по нормативам (золото): ${n.gold ?? 0}/${g.functional.normsGoldMin}`,
-          done: (n.gold ?? 0) >= g.functional.normsGoldMin,
+          label: `Нормативы (минимум): серебро ${n.silver ?? 0}/${g.functional.normsSilverMin}, бронза ${n.bronze ?? 0}/${g.functional.normsBronzeMin} · золото ${n.gold ?? 0} — в приоритете`,
+          hint: CARTEL_FUNCTIONAL_NORMS_NOTE,
+          done:
+            (n.silver ?? 0) >= g.functional.normsSilverMin &&
+            (n.bronze ?? 0) >= g.functional.normsBronzeMin,
         },
         {
           label: `Зачёты по качествам: ${metrics.motorQualityPasses}/${g.functional.motorQualityPassesMin}`,

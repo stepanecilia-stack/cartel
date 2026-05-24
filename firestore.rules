@@ -104,5 +104,15 @@ service cloud.firestore {
       allow update, delete: if request.auth != null
         && resource.data.coachId == request.auth.uid;
     }
+
+    // Участники ориентиров Минспорта (календарь федерации, не редактируется).
+    match /orientir_participation/{docId} {
+      allow read: if request.auth != null
+        && resource.data.coachId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.coachId == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && resource.data.coachId == request.auth.uid;
+    }
   }
 }

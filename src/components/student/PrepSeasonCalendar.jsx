@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { annualMacroStyle, resolveAnnualMacroPeriodForDate } from '../../data/annualPrepCycle.js'
 import { COACH_EVENT_KIND_STYLES, getCalendarItemStyle } from '../../data/coachEventKinds.js'
+import { getExternalCampStyle } from '../../data/externalCampKinds.js'
 import { getSeasonPlanStyle } from '../../data/seasonPlanKinds.js'
 import { orientirDisplayTitle } from '../../utils/orientirDisplay.js'
 import { isOrientirStart } from '../../utils/plannedCompetitions.js'
@@ -42,7 +43,8 @@ function PrepSeasonCalendar({
   const minimal = visualMode === 'minimal'
   const { weekHeaders, weeks } = useMemo(() => buildSeasonMonthWeeks(monthDays), [monthDays])
 
-  const resolveChipStyle = (item) => getSeasonPlanStyle(item) ?? getCalendarItemStyle(item)
+  const resolveChipStyle = (item) =>
+    getExternalCampStyle(item) ?? getSeasonPlanStyle(item) ?? getCalendarItemStyle(item)
 
   const label =
     monthLabel ?? (monthDays[0] ? monthYearLabelRu(monthDays[0].dateISO) : '')
@@ -81,8 +83,10 @@ function PrepSeasonCalendar({
             )
             const coachEvent = chips.find((c) => !isOrientirStart(c) && !c.planKind)
             const planBlock = chips.find((c) => c.planKind === 'block')
+            const externalCamp = chips.find((c) => c.planKind === 'external_camp')
             const planCheckpoint = chips.find((c) => c.planKind === 'checkpoint')
-            const primaryChip = coachEvent ?? planBlock ?? planCheckpoint ?? chips[0] ?? null
+            const primaryChip =
+              coachEvent ?? externalCamp ?? planBlock ?? planCheckpoint ?? chips[0] ?? null
             const primaryStyle = primaryChip ? resolveChipStyle(primaryChip) : null
             const macro = showMacroPeriod ? resolveAnnualMacroPeriodForDate(day.dateISO) : null
             const macroStyle = macro ? annualMacroStyle(macro.id) : null
@@ -143,6 +147,14 @@ function PrepSeasonCalendar({
                         ].join(' ')}
                       />
                     ) : null}
+                    {externalCamp ? (
+                      <span
+                        className={[
+                          'block h-1 w-3 rounded-full',
+                          getExternalCampStyle(externalCamp)?.bar ?? 'bg-violet-500',
+                        ].join(' ')}
+                      />
+                    ) : null}
                     {planBlock ? (
                       <span
                         className={[
@@ -175,7 +187,9 @@ function PrepSeasonCalendar({
         )}
       </div>
       {minimal ? (
-        <p className="mt-2 text-[10px] text-[#818c99]">Точка — старт · зелёная полоска — подготовка к бою</p>
+        <p className="mt-2 text-[10px] text-[#818c99]">
+          Точка — старт · зелёная — подготовка клуба · фиолетовая — сборы · ромб — контрольная точка
+        </p>
       ) : null}
     </div>
   )

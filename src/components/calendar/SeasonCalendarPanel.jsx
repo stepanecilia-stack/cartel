@@ -1,9 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { getCalendarItemStyle } from '../../data/coachEventKinds.js'
 import { normalizeCompetitionRange } from '../../data/competitionLevels.js'
-import { formatCompetitionRange } from '../../data/competitionLevels.js'
+import { formatCompetitionRange, getCompetitionMeta } from '../../data/competitionLevels.js'
 import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.js'
 import { hasOverlappingCoachEvent } from '../../utils/coachEvents.js'
+import {
+  participationRecordByOrientirId,
+  pickNearestStudentExternalCamp,
+} from '../../utils/orientirParticipation.js'
+import { getExternalCampStyle } from '../../data/externalCampKinds.js'
+import { getSeasonPlanStyle, SEASON_CHECKPOINT_KIND_STYLES } from '../../data/seasonPlanKinds.js'
 import { isOrientirStart } from '../../utils/plannedCompetitions.js'
 import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
 import {
@@ -12,7 +18,11 @@ import {
   formatShortDateRu,
   normalizeIsoRange,
 } from '../../utils/prepSeasonCalendar.js'
-import { pickNearestFutureCompetition } from '../../utils/plannedCompetitions.js'
+import {
+  pickNearestFutureCompetition,
+  pickNearestStudentParticipation,
+} from '../../utils/plannedCompetitions.js'
+import { daysUntilCompetition } from '../../utils/competitionDate.js'
 import {
   generateRecommendedBlocksForEvent,
   mergeSeasonPlanCalendarItems,
@@ -29,6 +39,7 @@ import {
 import { vk } from '../../utils/vkUi.js'
 import CoachEventDetails from './CoachEventDetails.jsx'
 import CoachEventEditor from './CoachEventEditor.jsx'
+import OrientirEventPanel from './OrientirEventPanel.jsx'
 import SeasonBlockDetails from './SeasonBlockDetails.jsx'
 import SeasonBlockEditor from './SeasonBlockEditor.jsx'
 import SeasonCheckpointEditor from './SeasonCheckpointEditor.jsx'
@@ -72,6 +83,15 @@ import { buildSeasonCoachView } from '../../utils/seasonCoachView.js'
  *   title?: string,
  *   hint?: string,
  *   eventListLayout?: 'flat' | 'cohortLadder',
+ *   separateOrientirsBlock?: boolean,
+ *   orientirParticipations?: import('../../utils/orientirParticipation.js').OrientirParticipation[],
+ *   onSaveOrientirParticipants?: (
+ *     orientirId: string,
+ *     payload: {
+ *       participantIds: string[],
+ *       externalCamp: import('../../utils/orientirParticipation.js').OrientirExternalCamp | null,
+ *     },
+ *   ) => void | Promise<void>,
  *   seasonBlocks?: import('../../utils/seasonPlan.js').SeasonBlock[],
  *   seasonCheckpoints?: import('../../utils/seasonPlan.js').SeasonCheckpoint[],
  *   onSaveSeasonPlan?: (payload: {
@@ -116,6 +136,9 @@ function SeasonCalendarPanel({
   title = 'Календарь сезона',
   hint = '',
   eventListLayout = 'flat',
+  separateOrientirsBlock = false,
+  orientirParticipations = [],
+  onSaveOrientirParticipants,
   seasonBlocks: seasonBlocksProp = [],
   seasonCheckpoints: seasonCheckpointsProp = [],
   onSaveSeasonPlan,
@@ -138,6 +161,7 @@ function SeasonCalendarPanel({
   stageSaveBusy = false,
 }) {
   const listLayout = eventListLayout
+  const isStudentSeason = Boolean(contextStudentId)
   const [focusId, setFocusId] = useState(null)
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
@@ -170,6 +194,61 @@ function SeasonCalendarPanel({
     () => pickNearestFutureCompetition(calendarItems),
     [calendarItems],
   )
+
+  const nearestStudentStart = useMemo(
+    () =>
+      contextStudentId
+        ? pickNearestStudentParticipation(calendarItems, contextStudentId)
+        : null,
+    [calendarItems, contextStudentId],
+  )
+
+  const nearestStudentCamp = useMemo(
+    () =>
+      contextStudentId
+        ? pickNearestStudentExternalCamp(calendarItems, contextStudentId)
+        : null,
+    [calendarItems, contextStudentId],
+  )
+
+  const formatDaysUntilLabel = useCallback((dateISO) => {
+    if (!dateISO) return ''
+    const days = daysUntilCompetition(dateISO)
+    if (days == null) return ''
+    if (days === 0) return ' · сегодня'
+    if (days === 1) return ' · завтра'
+    if (days > 1) return ` · через ${days} дн.`
+    return ' · идёт сейчас'
+  }, [])
+
+  const nearestStudentDaysLabel = useMemo(
+    () => formatDaysUntilLabel(nearestStudentStart?.dateISO),
+    [nearestStudentStart, formatDaysUntilLabel],
+  )
+
+  const nearestStudentCampDaysLabel = useMemo(
+    () => formatDaysUntilLabel(nearestStudentCamp?.dateISO),
+    [nearestStudentCamp, formatDaysUntilLabel],
+  )
+
+  const nearestStudentCheckpoint = useMemo(() => {
+    if (!isStudentSeason) return null
+    const items = mergedCalendarItems.filter((c) => c.planKind === 'checkpoint')
+    return pickNearestFutureCompetition(items)
+  }, [isStudentSeason, mergedCalendarItems])
+
+  const nearestStudentCheckpointDaysLabel = useMemo(
+    () => formatDaysUntilLabel(nearestStudentCheckpoint?.dateISO),
+    [nearestStudentCheckpoint, formatDaysUntilLabel],
+  )
+
+  const openCheckpointCreate = useCallback(() => {
+    closeCreateForm()
+    setEditingCheckpointId(null)
+    setEditingBlockId(null)
+    setPlanCreateRange({ startISO: selectedISO, endISO: selectedISO })
+    setPlanCreateMode('checkpoint')
+  }, [selectedISO, closeCreateForm])
 
   useEffect(() => {
     if (!focusId && nearest) setFocusId(nearest.id)
@@ -210,7 +289,9 @@ function SeasonCalendarPanel({
 
   const selectedDayCompetitions = useMemo(() => {
     const row = seasonMonthDays.find((d) => d.dateISO === selectedISO)
-    return (row?.competitions ?? []).filter((c) => !c.planKind)
+    return (row?.competitions ?? []).filter(
+      (c) => c.planKind !== 'block' && c.planKind !== 'checkpoint',
+    )
   }, [seasonMonthDays, selectedISO])
 
   const selectedDayPlan = useMemo(
@@ -226,6 +307,25 @@ function SeasonCalendarPanel({
   const focusedCalendarItem = useMemo(
     () => mergedCalendarItems.find((c) => c.id === focusId) ?? null,
     [mergedCalendarItems, focusId],
+  )
+
+  const orientirRecordsById = useMemo(
+    () => participationRecordByOrientirId(orientirParticipations),
+    [orientirParticipations],
+  )
+
+  const focusedOrientir = useMemo(() => {
+    if (!focusedCalendarItem) return null
+    if (isOrientirStart(focusedCalendarItem)) return focusedCalendarItem
+    if (focusedCalendarItem.planKind === 'external_camp' && focusedCalendarItem.anchorOrientirId) {
+      return mergedCalendarItems.find((c) => c.id === focusedCalendarItem.anchorOrientirId) ?? null
+    }
+    return null
+  }, [focusedCalendarItem, mergedCalendarItems])
+
+  const focusedOrientirRecord = useMemo(
+    () => (focusedOrientir ? orientirRecordsById[focusedOrientir.id] ?? null : null),
+    [focusedOrientir, orientirRecordsById],
   )
 
   const focusedCoachEvent = useMemo(() => {
@@ -306,10 +406,13 @@ function SeasonCalendarPanel({
 
   const focusItem = useCallback(
     (c) => {
-      setFocusId(c.id)
-      setSelectedISO(c.dateISO)
-      setViewMonth(new Date(c.dateISO + 'T12:00:00').getMonth())
-      if (!c.dateISO.startsWith(String(year))) setYear(Number(c.dateISO.slice(0, 4)))
+      const isExternalCamp = c.planKind === 'external_camp' && c.anchorOrientirId
+      const focusTargetId = isExternalCamp ? c.anchorOrientirId : c.id
+      const dateISO = c.dateISO
+      setFocusId(focusTargetId)
+      setSelectedISO(dateISO)
+      setViewMonth(new Date(dateISO + 'T12:00:00').getMonth())
+      if (!dateISO.startsWith(String(year))) setYear(Number(dateISO.slice(0, 4)))
       setEditingEventId(null)
       setEditingBlockId(null)
       setEditingCheckpointId(null)
@@ -389,16 +492,22 @@ function SeasonCalendarPanel({
         })
         setEditingEventId(null)
         setAssignError('')
+        setFocusId(editingEvent.id)
+        setSelectedISO(range.dateISO)
+        const month = new Date(`${range.dateISO}T12:00:00`).getMonth()
+        setViewMonth(month)
+        const eventYear = Number(range.dateISO.slice(0, 4))
+        if (eventYear !== year) setYear(eventYear)
       } catch {
         setAssignError('Не удалось сохранить событие.')
       }
     },
-    [editingEvent, canSave, coachEvents, onUpdateEvent],
+    [editingEvent, canSave, coachEvents, onUpdateEvent, year],
   )
 
   const handleRemoveItem = useCallback(
     async (item) => {
-      if (isOrientirStart(item)) return
+      if (isOrientirStart(item) || item.planKind === 'external_camp') return
       const eventId = item.coachEventId ?? item.id
       if (!eventId || !canSave) return
       if (contextStudentId) {
@@ -509,7 +618,6 @@ function SeasonCalendarPanel({
           seasonCheckpoints={checkpoints}
           canSave={canSave}
           onOpenTab={onOpenTab}
-          onConfirmCartelStage={onCartelStageChange}
           onAddSparring={onAddSparring}
           onAddMatch={onAddMatch}
           onToggleSpecialPass={onToggleSpecialPass}
@@ -535,12 +643,170 @@ function SeasonCalendarPanel({
         </button>
       </div>
 
-      <p className="text-[12px] text-[#818c99]">
-        Календарь: точки — старты, зелёное — подготовка.
-        {student && cartelDirective.calendarLocked
-          ? ' Календарь стартов откроет тренер на этапе «Соревнования» (или досрочный допуск).'
-          : null}
-      </p>
+      {contextStudentId ? (
+        <div className="space-y-2">
+          {nearestStudentCamp ? (
+            <button
+              type="button"
+              onClick={() => focusItem(nearestStudentCamp)}
+              className={[
+                'block w-full rounded-lg border-2 px-2.5 py-2 text-left shadow-sm transition hover:brightness-[0.98]',
+                getExternalCampStyle(nearestStudentCamp)?.chip ??
+                  'border-violet-400 bg-violet-50',
+              ].join(' ')}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wide text-violet-900">
+                Ближайшие сборы
+              </span>
+              <span className="mt-0.5 block text-[13px] font-medium text-[#2c2d2e]">
+                {nearestStudentCamp.title?.trim() ||
+                  getExternalCampStyle(nearestStudentCamp)?.label ||
+                  'Сборы'}
+                <span className="font-normal text-[#818c99]">
+                  {' '}
+                  · {formatCompetitionRange(nearestStudentCamp)}
+                  {nearestStudentCampDaysLabel}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-[11px] text-violet-900/85">
+                Не клуб · организатор края или федерации
+              </span>
+            </button>
+          ) : null}
+          {nearestStudentStart ? (
+            <button
+              type="button"
+              onClick={() => focusItem(nearestStudentStart)}
+              className="block w-full rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2 text-left shadow-sm transition hover:border-[#2d81e0]/40 hover:bg-[#f7f8fa]"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#818c99]">
+                Ближайший старт
+              </span>
+              <span className="mt-0.5 block text-[13px] font-medium text-[#2c2d2e]">
+                {nearestStudentStart.title?.trim() || getCompetitionMeta(nearestStudentStart).label}
+                <span className="font-normal text-[#818c99]">
+                  {' '}
+                  · {formatCompetitionRange(nearestStudentStart)}
+                  {nearestStudentDaysLabel}
+                </span>
+              </span>
+            </button>
+          ) : null}
+          {nearestStudentCheckpoint ? (
+            <button
+              type="button"
+              onClick={() => focusItem(nearestStudentCheckpoint)}
+              className={[
+                'block w-full rounded-lg border-2 px-2.5 py-2 text-left shadow-sm transition hover:brightness-[0.98]',
+                getSeasonPlanStyle(nearestStudentCheckpoint)?.chip ??
+                  'border-rose-300 bg-rose-50',
+              ].join(' ')}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wide text-rose-900">
+                Ближайшая контрольная точка
+              </span>
+              <span className="mt-0.5 block text-[13px] font-medium text-[#2c2d2e]">
+                {nearestStudentCheckpoint.title?.trim() ||
+                  SEASON_CHECKPOINT_KIND_STYLES[nearestStudentCheckpoint.checkpointKind ?? 'other']
+                    ?.label ||
+                  'Контрольная точка'}
+                <span className="font-normal text-[#818c99]">
+                  {' '}
+                  · {formatShortDateRu(nearestStudentCheckpoint.dateISO)}
+                  {nearestStudentCheckpointDaysLabel}
+                </span>
+              </span>
+            </button>
+          ) : null}
+          {!nearestStudentCamp && !nearestStudentStart && !nearestStudentCheckpoint ? (
+            <p className="rounded-lg border border-[#e7e8ec] bg-[#fafbfc] px-2.5 py-2 text-[12px] text-[#818c99]">
+              Нет предстоящих сборов, стартов и контрольных точек.
+            </p>
+          ) : null}
+          {canSave && onSaveSeasonPlan && !planCreateMode && !editingCheckpointId ? (
+            <button
+              type="button"
+              className={vk.btnSecondary}
+              disabled={planBusy}
+              onClick={openCheckpointCreate}
+            >
+              + Контрольная точка на {formatShortDateRu(selectedISO)}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-[12px] text-[#818c99]">
+          Точки — старты · зелёная — подготовка клуба · фиолетовая полоска — сборы (край / федерация).
+        </p>
+      )}
+
+      {isStudentSeason && planCreateMode === 'checkpoint' && planCreateRange && onSaveSeasonPlan ? (
+        <SeasonCheckpointEditor
+          key={`cp-create-student-${planCreateRange.startISO}`}
+          mode="create"
+          dateISO={planCreateRange.startISO}
+          onCancel={closePlanCreate}
+          onSave={async (payload) => {
+            await persistPlan(blocks, [
+              ...checkpoints,
+              {
+                id: newSeasonCheckpointId(),
+                title: payload.title,
+                kind: payload.kind,
+                dateISO: payload.dateISO,
+                done: payload.done,
+              },
+            ])
+          }}
+          busy={planBusy}
+          error={displayError}
+          disabled={!canSave}
+        />
+      ) : null}
+
+      {isStudentSeason && editingCheckpointId && onSaveSeasonPlan
+        ? (() => {
+            const cp = checkpoints.find((row) => row.id === editingCheckpointId)
+            if (!cp) return null
+            return (
+              <SeasonCheckpointEditor
+                key={cp.id}
+                mode="edit"
+                dateISO={cp.dateISO}
+                initialTitle={cp.title}
+                initialKind={cp.kind}
+                initialDone={cp.done}
+                onCancel={() => setEditingCheckpointId(null)}
+                onSave={async (payload) => {
+                  await persistPlan(
+                    blocks,
+                    checkpoints.map((row) =>
+                      row.id === cp.id
+                        ? {
+                            ...row,
+                            title: payload.title,
+                            kind: payload.kind,
+                            dateISO: payload.dateISO,
+                            done: payload.done,
+                          }
+                        : row,
+                    ),
+                  )
+                }}
+                onDelete={async () => {
+                  await persistPlan(
+                    blocks,
+                    checkpoints.filter((row) => row.id !== cp.id),
+                  )
+                  setFocusId(null)
+                }}
+                busy={planBusy}
+                error={displayError}
+                disabled={!canSave}
+              />
+            )
+          })()
+        : null}
 
       <PrepMonthEventStrip eventCounts={monthEventCounts} activeMonth={viewMonth} onMonth={setViewMonth} />
 
@@ -556,7 +822,17 @@ function SeasonCalendarPanel({
         />
       </div>
 
-      {canSave && onSaveSeasonPlan ? (
+      {separateOrientirsBlock ? (
+        <PrepSeasonEventList
+          items={calendarItems}
+          year={year}
+          focusId={focusId}
+          onFocus={focusItem}
+          layout="orientirsOnly"
+        />
+      ) : null}
+
+      {canSave && onSaveSeasonPlan && !isStudentSeason ? (
         <details className="rounded-lg border border-[#e7e8ec] bg-[#fafbfc] px-2.5 py-2">
           <summary className="cursor-pointer text-[12px] font-medium text-[#818c99]">
             Дополнительно: свой блок, контрольная точка, очистка
@@ -629,7 +905,7 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      {planCreateMode === 'block' && planCreateRange && onSaveSeasonPlan ? (
+      {planCreateMode === 'block' && planCreateRange && onSaveSeasonPlan && !isStudentSeason ? (
         <SeasonBlockEditor
           key={`block-create-${planCreateRange.startISO}`}
           mode="create"
@@ -659,7 +935,7 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      {planCreateMode === 'checkpoint' && planCreateRange && onSaveSeasonPlan ? (
+      {planCreateMode === 'checkpoint' && planCreateRange && onSaveSeasonPlan && !isStudentSeason ? (
         <SeasonCheckpointEditor
           key={`cp-create-${planCreateRange.startISO}`}
           mode="create"
@@ -683,7 +959,7 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      {focusedBlock && !editingBlockId && !planCreateMode ? (
+      {focusedBlock && !editingBlockId && !planCreateMode && !isStudentSeason ? (
         <SeasonBlockDetails
           block={focusedBlock}
           onClose={() => setFocusId(null)}
@@ -706,7 +982,7 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
-      {editingBlockId && onSaveSeasonPlan ? (
+      {editingBlockId && onSaveSeasonPlan && !isStudentSeason ? (
         (() => {
           const block = blocks.find((b) => b.id === editingBlockId)
           if (!block) return null
@@ -752,7 +1028,7 @@ function SeasonCalendarPanel({
         })()
       ) : null}
 
-      {editingCheckpointId && onSaveSeasonPlan ? (
+      {editingCheckpointId && onSaveSeasonPlan && !isStudentSeason ? (
         (() => {
           const cp = checkpoints.find((c) => c.id === editingCheckpointId)
           if (!cp) return null
@@ -796,8 +1072,8 @@ function SeasonCalendarPanel({
         })()
       ) : null}
 
-      {focusedCheckpoint && !editingCheckpointId && !planCreateMode ? (
-        <div className={`rounded-lg border p-2.5 ${displayError ? '' : ''}`}>
+      {focusedCheckpoint && !editingCheckpointId && !planCreateMode && !isStudentSeason ? (
+        <div className="rounded-lg border p-2.5">
           <p className="text-[12px] font-semibold text-[#2c2d2e]">{focusedCheckpoint.title}</p>
           <p className="text-[11px] text-[#818c99]">{focusedCheckpoint.dateISO}</p>
           {canSave && onSaveSeasonPlan ? (
@@ -826,6 +1102,57 @@ function SeasonCalendarPanel({
         </div>
       ) : null}
 
+      {isStudentSeason &&
+      focusedCheckpoint &&
+      !editingCheckpointId &&
+      !planCreateMode &&
+      canSave &&
+      onSaveSeasonPlan ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={vk.btnSecondary}
+            disabled={planBusy}
+            onClick={() => setEditingCheckpointId(focusedCheckpoint.id)}
+          >
+            Изменить «{focusedCheckpoint.title}»
+          </button>
+          <button
+            type="button"
+            className="text-[13px] text-rose-600"
+            disabled={planBusy}
+            onClick={() =>
+              void persistPlan(
+                blocks,
+                checkpoints.filter((c) => c.id !== focusedCheckpoint.id),
+              ).then(() => setFocusId(null))
+            }
+          >
+            Удалить точку
+          </button>
+        </div>
+      ) : null}
+
+      {focusedOrientir &&
+      onSaveOrientirParticipants &&
+      !editingEvent &&
+      !createRange &&
+      !focusedBlock &&
+      !focusedCheckpoint ? (
+        <OrientirEventPanel
+          item={focusedOrientir}
+          students={students}
+          participantIds={
+            focusedOrientirRecord?.participantIds ?? focusedOrientir.participantIds ?? []
+          }
+          externalCamp={focusedOrientirRecord?.externalCamp ?? null}
+          onClose={() => setFocusId(null)}
+          onSave={(payload) => onSaveOrientirParticipants(focusedOrientir.id, payload)}
+          busy={saveBusy}
+          canSave={canSave}
+        />
+      ) : null}
+
       {focusedCoachEvent && !editingEvent && !createRange && !focusedBlock && !focusedCheckpoint ? (
         <CoachEventDetails
           event={focusedCoachEvent}
@@ -844,7 +1171,7 @@ function SeasonCalendarPanel({
 
       {editingEvent && !createRange ? (
         <CoachEventEditor
-          key={editingEvent.id}
+          key={`${editingEvent.id}-${editingEvent.dateISO}-${editingEvent.dateEndISO}`}
           mode="edit"
           dateISO={editingEvent.dateISO}
           dateEndISO={editingEvent.dateEndISO}
@@ -874,11 +1201,12 @@ function SeasonCalendarPanel({
         year={year}
         focusId={focusId}
         onFocus={focusItem}
-        layout={listLayout}
-        orientirsCollapsedDefault={listLayout === 'cohortLadder'}
+        layout={separateOrientirsBlock && listLayout === 'cohortLadder' ? 'coachOnly' : listLayout}
+        orientirsCollapsedDefault={listLayout === 'cohortLadder' && !separateOrientirsBlock}
+        showOrientirsInLadder={!separateOrientirsBlock}
       />
 
-      {onSaveSeasonPlan ? (
+      {onSaveSeasonPlan && !isStudentSeason ? (
         <PrepSeasonPlanList
           blocks={blocks}
           checkpoints={checkpoints}
