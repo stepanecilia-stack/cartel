@@ -13,6 +13,7 @@ import {
   TECHNIQUE_LEVEL2_ATOMS,
 } from '../utils/ksrUtils'
 import { buildTechnicalLocksById, orderTechnicalAtomsForProgram } from '../utils/technicalProgramProgress.js'
+import { applyProgressSliderToTechnicalData } from '../utils/studentTechnicalUpdate.js'
 import {
   buildFullTechnicalProgramAtoms,
   normalizeTechnicalCombinations,
@@ -296,6 +297,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [isAnthropometrySaving, setIsAnthropometrySaving] = useState(false)
   const [normSavingKey, setNormSavingKey] = useState('')
   const [technicalSavingKey, setTechnicalSavingKey] = useState('')
+  const [techniqueSliderSaveStatus, setTechniqueSliderSaveStatus] = useState(
+    /** @type {'idle' | 'saving' | 'saved' | 'error'} */ ('idle'),
+  )
+  const techniqueSliderDebounceRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
+  const pendingTechniqueTiersRef = useRef(/** @type {{ l1: number, l2: number, l3: number } | null} */ (null))
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -1377,6 +1383,51 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [orderedTechnicalAtoms, technicalData],
   )
 
+  const commitTechniqueProgressSlider = useCallback(
+    async (tiers) => {
+      if (!student?.id) return
+      const l3Atoms = technicalCombinationsResolved.map((c) => ({ id: c.id }))
+      let nextTechnical = applyProgressSliderToTechnicalData(orderedTechnicalAtoms, technicalData, tiers.l1)
+      nextTechnical = applyProgressSliderToTechnicalData(level2Atoms, nextTechnical, tiers.l2)
+      nextTechnical = applyProgressSliderToTechnicalData(l3Atoms, nextTechnical, tiers.l3)
+      setTechniqueSliderSaveStatus('saving')
+      const ok = await persistTechnicalBundle('technical:slider', nextTechnical, technicalCombinations)
+      setTechniqueSliderSaveStatus(ok ? 'saved' : 'error')
+    },
+    [
+      student?.id,
+      technicalCombinationsResolved,
+      orderedTechnicalAtoms,
+      technicalData,
+      level2Atoms,
+      technicalCombinations,
+    ],
+  )
+
+  const handleTechniqueProgressSlider = useCallback(
+    (tiers) => {
+      pendingTechniqueTiersRef.current = tiers
+      setTechniqueSliderSaveStatus('saving')
+      if (techniqueSliderDebounceRef.current) clearTimeout(techniqueSliderDebounceRef.current)
+      techniqueSliderDebounceRef.current = setTimeout(() => {
+        techniqueSliderDebounceRef.current = null
+        const latest = pendingTechniqueTiersRef.current
+        if (latest) void commitTechniqueProgressSlider(latest)
+      }, 350)
+    },
+    [commitTechniqueProgressSlider],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (techniqueSliderDebounceRef.current) {
+        clearTimeout(techniqueSliderDebounceRef.current)
+        const latest = pendingTechniqueTiersRef.current
+        if (latest) void commitTechniqueProgressSlider(latest)
+      }
+    }
+  }, [commitTechniqueProgressSlider])
+
   const studentOrientirs = useMemo(() => {
     const gender = anthropometry.gender === 'F' ? 'F' : 'M'
     return resolveTypicalSeasonCalendar(sensitivePeriods.ageInt, gender)
@@ -1663,6 +1714,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 canSave={Boolean(student?.id)}
                 onLevelChange={handleTechnicalLevelChange}
                 onSaveAtom={handleSaveTechnicalAtom}
+                combinations={technicalCombinationsResolved}
+                sliderSaveStatus={techniqueSliderSaveStatus}
+                onProgressSliderChange={handleTechniqueProgressSlider}
                 combosProps={technicalCombosSectionProps}
               />
             )}

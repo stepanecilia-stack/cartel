@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import TechniqueProgressSliders from '../technique/TechniqueProgressSliders.jsx'
 import StudentTechnicalAtomsList from './StudentTechnicalAtomsList.jsx'
 import StudentTechnicalCombosSection from './StudentTechnicalCombosSection.jsx'
 import { vk } from '../../utils/vkUi.js'
@@ -18,6 +19,9 @@ import { vk } from '../../utils/vkUi.js'
  *   canSave: boolean,
  *   onLevelChange: (atomId: string, level: string) => void,
  *   onSaveAtom: (atom: object) => void,
+ *   combinations?: unknown,
+ *   sliderSaveStatus?: 'idle' | 'saving' | 'saved' | 'error',
+ *   onProgressSliderChange?: (tiers: { l1: number, l2: number, l3: number }) => void,
  *   combosProps: Record<string, unknown>,
  * }} props
  */
@@ -35,6 +39,9 @@ function StudentTechnicalTab({
   canSave,
   onLevelChange,
   onSaveAtom,
+  combinations = [],
+  sliderSaveStatus = 'idle',
+  onProgressSliderChange,
   combosProps,
 }) {
   if (technicalAtomsCount === 0 && !loadingNorms) {
@@ -45,6 +52,18 @@ function StudentTechnicalTab({
 
   return (
     <div className="space-y-2">
+      {onProgressSliderChange ? (
+        <TechniqueProgressSliders
+          level1Atoms={level1Atoms}
+          level2Atoms={level2Atoms}
+          combinations={combinations}
+          technicalData={technicalData}
+          canSave={canSave}
+          saveStatus={sliderSaveStatus}
+          onSliderChange={onProgressSliderChange}
+        />
+      ) : null}
+
       <nav className={vk.segmentBar} aria-label="Разделы техники">
         <button
           type="button"
