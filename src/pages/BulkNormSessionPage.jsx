@@ -24,7 +24,12 @@ import {
   formatNormResultDisplay,
   isMinuteSecondNorm,
 } from '../utils/normTestsStorage.js'
-import { displayNameFromStudent } from '../utils/studentModel.js'
+import { StudentPickTile } from '../components/student/StudentPickTile.jsx'
+import {
+  displayNameFromStudent,
+  studentInitials,
+  studentPhotoUrl,
+} from '../utils/studentModel.js'
 import { normAcceptanceSectionLabel } from '../utils/studentUpdateSections.js'
 import {
   buildStudentTestsUpdatePayload,
@@ -48,7 +53,100 @@ function normScoreTone(status) {
   return 'text-[#e64646]'
 }
 
-const CATEGORY_TABS = [{ id: 'physical', label: 'Физика', full: 'Физическое развитие и беговые нормативы' }]
+function normalizeSearchText(value) {
+  return String(value ?? '').toLowerCase().trim()
+}
+
+function decorateStudent(raw) {
+  const displayName = displayNameFromStudent(raw)
+  return {
+    ...raw,
+    displayName,
+    nameSearch: normalizeSearchText(displayName),
+    photoUrl: studentPhotoUrl(raw),
+    initials: studentInitials(raw),
+  }
+}
+
+function NormSessionResultCard({
+  student,
+  norm,
+  stored,
+  draft,
+  saved,
+  inputVal,
+  onResultChange,
+}) {
+  const previewRow = saved ?? draft
+  const displayRow = previewRow ?? stored
+  const goldHint = formatNormGoldLabel(norm)
+  const prevText = stored
+    ? `Было: ${formatNormResultDisplay(norm, stored)}${stored.status ? ` (${STATUS_LABEL[stored.status] ?? stored.status})` : ''}`
+    : 'Не сдавал'
+  const lastSavedText =
+    saved && Number.isFinite(saved.result) ? `Сохранено: ${formatNormResultDisplay(norm, saved)}` : null
+  const acceptedMeta = saved ? formatNormAcceptedMeta(saved) : null
+
+  return (
+    <li className="rounded-lg border border-[#e7e8ec] bg-[#f7f8fa] p-2.5">
+      <div className="flex items-start gap-2">
+        {student.photoUrl ? (
+          <img
+            src={student.photoUrl}
+            alt=""
+            className="h-9 w-9 shrink-0 rounded-full border border-[#e7e8ec] object-cover"
+          />
+        ) : (
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e7e8ec] bg-white text-[11px] font-semibold text-[#818c99]"
+            aria-hidden
+          >
+            {student.initials}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-[#2c2d2e]">{student.displayName}</p>
+          <p className={`mt-0.5 flex flex-wrap items-center gap-1 ${vk.mutedXs}`}>
+            <NormGoldGoalIcon />
+            <span className="truncate">
+              Золото: <span className="font-semibold tabular-nums text-amber-800">{goldHint}</span>
+            </span>
+          </p>
+          <p className={`mt-0.5 truncate ${vk.mutedXs}`}>{prevText}</p>
+        </div>
+        {displayRow && Number.isFinite(displayRow.result) ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <span
+              className={`text-[12px] font-semibold tabular-nums ${normScoreTone(displayRow.status)}`}
+            >
+              {displayRow.normalizedScore}
+            </span>
+            <NormMedalChip status={displayRow.status} size="sm" />
+          </div>
+        ) : null}
+      </div>
+      <label className="mt-2 block">
+        <span className="sr-only">Результат ({norm.unit})</span>
+        <input
+          type={isMinuteSecondNorm(norm) ? 'text' : 'number'}
+          inputMode={isMinuteSecondNorm(norm) ? 'numeric' : 'decimal'}
+          step={isMinuteSecondNorm(norm) ? undefined : 'any'}
+          className={vk.input}
+          value={inputVal}
+          onChange={(e) => onResultChange(e.target.value)}
+          placeholder={isMinuteSecondNorm(norm) ? 'м:сс' : `результат, ${norm.unit || ''}`.trim()}
+        />
+      </label>
+      {lastSavedText ? (
+        <p className="mt-1.5 text-[12px] font-medium text-[#4bb34b]">
+          {lastSavedText}
+          {saved?.status ? ` · ${STATUS_LABEL[saved.status] ?? saved.status}` : ''}
+        </p>
+      ) : null}
+      {acceptedMeta ? <p className={`mt-0.5 ${vk.mutedXs}`}>{acceptedMeta}</p> : null}
+    </li>
+  )
+}
 
 export default function BulkNormSessionPage({ coachId }) {
   const [students, setStudents] = useState([])
@@ -111,7 +209,9 @@ export default function BulkNormSessionPage({ coachId }) {
         loadNormsOnce().catch(() => []),
         loadLegacyTechnicalAtoms().catch(() => []),
       ])
-      setStudents(list)
+      const decorated = list.map(decorateStudent)
+      decorated.sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
+      setStudents(decorated)
       setAllNorms(norms)
       setTechnicalAtoms(atoms)
       if (!norms.length) {
@@ -162,9 +262,9 @@ export default function BulkNormSessionPage({ coachId }) {
   }, [testId])
 
   const filteredEligible = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
+    const q = normalizeSearchText(searchQuery)
     if (!q) return eligibleAthletes
-    return eligibleAthletes.filter((s) => displayNameFromStudent(s).toLowerCase().includes(q))
+    return eligibleAthletes.filter((s) => s.nameSearch?.includes(q))
   }, [eligibleAthletes, searchQuery])
 
   const selectedAthletes = useMemo(
@@ -306,15 +406,23 @@ export default function BulkNormSessionPage({ coachId }) {
   const allFilteredSelected =
     filteredEligible.length > 0 && filteredEligible.every((s) => selectedIds.has(s.id))
 
-  const segmentClass = (active) =>
-    [vk.segmentBtn, active ? vk.segmentBtnActive : vk.segmentBtnInactive].join(' ')
+  const selectedCount = selectedIds.size
+  const readyToSaveCount = useMemo(
+    () =>
+      selectedAthletes.filter((s) => {
+        const row = drafts[s.id]
+        return row && Number.isFinite(row.result)
+      }).length,
+    [selectedAthletes, drafts],
+  )
 
   return (
     <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
       <div className={`${vk.containerMid} max-w-4xl`}>
         <BackToHomeBar />
-        <header>
-          <h1 className={vk.h1Lg}>Сдать норматив</h1>
+        <header className="px-0.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Физика</p>
+          <h1 className={`mt-0.5 ${vk.h1Lg}`}>Сдать норматив</h1>
           <p className={`mt-1 ${vk.muted}`}>
             Один тест — несколько спортсменов. В списке только подходящие по возрасту и полу.
           </p>
@@ -343,24 +451,13 @@ export default function BulkNormSessionPage({ coachId }) {
             {normsPublishNote ? <p className={vk.mutedXs}>{normsPublishNote}</p> : null}
           </div>
         ) : null}
-        {isLoading ? <p className={`text-center ${vk.muted}`}>Загрузка…</p> : null}
-
-        <section className={`${vk.cardPadded} space-y-3`}>
-          <h2 className={vk.h2}>Норматив</h2>
-          <nav className={vk.segmentBar} aria-label="Раздел норматива">
-            {CATEGORY_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setCategory(tab.id)}
-                className={segmentClass(category === tab.id)}
-                title={tab.full}
-              >
-                <span className="sm:hidden">{tab.label}</span>
-                <span className="hidden sm:inline">{tab.full}</span>
-              </button>
-            ))}
-          </nav>
+        <section className={`${vk.cardPadded} space-y-2.5`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 1</p>
+            <span className="rounded-full bg-[#ecf3fc] px-2 py-0.5 text-[11px] font-semibold text-[#2d81e0]">
+              Физика
+            </span>
+          </div>
           <label className="block">
             <span className={vk.label}>Упражнение / тест</span>
             <select
@@ -369,7 +466,7 @@ export default function BulkNormSessionPage({ coachId }) {
               disabled={isLoading || normOptions.length === 0}
               className={vk.select}
             >
-              <option value="">— выберите —</option>
+              <option value="">— выберите тест —</option>
               {normOptions.map((n) => (
                 <option key={n.testId} value={n.testId}>
                   {n.testName}
@@ -377,6 +474,7 @@ export default function BulkNormSessionPage({ coachId }) {
               ))}
             </select>
           </label>
+          {isLoading ? <p className={vk.mutedXs}>Загрузка нормативов…</p> : null}
           {selectedNormMeta?.description ? (
             <p className={vk.mutedXs}>{selectedNormMeta.description}</p>
           ) : null}
@@ -384,8 +482,8 @@ export default function BulkNormSessionPage({ coachId }) {
 
         {testId ? (
           <section className={`${vk.cardPadded} space-y-2.5`}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className={vk.h2}>Спортсмены</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 2</p>
               <span className={`${vk.mutedXs} tabular-nums`}>
                 {eligibleAthletes.length} подходят
                 {students.length > eligibleAthletes.length
@@ -393,142 +491,148 @@ export default function BulkNormSessionPage({ coachId }) {
                   : ''}
               </span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск по имени"
-                className={`${vk.input} min-w-0 flex-1`}
-              />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="relative min-w-0 flex-1">
+                <span className="sr-only">Поиск спортсмена</span>
+                <span
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#818c99]"
+                  aria-hidden
+                >
+                  ⌕
+                </span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Поиск по имени"
+                  className={`${vk.input} pl-8`}
+                />
+              </label>
               <button
                 type="button"
                 onClick={toggleAllFiltered}
                 disabled={filteredEligible.length === 0}
-                className={vk.btnSecondary}
+                className={vk.btnCompactSecondary}
               >
-                {allFilteredSelected ? 'Снять всех' : 'Всех'}
+                {allFilteredSelected ? 'Снять' : 'Всех'}
               </button>
             </div>
-            <ul className={`${vk.list} max-h-52 overflow-y-auto`}>
-              {filteredEligible.length === 0 ? (
-                <li className={`px-3 py-3 ${vk.muted}`}>Никто не подходит под этот норматив.</li>
-              ) : (
-                filteredEligible.map((s) => (
-                  <li key={s.id} className="border-t border-[#e7e8ec] first:border-t-0">
-                    <label className="flex cursor-pointer touch-manipulation items-center gap-2.5 px-3 py-2 active:bg-[#f5f6f8]">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(s.id)}
-                        onChange={() => toggleStudent(s.id)}
-                        className="h-4 w-4 shrink-0 rounded border-[#e7e8ec] text-[#2d81e0]"
-                      />
-                      <span className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>
-                        {displayNameFromStudent(s)}
-                      </span>
-                    </label>
-                  </li>
-                ))
-              )}
-            </ul>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0f2f5] px-2.5 py-1 text-[12px] font-medium tabular-nums text-[#2c2d2e]">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${selectedCount > 0 ? 'bg-[#2d81e0]' : 'bg-[#c4c8cc]'}`}
+                  aria-hidden
+                />
+                {selectedCount} выбрано
+              </span>
+              {searchQuery.trim() && filteredEligible.length !== eligibleAthletes.length ? (
+                <span className={`${vk.mutedXs} tabular-nums`}>в списке: {filteredEligible.length}</span>
+              ) : null}
+            </div>
+
+            {filteredEligible.length === 0 ? (
+              <p className={`py-6 text-center ${vk.muted}`}>Никто не подходит под этот норматив.</p>
+            ) : (
+              <div
+                className="-mx-0.5 max-h-[min(50vh,22rem)] overflow-y-auto overscroll-contain pr-0.5"
+                role="group"
+                aria-label="Спортсмены для сдачи норматива"
+              >
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  {filteredEligible.map((student) => (
+                    <StudentPickTile
+                      key={student.id}
+                      student={student}
+                      checked={selectedIds.has(student.id)}
+                      onToggle={() => toggleStudent(student.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         ) : null}
 
         {testId && selectedAthletes.length > 0 ? (
-          <section className={`${vk.cardPadded} space-y-3`}>
-            <div>
-              <h2 className={vk.h2}>Результаты</h2>
-              <p className={vk.mutedXs}>
-                {selectedNormMeta?.testName} · {selectedAthletes.length} чел.
-              </p>
+          <div className="space-y-2 pb-[4.5rem] sm:pb-0">
+            <section className={`${vk.cardPadded} space-y-2.5`}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">
+                    Шаг 3
+                  </p>
+                  <h2 className={`mt-0.5 ${vk.h2}`}>Результаты</h2>
+                </div>
+                <span className={`${vk.mutedXs} tabular-nums`}>
+                  {readyToSaveCount}/{selectedAthletes.length} готово
+                </span>
+              </div>
+              <p className={`${vk.mutedXs} -mt-1`}>{selectedNormMeta?.testName}</p>
+
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {selectedAthletes.map((student) => {
+                  const norm = getAthleteNormForTest(allNorms, student, category, testId)
+                  if (!norm) return null
+                  const stored = getStoredNormRow(student, category, testId)
+                  const draft = drafts[student.id]
+                  const saved = savedRows[student.id]
+                  const inputVal =
+                    draft && !Number.isFinite(draft.result) && draft.resultRaw
+                      ? draft.resultRaw
+                      : draft
+                        ? formatNormResultDisplay(norm, draft)
+                        : ''
+
+                  return (
+                    <NormSessionResultCard
+                      key={student.id}
+                      student={student}
+                      norm={norm}
+                      stored={stored}
+                      draft={draft}
+                      saved={saved}
+                      inputVal={inputVal}
+                      onResultChange={(raw) => setDraftRaw(student.id, raw)}
+                    />
+                  )
+                })}
+              </ul>
+
+              {saveError ? (
+                <p className={vk.error} role="alert">
+                  {saveError}
+                </p>
+              ) : null}
+              {saveOk && !saveError ? (
+                <p className={vk.success}>Результаты сохранены и учтены в баллах.</p>
+              ) : null}
+            </section>
+
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e8ec] bg-white/96 px-2 py-2 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+              <div className="mx-auto flex max-w-4xl items-center gap-2 sm:justify-end">
+                <p className={`min-w-0 flex-1 truncate ${vk.mutedXs} sm:hidden`}>
+                  {readyToSaveCount > 0
+                    ? `К сохранению: ${readyToSaveCount}`
+                    : 'Введите результат хотя бы у одного'}
+                </p>
+                <button
+                  type="button"
+                  disabled={isSaving || readyToSaveCount === 0}
+                  onClick={handleSaveAll}
+                  className={`shrink-0 sm:min-w-[9rem] ${vk.btnPrimary} w-full sm:w-auto`}
+                >
+                  {isSaving ? 'Сохранение…' : 'Сохранить'}
+                  {!isSaving && readyToSaveCount > 0 ? (
+                    <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
+                      {readyToSaveCount}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
             </div>
-            <ul className="space-y-2">
-              {selectedAthletes.map((student) => {
-                const norm = getAthleteNormForTest(allNorms, student, category, testId)
-                if (!norm) return null
-                const stored = getStoredNormRow(student, category, testId)
-                const draft = drafts[student.id]
-                const saved = savedRows[student.id]
-                const previewRow = saved ?? draft
-                const displayRow = previewRow ?? stored
-                const inputVal =
-                  draft && !Number.isFinite(draft.result) && draft.resultRaw
-                    ? draft.resultRaw
-                    : draft
-                      ? formatNormResultDisplay(norm, draft)
-                      : ''
-                const goldHint = formatNormGoldLabel(norm)
-                const prevText = stored
-                  ? `Было: ${formatNormResultDisplay(norm, stored)}${stored.status ? ` (${STATUS_LABEL[stored.status] ?? stored.status})` : ''}`
-                  : 'Не сдавал'
-                const lastSavedText =
-                  saved && Number.isFinite(saved.result)
-                    ? `Сохранено: ${formatNormResultDisplay(norm, saved)}`
-                    : null
-                const acceptedMeta = saved ? formatNormAcceptedMeta(saved) : null
-
-                return (
-                  <li key={student.id} className={vk.previewCard}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className={`truncate ${vk.listItemTitle}`}>{displayNameFromStudent(student)}</p>
-                        <p className={`mt-1 flex flex-wrap items-center gap-1 ${vk.mutedXs}`}>
-                          <NormGoldGoalIcon />
-                          <span>
-                            Золото: <span className="font-semibold tabular-nums text-amber-800">{goldHint}</span>
-                          </span>
-                        </p>
-                        <p className={`mt-0.5 ${vk.mutedXs}`}>{prevText}</p>
-                      </div>
-                      {displayRow && Number.isFinite(displayRow.result) ? (
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <span className={`text-[12px] font-semibold tabular-nums ${normScoreTone(displayRow.status)}`}>
-                            {displayRow.normalizedScore}
-                          </span>
-                          <NormMedalChip status={displayRow.status} size="sm" />
-                        </div>
-                      ) : null}
-                    </div>
-                    <label className="mt-2 block">
-                      <span className={vk.label}>Результат ({norm.unit})</span>
-                      <input
-                        type={isMinuteSecondNorm(norm) ? 'text' : 'number'}
-                        inputMode={isMinuteSecondNorm(norm) ? 'numeric' : 'decimal'}
-                        step={isMinuteSecondNorm(norm) ? undefined : 'any'}
-                        className={vk.input}
-                        value={inputVal}
-                        onChange={(e) => setDraftRaw(student.id, e.target.value)}
-                        placeholder={isMinuteSecondNorm(norm) ? 'м:сс' : 'число'}
-                      />
-                    </label>
-                    {lastSavedText ? (
-                      <p className="mt-1.5 text-[12px] font-medium text-[#4bb34b]">
-                        {lastSavedText}
-                        {saved?.status ? ` · ${STATUS_LABEL[saved.status] ?? saved.status}` : ''}
-                      </p>
-                    ) : null}
-                    {acceptedMeta ? <p className={`mt-0.5 ${vk.mutedXs}`}>{acceptedMeta}</p> : null}
-                  </li>
-                )
-              })}
-            </ul>
-
-            {saveError ? (
-              <p className={vk.error} role="alert">
-                {saveError}
-              </p>
-            ) : null}
-            {saveOk && !saveError ? <p className={vk.success}>Результаты сохранены и учтены в баллах.</p> : null}
-
-            <button
-              type="button"
-              disabled={isSaving || selectedAthletes.length === 0}
-              onClick={handleSaveAll}
-              className={`w-full sm:w-auto ${vk.btnPrimary}`}
-            >
-              {isSaving ? 'Сохранение…' : 'Сохранить'}
-            </button>
-          </section>
+          </div>
         ) : null}
       </div>
     </main>
