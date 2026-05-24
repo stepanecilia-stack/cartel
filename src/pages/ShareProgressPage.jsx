@@ -383,7 +383,12 @@ export default function ShareProgressPage() {
 
               <div className="mt-2 space-y-2">
                 {activeTab === 'competition' ? (
-                  <ShareSeasonPanel season={p.season} displayName={p.displayName} />
+                  <ShareSeasonPanel
+                    season={p.season}
+                    displayName={p.displayName}
+                    athlete={athlete}
+                    physicalItems={p.physical?.items}
+                  />
                 ) : null}
 
                 {activeTab === 'anthropometry' && athlete ? (

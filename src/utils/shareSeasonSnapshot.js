@@ -1,7 +1,9 @@
+import { migrateStudentTests } from './normsCategory.js'
 import {
   normalizeSeasonBlocks,
   normalizeSeasonCheckpoints,
 } from './seasonPlan.js'
+import { normalizeBirthYearNumber } from './studentModel.js'
 
 /**
  * @param {unknown} item
@@ -59,6 +61,8 @@ export function serializeCalendarItemsForShare(items) {
  *   daysUntilFight?: number | null,
  *   ageInt?: number | null,
  *   student?: Record<string, unknown> | null,
+ *   physicalTests?: Record<string, unknown> | null,
+ *   athlete?: { birthYear?: number, gender?: string, height?: number, reach?: number, weight?: number, birthDate?: string | null } | null,
  *   kd?: number,
  *   techniquePercent?: number,
  *   atomsAtSkill?: number,
@@ -74,6 +78,8 @@ export function buildShareSeasonSnapshot({
   daysUntilFight = null,
   ageInt = null,
   student = null,
+  physicalTests = null,
+  athlete = null,
   kd = 0.25,
   techniquePercent = 0,
   atomsAtSkill = 0,
@@ -81,6 +87,15 @@ export function buildShareSeasonSnapshot({
   effectiveKsr = 0,
 }) {
   const st = student && typeof student === 'object' ? student : {}
+  const ath = athlete && typeof athlete === 'object' ? athlete : {}
+  const physical =
+    physicalTests && typeof physicalTests === 'object'
+      ? physicalTests
+      : migrateStudentTests(st.tests).physical
+
+  const birthYear = normalizeBirthYearNumber(ath.birthYear ?? st.birthYear)
+  const gender = ath.gender === 'F' || st.gender === 'F' ? 'F' : 'M'
+
   return {
     studentId: typeof studentId === 'string' && studentId ? studentId : null,
     calendarItems: serializeCalendarItemsForShare(calendarItems),
@@ -97,6 +112,16 @@ export function buildShareSeasonSnapshot({
       motorQualityWorkLog: st.motorQualityWorkLog ?? [],
       cartelStageNote: typeof st.cartelStageNote === 'string' ? st.cartelStageNote : '',
       cartelEarlyAccess: Boolean(st.cartelEarlyAccess),
+      birthYear,
+      gender,
+      height: Number(ath.height ?? st.height) || 0,
+      reach: Number(ath.reach ?? st.reach) || 0,
+      weight: Number(ath.weight ?? st.weight) || 0,
+      birthDate: typeof ath.birthDate === 'string' ? ath.birthDate : st.birthDate ?? null,
+      tests: {
+        physical,
+        functional: {},
+      },
     },
     metrics: {
       kd: Number(kd) || 0.25,

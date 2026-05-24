@@ -622,6 +622,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       daysUntilFight,
       ageInt: sensitivePeriods.ageInt,
       student,
+      physicalTests: physicalMerged,
+      athlete: athleteForNorms,
       kd: kdBundle.kd,
       techniquePercent: tabProgress.technical ?? 0,
       atomsAtSkill: techniqueLeaderboard?.atomsAtSkill ?? 0,
