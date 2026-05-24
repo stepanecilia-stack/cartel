@@ -2,11 +2,7 @@ import { memo } from 'react'
 import { NormGoldGoalIcon, NormMedalChip } from '../NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../../utils/normCardTone'
 import { formatNormAcceptedMeta } from '../../utils/normAcceptanceHistory'
-import {
-  getNormResultInputProps,
-  isMinuteSecondNorm,
-  normalizeMinuteSecondFieldInput,
-} from '../../utils/normTestsStorage.js'
+import { isMinuteSecondNorm } from '../../utils/normTestsStorage.js'
 import { vk } from '../../utils/vkUi.js'
 
 /** @param {string} category @param {string} testId */
@@ -47,7 +43,6 @@ function StudentNormCard({
   const scoreTone = normScoreToneByStatus(row?.status)
   const acceptedMeta = formatNormAcceptedMeta(row)
   const minuteSecond = isMinuteSecondNorm(norm)
-  const inputProps = getNormResultInputProps(norm)
 
   return (
     <li
@@ -72,25 +67,16 @@ function StudentNormCard({
         </div>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <div className="min-w-0 shrink-0">
-            <input
-              {...inputProps}
-              aria-label={`Результат, ${norm.unit}`}
-              placeholder={inputPlaceholder || inputProps.placeholder}
-              className={`${vk.input} w-[5.75rem] min-w-0 sm:w-28`}
-              value={displayVal}
-              onChange={(e) =>
-                onResultChange(
-                  minuteSecond ? normalizeMinuteSecondFieldInput(e.target.value) : e.target.value,
-                )
-              }
-            />
-            {minuteSecond ? (
-              <p className={`mt-0.5 max-w-[9rem] ${vk.mutedXs} leading-tight`}>
-                Цифрами: 1220 → 12:20
-              </p>
-            ) : null}
-          </div>
+          <input
+            type={minuteSecond ? 'text' : inputType}
+            inputMode={minuteSecond ? 'text' : 'decimal'}
+            step={minuteSecond ? undefined : 'any'}
+            aria-label={`Результат, ${norm.unit}`}
+            placeholder={inputPlaceholder}
+            className={`${vk.input} w-[5.5rem] min-w-0 shrink-0 sm:w-24`}
+            value={displayVal}
+            onChange={(e) => onResultChange(e.target.value)}
+          />
           {row && Number.isFinite(row.result) ? (
             <span className={`flex items-center gap-1 text-[12px] tabular-nums ${scoreTone}`}>
               <span className="font-semibold">{row.normalizedScore}</span>

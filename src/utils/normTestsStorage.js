@@ -32,43 +32,6 @@ export function isMinuteSecondNorm(norm) {
   return unit.includes('мин') || unit.includes('mm:ss') || unit.includes('м:с')
 }
 
-/** Поля ввода для норматива (на iPhone `inputMode=numeric` не даёт ввести «:»). */
-export function getNormResultInputProps(norm) {
-  if (isMinuteSecondNorm(norm)) {
-    return {
-      type: 'text',
-      inputMode: 'text',
-      autoComplete: 'off',
-      autoCorrect: 'off',
-      spellCheck: false,
-      enterKeyHint: 'done',
-      placeholder: '12:20',
-    }
-  }
-  return {
-    type: 'number',
-    inputMode: 'decimal',
-    step: 'any',
-    placeholder: norm?.unit ? String(norm.unit) : 'число',
-  }
-}
-
-/**
- * Нормализует ввод м:сс: цифры «1220» → «12:20», двоеточие и пробел тоже допустимы.
- */
-export function normalizeMinuteSecondFieldInput(raw) {
-  const s = String(raw ?? '')
-  if (/[:\s,.]/.test(s)) {
-    return s.replace(',', '.').trim()
-  }
-  const digits = s.replace(/\D/g, '').slice(0, 6)
-  if (!digits) return ''
-  if (digits.length <= 2) return digits
-  const minutes = digits.slice(0, -2)
-  const seconds = digits.slice(-2)
-  return `${minutes}:${seconds}`
-}
-
 function parseMinuteSecondToMinutes(rawValue) {
   const normalized = String(rawValue ?? '').trim()
   const match = normalized.match(/^(\d+)\s*:\s*(\d{2})$/)
