@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { NormGoldGoalIcon, NormMedalChip } from '../components/NormMedals'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
@@ -167,6 +167,8 @@ export default function BulkNormSessionPage({ coachId }) {
   const [programAdmin, setProgramAdmin] = useState(false)
   const [normsPublishBusy, setNormsPublishBusy] = useState(false)
   const [normsPublishNote, setNormsPublishNote] = useState('')
+  const [rosterExpanded, setRosterExpanded] = useState(true)
+  const resultsSectionRef = useRef(null)
 
   useEffect(() => {
     const coachAuthId = getCurrentCoachId()
@@ -251,6 +253,7 @@ export default function BulkNormSessionPage({ coachId }) {
     setSavedRows({})
     setSaveOk(false)
     setSaveError('')
+    setRosterExpanded(true)
   }, [category])
 
   useEffect(() => {
@@ -259,7 +262,12 @@ export default function BulkNormSessionPage({ coachId }) {
     setSavedRows({})
     setSaveOk(false)
     setSaveError('')
+    setRosterExpanded(true)
   }, [testId])
+
+  useEffect(() => {
+    if (selectedIds.size === 0) setRosterExpanded(true)
+  }, [selectedIds.size])
 
   const filteredEligible = useMemo(() => {
     const q = normalizeSearchText(searchQuery)
@@ -416,6 +424,21 @@ export default function BulkNormSessionPage({ coachId }) {
     [selectedAthletes, drafts],
   )
 
+  const selectedNamesPreview = useMemo(() => {
+    if (selectedAthletes.length === 0) return ''
+    const names = selectedAthletes.slice(0, 2).map((s) => s.displayName)
+    const rest = selectedAthletes.length - names.length
+    if (rest <= 0) return names.join(', ')
+    return `${names.join(', ')} +${rest}`
+  }, [selectedAthletes])
+
+  const scrollToResults = useCallback(() => {
+    setRosterExpanded(false)
+    requestAnimationFrame(() => {
+      resultsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
   return (
     <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
       <div className={`${vk.containerMid} max-w-4xl`}>
@@ -482,82 +505,129 @@ export default function BulkNormSessionPage({ coachId }) {
 
         {testId ? (
           <section className={`${vk.cardPadded} space-y-2.5`}>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 2</p>
-              <span className={`${vk.mutedXs} tabular-nums`}>
-                {eligibleAthletes.length} подходят
-                {students.length > eligibleAthletes.length
-                  ? ` · ${students.length - eligibleAthletes.length} не подходят`
-                  : ''}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="relative min-w-0 flex-1">
-                <span className="sr-only">Поиск спортсмена</span>
-                <span
-                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#818c99]"
-                  aria-hidden
-                >
-                  ⌕
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 2</p>
+                <span className={`${vk.mutedXs} tabular-nums`}>
+                  {eligibleAthletes.length} подходят
+                  {students.length > eligibleAthletes.length
+                    ? ` · ${students.length - eligibleAthletes.length} не подходят`
+                    : ''}
                 </span>
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Поиск по имени"
-                  className={`${vk.input} pl-8`}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={toggleAllFiltered}
-                disabled={filteredEligible.length === 0}
-                className={vk.btnCompactSecondary}
-              >
-                {allFilteredSelected ? 'Снять' : 'Всех'}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0f2f5] px-2.5 py-1 text-[12px] font-medium tabular-nums text-[#2c2d2e]">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${selectedCount > 0 ? 'bg-[#2d81e0]' : 'bg-[#c4c8cc]'}`}
-                  aria-hidden
-                />
-                {selectedCount} выбрано
-              </span>
-              {searchQuery.trim() && filteredEligible.length !== eligibleAthletes.length ? (
-                <span className={`${vk.mutedXs} tabular-nums`}>в списке: {filteredEligible.length}</span>
+              </div>
+              {selectedCount > 0 && !rosterExpanded ? (
+                <button type="button" onClick={() => setRosterExpanded(true)} className={vk.btnGhost}>
+                  Изменить состав
+                </button>
               ) : null}
             </div>
 
-            {filteredEligible.length === 0 ? (
-              <p className={`py-6 text-center ${vk.muted}`}>Никто не подходит под этот норматив.</p>
-            ) : (
-              <div
-                className="-mx-0.5 max-h-[min(50vh,22rem)] overflow-y-auto overscroll-contain pr-0.5"
-                role="group"
-                aria-label="Спортсмены для сдачи норматива"
-              >
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                  {filteredEligible.map((student) => (
-                    <StudentPickTile
-                      key={student.id}
-                      student={student}
-                      checked={selectedIds.has(student.id)}
-                      onToggle={() => toggleStudent(student.id)}
-                    />
-                  ))}
+            {selectedCount > 0 && !rosterExpanded ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#e7e8ec] bg-[#f7f8fa] px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold tabular-nums text-[#2c2d2e]">
+                    {selectedCount} спортсменов
+                  </p>
+                  <p className={`mt-0.5 truncate ${vk.mutedXs}`}>{selectedNamesPreview}</p>
                 </div>
+                <button type="button" onClick={scrollToResults} className={vk.btnCompact}>
+                  К результатам
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="relative min-w-0 flex-1">
+                    <span className="sr-only">Поиск спортсмена</span>
+                    <span
+                      className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#818c99]"
+                      aria-hidden
+                    >
+                      ⌕
+                    </span>
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Поиск по имени"
+                      className={`${vk.input} pl-8`}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleAllFiltered}
+                    disabled={filteredEligible.length === 0}
+                    className={vk.btnCompactSecondary}
+                  >
+                    {allFilteredSelected ? 'Снять' : 'Всех'}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0f2f5] px-2.5 py-1 text-[12px] font-medium tabular-nums text-[#2c2d2e]">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${selectedCount > 0 ? 'bg-[#2d81e0]' : 'bg-[#c4c8cc]'}`}
+                      aria-hidden
+                    />
+                    {selectedCount} выбрано
+                  </span>
+                  {searchQuery.trim() && filteredEligible.length !== eligibleAthletes.length ? (
+                    <span className={`${vk.mutedXs} tabular-nums`}>в списке: {filteredEligible.length}</span>
+                  ) : null}
+                  {selectedCount > 0 ? (
+                    <button type="button" onClick={scrollToResults} className={`ml-auto ${vk.btnGhost}`}>
+                      К результатам ↓
+                    </button>
+                  ) : null}
+                </div>
+
+                {filteredEligible.length === 0 ? (
+                  <p className={`py-6 text-center ${vk.muted}`}>Никто не подходит под этот норматив.</p>
+                ) : (
+                  <div
+                    className="-mx-0.5 max-h-36 overflow-y-auto overscroll-contain pr-0.5 sm:max-h-44"
+                    role="group"
+                    aria-label="Спортсмены для сдачи норматива"
+                  >
+                    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                      {filteredEligible.map((student) => (
+                        <StudentPickTile
+                          key={student.id}
+                          student={student}
+                          checked={selectedIds.has(student.id)}
+                          onToggle={() => toggleStudent(student.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </section>
         ) : null}
 
+        {testId && selectedCount > 0 ? (
+          <div className="sticky top-12 z-20 -mx-0.5 sm:top-14">
+            <button
+              type="button"
+              onClick={scrollToResults}
+              className={`${vk.btnPrimary} flex w-full items-center justify-center gap-2 shadow-md`}
+            >
+              К результатам
+              <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
+                {selectedCount}
+              </span>
+            </button>
+          </div>
+        ) : null}
+
         {testId && selectedAthletes.length > 0 ? (
           <div className="space-y-2 pb-[4.5rem] sm:pb-0">
-            <section className={`${vk.cardPadded} space-y-2.5`}>
+            <section
+              ref={resultsSectionRef}
+              id="norm-session-results"
+              className={`${vk.cardPadded} scroll-mt-16 space-y-2.5 sm:scroll-mt-4`}
+            >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">
