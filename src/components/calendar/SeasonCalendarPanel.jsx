@@ -491,33 +491,35 @@ function SeasonCalendarPanel({
     <div className="space-y-3">
       {!canSave ? <p className={vk.noticeWarn}>Выберите ученика, чтобы сохранять сезон.</p> : null}
 
-      <SeasonCoachGuide
-        student={student}
-        allNorms={allNorms}
-        kd={kd}
-        techniquePercent={techniquePercent}
-        atomsAtSkill={atomsAtSkill}
-        totalAtoms={totalAtoms}
-        effectiveKsr={effectiveKsr}
-        year={year}
-        ageInt={ageInt}
-        calendarItems={calendarItems}
-        focusCompetitionId={focusId}
-        selectedISO={selectedISO}
-        seasonBlocks={blocks}
-        seasonCheckpoints={checkpoints}
-        canSave={canSave}
-        onOpenTab={onOpenTab}
-        onConfirmCartelStage={onCartelStageChange}
-        onAddSparring={onAddSparring}
-        onAddMatch={onAddMatch}
-        onToggleSpecialPass={onToggleSpecialPass}
-        onSaveCartelDocuments={onSaveCartelDocuments}
-        onApplyRecommendedPlan={onSaveSeasonPlan ? handleApplyRecommendedPlan : undefined}
-        onAddEvent={() => openCreateForm(selectedISO)}
-        stageBusy={stageSaveBusy}
-        applyBusy={planBusy}
-      />
+      {student ? (
+        <SeasonCoachGuide
+          student={student}
+          allNorms={allNorms}
+          kd={kd}
+          techniquePercent={techniquePercent}
+          atomsAtSkill={atomsAtSkill}
+          totalAtoms={totalAtoms}
+          effectiveKsr={effectiveKsr}
+          year={year}
+          ageInt={ageInt}
+          calendarItems={calendarItems}
+          focusCompetitionId={focusId}
+          selectedISO={selectedISO}
+          seasonBlocks={blocks}
+          seasonCheckpoints={checkpoints}
+          canSave={canSave}
+          onOpenTab={onOpenTab}
+          onConfirmCartelStage={onCartelStageChange}
+          onAddSparring={onAddSparring}
+          onAddMatch={onAddMatch}
+          onToggleSpecialPass={onToggleSpecialPass}
+          onSaveCartelDocuments={onSaveCartelDocuments}
+          onApplyRecommendedPlan={onSaveSeasonPlan ? handleApplyRecommendedPlan : undefined}
+          onAddEvent={() => openCreateForm(selectedISO)}
+          stageBusy={stageSaveBusy}
+          applyBusy={planBusy}
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-[15px] font-semibold text-[#2c2d2e]">{title}</h2>
@@ -534,9 +536,9 @@ function SeasonCalendarPanel({
       </div>
 
       <p className="text-[12px] text-[#818c99]">
-        Календарь: точки — старты, зелёное — подготовка.{' '}
-        {cartelDirective.calendarLocked
-          ? 'Календарь стартов откроет тренер на этапе «Соревнования» (или досрочный допуск).'
+        Календарь: точки — старты, зелёное — подготовка.
+        {student && cartelDirective.calendarLocked
+          ? ' Календарь стартов откроет тренер на этапе «Соревнования» (или досрочный допуск).'
           : null}
       </p>
 
