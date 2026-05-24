@@ -162,7 +162,7 @@ export function checklistForCartelStage(stage, metrics) {
           done: isBaseTechniqueReady(metrics),
         },
         {
-          label: `Зачёты по нормативам (бронза и выше): ${n.passed ?? 0}/${g.base.normsPassedMin}`,
+          label: `Зачёты по нормативам (🥇🥈🥉): ${n.passed ?? 0}/${g.base.normsPassedMin}`,
           done: (n.passed ?? 0) >= g.base.normsPassedMin,
         },
       ]

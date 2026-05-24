@@ -1443,6 +1443,21 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [student, technicalAtoms],
   )
 
+  /** Нормативы из вкладки «Физика» + черновик — те же цифры, что в сводке и в Cartel. */
+  const studentForCartel = useMemo(() => {
+    if (!student) return student
+    const physicalMerged = mergePhysicalTestsDraft(student, physicalResults)
+    const prevTests = student.tests && typeof student.tests === 'object' ? student.tests : {}
+    return {
+      ...student,
+      tests: {
+        ...prevTests,
+        physical: physicalMerged,
+        functional: {},
+      },
+    }
+  }, [student, physicalResults])
+
   const handleSaveCartelDocuments = useCallback(
     async (cartelDocuments) => {
       if (!student?.id) return
@@ -1631,7 +1646,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
               <StudentSeasonPanel
                 coachId={coachId}
                 studentId={student?.id}
-                student={student}
+                student={studentForCartel}
                 studentName={safeStudent.name}
                 ageInt={sensitivePeriods.ageInt}
                 gender={anthropometry.gender === 'F' ? 'F' : 'M'}

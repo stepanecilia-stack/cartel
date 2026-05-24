@@ -8,7 +8,7 @@ import {
   normalizeTechnicalDominanceKey,
 } from './ksrUtils.js'
 import { buildFullTechnicalProgramAtoms, mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
-import { getNormValueByTestId } from './normTestsStorage.js'
+import { getNormValueByTestId, resolveNormRowStatus } from './normTestsStorage.js'
 import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
 import { migrateStudentTests } from './normsCategory.js'
 import { studentAthleteShape } from './studentModel.js'
@@ -69,9 +69,10 @@ export function countNormMedalsForStudent(student, allNorms, category) {
   const medals = { gold: 0, silver: 0, bronze: 0, red: 0, filled: 0 }
   for (const norm of norms) {
     const row = getNormValueByTestId(tests, norm.testId)
-    if (!row || row.status == null || row.status === 'empty') continue
-    if (row.status in medals) medals[row.status] += 1
-    if (row.status === 'gold' || row.status === 'silver' || row.status === 'bronze' || row.status === 'red') {
+    const status = resolveNormRowStatus(norm, row)
+    if (status === 'empty') continue
+    if (status in medals) medals[status] += 1
+    if (status === 'gold' || status === 'silver' || status === 'bronze' || status === 'red') {
       medals.filled += 1
     }
   }

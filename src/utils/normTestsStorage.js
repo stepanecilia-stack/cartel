@@ -195,6 +195,23 @@ export function applyNormRawInput(norm, rawValue) {
 }
 
 /**
+ * Медаль по сохранённой строке норматива (пересчёт из result, если status не записан).
+ * @param {object} norm
+ * @param {Record<string, unknown> | null | undefined} row
+ * @returns {'gold' | 'silver' | 'bronze' | 'red' | 'empty'}
+ */
+export function resolveNormRowStatus(norm, row) {
+  if (!row) return 'empty'
+  let status = row.status
+  if ((!status || status === 'empty') && row.result != null && Number.isFinite(Number(row.result))) {
+    status = evaluateLegacyTest(Number(row.result), norm).status
+  }
+  if (!status || status === 'empty') return 'empty'
+  if (status === 'gold' || status === 'silver' || status === 'bronze' || status === 'red') return status
+  return 'empty'
+}
+
+/**
  * Сводка по списку нормативов и сохранённым результатам (вкладка «Физика»).
  * @param {object[]} norms
  * @param {Record<string, unknown>} values
@@ -209,11 +226,8 @@ export function summarizeNormsForValues(norms, values) {
 
   for (const norm of list) {
     const row = getNormValueByTestId(values, norm.testId)
-    let status = row?.status
-    if ((!status || status === 'empty') && row?.result != null && Number.isFinite(Number(row.result))) {
-      status = evaluateLegacyTest(Number(row.result), norm).status
-    }
-    if (!status || status === 'empty') {
+    const status = resolveNormRowStatus(norm, row)
+    if (status === 'empty') {
       empty += 1
       continue
     }
