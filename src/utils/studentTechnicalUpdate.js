@@ -3,6 +3,7 @@ import {
   calculateKD,
   calculateKsrAndKsp,
   calculateLegacySectionScores,
+  countProgramAtomsAtOrAboveSkill,
   getWeights,
   normalizeTechnicalDominanceKey,
 } from './ksrUtils.js'
@@ -27,6 +28,12 @@ export function normalizeTechnicalDataForSave(raw) {
  * Сколько первых атомов программы (в каноническом порядке) уже на «Умение»+.
  * Используется для стартового положения ползунка прогресса по программе.
  */
+/** Все приёмы программы ур.1 (29 базовых) на «Умение» или выше. */
+export function isLevel1BaseProgramComplete(orderedLevel1Atoms, technicalData) {
+  const { count, total } = countProgramAtomsAtOrAboveSkill(orderedLevel1Atoms, technicalData)
+  return total > 0 && count >= total
+}
+
 export function countLeadingMasteredAtoms(orderedAtoms, technicalData) {
   if (!Array.isArray(orderedAtoms) || orderedAtoms.length === 0) return 0
   const data = technicalData && typeof technicalData === 'object' ? technicalData : {}

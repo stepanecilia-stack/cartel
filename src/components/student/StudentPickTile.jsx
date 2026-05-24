@@ -14,9 +14,10 @@ export function splitDisplayName(displayName) {
  *   student: { displayName: string, photoUrl?: string, initials?: string },
  *   checked: boolean,
  *   onToggle: () => void,
+ *   baseProgramComplete?: boolean,
  * }} props
  */
-export function StudentPickTile({ student, checked, onToggle }) {
+export function StudentPickTile({ student, checked, onToggle, baseProgramComplete = false }) {
   const photo = student.photoUrl
   const { primary, secondary } = splitDisplayName(student.displayName)
 
@@ -50,9 +51,18 @@ export function StudentPickTile({ student, checked, onToggle }) {
             {student.initials ?? '?'}
           </span>
         )}
+        {baseProgramComplete ? (
+          <span
+            className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#4bb34b] text-[10px] font-bold leading-none text-white shadow ring-2 ring-white"
+            title="29 базовых приёмов на «Умение»"
+            aria-label="База программы закрыта"
+          >
+            ✓
+          </span>
+        ) : null}
         {checked ? (
           <span
-            className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2d81e0] text-[10px] font-bold leading-none text-white shadow"
+            className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2d81e0] text-[10px] font-bold leading-none text-white shadow ring-2 ring-white"
             aria-hidden
           >
             ✓

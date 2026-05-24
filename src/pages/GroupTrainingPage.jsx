@@ -15,6 +15,7 @@ import {
   applyProgressSliderToTechnicalData,
   buildTechnicalOnlyUpdatePayload,
   countLeadingMasteredAtoms,
+  isLevel1BaseProgramComplete,
 } from '../utils/studentTechnicalUpdate.js'
 import {
   endGroupTrainingSession,
@@ -85,6 +86,7 @@ function ComposePhase({
   onResumeTraining,
   filteredStudents,
   hasActiveSession,
+  orderedL1,
 }) {
   const selectedCount = selectedIds.size
   const totalInView = filteredStudents.length
@@ -150,6 +152,17 @@ function ComposePhase({
             />
             {selectedCount} из {students.length}
           </span>
+          {orderedL1.length > 0 ? (
+            <span className={`inline-flex items-center gap-1 ${vk.mutedXs}`}>
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full bg-[#4bb34b] text-[9px] font-bold text-white"
+                aria-hidden
+              >
+                ✓
+              </span>
+              — {orderedL1.length} приёмов на «Умение»
+            </span>
+          ) : null}
           {searchQuery.trim() && totalInView !== students.length ? (
             <span className={`${vk.mutedXs} tabular-nums`}>в списке: {totalInView}</span>
           ) : null}
@@ -182,6 +195,7 @@ function ComposePhase({
                   student={student}
                   checked={selectedIds.has(student.id)}
                   onToggle={() => toggleStudent(student.id)}
+                  baseProgramComplete={isLevel1BaseProgramComplete(orderedL1, student.technicalData)}
                 />
               ))}
             </div>
@@ -278,6 +292,11 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
     return 'text-[#818c99]'
   })()
 
+  const baseComplete = useMemo(
+    () => isLevel1BaseProgramComplete(orderedL1, data),
+    [orderedL1, data],
+  )
+
   const tierLabel = (n, total, value) => `Ур.${n}: ${value}/${total}`
 
   const renderTierHint = (ordered, value, total) => {
@@ -337,6 +356,15 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
     <li className={vk.cardPadded}>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
         <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
+        {baseComplete ? (
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] font-bold text-white"
+            title="29 базовых приёмов на «Умение»"
+            aria-label="База программы закрыта"
+          >
+            ✓
+          </span>
+        ) : null}
         <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('primary')}`}>
           {tierLabel(1, total1, slider1)}
         </span>
@@ -702,6 +730,7 @@ export default function GroupTrainingPage({ coachId }) {
             onResumeTraining={handleResumeTraining}
             hasActiveSession={Boolean(activeSession?.selectedIds.length)}
             filteredStudents={filteredStudents}
+            orderedL1={orderedAtoms}
           />
         ) : (
           <ProgressPhase
