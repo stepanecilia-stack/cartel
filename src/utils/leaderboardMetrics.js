@@ -13,9 +13,15 @@ import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
 import { migrateStudentTests } from './normsCategory.js'
 import { studentAthleteShape } from './studentModel.js'
 
-/** @typedef {'motor' | 'physical' | 'technical'} LeaderboardCategoryId */
+/** @typedef {'overall' | 'motor' | 'physical' | 'technical'} LeaderboardCategoryId */
 
 export const LEADERBOARD_CATEGORIES = [
+  {
+    id: 'overall',
+    label: 'Сводный топ',
+    shortLabel: 'Топ',
+    hint: 'Рейтинг по совокупности: техника (КД), физика (медали), качества (зачёты). Балл 0–100 — среднее по трём направлениям в группе.',
+  },
   {
     id: 'motor',
     label: 'Двигательные качества',
@@ -168,7 +174,7 @@ export function buildLeaderboardMetric(student, allNorms, technicalAtoms, catego
         sortValue: tech.sortScore,
         primaryLabel: `${tech.studiedCount}/${tech.totalAtoms}`,
         primarySuffix: 'приёмов',
-        secondary: null,
+        secondary: `КД ${tech.kdPercent}%`,
         tech,
       }
     }
@@ -181,10 +187,66 @@ export function buildLeaderboardMetric(student, allNorms, technicalAtoms, catego
  * @param {Array<Record<string, unknown>>} students
  * @param {object[]} allNorms
  * @param {object[]} technicalAtoms
+ * @param {(raw: Record<string, unknown>) => string} displayNameFn
+ */
+export function buildOverallLeaderboardRows(students, allNorms, technicalAtoms, displayNameFn) {
+  const items = students.map((raw) => {
+    const motor = countMotorQualitySquares(raw.motorQualityWorkLog)
+    const medals = countNormMedalsForStudent(raw, allNorms, 'physical')
+    const tech = computeTechniqueLeaderboardMetrics(raw, technicalAtoms)
+    return { raw, motor, medals, tech }
+  })
+
+  const maxMotor = Math.max(1, ...items.map((i) => i.motor.total))
+  const maxPhysical = Math.max(1, ...items.map((i) => i.medals.points))
+  const maxTechnical = Math.max(1, ...items.map((i) => i.tech.kdPercent))
+
+  const rows = items.map(({ raw, motor, medals, tech }) => {
+    const motorNorm = (motor.total / maxMotor) * 100
+    const physicalNorm = (medals.points / maxPhysical) * 100
+    const technicalNorm = (tech.kdPercent / maxTechnical) * 100
+    const combinedScore = Math.round((motorNorm + physicalNorm + technicalNorm) / 3)
+
+    return {
+      id: raw.id,
+      name: displayNameFn(raw),
+      sortValue: combinedScore * 1000 + tech.kdPercent,
+      primaryLabel: String(combinedScore),
+      primarySuffix: 'сводный',
+      secondary: `Т ${tech.kdPercent}% · Ф ${medals.gold}🥇 · К ${motor.total}`,
+      motor,
+      medals,
+      tech,
+      overall: {
+        combinedScore,
+        kdPercent: tech.kdPercent,
+        studiedLabel: `${tech.studiedCount}/${tech.totalAtoms}`,
+        motorTotal: motor.total,
+        physicalPoints: medals.points,
+      },
+    }
+  })
+
+  rows.sort((a, b) => {
+    if (b.sortValue !== a.sortValue) return b.sortValue - a.sortValue
+    return a.name.localeCompare(b.name, 'ru')
+  })
+
+  return rows.map((row, index) => ({ ...row, rank: index + 1 }))
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} students
+ * @param {object[]} allNorms
+ * @param {object[]} technicalAtoms
  * @param {LeaderboardCategoryId} categoryId
  * @param {(raw: Record<string, unknown>) => string} displayNameFn
  */
 export function buildLeaderboardRows(students, allNorms, technicalAtoms, categoryId, displayNameFn) {
+  if (categoryId === 'overall') {
+    return buildOverallLeaderboardRows(students, allNorms, technicalAtoms, displayNameFn)
+  }
+
   const rows = students.map((raw) => {
     const metric = buildLeaderboardMetric(raw, allNorms, technicalAtoms, categoryId)
     return {

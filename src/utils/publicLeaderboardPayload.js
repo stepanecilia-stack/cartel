@@ -47,6 +47,24 @@ function rowToPublicRow(row, raw, categoryId) {
   if (categoryId === 'motor' && raw) {
     out.motorSquares = serializeMotorSquaresForShare(raw.motorQualityWorkLog)
   }
+  if (categoryId === 'overall') {
+    if (row.overall) out.overall = { ...row.overall }
+    if (row.tech) {
+      out.tech = {
+        kdPercent: row.tech.kdPercent,
+        studiedCount: row.tech.studiedCount,
+        totalAtoms: row.tech.totalAtoms,
+      }
+    }
+    if (row.medals) {
+      out.medals = {
+        gold: row.medals.gold,
+        silver: row.medals.silver,
+        bronze: row.medals.bronze,
+      }
+    }
+    if (row.motor) out.motor = { total: row.motor.total }
+  }
   return out
 }
 
@@ -64,7 +82,7 @@ export function buildPublicLeaderboardPayload({
   students,
   allNorms,
   technicalAtoms,
-  defaultCategoryId = 'motor',
+  defaultCategoryId = 'overall',
 }) {
   const rawById = new Map(students.map((s) => [s.id, s]))
   const categories = {}

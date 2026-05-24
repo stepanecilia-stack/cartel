@@ -17,7 +17,7 @@ export default function ShareLeaderboardPage() {
 
   useEffect(() => {
     categoryBootstrappedRef.current = false
-    setCategory('motor')
+    setCategory('overall')
   }, [token])
 
   useEffect(() => {

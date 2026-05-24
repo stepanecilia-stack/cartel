@@ -80,7 +80,7 @@ export async function publishLeaderboardShare(coachId, options = {}) {
 
   const { norms, atoms } = await getNormsAndAtoms()
   const defaultCategoryId =
-    options.defaultCategoryId ?? profile.leaderboardShareCategory ?? 'motor'
+    options.defaultCategoryId ?? profile.leaderboardShareCategory ?? 'overall'
 
   const payload = buildPublicLeaderboardPayload({
     coachDisplayName: coachDisplayNameFromProfile(profile),

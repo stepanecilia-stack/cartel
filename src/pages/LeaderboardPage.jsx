@@ -25,7 +25,7 @@ import { vk } from '../utils/vkUi.js'
  */
 export default function LeaderboardPage({ scope, coachId, onSelectStudent }) {
   const isSchool = scope === 'school'
-  const [category, setCategory] = useState('motor')
+  const [category, setCategory] = useState('overall')
   const [editMode, setEditMode] = useState(false)
 
   const coach = useCoachLeaderboard(!isSchool ? coachId : undefined)

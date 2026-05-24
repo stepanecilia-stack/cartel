@@ -1,4 +1,5 @@
 import LeaderboardMotorPreview from './LeaderboardMotorPreview.jsx'
+import LeaderboardOverallMetrics from './LeaderboardOverallMetrics.jsx'
 import ShareLeaderboardMotorPreview from './ShareLeaderboardMotorPreview.jsx'
 import { vk } from '../utils/vkUi.js'
 
@@ -59,6 +60,17 @@ export function MedalChips({ medals, compact = false }) {
  * }} props
  */
 export function LeaderboardRowMetrics({ row, categoryId, rawById, publicMode = false, compact = true }) {
+  if (categoryId === 'overall') {
+    return (
+      <LeaderboardOverallMetrics
+        tech={row.tech}
+        medals={row.medals}
+        motor={row.motor}
+        overall={row.overall}
+        compact={compact}
+      />
+    )
+  }
   if (categoryId === 'motor') {
     if (publicMode) {
       return (
@@ -137,14 +149,15 @@ export default function LeaderboardTable({
         }
 
         const metrics =
-          categoryId !== 'technical' ? (
+          categoryId === 'technical' ? null : (
             <LeaderboardRowMetrics
               row={row}
               categoryId={categoryId}
               rawById={rawById}
               publicMode={publicMode}
+              compact={categoryId === 'overall' ? false : true}
             />
-          ) : null
+          )
 
         const scoreBlock = (
           <div className="shrink-0 text-right">

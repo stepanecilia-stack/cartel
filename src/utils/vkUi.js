@@ -103,7 +103,7 @@ export const vk = {
   article: 'scroll-mt-40 rounded-[10px] border border-[#e7e8ec] bg-white p-3',
   articleLocked: 'scroll-mt-40 rounded-[10px] border border-[#f4e4a6] bg-[#fffbeb] p-3',
 
-  categoryTabGrid: 'grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-1',
+  categoryTabGrid: 'grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-5 sm:gap-1',
   categoryTabBtn:
     'min-h-[2.5rem] touch-manipulation rounded-lg px-2 py-1.5 text-center text-[12px] font-medium leading-[14px] sm:min-h-[2.25rem] sm:px-2.5 sm:text-[13px]',
   categoryTabActive: 'bg-[#2d81e0] text-white',
