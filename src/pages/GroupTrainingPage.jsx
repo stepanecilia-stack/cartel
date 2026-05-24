@@ -22,7 +22,11 @@ import {
   startGroupTrainingSession,
   updateGroupTrainingSessionSliders,
 } from '../utils/groupTrainingSession.js'
-import { displayNameFromStudent } from '../utils/studentModel'
+import {
+  displayNameFromStudent,
+  studentInitials,
+  studentPhotoUrl,
+} from '../utils/studentModel'
 import { vk } from '../utils/vkUi.js'
 
 const SAVE_DEBOUNCE_MS = 350
@@ -61,6 +65,68 @@ function normalizeSearchText(value) {
   return String(value ?? '').toLowerCase().trim()
 }
 
+function splitDisplayName(displayName) {
+  const parts = String(displayName ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length <= 1) return { primary: displayName || '—', secondary: '' }
+  return { primary: parts[0], secondary: parts.slice(1).join(' ') }
+}
+
+function StudentPickTile({ student, checked, onToggle }) {
+  const photo = student.photoUrl
+  const { primary, secondary } = splitDisplayName(student.displayName)
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={checked}
+      className={`relative flex min-h-[5.25rem] touch-manipulation flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-center transition active:scale-[0.98] ${
+        checked
+          ? 'border-[#2d81e0] bg-[#ecf3fc] shadow-sm ring-1 ring-[#2d81e0]/25'
+          : 'border-[#e7e8ec] bg-[#f7f8fa] hover:border-[#d3d9de] hover:bg-[#f0f2f5] active:bg-[#ebedf0]'
+      }`}
+    >
+      <span className="relative shrink-0">
+        {photo ? (
+          <img
+            src={photo}
+            alt=""
+            className="h-9 w-9 rounded-full border border-[#e7e8ec] object-cover"
+          />
+        ) : (
+          <span
+            className={`flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-semibold ${
+              checked
+                ? 'border-[#2d81e0]/40 bg-white text-[#2d81e0]'
+                : 'border-[#e7e8ec] bg-white text-[#818c99]'
+            }`}
+            aria-hidden
+          >
+            {student.initials}
+          </span>
+        )}
+        {checked ? (
+          <span
+            className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2d81e0] text-[10px] font-bold leading-none text-white shadow"
+            aria-hidden
+          >
+            ✓
+          </span>
+        ) : null}
+      </span>
+      <span className="min-w-0 w-full leading-tight">
+        <span className="block truncate text-[12px] font-semibold text-[#2c2d2e]">{primary}</span>
+        {secondary ? (
+          <span className="mt-0.5 block truncate text-[11px] text-[#818c99]">{secondary}</span>
+        ) : null}
+      </span>
+    </button>
+  )
+}
+
 function tierBadgeClass(variant) {
   if (variant === 'accent') return 'bg-[#f3f0ff] text-[#6f3ff5]'
   return 'bg-[#ecf3fc] text-[#2d81e0]'
@@ -84,15 +150,19 @@ function ComposePhase({
   const selectedCount = selectedIds.size
   const totalInView = filteredStudents.length
 
+  const selectionPercent =
+    students.length > 0 ? Math.round((selectedCount / students.length) * 100) : 0
+
   return (
-    <div className="space-y-2 pb-20 sm:pb-0">
-      <header>
-        <h1 className={vk.h1Lg}>Прогресс техники</h1>
-        <p className={`mt-1 ${vk.muted}`}>Шаг 1: отметьте, кто на тренировке.</p>
+    <div className="space-y-2 pb-[4.5rem] sm:pb-0">
+      <header className="px-0.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 1</p>
+        <h1 className={`mt-0.5 ${vk.h1Lg}`}>Прогресс техники</h1>
+        <p className={`mt-1 ${vk.muted}`}>Отметьте учеников на сегодняшней тренировке.</p>
       </header>
 
       {hasActiveSession ? (
-        <div className="rounded-lg border border-[#2d81e0]/35 bg-[#ecf3fc] px-3 py-2">
+        <div className="rounded-[10px] border border-[#2d81e0]/35 bg-[#ecf3fc] px-3 py-2.5">
           <p className="text-[13px] font-medium text-[#2c2d2e]">Тренировка не завершена</p>
           <p className={`mt-0.5 ${vk.mutedXs}`}>
             Состав и ползунки сохранены — можно продолжить с любой страницы.
@@ -105,77 +175,100 @@ function ComposePhase({
 
       {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
-      <section className={`${vk.cardPadded} space-y-2`}>
-        <div className="flex flex-wrap gap-1.5">
-          <label className="min-w-0 flex-1">
+      <section className={`${vk.cardPadded} space-y-2.5`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-0 flex-1">
             <span className="sr-only">Поиск ученика</span>
+            <span
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#818c99]"
+              aria-hidden
+            >
+              ⌕
+            </span>
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Поиск по имени"
-              className={vk.input}
+              className={`${vk.input} pl-8`}
             />
           </label>
           <button
             type="button"
             onClick={() => toggleAll(!allSelectedInView)}
             disabled={totalInView === 0}
-            className={vk.btnSecondary}
+            className={vk.btnCompactSecondary}
           >
-            {allSelectedInView ? 'Снять всех' : 'Всех'}
+            {allSelectedInView ? 'Снять' : 'Всех'}
           </button>
         </div>
-        <p className={vk.mutedXs}>
-          Отмечено: {selectedCount} из {students.length}
-        </p>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0f2f5] px-2.5 py-1 text-[12px] font-medium tabular-nums text-[#2c2d2e]">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${selectedCount > 0 ? 'bg-[#2d81e0]' : 'bg-[#c4c8cc]'}`}
+              aria-hidden
+            />
+            {selectedCount} из {students.length}
+          </span>
+          {searchQuery.trim() && totalInView !== students.length ? (
+            <span className={`${vk.mutedXs} tabular-nums`}>в списке: {totalInView}</span>
+          ) : null}
+          <div className="ml-auto hidden min-w-[5rem] flex-1 sm:block">
+            <div className="h-1 overflow-hidden rounded-full bg-[#e7e8ec]">
+              <div
+                className="h-full rounded-full bg-[#2d81e0] transition-[width] duration-200"
+                style={{ width: `${selectionPercent}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <p className={`py-8 text-center ${vk.muted}`}>Загрузка…</p>
+        ) : students.length === 0 ? (
+          <p className={`py-6 text-center ${vk.muted}`}>Нет учеников. Добавьте их на главной.</p>
+        ) : filteredStudents.length === 0 ? (
+          <p className={`py-6 text-center ${vk.muted}`}>По запросу никто не найден.</p>
+        ) : (
+          <div
+            className="-mx-0.5 max-h-[min(58vh,26rem)] overflow-y-auto overscroll-contain pr-0.5"
+            role="group"
+            aria-label="Ученики на тренировке"
+          >
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {filteredStudents.map((student) => (
+                <StudentPickTile
+                  key={student.id}
+                  student={student}
+                  checked={selectedIds.has(student.id)}
+                  onToggle={() => toggleStudent(student.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
-      {isLoading ? (
-        <p className={`text-center ${vk.muted}`}>Загрузка…</p>
-      ) : students.length === 0 ? (
-        <p className={vk.emptyState}>Нет учеников. Добавьте их на главной.</p>
-      ) : filteredStudents.length === 0 ? (
-        <p className={vk.emptyState}>По запросу никто не найден.</p>
-      ) : (
-        <ul className={`${vk.list} max-h-[min(50vh,22rem)] overflow-y-auto`}>
-          {filteredStudents.map((student) => {
-            const checked = selectedIds.has(student.id)
-            return (
-              <li key={student.id} className="border-t border-[#e7e8ec] first:border-t-0">
-                <label
-                  className={`flex cursor-pointer touch-manipulation items-center gap-2.5 px-3 py-2 active:bg-[#f5f6f8] ${
-                    checked ? 'bg-[#ecf3fc]' : ''
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleStudent(student.id)}
-                    className="h-4 w-4 shrink-0 rounded border-[#e7e8ec] text-[#2d81e0]"
-                  />
-                  <span className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>
-                    {student.displayName}
-                  </span>
-                </label>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e8ec] bg-white/95 p-2 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0">
-        <button
-          type="button"
-          onClick={onStartTraining}
-          disabled={selectedCount === 0}
-          className={`w-full sm:w-auto ${vk.btnPrimary}`}
-        >
-          Начать
-          <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
-            {selectedCount}
-          </span>
-        </button>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e8ec] bg-white/96 px-2 py-2 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+        <div className="mx-auto flex max-w-4xl items-center gap-2 sm:justify-end">
+          <p className={`min-w-0 flex-1 truncate ${vk.mutedXs} sm:hidden`}>
+            {selectedCount > 0
+              ? `На тренировке: ${selectedCount}`
+              : 'Выберите хотя бы одного ученика'}
+          </p>
+          <button
+            type="button"
+            onClick={onStartTraining}
+            disabled={selectedCount === 0}
+            className={`shrink-0 sm:min-w-[9rem] ${vk.btnPrimary} w-full sm:w-auto`}
+          >
+            Начать
+            <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
+              {selectedCount}
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -520,12 +613,17 @@ export default function GroupTrainingPage({ coachId }) {
           loadLegacyTechnicalAtoms(),
         ])
         if (cancelled) return
-        const decorated = data.map((raw) => ({
-          ...raw,
-          displayName: displayNameFromStudent(raw),
-          nameSearch: normalizeSearchText(displayNameFromStudent(raw)),
-          technicalData: normalizeStudentTechnicalData(raw.technicalData),
-        }))
+        const decorated = data.map((raw) => {
+          const displayName = displayNameFromStudent(raw)
+          return {
+            ...raw,
+            displayName,
+            nameSearch: normalizeSearchText(displayName),
+            photoUrl: studentPhotoUrl(raw),
+            initials: studentInitials(raw),
+            technicalData: normalizeStudentTechnicalData(raw.technicalData),
+          }
+        })
         decorated.sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
         setStudents(decorated)
         setTechnicalAtoms(Array.isArray(atoms) ? atoms : [])
