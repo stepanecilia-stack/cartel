@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import PhysicalNormProgressSummary from './PhysicalNormProgressSummary.jsx'
 import StudentNormCard from './StudentNormCard.jsx'
 import {
   formatMinutesToMinuteSecond,
@@ -71,7 +72,12 @@ function StudentNormsSection({
   }
 
   return (
-    <ul className={vk.list}>
+    <div className="space-y-2">
+      {category === 'physical' ? (
+        <PhysicalNormProgressSummary norms={norms} values={values} />
+      ) : null}
+
+      <ul className={vk.list}>
       {rows.map(({ norm, row, displayVal, inputType, goalLabel, inputPlaceholder, normBusy }) => (
         <StudentNormCard
           key={norm.testId}
@@ -88,7 +94,8 @@ function StudentNormsSection({
           onSave={() => onSaveAcceptance(norm)}
         />
       ))}
-    </ul>
+      </ul>
+    </div>
   )
 }
 

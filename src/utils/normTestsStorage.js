@@ -166,3 +166,47 @@ export function applyNormRawInput(norm, rawValue) {
     date,
   }
 }
+
+/**
+ * Сводка по списку нормативов и сохранённым результатам (вкладка «Физика»).
+ * @param {object[]} norms
+ * @param {Record<string, unknown>} values
+ */
+export function summarizeNormsForValues(norms, values) {
+  const list = Array.isArray(norms) ? norms : []
+  let gold = 0
+  let silver = 0
+  let bronze = 0
+  let red = 0
+  let empty = 0
+
+  for (const norm of list) {
+    const row = getNormValueByTestId(values, norm.testId)
+    let status = row?.status
+    if ((!status || status === 'empty') && row?.result != null && Number.isFinite(Number(row.result))) {
+      status = evaluateLegacyTest(Number(row.result), norm).status
+    }
+    if (!status || status === 'empty') {
+      empty += 1
+      continue
+    }
+    if (status === 'gold') gold += 1
+    else if (status === 'silver') silver += 1
+    else if (status === 'bronze') bronze += 1
+    else if (status === 'red') red += 1
+  }
+
+  const passed = gold + silver + bronze
+  const filled = passed + red
+
+  return {
+    total: list.length,
+    gold,
+    silver,
+    bronze,
+    red,
+    empty,
+    passed,
+    filled,
+  }
+}

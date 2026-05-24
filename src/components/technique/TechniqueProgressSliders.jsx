@@ -5,13 +5,38 @@ import { vk } from '../../utils/vkUi.js'
 
 /** @typedef {{ l1: number, l2: number, l3: number }} TechniqueSliderTiers */
 
-export function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = 'primary' }) {
+export function TrainingRangeSlider({
+  min,
+  max,
+  value,
+  onChange,
+  ariaLabel,
+  variant = 'primary',
+  readOnly = false,
+}) {
   const fillPercent = max > 0 ? (value / max) * 100 : 0
   const fillClass = variant === 'accent' ? 'bg-[#6f3ff5]' : 'bg-[#2d81e0]'
   const thumbBorderClass =
     variant === 'accent'
       ? '[&::-moz-range-thumb]:border-[#6f3ff5] [&::-webkit-slider-thumb]:border-[#6f3ff5]'
       : '[&::-moz-range-thumb]:border-[#2d81e0] [&::-webkit-slider-thumb]:border-[#2d81e0]'
+
+  if (readOnly) {
+    return (
+      <div
+        className="relative flex h-9 items-center sm:h-8"
+        role="progressbar"
+        aria-valuenow={value}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-label={ariaLabel}
+      >
+        <div className="absolute inset-x-0 h-2 overflow-hidden rounded-full bg-[#e7e8ec]">
+          <div className={`h-full ${fillClass}`} style={{ width: `${fillPercent}%` }} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative flex h-9 items-center sm:h-8">
