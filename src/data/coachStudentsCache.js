@@ -1,7 +1,8 @@
-import { subscribeCoachStudents } from '../services/firebaseService.js'
+import { subscribeAllStudents, subscribeCoachStudents } from '../services/firebaseService.js'
 
 /** @type {string | null} */
 let activeCoachId = null
+let viewAllStudentsMode = false
 /** @type {Array<Record<string, unknown>>} */
 let students = []
 let ready = false
@@ -36,6 +37,10 @@ export function getCoachStudentsCacheError() {
   return loadError
 }
 
+export function isCoachStudentsViewAllMode() {
+  return viewAllStudentsMode
+}
+
 /** @param {() => void} listener */
 export function subscribeCoachStudentsCache(listener) {
   listeners.add(listener)
@@ -48,6 +53,7 @@ export function stopCoachStudentsSync() {
     unsubFirestore = null
   }
   activeCoachId = null
+  viewAllStudentsMode = false
   students = []
   ready = false
   loadError = ''
@@ -55,37 +61,43 @@ export function stopCoachStudentsSync() {
 }
 
 /**
- * Одна realtime-подписка на учеников тренера за сессию.
+ * Одна realtime-подписка на учеников за сессию (свои или вся база для админа).
  * @param {string | undefined | null} coachId
+ * @param {{ viewAllStudents?: boolean }} [options]
  */
-export function startCoachStudentsSync(coachId) {
+export function startCoachStudentsSync(coachId, options = {}) {
   if (!coachId) {
     stopCoachStudentsSync()
     return
   }
-  if (activeCoachId === coachId && unsubFirestore) return
+  const viewAll = Boolean(options.viewAllStudents)
+  if (activeCoachId === coachId && unsubFirestore && viewAllStudentsMode === viewAll) return
 
   stopCoachStudentsSync()
   activeCoachId = coachId
+  viewAllStudentsMode = viewAll
   ready = false
   loadError = ''
 
-  unsubFirestore = subscribeCoachStudents(
-    coachId,
-    (list) => {
-      students = list
-      ready = true
-      loadError = ''
-      notify()
-    },
-    (err) => {
-      console.error('[coachStudentsCache]', err)
-      students = []
-      ready = true
-      loadError = 'Не удалось подписаться на список учеников.'
-      notify()
-    },
-  )
+  const onList = (list) => {
+    students = list
+    ready = true
+    loadError = ''
+    notify()
+  }
+  const onErr = (err) => {
+    console.error('[coachStudentsCache]', err)
+    students = []
+    ready = true
+    loadError = viewAll
+      ? 'Не удалось загрузить всех учеников базы.'
+      : 'Не удалось подписаться на список учеников.'
+    notify()
+  }
+
+  unsubFirestore = viewAll
+    ? subscribeAllStudents(onList, onErr)
+    : subscribeCoachStudents(coachId, onList, onErr)
 }
 
 /**

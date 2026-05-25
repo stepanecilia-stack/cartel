@@ -176,7 +176,15 @@ function JoinByCodePanel({ coachId, knownStudentIds, onAttached, onCancel }) {
   )
 }
 
-function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) {
+function AddStudentModal({
+  open,
+  onClose,
+  coachId,
+  studentIds,
+  existingStudents = [],
+  onOpenExisting,
+  onListChanged,
+}) {
   const [mode, setMode] = useState('create')
 
   useEffect(() => {
@@ -222,11 +230,17 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
         {mode === 'create' ? (
           <>
             <p className={`mt-2.5 ${vk.muted}`}>
-              Заполните анкету — появится карточка ученика и <strong className="font-medium text-[#2c2d2e]">личный шестизначный код</strong>.
-              Его можно дать другому тренеру, чтобы добавить того же человека к себе.
+              Одна карточка на человека — даже если тренировки в разное время. После сохранения появится{' '}
+              <strong className="font-medium text-[#2c2d2e]">шестизначный код</strong>: передайте его коллеге, чтобы он
+              добавил того же ученика через вкладку «Присоединить», а не создавал дубликат.
             </p>
             <NewStudentForm
               compact
+              existingStudents={existingStudents}
+              onOpenExisting={(student) => {
+                onOpenExisting?.(student)
+                onClose()
+              }}
               onCancel={onClose}
               onSuccess={() => {
                 onListChanged?.()
@@ -237,8 +251,8 @@ function AddStudentModal({ open, onClose, coachId, studentIds, onListChanged }) 
         ) : (
           <>
             <p className={`mt-2.5 ${vk.muted}`}>
-              Введите шесть цифр подряд — такой код показан в карточке ученика у другого тренера. Только цифры, без
-              пробелов.
+              Если ученик уже заведён в школе (другим тренером или в другое время) — введите его код из карточки, не
+              создавайте новую анкету. Шесть цифр подряд, без пробелов.
             </p>
             <JoinByCodePanel
               coachId={coachId}

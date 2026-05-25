@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { addStudent } from '../services/firebaseService'
 import { calculateEffectiveKSR, calculateKsrAndKsp, getWeights } from '../utils/ksrUtils'
+import {
+  duplicateStudentSummary,
+  findLikelyDuplicateStudents,
+} from '../utils/studentDuplicateMatch.js'
 import { formatBirthYearRu, normalizeBirthYearNumber } from '../utils/studentModel'
 import { vk } from '../utils/vkUi.js'
 
@@ -13,14 +17,33 @@ const initialForm = {
   weight: '',
 }
 
-function NewStudentForm({ onSuccess, onCancel, compact = false }) {
+function NewStudentForm({
+  onSuccess,
+  onCancel,
+  compact = false,
+  existingStudents = [],
+  onOpenExisting,
+}) {
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState(initialForm)
+  const [forceCreateDespiteDuplicates, setForceCreateDespiteDuplicates] = useState(false)
+
+  const likelyDuplicates = useMemo(
+    () =>
+      findLikelyDuplicateStudents(existingStudents, {
+        fullName: formData.fullName,
+        birthYear: formData.birthYear,
+      }),
+    [existingStudents, formData.fullName, formData.birthYear],
+  )
+
+  const showDuplicateWarning = likelyDuplicates.length > 0 && !forceCreateDespiteDuplicates
 
   const onChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+    setForceCreateDespiteDuplicates(false)
   }
 
   const validate = () => {
@@ -40,6 +63,15 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
     const validationError = validate()
     if (validationError) {
       setError(validationError)
+      return
+    }
+
+    const duplicates = findLikelyDuplicateStudents(existingStudents, {
+      fullName: formData.fullName,
+      birthYear: formData.birthYear,
+    })
+    if (duplicates.length > 0 && !forceCreateDespiteDuplicates) {
+      setError('')
       return
     }
 
@@ -91,6 +123,7 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
         scores: { техника: 0, физика: 0, функционал: 0 },
       })
       setFormData(initialForm)
+      setForceCreateDespiteDuplicates(false)
       onSuccess?.()
     } catch (submitError) {
       console.error(submitError)
@@ -152,6 +185,54 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
         <input name="weight" type="number" value={formData.weight} onChange={onChange} className={vk.input} />
       </label>
 
+      {showDuplicateWarning ? (
+        <div
+          className={`rounded-[10px] border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950 ${span2}`}
+          role="status"
+        >
+          <p className="font-semibold">Похоже, этот ученик уже есть в вашем списке</p>
+          <p className="mt-1 text-amber-900/90">
+            Одна школа и разное время тренировок — не повод заводить вторую карточку: вся история КСР, тестов и сезона
+            хранится в одной записи.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {likelyDuplicates.map((student) => {
+              const { name, birth, code } = duplicateStudentSummary(student)
+              return (
+                <li
+                  key={student.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-[8px] bg-white/80 px-2 py-1.5"
+                >
+                  <span>
+                    {name}
+                    {birth ? ` · ${birth}` : ''}
+                    {code ? ` · код ${code}` : ''}
+                  </span>
+                  {typeof onOpenExisting === 'function' ? (
+                    <button
+                      type="button"
+                      className={vk.btnSecondary}
+                      onClick={() => onOpenExisting(student)}
+                    >
+                      Открыть
+                    </button>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={vk.btnSecondary}
+              onClick={() => setForceCreateDespiteDuplicates(true)}
+            >
+              Всё равно создать нового
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {error ? (
         <div className={`${vk.error} ${span2}`} role="alert">
           {error}
@@ -162,7 +243,7 @@ function NewStudentForm({ onSuccess, onCancel, compact = false }) {
         <button type="button" onClick={() => onCancel?.()} className={vk.btnSecondary}>
           Отмена
         </button>
-        <button type="submit" disabled={isSaving} className={vk.btnPrimary}>
+        <button type="submit" disabled={isSaving || showDuplicateWarning} className={vk.btnPrimary}>
           {isSaving ? 'Сохранение...' : 'Сохранить'}
         </button>
       </div>

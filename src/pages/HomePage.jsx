@@ -7,7 +7,12 @@ import {
   formatAthleteWeightCategory,
   formatAthleteWeightCategoryShort,
 } from '../utils/athleteWeightCategory.js'
-import { displayNameFromStudent, formatBirthYearRu, studentAthleteShape } from '../utils/studentModel'
+import {
+  displayNameFromStudent,
+  formatBirthYearRu,
+  isStudentAttachedToCoach,
+  studentAthleteShape,
+} from '../utils/studentModel'
 
 function normalizeSearchText(value) {
   return String(value ?? '')
@@ -16,7 +21,9 @@ function normalizeSearchText(value) {
 }
 
 function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
-  const { students, isLoading, loadError } = useCoachStudents(coachId)
+  const { students, isLoading, loadError } = useCoachStudents(coachId, {
+    viewAllStudents: isProgramAdmin,
+  })
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [genderFilter, setGenderFilter] = useState('all')
@@ -44,9 +51,15 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
           weightCategoryLine,
           weightCategoryShort,
           lastChange: resolveStudentLastChange(raw),
+          isMine: isStudentAttachedToCoach(raw, coachId),
         }
       }),
-    [students],
+    [students, coachId],
+  )
+
+  const myStudentsCount = useMemo(
+    () => (isProgramAdmin ? studentsWithKsr.filter((s) => s.isMine).length : studentsWithKsr.length),
+    [isProgramAdmin, studentsWithKsr],
   )
 
   const filteredStudents = useMemo(() => {
@@ -139,6 +152,13 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
     ]
     if (isProgramAdmin) {
       actions.push({
+        key: 'admin',
+        label: 'Админ',
+        icon: '⚙',
+        iconClass: 'bg-[#fff0f0] text-[#e64646] text-base',
+        to: '/admin',
+      })
+      actions.push({
         key: 'elements',
         label: 'Элементы техники',
         icon: '▣',
@@ -187,12 +207,23 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
         onClose={() => setAddModalOpen(false)}
         coachId={coachId}
         studentIds={studentIds}
+        existingStudents={students}
+        onOpenExisting={onSelectStudent}
       />
       <div className="mx-auto max-w-6xl space-y-2">
         <header className="space-y-2">
           <h1 className="px-0.5 text-[17px] font-semibold leading-5 text-[#2c2d2e] dark:text-[#e1e3e6] sm:text-xl">
             Дашборд учеников
           </h1>
+          {isProgramAdmin && !isLoading && !loadError ? (
+            <p className="rounded-[10px] bg-[#fff8e6] px-3 py-2 text-[13px] leading-snug text-[#6b4e0a] dark:bg-[#2c2a1a] dark:text-[#e6c86a]">
+              Режим администратора: показаны все ученики в базе ({studentsWithKsr.length}
+              {myStudentsCount !== studentsWithKsr.length
+                ? `, из них ваших — ${myStudentsCount}`
+                : ''}
+              ).
+            </p>
+          ) : null}
           <nav
             className="grid grid-cols-4 gap-0 rounded-[10px] bg-white px-0.5 py-1 dark:bg-[#232324]"
             aria-label="Быстрые действия"
@@ -333,6 +364,11 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
                   <div className="min-w-0 flex-1">
                     <h2 className="text-[15px] font-medium leading-5 text-[#2c2d2e] dark:text-[#e1e3e6]">
                       {student.name}
+                      {isProgramAdmin && !student.isMine ? (
+                        <span className="ml-1.5 inline-flex rounded bg-[#f0f2f5] px-1.5 py-0.5 text-[10px] font-medium text-[#818c99] dark:bg-[#2c2d2e] dark:text-[#939393]">
+                          другой тренер
+                        </span>
+                      ) : null}
                     </h2>
                     {student.lastChange ? (
                       <p

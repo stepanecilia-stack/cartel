@@ -17,6 +17,7 @@ const MotorQualitiesIndexPage = lazy(() => import('./pages/MotorQualitiesIndexPa
 const MotorQualityDetailPage = lazy(() => import('./pages/MotorQualityDetailPage'))
 const TechnicalElementsPage = lazy(() => import('./pages/TechnicalElementsPage'))
 const CoachCalendarPage = lazy(() => import('./pages/CoachCalendarPage.jsx'))
+import AdminToolsPage from './pages/AdminToolsPage.jsx'
 import {
   clearCoachProfileCache,
   setCoachProfileCache,
@@ -129,9 +130,14 @@ function Navbar({ user, coachProfile, programAdmin }) {
                 Качества
               </Link>
               {programAdmin ? (
-                <Link to="/technical-elements" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
-                  Элементы
-                </Link>
+                <>
+                  <Link to="/admin" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
+                    Админ
+                  </Link>
+                  <Link to="/technical-elements" className={`hidden shrink-0 lg:inline ${vk.linkNav}`}>
+                    Элементы
+                  </Link>
+                </>
               ) : null}
               <Link to="/bulk-norms" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Норматив
@@ -217,6 +223,11 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
   const openStudentFromQualityPage = (student) => {
     if (!student) return
     setSelectedStudent(student)
+    navigate('/')
+  }
+
+  const openStudentFromAdmin = (student) => {
+    if (student) setSelectedStudent(student)
     navigate('/')
   }
 
@@ -314,6 +325,18 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
                 <LazyRoute label="Качества…">
                   <MotorQualitiesIndexPage />
                 </LazyRoute>
+              }
+            />
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute
+              user={authUser}
+              coachProfile={coachProfile}
+              element={
+                <AdminToolsPage coachId={authUser?.uid} onOpenStudent={openStudentFromAdmin} />
               }
             />
           }
@@ -432,9 +455,11 @@ function App() {
 
   useEffect(() => {
     if (!authUser?.uid) return undefined
-    startCoachStudentsSync(authUser.uid)
+    startCoachStudentsSync(authUser.uid, {
+      viewAllStudents: isProgramAdmin(coachProfile),
+    })
     return () => stopCoachStudentsSync()
-  }, [authUser?.uid])
+  }, [authUser?.uid, coachProfile])
 
   useEffect(() => {
     if (!authUser) return undefined

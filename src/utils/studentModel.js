@@ -1,3 +1,12 @@
+/** Ученик привязан к тренеру (coach_ids или legacy coachId). */
+export function isStudentAttachedToCoach(student, coachId) {
+  if (!student || !coachId) return false
+  const ids = new Set(
+    [...(Array.isArray(student.coach_ids) ? student.coach_ids : []), student.coachId].filter(Boolean),
+  )
+  return ids.has(coachId)
+}
+
 /** Единое отображение имени: новый формат (name) и legacy (firstName + lastName). */
 export function displayNameFromStudent(s) {
   if (!s || typeof s !== 'object') return 'Без имени'

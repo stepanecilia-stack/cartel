@@ -9,10 +9,12 @@ import {
 } from '../data/coachStudentsCache.js'
 
 /**
- * Список учеников тренера из общего кэша (одна подписка Firestore на сессию).
+ * Список учеников из общего кэша (одна подписка Firestore на сессию).
  * @param {string | undefined | null} coachId
+ * @param {{ viewAllStudents?: boolean }} [options] — для админа: вся коллекция students
  */
-export function useCoachStudents(coachId) {
+export function useCoachStudents(coachId, options = {}) {
+  const viewAllStudents = Boolean(options.viewAllStudents)
   const [students, setStudents] = useState(() =>
     coachId && coachId === getActiveCoachStudentsCoachId() ? getCoachStudentsCache() : [],
   )
@@ -35,7 +37,7 @@ export function useCoachStudents(coachId) {
       return undefined
     }
 
-    startCoachStudentsSync(coachId)
+    startCoachStudentsSync(coachId, { viewAllStudents: viewAllStudents })
 
     const sync = () => {
       if (getActiveCoachStudentsCoachId() !== coachId) return
@@ -47,7 +49,7 @@ export function useCoachStudents(coachId) {
 
     sync()
     return subscribeCoachStudentsCache(sync)
-  }, [coachId])
+  }, [coachId, viewAllStudents])
 
-  return { students, isLoading, loadError, isLive }
+  return { students, isLoading, loadError, isLive, viewAllStudents }
 }

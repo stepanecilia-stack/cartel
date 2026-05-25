@@ -9,6 +9,8 @@ import {
 import {
   addDoc,
   collection,
+  deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -246,6 +248,27 @@ export const subscribeCoachStudents = (coachId, onData, onError) => {
   }
 }
 
+/**
+ * Подписка на всех учеников коллекции (режим администратора).
+ * @returns {() => void}
+ */
+export const subscribeAllStudents = (onData, onError) => {
+  if (!studentsCollection) {
+    onData?.([])
+    return () => {}
+  }
+  return onSnapshot(
+    studentsCollection,
+    (snap) => {
+      onData?.(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    },
+    (err) => {
+      console.error('subscribeAllStudents', err)
+      onError?.(err)
+    },
+  )
+}
+
 export const getStudents = async () => {
   if (!studentsCollection) return []
   const snapshot = await getDocs(studentsCollection)
@@ -391,6 +414,53 @@ export const getCoachProfile = async (coachId) => {
   const snapshot = await getDoc(doc(ensureDb(), 'coaches', coachId))
   if (!snapshot.exists()) return null
   return { id: snapshot.id, ...snapshot.data() }
+}
+
+/** Все тренеры (для админки доступа). */
+export const getAllCoaches = async () => {
+  const snap = await getDocs(collection(ensureDb(), 'coaches'))
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const na = [a.firstName, a.lastName].filter(Boolean).join(' ')
+      const nb = [b.firstName, b.lastName].filter(Boolean).join(' ')
+      return na.localeCompare(nb, 'ru')
+    })
+}
+
+export const deleteStudentDoc = async (studentId) => {
+  if (!studentId) return
+  await deleteDoc(doc(ensureDb(), 'students', studentId))
+}
+
+/**
+ * Убирает тренера из coach_ids / legacy coachId.
+ * @returns {Promise<{ status: 'detached' | 'unchanged' | 'no_coaches_left' }>}
+ */
+export const detachCoachFromStudent = async (studentId, coachId) => {
+  const ref = doc(ensureDb(), 'students', studentId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Ученик не найден')
+  const data = snap.data()
+  const set = new Set(Array.isArray(data.coach_ids) ? data.coach_ids : [])
+  if (data.coachId) set.add(data.coachId)
+  if (!set.has(coachId)) return { status: 'unchanged' }
+  set.delete(coachId)
+  const remaining = [...set]
+  const patch = {
+    coach_ids: remaining,
+    updatedAt: serverTimestamp(),
+  }
+  if (data.coachId === coachId) {
+    if (remaining.length > 0) {
+      patch.coachId = remaining[0]
+    } else {
+      patch.coachId = deleteField()
+    }
+  }
+  await updateDoc(ref, patch)
+  if (remaining.length === 0) return { status: 'no_coaches_left' }
+  return { status: 'detached' }
 }
 
 /** Валидный публичный код ученика для шеринга (6 цифр). */
