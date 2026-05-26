@@ -50,21 +50,46 @@ function trimOrNull(value) {
   return s.length ? s : null
 }
 
-function mergeAtom(defaultAtom, override) {
-  if (!override) return { ...defaultAtom, media: { gifSrc: null, webmSrc: null } }
+/** Поле из Firestore: если ключ задан (в т.ч. null) — не подставляем дефолт программы. */
+function pickOverrideField(override, key, defaultVal) {
+  if (!override || typeof override !== 'object') return defaultVal ?? null
+  if (Object.prototype.hasOwnProperty.call(override, key)) {
+    return trimOrNull(override[key])
+  }
+  return defaultVal ?? null
+}
+
+function pickOverrideMedia(override, key, defaultVal) {
+  if (!override || typeof override !== 'object') return defaultVal ?? null
   const m = override.media && typeof override.media === 'object' ? override.media : {}
+  if (Object.prototype.hasOwnProperty.call(m, key)) {
+    return trimOrNull(m[key])
+  }
+  return defaultVal ?? null
+}
+
+function mergeAtom(defaultAtom, override) {
+  if (!override) {
+    return {
+      ...defaultAtom,
+      media: {
+        gifSrc: defaultAtom.media?.gifSrc ?? null,
+        webmSrc: defaultAtom.media?.webmSrc ?? null,
+      },
+    }
+  }
   return {
     ...defaultAtom,
-    name: trimOrNull(override.name) ?? defaultAtom.name,
-    howTo: trimOrNull(override.howTo) ?? defaultAtom.howTo,
-    whyHowTo: trimOrNull(override.whyHowTo) ?? defaultAtom.whyHowTo,
-    mistakes: trimOrNull(override.mistakes) ?? defaultAtom.mistakes,
-    whyMistakes: trimOrNull(override.whyMistakes) ?? defaultAtom.whyMistakes,
-    videoLink: trimOrNull(override.videoLink) ?? defaultAtom.videoLink,
-    embedUrl: trimOrNull(override.embedUrl) ?? defaultAtom.embedUrl,
+    name: pickOverrideField(override, 'name', defaultAtom.name),
+    howTo: pickOverrideField(override, 'howTo', defaultAtom.howTo),
+    whyHowTo: pickOverrideField(override, 'whyHowTo', defaultAtom.whyHowTo),
+    mistakes: pickOverrideField(override, 'mistakes', defaultAtom.mistakes),
+    whyMistakes: pickOverrideField(override, 'whyMistakes', defaultAtom.whyMistakes),
+    videoLink: pickOverrideField(override, 'videoLink', defaultAtom.videoLink),
+    embedUrl: pickOverrideField(override, 'embedUrl', defaultAtom.embedUrl),
     media: {
-      gifSrc: trimOrNull(m.gifSrc),
-      webmSrc: trimOrNull(m.webmSrc),
+      gifSrc: pickOverrideMedia(override, 'gifSrc', defaultAtom.media?.gifSrc),
+      webmSrc: pickOverrideMedia(override, 'webmSrc', defaultAtom.media?.webmSrc),
     },
   }
 }
@@ -199,8 +224,9 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
     whyHowTo: trimOrNull(payload?.whyHowTo) ?? base.whyHowTo,
     mistakes: trimOrNull(payload?.mistakes) ?? base.mistakes,
     whyMistakes: trimOrNull(payload?.whyMistakes) ?? base.whyMistakes,
-    videoLink: trimOrNull(payload?.videoLink) ?? base.videoLink,
-    embedUrl: trimOrNull(payload?.embedUrl) ?? base.embedUrl,
+    // Пустая строка в форме = явное удаление ссылки (не подставляем дефолт из программы).
+    videoLink: trimOrNull(payload?.videoLink),
+    embedUrl: trimOrNull(payload?.embedUrl),
     media: {
       gifSrc: trimOrNull(payload?.gifSrc),
       webmSrc: trimOrNull(payload?.webmSrc),
@@ -208,6 +234,6 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
     updatedAt: serverTimestamp(),
   }
 
-  await setDoc(doc(ensureDb(), COLLECTION_ID, atomId), record, { merge: true })
+  await setDoc(doc(ensureDb(), COLLECTION_ID, atomId), record)
   return atomId
 }
