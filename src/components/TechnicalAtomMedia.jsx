@@ -57,6 +57,7 @@ export default function TechnicalAtomMedia({ atom, className = '', previewable =
       <video
         src={media.src}
         className="h-full w-full object-cover bg-[#0f0f0f]"
+        autoPlay
         muted
         playsInline
         loop
