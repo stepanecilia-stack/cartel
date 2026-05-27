@@ -1,6 +1,11 @@
 import { memo } from 'react'
 import { TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils'
 import { vk } from '../utils/vkUi.js'
+import {
+  isAtomReinforceableInIsolation,
+  NON_ISOLATED_REINFORCEMENT_SYMBOL,
+  NON_ISOLATED_REINFORCEMENT_TITLE,
+} from '../utils/atomReinforcementEligibility.js'
 import TechnicalAtomMedia from './TechnicalAtomMedia.jsx'
 
 /**
@@ -15,7 +20,10 @@ function TechnicalAtomRow({
   onLevelChange,
   onSave,
   showMethodDetails = false,
+  reinforcementTotal = 0,
 }) {
+  const reinforceable = isAtomReinforceableInIsolation(atom)
+
   return (
     <li
       id={`technical-atom-${atom.id}`}
@@ -32,6 +40,21 @@ function TechnicalAtomRow({
             {locked ? (
               <span className="shrink-0 text-[13px]" title="Закрыто до «Умение» на предыдущем" aria-label="Закрыто">
                 🔒
+              </span>
+            ) : null}
+            {!reinforceable ? (
+              <span
+                className="shrink-0 rounded bg-[#e7e8ec] px-1.5 py-0.5 text-[11px] font-semibold text-[#818c99]"
+                title={NON_ISOLATED_REINFORCEMENT_TITLE}
+              >
+                {NON_ISOLATED_REINFORCEMENT_SYMBOL}
+              </span>
+            ) : reinforcementTotal > 0 ? (
+              <span
+                className="shrink-0 rounded bg-[#f0f2f5] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#818c99]"
+                title="Сколько раз отрабатывали на групповой тренировке"
+              >
+                ×{reinforcementTotal}
               </span>
             ) : null}
           </div>

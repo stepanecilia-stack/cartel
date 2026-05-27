@@ -3,6 +3,8 @@
  * Звёзды на карточке считаются автоматически от total.
  */
 
+import { isAtomReinforceableInIsolation } from './atomReinforcementEligibility.js'
+
 /** Пороги total → число заполненных звёзд (0–5). */
 export const REINFORCEMENT_STAR_THRESHOLDS = [1, 3, 8, 15, 25]
 
@@ -32,6 +34,22 @@ export function normalizeAtomReinforcement(raw) {
 export function getAtomReinforcementTotal(map, atomId) {
   if (!map || !atomId) return 0
   return Math.max(0, Math.floor(Number(map[atomId]?.total) || 0))
+}
+
+/**
+ * Сумма отработок по атомам программы, которые можно отмечать отдельно (для рейтинга).
+ * @param {unknown} atomReinforcementRaw
+ * @param {Array<{ id?: string, number?: string | number, kind?: string }>} programAtoms
+ */
+export function sumReinforceableProgramPractices(atomReinforcementRaw, programAtoms) {
+  const map = normalizeAtomReinforcement(atomReinforcementRaw)
+  if (!Array.isArray(programAtoms)) return 0
+  let total = 0
+  for (const atom of programAtoms) {
+    if (!atom?.id || !isAtomReinforceableInIsolation(atom)) continue
+    total += getAtomReinforcementTotal(map, atom.id)
+  }
+  return total
 }
 
 /**

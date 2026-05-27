@@ -82,6 +82,7 @@ import {
 } from '../utils/plannedCompetitions.js'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
 import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
+import { normalizeAtomReinforcement } from '../utils/atomReinforcement.js'
 import { daysUntilCompetition } from '../utils/competitionDate.js'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
@@ -1367,6 +1368,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [orderedTechnicalAtoms, technicalData],
   )
 
+  const atomReinforcement = useMemo(
+    () => normalizeAtomReinforcement(student?.atomReinforcement),
+    [student?.atomReinforcement],
+  )
+
   const commitTechniqueProgressSlider = useCallback(
     async (tiers) => {
       if (!student?.id) return
@@ -1723,6 +1729,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 sliderSaveStatus={techniqueSliderSaveStatus}
                 onProgressSliderChange={handleTechniqueProgressSlider}
                 combosProps={technicalCombosSectionProps}
+                atomReinforcement={atomReinforcement}
               />
             )}
           </div>

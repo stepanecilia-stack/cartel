@@ -22,6 +22,11 @@ import {
   normalizeAtomReinforcement,
 } from '../utils/atomReinforcement.js'
 import {
+  buildProgramAtomById,
+  filterReinforceableAtomIds,
+  isAtomReinforceableInIsolation,
+} from '../utils/atomReinforcementEligibility.js'
+import {
   endGroupTrainingSession,
   getGroupTrainingSession,
   startGroupTrainingSession,
@@ -29,6 +34,7 @@ import {
   updateGroupTrainingSessionSliders,
 } from '../utils/groupTrainingSession.js'
 import TechniqueTierStepper from '../components/training/TechniqueTierStepper.jsx'
+import TrainingPracticeTierTabs from '../components/training/TrainingPracticeTierTabs.jsx'
 import { StudentPickTile } from '../components/student/StudentPickTile.jsx'
 import {
   displayNameFromStudent,
@@ -65,13 +71,15 @@ function StudentProgressRow({
   savingStatus,
   sessionTiers,
   practicedAtomIds,
-  onTogglePracticed,
+  onMarkPracticed,
+  atomReinforcement,
 }) {
   const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
   const orderedL3 = useMemo(() => {
     const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
     return combos.map((c, index) => ({
       ...c,
+      kind: 'combo',
       number: index + 1,
       name: c.name ?? `Комбо ${index + 1}`,
     }))
@@ -184,11 +192,106 @@ function StudentProgressRow({
     total3,
   ])
 
-  const activeTierPassedCount = useMemo(() => {
-    if (activeTier === 3) return Math.max(slider3, baseline3)
-    if (activeTier === 2) return Math.max(slider2, baseline2)
-    return Math.max(slider1, baseline1)
-  }, [activeTier, slider1, slider2, slider3, baseline1, baseline2, baseline3])
+  const passed1 = Math.max(slider1, baseline1)
+  const passed2 = Math.max(slider2, baseline2)
+  const passed3 = Math.max(slider3, baseline3)
+
+  const [practiceViewTier, setPracticeViewTier] = useState(activeTier)
+
+  useEffect(() => {
+    setPracticeViewTier(activeTier)
+  }, [student.id, activeTier])
+
+  const practiceTierTabs = useMemo(() => {
+    /** @type {{ id: number, label: string, count: number, total: number, isProgressTier?: boolean }[]} */
+    const tabs = []
+    if (passed1 > 0) {
+      tabs.push({
+        id: 1,
+        label: 'Программа',
+        count: passed1,
+        total: total1,
+        isProgressTier: activeTier === 1,
+      })
+    }
+    if (passed2 > 0) {
+      tabs.push({
+        id: 2,
+        label: 'Ур. 2',
+        count: passed2,
+        total: total2,
+        isProgressTier: activeTier === 2,
+      })
+    }
+    if (passed3 > 0) {
+      tabs.push({
+        id: 3,
+        label: 'Комбо',
+        count: passed3,
+        total: total3,
+        isProgressTier: activeTier === 3,
+      })
+    }
+    return tabs
+  }, [passed1, passed2, passed3, total1, total2, total3, activeTier])
+
+  useEffect(() => {
+    if (!practiceTierTabs.some((t) => t.id === practiceViewTier)) {
+      const fallback = practiceTierTabs[0]?.id ?? activeTier
+      setPracticeViewTier(fallback)
+    }
+  }, [practiceTierTabs, practiceViewTier, activeTier])
+
+  const viewTierMeta = useMemo(() => {
+    if (practiceViewTier === 3) {
+      return {
+        tierLabel: 'Комбо',
+        atoms: orderedL3,
+        value: slider3,
+        passed: passed3,
+        accent: true,
+      }
+    }
+    if (practiceViewTier === 2) {
+      return {
+        tierLabel: 'Ур. 2',
+        atoms: orderedL2,
+        value: slider2,
+        passed: passed2,
+        accent: false,
+      }
+    }
+    return {
+      tierLabel: 'Программа',
+      atoms: orderedL1,
+      value: slider1,
+      passed: passed1,
+      accent: false,
+    }
+  }, [
+    practiceViewTier,
+    orderedL1,
+    orderedL2,
+    orderedL3,
+    slider1,
+    slider2,
+    slider3,
+    passed1,
+    passed2,
+    passed3,
+  ])
+
+  const progressLocked = practiceViewTier !== activeTier
+  const stepperValue = progressLocked ? viewTierMeta.passed : viewTierMeta.value
+
+  const programAtomById = useMemo(
+    () => buildProgramAtomById(orderedL1, orderedL2, orderedL3),
+    [orderedL1, orderedL2, orderedL3],
+  )
+  const practicedTodayCount = useMemo(
+    () => filterReinforceableAtomIds(practicedAtomIds, programAtomById).length,
+    [practicedAtomIds, programAtomById],
+  )
 
   return (
     <li className={vk.cardPadded}>
@@ -217,15 +320,28 @@ function StudentProgressRow({
         <p className={`mt-1 ${vk.mutedXs}`}>{activeTierMeta.doneHint}</p>
       ) : null}
 
+      {practicedTodayCount > 0 ? (
+        <p className={`mt-1 ${vk.mutedXs}`}>
+          Сегодня отмечено: {practicedTodayCount} — запишется в базу по «Готово» вверху
+        </p>
+      ) : null}
+
       <div className="mt-2">
+        <TrainingPracticeTierTabs
+          tabs={practiceTierTabs}
+          viewTier={practiceViewTier}
+          onViewTierChange={setPracticeViewTier}
+        />
         <TechniqueTierStepper
-          atoms={activeTierMeta.atoms}
-          value={activeTierMeta.value}
-          passedCount={activeTierPassedCount}
-          tierLabel={activeTierMeta.tierLabel}
-          accent={activeTierMeta.accent}
+          atoms={viewTierMeta.atoms}
+          value={stepperValue}
+          passedCount={viewTierMeta.passed}
+          tierLabel={viewTierMeta.tierLabel}
+          accent={viewTierMeta.accent}
+          progressLocked={progressLocked}
           practicedAtomIds={practicedAtomIds}
-          onTogglePracticed={onTogglePracticed}
+          onMarkPracticed={onMarkPracticed}
+          reinforcementMap={atomReinforcement}
           onChange={(next) => {
             if (activeTier === 1) {
               setSlider1(next)
@@ -395,6 +511,7 @@ function ProgressPhase({
   const [practicedByStudentId, setPracticedByStudentId] = useState(
     () => initialPracticedByStudentId ?? {},
   )
+  const [reinforcementNotice, setReinforcementNotice] = useState('')
   const localDataRef = useRef(new Map())
   const debounceRef = useRef(new Map())
 
@@ -466,26 +583,31 @@ function ProgressPhase({
 
   useEffect(() => {
     const onHide = () => {
-      if (document.visibilityState === 'hidden') flushPendingSaves()
+      if (document.visibilityState === 'hidden') {
+        flushPendingSaves()
+        void flushReinforcementRef.current()
+      }
     }
-    window.addEventListener('pagehide', flushPendingSaves)
+    const onPageHide = () => {
+      flushPendingSaves()
+      void flushReinforcementRef.current()
+    }
+    window.addEventListener('pagehide', onPageHide)
     document.addEventListener('visibilitychange', onHide)
     return () => {
-      window.removeEventListener('pagehide', flushPendingSaves)
+      window.removeEventListener('pagehide', onPageHide)
       document.removeEventListener('visibilitychange', onHide)
     }
   }, [flushPendingSaves])
 
-  const handleTogglePracticed = useCallback(
-    (studentId, atomId) => {
+  const handleMarkPracticed = useCallback(
+    (studentId, atomId, atom) => {
+      if (atom && !isAtomReinforceableInIsolation(atom)) return
       setPracticedByStudentId((prev) => {
-        const set = new Set(prev[studentId] ?? [])
-        if (set.has(atomId)) set.delete(atomId)
-        else set.add(atomId)
-        const ids = [...set]
-        const next = { ...prev }
-        if (ids.length) next[studentId] = ids
-        else delete next[studentId]
+        const list = prev[studentId] ?? []
+        if (list.includes(atomId)) return prev
+        const ids = [...list, atomId]
+        const next = { ...prev, [studentId]: ids }
         if (coachId) updateGroupTrainingSessionPracticed(coachId, studentId, ids)
         return next
       })
@@ -494,13 +616,24 @@ function ProgressPhase({
   )
 
   const commitReinforcement = useCallback(async () => {
+    let savedMarks = 0
+    let savedStudents = 0
     for (const student of studentsForSession) {
       const atomIds = practicedByStudentId[student.id]
       if (!Array.isArray(atomIds) || atomIds.length === 0) continue
+      const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations).map((c, index) => ({
+        id: c.id,
+        kind: 'combo',
+        number: index + 1,
+        name: c.name,
+      }))
+      const atomById = buildProgramAtomById(orderedL1, orderedL2, combos)
+      const reinforceableIds = filterReinforceableAtomIds(atomIds, atomById)
+      if (reinforceableIds.length === 0) continue
       const slot = localDataRef.current.get(student.id)
       const existing =
         slot?.atomReinforcement ?? normalizeAtomReinforcement(student.atomReinforcement)
-      const next = applyPracticedAtomsToReinforcement(existing, atomIds)
+      const next = applyPracticedAtomsToReinforcement(existing, reinforceableIds)
       await updateStudentData(student.id, { atomReinforcement: next }, {
         section: STUDENT_UPDATE_SECTION.groupTraining,
       })
@@ -508,8 +641,14 @@ function ProgressPhase({
         slot.atomReinforcement = next
         slot.base = { ...slot.base, atomReinforcement: next }
       }
+      savedMarks += reinforceableIds.length
+      savedStudents += 1
     }
-  }, [studentsForSession, practicedByStudentId])
+    return { savedMarks, savedStudents }
+  }, [studentsForSession, practicedByStudentId, orderedL1, orderedL2])
+
+  const flushReinforcementRef = useRef(commitReinforcement)
+  flushReinforcementRef.current = commitReinforcement
 
   const handleSliderChange = useCallback(
     (studentId, tiers) => {
@@ -531,12 +670,28 @@ function ProgressPhase({
   const handleComplete = useCallback(async () => {
     flushPendingSaves()
     try {
-      await commitReinforcement()
+      const { savedMarks, savedStudents } = await commitReinforcement()
+      if (savedMarks > 0) {
+        setReinforcementNotice(
+          `Отработка сохранена: ${savedMarks} отметок у ${savedStudents} ученик(ов). Счётчик ×N — в карточке, вкладка «Техника».`,
+        )
+      } else {
+        setReinforcementNotice('')
+      }
     } catch (error) {
       console.error('Не удалось сохранить упрочнение атомов:', error)
+      setReinforcementNotice('Не удалось сохранить отработку. Проверьте интернет и попробуйте ещё раз.')
     }
     onCompleteTraining()
   }, [flushPendingSaves, commitReinforcement, onCompleteTraining])
+
+  const totalPracticedMarks = useMemo(() => {
+    let n = 0
+    for (const ids of Object.values(practicedByStudentId)) {
+      if (Array.isArray(ids)) n += ids.length
+    }
+    return n
+  }, [practicedByStudentId])
 
   return (
     <div className="space-y-2">
@@ -544,7 +699,8 @@ function ProgressPhase({
         <div className="min-w-0 flex-1">
           <h1 className={vk.h1Lg}>Тренировка</h1>
           <p className={vk.mutedXs}>
-            {studentsForSession.length} учеников · двигаете ползунки — сохраняется само
+            {studentsForSession.length} учеников · прогресс сохраняется само
+            {totalPracticedMarks > 0 ? ` · отработок к записи: ${totalPracticedMarks}` : ''}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-1.5">
@@ -561,19 +717,31 @@ function ProgressPhase({
         <p className={vk.noticeWarn}>Программа техники не загрузилась — обновите страницу.</p>
       ) : null}
 
+      {reinforcementNotice ? (
+        <p className={vk.noticeInfo} role="status">
+          {reinforcementNotice}
+        </p>
+      ) : null}
+
       <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
-        {studentsForSession.map((student) => (
-          <StudentProgressRow
-            key={student.id}
-            student={student}
-            orderedL1={orderedL1}
-            onChange={handleSliderChange}
-            savingStatus={savingStatusById[student.id] ?? 'idle'}
-            sessionTiers={slidersByStudentId[student.id]}
-            practicedAtomIds={practicedByStudentId[student.id] ?? []}
-            onTogglePracticed={(atomId) => handleTogglePracticed(student.id, atomId)}
-          />
-        ))}
+        {studentsForSession.map((student) => {
+          const slot = localDataRef.current.get(student.id)
+          const reinforcement =
+            slot?.atomReinforcement ?? normalizeAtomReinforcement(student.atomReinforcement)
+          return (
+            <StudentProgressRow
+              key={student.id}
+              student={student}
+              orderedL1={orderedL1}
+              onChange={handleSliderChange}
+              savingStatus={savingStatusById[student.id] ?? 'idle'}
+              sessionTiers={slidersByStudentId[student.id]}
+              practicedAtomIds={practicedByStudentId[student.id] ?? []}
+              onMarkPracticed={(atomId, atom) => handleMarkPracticed(student.id, atomId, atom)}
+              atomReinforcement={reinforcement}
+            />
+          )
+        })}
       </ul>
     </div>
   )

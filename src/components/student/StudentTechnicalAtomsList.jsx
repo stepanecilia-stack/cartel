@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import VirtualList from '../VirtualList.jsx'
 import TechnicalAtomRow from '../TechnicalAtomRow.jsx'
+import { getAtomReinforcementTotal } from '../../utils/atomReinforcement.js'
 import { normalizeTechnicalDominanceKey } from '../../utils/ksrUtils.js'
 
 const ROW_HEIGHT = 80
@@ -16,11 +17,13 @@ const VIRTUALIZE_MIN = 24
  *   showMethodDetails?: boolean,
  *   onLevelChange: (atomId: string, level: string) => void,
  *   onSaveAtom: (atom: object) => void,
+ *   atomReinforcement?: Record<string, { total?: number }>,
  * }} props
  */
 function StudentTechnicalAtomsList({
   atoms,
   technicalData,
+  atomReinforcement = {},
   technicalLocksById,
   technicalSavingKey,
   canSave,
@@ -43,6 +46,7 @@ function StudentTechnicalAtomsList({
         onLevelChange={(level) => onLevelChange(atom.id, level)}
         onSave={() => onSaveAtom(atom)}
         showMethodDetails={showMethodDetails}
+        reinforcementTotal={getAtomReinforcementTotal(atomReinforcement, atom.id)}
       />
     )
   }
@@ -61,6 +65,7 @@ function StudentTechnicalAtomsList({
             onLevelChange={(level) => onLevelChange(atom.id, level)}
             onSave={() => onSaveAtom(atom)}
             showMethodDetails={showMethodDetails}
+            reinforcementTotal={getAtomReinforcementTotal(atomReinforcement, atom.id)}
           />
         ))}
       </ul>

@@ -23,6 +23,7 @@ import { vk } from '../../utils/vkUi.js'
  *   sliderSaveStatus?: 'idle' | 'saving' | 'saved' | 'error',
  *   onProgressSliderChange?: (tiers: { l1: number, l2: number, l3: number }) => void,
  *   combosProps: Record<string, unknown>,
+ *   atomReinforcement?: Record<string, { total?: number }>,
  * }} props
  */
 function StudentTechnicalTab({
@@ -43,6 +44,7 @@ function StudentTechnicalTab({
   sliderSaveStatus = 'idle',
   onProgressSliderChange,
   combosProps,
+  atomReinforcement = {},
 }) {
   if (technicalAtomsCount === 0 && !loadingNorms) {
     return (
@@ -63,6 +65,8 @@ function StudentTechnicalTab({
           onSliderChange={onProgressSliderChange}
         />
       ) : null}
+
+      <p className={vk.mutedXs}>×N у приёма — сколько раз отмечали отработку в зале (групповая тренировка).</p>
 
       <nav className={vk.segmentBar} aria-label="Разделы техники">
         <button
@@ -110,6 +114,7 @@ function StudentTechnicalTab({
           showMethodDetails
           onLevelChange={onLevelChange}
           onSaveAtom={onSaveAtom}
+          atomReinforcement={atomReinforcement}
         />
       ) : null}
 
@@ -122,6 +127,7 @@ function StudentTechnicalTab({
           canSave={canSave}
           onLevelChange={onLevelChange}
           onSaveAtom={onSaveAtom}
+          atomReinforcement={atomReinforcement}
         />
       ) : null}
 

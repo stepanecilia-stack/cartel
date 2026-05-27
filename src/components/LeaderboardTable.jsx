@@ -149,7 +149,9 @@ export default function LeaderboardTable({
         }
 
         const metrics =
-          categoryId === 'technical' ? null : (
+          categoryId === 'technical' ? (
+            row.secondary ? <span className={vk.mutedXs}>{row.secondary}</span> : null
+          ) : (
             <LeaderboardRowMetrics
               row={row}
               categoryId={categoryId}

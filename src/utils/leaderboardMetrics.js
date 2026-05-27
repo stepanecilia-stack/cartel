@@ -11,7 +11,11 @@ import { buildFullTechnicalProgramAtoms, mergeWithRequiredLevel3Combinations } f
 import { getNormValueByTestId, resolveNormRowStatus } from './normTestsStorage.js'
 import { normalizeMotorQualityWorkLog } from './motorQualityWorkLog.js'
 import { migrateStudentTests } from './normsCategory.js'
+import { sumReinforceableProgramPractices } from './atomReinforcement.js'
 import { studentAthleteShape } from './studentModel.js'
+
+/** Доля КД в нормализованной технике сводного топа (остальное — отработки в зале). */
+const OVERALL_TECH_KD_WEIGHT = 0.9
 
 /** @typedef {'overall' | 'motor' | 'physical' | 'technical'} LeaderboardCategoryId */
 
@@ -20,7 +24,7 @@ export const LEADERBOARD_CATEGORIES = [
     id: 'overall',
     label: 'Сводный топ',
     shortLabel: 'Топ',
-    hint: 'Рейтинг по совокупности: техника (КД), физика (медали), качества (зачёты). Балл 0–100 — среднее по трём направлениям в группе.',
+    hint: 'Рейтинг по совокупности: техника (КД и отработки в зале), физика (медали), качества (зачёты). Балл 0–100 — среднее по трём направлениям в группе.',
   },
   {
     id: 'motor',
@@ -38,7 +42,7 @@ export const LEADERBOARD_CATEGORIES = [
     id: 'technical',
     label: 'Техника',
     shortLabel: 'Техника',
-    hint: 'Изученные приёмы программы и сила навыка (КД по уровням освоения).',
+    hint: 'Изученные приёмы, КД по уровням освоения и отработки на групповых тренировках.',
   },
 ]
 
@@ -124,8 +128,9 @@ export function computeTechniqueLeaderboardMetrics(student, technicalAtoms) {
   const { count: atomsAtSkill } = countProgramAtomsAtOrAboveSkill(programAtoms, data)
   const totalAtoms = programAtoms.length
   const kdPercent = Math.round((kdBundle.kd ?? 0.25) * 100)
+  const reinforcementTotal = sumReinforceableProgramPractices(student.atomReinforcement, programAtoms)
 
-  const sortScore = studiedCount * 10000 + kdPercent * 100 + effective
+  const sortScore = studiedCount * 10000 + kdPercent * 100 + effective + reinforcementTotal
 
   return {
     studiedCount,
@@ -137,6 +142,7 @@ export function computeTechniqueLeaderboardMetrics(student, technicalAtoms) {
     automationPercent: kdBundle.automationPercent,
     effectiveKSR: effective,
     skillSum,
+    reinforcementTotal,
     sortScore,
   }
 }
@@ -175,7 +181,10 @@ export function buildLeaderboardMetric(student, allNorms, technicalAtoms, catego
         sortValue: tech.sortScore,
         primaryLabel: `${tech.studiedCount}/${tech.totalAtoms}`,
         primarySuffix: 'приёмов',
-        secondary: `КД ${tech.kdPercent}%`,
+        secondary:
+          tech.reinforcementTotal > 0
+            ? `КД ${tech.kdPercent}% · зал ×${tech.reinforcementTotal}`
+            : `КД ${tech.kdPercent}%`,
         tech,
       }
     }
@@ -200,21 +209,28 @@ export function buildOverallLeaderboardRows(students, allNorms, technicalAtoms, 
 
   const maxMotor = Math.max(1, ...items.map((i) => i.motor.total))
   const maxPhysical = Math.max(1, ...items.map((i) => i.medals.points))
-  const maxTechnical = Math.max(1, ...items.map((i) => i.tech.kdPercent))
+  const maxKd = Math.max(1, ...items.map((i) => i.tech.kdPercent))
+  const maxReinforcement = Math.max(1, ...items.map((i) => i.tech.reinforcementTotal))
 
   const rows = items.map(({ raw, motor, medals, tech }) => {
     const motorNorm = (motor.total / maxMotor) * 100
     const physicalNorm = (medals.points / maxPhysical) * 100
-    const technicalNorm = (tech.kdPercent / maxTechnical) * 100
+    const kdNorm = (tech.kdPercent / maxKd) * 100 * OVERALL_TECH_KD_WEIGHT
+    const practiceNorm =
+      (tech.reinforcementTotal / maxReinforcement) * 100 * (1 - OVERALL_TECH_KD_WEIGHT)
+    const technicalNorm = kdNorm + practiceNorm
     const combinedScore = Math.round((motorNorm + physicalNorm + technicalNorm) / 3)
+
+    const practiceHint =
+      tech.reinforcementTotal > 0 ? ` · зал ×${tech.reinforcementTotal}` : ''
 
     return {
       id: raw.id,
       name: displayNameFn(raw),
-      sortValue: combinedScore * 1000 + tech.kdPercent,
+      sortValue: combinedScore * 1000 + tech.kdPercent + Math.min(tech.reinforcementTotal, 999),
       primaryLabel: String(combinedScore),
       primarySuffix: 'сводный',
-      secondary: `Т ${tech.kdPercent}% · Ф ${medals.gold}🥇 · К ${motor.total}`,
+      secondary: `Т ${tech.kdPercent}%${practiceHint} · Ф ${medals.gold}🥇 · К ${motor.total}`,
       motor,
       medals,
       tech,

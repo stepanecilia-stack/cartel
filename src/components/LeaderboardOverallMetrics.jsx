@@ -2,7 +2,7 @@ import { memo } from 'react'
 
 /**
  * @param {{
- *   tech?: { kdPercent?: number, studiedCount?: number, totalAtoms?: number },
+ *   tech?: { kdPercent?: number, studiedCount?: number, totalAtoms?: number, reinforcementTotal?: number },
  *   medals?: { gold: number, silver: number, bronze: number },
  *   motor?: { total?: number },
  *   overall?: {
@@ -21,6 +21,7 @@ function LeaderboardOverallMetrics({ tech, medals, motor, overall, compact = tru
     (tech?.totalAtoms != null ? `${tech.studiedCount ?? 0}/${tech.totalAtoms}` : '—')
   const motorTotal = overall?.motorTotal ?? motor?.total ?? 0
   const medalData = overall?.medals ?? medals
+  const reinforcementTotal = tech?.reinforcementTotal ?? 0
 
   return (
     <div className={`space-y-0.5 ${compact ? 'text-[11px] leading-snug' : 'text-[12px] leading-relaxed'}`}>
@@ -28,6 +29,9 @@ function LeaderboardOverallMetrics({ tech, medals, motor, overall, compact = tru
         <span className="font-medium text-[#818c99]">Техника:</span>{' '}
         <span className="font-semibold tabular-nums text-[#2d81e0]">КД {kdPercent}%</span>
         <span className="text-[#818c99]"> · {studiedLabel} приёмов</span>
+        {reinforcementTotal > 0 ? (
+          <span className="text-[#818c99]"> · зал ×{reinforcementTotal}</span>
+        ) : null}
       </p>
       <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[#2c2d2e]">
         <span className="font-medium text-[#818c99]">Физика:</span>

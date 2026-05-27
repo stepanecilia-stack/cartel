@@ -54,6 +54,7 @@ function rowToPublicRow(row, raw, categoryId) {
         kdPercent: row.tech.kdPercent,
         studiedCount: row.tech.studiedCount,
         totalAtoms: row.tech.totalAtoms,
+        reinforcementTotal: row.tech.reinforcementTotal ?? 0,
       }
     }
     if (row.medals) {
