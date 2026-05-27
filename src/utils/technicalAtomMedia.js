@@ -14,3 +14,9 @@ export function resolveTechnicalAtomMedia(atom) {
   if (link) return { kind: 'link', src: link }
   return { kind: 'none', src: '' }
 }
+
+/** GIF / WebM — автопревью в карточке тренировки. */
+export function hasLoopingPreviewMedia(atom) {
+  const kind = resolveTechnicalAtomMedia(atom).kind
+  return kind === 'gif' || kind === 'webm'
+}

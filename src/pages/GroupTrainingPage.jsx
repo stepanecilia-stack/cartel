@@ -24,6 +24,7 @@ import {
   startGroupTrainingSession,
   updateGroupTrainingSessionSliders,
 } from '../utils/groupTrainingSession.js'
+import TechniqueTierStepper from '../components/training/TechniqueTierStepper.jsx'
 import { StudentPickTile } from '../components/student/StudentPickTile.jsx'
 import {
   displayNameFromStudent,
@@ -34,36 +35,6 @@ import { vk } from '../utils/vkUi.js'
 
 const SAVE_DEBOUNCE_MS = 350
 
-function TrainingRangeSlider({ min, max, value, onChange, ariaLabel, variant = 'primary' }) {
-  const fillPercent = max > 0 ? (value / max) * 100 : 0
-  const fillClass = variant === 'accent' ? 'bg-[#6f3ff5]' : 'bg-[#2d81e0]'
-  const thumbBorderClass =
-    variant === 'accent'
-      ? '[&::-moz-range-thumb]:border-[#6f3ff5] [&::-webkit-slider-thumb]:border-[#6f3ff5]'
-      : '[&::-moz-range-thumb]:border-[#2d81e0] [&::-webkit-slider-thumb]:border-[#2d81e0]'
-
-  return (
-    <div className="relative flex h-9 items-center sm:h-8">
-      <div
-        className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-[#e7e8ec]"
-        aria-hidden
-      >
-        <div className={`h-full ${fillClass}`} style={{ width: `${fillPercent}%` }} />
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={1}
-        value={value}
-        onChange={onChange}
-        aria-label={ariaLabel}
-        className={`relative z-10 h-9 w-full cursor-pointer appearance-none bg-transparent sm:h-8 ${thumbBorderClass} [&::-moz-range-progress]:bg-transparent [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-md sm:[&::-moz-range-thumb]:h-5 sm:[&::-moz-range-thumb]:w-5 [&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.5rem)/2)] [&::-webkit-slider-thumb]:box-border [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md sm:[&::-webkit-slider-thumb]:mt-[calc((0.5rem-1.25rem)/2)] sm:[&::-webkit-slider-thumb]:h-5 sm:[&::-webkit-slider-thumb]:w-5`}
-      />
-    </div>
-  )
-}
-
 function normalizeSearchText(value) {
   return String(value ?? '').toLowerCase().trim()
 }
@@ -71,6 +42,16 @@ function normalizeSearchText(value) {
 function tierBadgeClass(variant) {
   if (variant === 'accent') return 'bg-[#f3f0ff] text-[#6f3ff5]'
   return 'bg-[#ecf3fc] text-[#2d81e0]'
+}
+
+/** Один блок тренировки: уровень, на котором ученик сейчас (первый незакрытый). */
+function resolveActiveTrainingTier({ total1, total2, total3, progress1, progress2, progress3 }) {
+  if (total1 > 0 && progress1 < total1) return 1
+  if (total2 > 0 && progress2 < total2) return 2
+  if (total3 > 0 && progress3 < total3) return 3
+  if (total3 > 0) return 3
+  if (total2 > 0) return 2
+  return 1
 }
 
 function ComposePhase({
@@ -210,10 +191,14 @@ function ComposePhase({
 
 function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessionTiers }) {
   const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
-  const orderedL3 = useMemo(
-    () => mergeWithRequiredLevel3Combinations(student.technicalCombinations),
-    [student.technicalCombinations],
-  )
+  const orderedL3 = useMemo(() => {
+    const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
+    return combos.map((c, index) => ({
+      ...c,
+      number: index + 1,
+      name: c.name ?? `Комбо ${index + 1}`,
+    }))
+  }, [student.technicalCombinations])
 
   const total1 = orderedL1.length
   const total2 = orderedL2.length
@@ -235,8 +220,6 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
   const [slider1, setSlider1] = useState(initial1)
   const [slider2, setSlider2] = useState(initial2)
   const [slider3, setSlider3] = useState(initial3)
-  const [showTier2, setShowTier2] = useState(() => total1 > 0 && initial1 >= total1)
-  const [showTier3, setShowTier3] = useState(() => total2 > 0 && initial2 >= total2 && total3 > 0)
 
   useEffect(() => {
     setSlider1(initial1)
@@ -248,13 +231,18 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
     setSlider3(initial3)
   }, [student.id, initial3])
 
-  useEffect(() => {
-    if (total1 > 0 && slider1 >= total1) setShowTier2(true)
-  }, [slider1, total1])
-
-  useEffect(() => {
-    if (total2 > 0 && slider2 >= total2) setShowTier3(true)
-  }, [slider2, total2])
+  const activeTier = useMemo(
+    () =>
+      resolveActiveTrainingTier({
+        total1,
+        total2,
+        total3,
+        progress1: slider1,
+        progress2: slider2,
+        progress3: slider3,
+      }),
+    [total1, total2, total3, slider1, slider2, slider3],
+  )
 
   const emit = (next1, next2, next3) => {
     onChange(student.id, { l1: next1, l2: next2, l3: next3 })
@@ -278,66 +266,59 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
     [orderedL1, data],
   )
 
-  const tierLabel = (n, total, value) => `Ур.${n}: ${value}/${total}`
-
-  const renderTierHint = (ordered, value, total) => {
-    const current = value >= 1 && value <= total ? ordered[value - 1] : null
-    const next = value < total ? ordered[value] : null
-    if (!current && !(value === total && total > 0)) {
-      return <p className={`mt-0.5 ${vk.mutedXs}`}>Не начато</p>
+  const activeTierMeta = useMemo(() => {
+    if (activeTier === 3) {
+      return {
+        tierLabel: 'Комбо',
+        badge: `Комбо: ${slider3}/${total3}`,
+        badgeVariant: 'accent',
+        atoms: orderedL3,
+        value: slider3,
+        accent: true,
+        doneHint:
+          total2 > 0 && slider2 >= total2 && total1 > 0 && slider1 >= total1
+            ? 'Программа и ур. 2 закрыты'
+            : null,
+      }
     }
-    return (
-      <div className={`mt-0.5 ${vk.mutedXs} leading-snug`}>
-        {current ? (
-          <p className="line-clamp-2" title={current.name}>
-            <span className="font-semibold text-[#2d81e0]">Шаг {value}.</span> {current.name}
-          </p>
-        ) : null}
-        {next ? (
-          <p className="mt-0.5 hidden line-clamp-1 sm:block" title={next.name}>
-            Дальше: {next.name}
-          </p>
-        ) : value === total && total > 0 ? (
-          <p className="mt-0.5 font-medium text-[#4bb34b]">Уровень закрыт</p>
-        ) : null}
-      </div>
-    )
-  }
-
-  const renderTierBlock = (tierNum, total, value, ordered, variant, onValueChange) => {
-    if (total <= 0) return null
-    const label = tierNum === 3 ? 'Ур.3' : tierNum === 2 ? 'Ур.2' : 'Ур.1'
-    const sliderVariant = tierNum === 3 ? 'accent' : 'primary'
-    return (
-      <div className="border-t border-[#e7e8ec] pt-2 first:border-t-0 first:pt-0">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">{label}</p>
-          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[#2c2d2e]">
-            {value}/{total}
-          </span>
-        </div>
-        <TrainingRangeSlider
-          min={0}
-          max={total}
-          value={value}
-          variant={sliderVariant}
-          ariaLabel={`${label}, ${student.displayName}`}
-          onChange={(e) => {
-            const raw = Number(e.target.value)
-            const next = Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), total)
-            onValueChange(next)
-          }}
-        />
-        {renderTierHint(ordered, value, total)}
-      </div>
-    )
-  }
+    if (activeTier === 2) {
+      return {
+        tierLabel: 'Ур. 2',
+        badge: `Ур.2: ${slider2}/${total2}`,
+        badgeVariant: 'primary',
+        atoms: orderedL2,
+        value: slider2,
+        accent: false,
+        doneHint: total1 > 0 && slider1 >= total1 ? 'Базовая программа закрыта' : null,
+      }
+    }
+    return {
+      tierLabel: 'Программа',
+      badge: `Прогр.: ${slider1}/${total1}`,
+      badgeVariant: 'primary',
+      atoms: orderedL1,
+      value: slider1,
+      accent: false,
+      doneHint: null,
+    }
+  }, [
+    activeTier,
+    orderedL1,
+    orderedL2,
+    orderedL3,
+    slider1,
+    slider2,
+    slider3,
+    total1,
+    total2,
+    total3,
+  ])
 
   return (
     <li className={vk.cardPadded}>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
         <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
-        {baseComplete ? (
+        {baseComplete && activeTier === 1 ? (
           <span
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] font-bold text-white"
             title="29 приёмов базы Cartel на «Умение»"
@@ -346,42 +327,39 @@ function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessio
             ✓
           </span>
         ) : null}
-        <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('primary')}`}>
-          {tierLabel(1, total1, slider1)}
+        <span
+          className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass(activeTierMeta.badgeVariant)}`}
+        >
+          {activeTierMeta.badge}
         </span>
-        {showTier2 && total2 > 0 ? (
-          <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('primary')}`}>
-            {tierLabel(2, total2, slider2)}
-          </span>
-        ) : null}
-        {showTier3 && total3 > 0 ? (
-          <span className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass('accent')}`}>
-            {tierLabel(3, total3, slider3)}
-          </span>
-        ) : null}
         {statusLine ? (
           <span className={`text-[10px] font-medium ${statusClass}`}>{statusLine}</span>
         ) : null}
       </div>
 
-      <div className="mt-2 space-y-2">
-        {renderTierBlock(1, total1, slider1, orderedL1, 'primary', (next) => {
-          setSlider1(next)
-          emit(next, slider2, slider3)
-        })}
+      {activeTierMeta.doneHint ? (
+        <p className={`mt-1 ${vk.mutedXs}`}>{activeTierMeta.doneHint}</p>
+      ) : null}
 
-        {showTier2 && total2 > 0
-          ? renderTierBlock(2, total2, slider2, orderedL2, 'primary', (next) => {
+      <div className="mt-2">
+        <TechniqueTierStepper
+          atoms={activeTierMeta.atoms}
+          value={activeTierMeta.value}
+          tierLabel={activeTierMeta.tierLabel}
+          accent={activeTierMeta.accent}
+          onChange={(next) => {
+            if (activeTier === 1) {
+              setSlider1(next)
+              emit(next, slider2, slider3)
+            } else if (activeTier === 2) {
               setSlider2(next)
               emit(slider1, next, slider3)
-            })
-          : null}
-        {showTier3 && total3 > 0
-          ? renderTierBlock(3, total3, slider3, orderedL3, 'accent', (next) => {
+            } else {
               setSlider3(next)
               emit(slider1, slider2, next)
-            })
-          : null}
+            }
+          }}
+        />
       </div>
     </li>
   )
