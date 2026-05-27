@@ -17,11 +17,15 @@ import {
   countLeadingMasteredAtoms,
   isBaseCartelProgramComplete,
 } from '../utils/studentTechnicalUpdate.js'
-import { getLastTrainingRoster } from '../utils/groupTrainingPreferences.js'
+import {
+  applyPracticedAtomsToReinforcement,
+  normalizeAtomReinforcement,
+} from '../utils/atomReinforcement.js'
 import {
   endGroupTrainingSession,
   getGroupTrainingSession,
   startGroupTrainingSession,
+  updateGroupTrainingSessionPracticed,
   updateGroupTrainingSessionSliders,
 } from '../utils/groupTrainingSession.js'
 import TechniqueTierStepper from '../components/training/TechniqueTierStepper.jsx'
@@ -44,7 +48,7 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-/** Один блок тренировки: уровень, на котором ученик сейчас (первый незакрытый). */
+/** Первый незакрытый уровень программы. */
 function resolveActiveTrainingTier({ total1, total2, total3, progress1, progress2, progress3 }) {
   if (total1 > 0 && progress1 < total1) return 1
   if (total2 > 0 && progress2 < total2) return 2
@@ -52,6 +56,192 @@ function resolveActiveTrainingTier({ total1, total2, total3, progress1, progress
   if (total3 > 0) return 3
   if (total2 > 0) return 2
   return 1
+}
+
+function StudentProgressRow({
+  student,
+  orderedL1,
+  onChange,
+  savingStatus,
+  sessionTiers,
+  practicedAtomIds,
+  onTogglePracticed,
+}) {
+  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
+  const orderedL3 = useMemo(() => {
+    const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
+    return combos.map((c, index) => ({
+      ...c,
+      number: index + 1,
+      name: c.name ?? `Комбо ${index + 1}`,
+    }))
+  }, [student.technicalCombinations])
+
+  const total1 = orderedL1.length
+  const total2 = orderedL2.length
+  const total3 = orderedL3.length
+  const data = student.technicalData ?? {}
+
+  const baseline1 = useMemo(() => countLeadingMasteredAtoms(orderedL1, data), [orderedL1, data])
+  const baseline2 = useMemo(() => countLeadingMasteredAtoms(orderedL2, data), [orderedL2, data])
+  const baseline3 = useMemo(
+    () => countLeadingMasteredAtoms(orderedL3.map((c) => ({ id: c.id })), data),
+    [orderedL3, data],
+  )
+
+  const initial1 = sessionTiers?.l1 != null ? sessionTiers.l1 : baseline1
+  const initial2 = sessionTiers?.l2 != null ? sessionTiers.l2 : baseline2
+  const initial3 = sessionTiers?.l3 != null ? sessionTiers.l3 : baseline3
+
+  const [slider1, setSlider1] = useState(initial1)
+  const [slider2, setSlider2] = useState(initial2)
+  const [slider3, setSlider3] = useState(initial3)
+
+  useEffect(() => setSlider1(initial1), [student.id, initial1])
+  useEffect(() => setSlider2(initial2), [student.id, initial2])
+  useEffect(() => setSlider3(initial3), [student.id, initial3])
+
+  const activeTier = useMemo(
+    () =>
+      resolveActiveTrainingTier({
+        total1,
+        total2,
+        total3,
+        progress1: slider1,
+        progress2: slider2,
+        progress3: slider3,
+      }),
+    [total1, total2, total3, slider1, slider2, slider3],
+  )
+
+  const emit = (next1, next2, next3) => {
+    onChange(student.id, { l1: next1, l2: next2, l3: next3 })
+  }
+
+  const statusLine = (() => {
+    if (savingStatus === 'saving') return 'Сохранение…'
+    if (savingStatus === 'error') return 'Ошибка'
+    if (savingStatus === 'saved') return 'Сохранено'
+    return null
+  })()
+
+  const statusClass = (() => {
+    if (savingStatus === 'error') return 'text-[#e64646]'
+    if (savingStatus === 'saved') return 'text-[#4bb34b]'
+    return 'text-[#818c99]'
+  })()
+
+  const baseComplete = useMemo(
+    () => isBaseCartelProgramComplete(orderedL1, data),
+    [orderedL1, data],
+  )
+
+  const activeTierMeta = useMemo(() => {
+    if (activeTier === 3) {
+      return {
+        tierLabel: 'Комбо',
+        badge: `Комбо: ${slider3}/${total3}`,
+        badgeVariant: 'accent',
+        atoms: orderedL3,
+        value: slider3,
+        accent: true,
+        doneHint:
+          total2 > 0 && slider2 >= total2 && total1 > 0 && slider1 >= total1
+            ? 'Программа и ур. 2 закрыты'
+            : null,
+      }
+    }
+    if (activeTier === 2) {
+      return {
+        tierLabel: 'Ур. 2',
+        badge: `Ур.2: ${slider2}/${total2}`,
+        badgeVariant: 'primary',
+        atoms: orderedL2,
+        value: slider2,
+        accent: false,
+        doneHint: total1 > 0 && slider1 >= total1 ? 'Базовая программа закрыта' : null,
+      }
+    }
+    return {
+      tierLabel: 'Программа',
+      badge: `Прогр.: ${slider1}/${total1}`,
+      badgeVariant: 'primary',
+      atoms: orderedL1,
+      value: slider1,
+      accent: false,
+      doneHint: null,
+    }
+  }, [
+    activeTier,
+    orderedL1,
+    orderedL2,
+    orderedL3,
+    slider1,
+    slider2,
+    slider3,
+    total1,
+    total2,
+    total3,
+  ])
+
+  const activeTierPassedCount = useMemo(() => {
+    if (activeTier === 3) return Math.max(slider3, baseline3)
+    if (activeTier === 2) return Math.max(slider2, baseline2)
+    return Math.max(slider1, baseline1)
+  }, [activeTier, slider1, slider2, slider3, baseline1, baseline2, baseline3])
+
+  return (
+    <li className={vk.cardPadded}>
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+        <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
+        {baseComplete && activeTier === 1 ? (
+          <span
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] font-bold text-white"
+            title="29 приёмов базы Cartel на «Умение»"
+            aria-label="База программы закрыта"
+          >
+            ✓
+          </span>
+        ) : null}
+        <span
+          className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass(activeTierMeta.badgeVariant)}`}
+        >
+          {activeTierMeta.badge}
+        </span>
+        {statusLine ? (
+          <span className={`text-[10px] font-medium ${statusClass}`}>{statusLine}</span>
+        ) : null}
+      </div>
+
+      {activeTierMeta.doneHint ? (
+        <p className={`mt-1 ${vk.mutedXs}`}>{activeTierMeta.doneHint}</p>
+      ) : null}
+
+      <div className="mt-2">
+        <TechniqueTierStepper
+          atoms={activeTierMeta.atoms}
+          value={activeTierMeta.value}
+          passedCount={activeTierPassedCount}
+          tierLabel={activeTierMeta.tierLabel}
+          accent={activeTierMeta.accent}
+          practicedAtomIds={practicedAtomIds}
+          onTogglePracticed={onTogglePracticed}
+          onChange={(next) => {
+            if (activeTier === 1) {
+              setSlider1(next)
+              emit(next, slider2, slider3)
+            } else if (activeTier === 2) {
+              setSlider2(next)
+              emit(slider1, next, slider3)
+            } else {
+              setSlider3(next)
+              emit(slider1, slider2, next)
+            }
+          }}
+        />
+      </div>
+    </li>
+  )
 }
 
 function ComposePhase({
@@ -189,182 +379,6 @@ function ComposePhase({
   )
 }
 
-function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessionTiers }) {
-  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
-  const orderedL3 = useMemo(() => {
-    const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
-    return combos.map((c, index) => ({
-      ...c,
-      number: index + 1,
-      name: c.name ?? `Комбо ${index + 1}`,
-    }))
-  }, [student.technicalCombinations])
-
-  const total1 = orderedL1.length
-  const total2 = orderedL2.length
-  const total3 = orderedL3.length
-
-  const data = student.technicalData ?? {}
-
-  const baseline1 = useMemo(() => countLeadingMasteredAtoms(orderedL1, data), [orderedL1, data])
-  const baseline2 = useMemo(() => countLeadingMasteredAtoms(orderedL2, data), [orderedL2, data])
-  const baseline3 = useMemo(
-    () => countLeadingMasteredAtoms(orderedL3.map((c) => ({ id: c.id })), data),
-    [orderedL3, data],
-  )
-
-  const initial1 = sessionTiers?.l1 != null ? sessionTiers.l1 : baseline1
-  const initial2 = sessionTiers?.l2 != null ? sessionTiers.l2 : baseline2
-  const initial3 = sessionTiers?.l3 != null ? sessionTiers.l3 : baseline3
-
-  const [slider1, setSlider1] = useState(initial1)
-  const [slider2, setSlider2] = useState(initial2)
-  const [slider3, setSlider3] = useState(initial3)
-
-  useEffect(() => {
-    setSlider1(initial1)
-  }, [student.id, initial1])
-  useEffect(() => {
-    setSlider2(initial2)
-  }, [student.id, initial2])
-  useEffect(() => {
-    setSlider3(initial3)
-  }, [student.id, initial3])
-
-  const activeTier = useMemo(
-    () =>
-      resolveActiveTrainingTier({
-        total1,
-        total2,
-        total3,
-        progress1: slider1,
-        progress2: slider2,
-        progress3: slider3,
-      }),
-    [total1, total2, total3, slider1, slider2, slider3],
-  )
-
-  const emit = (next1, next2, next3) => {
-    onChange(student.id, { l1: next1, l2: next2, l3: next3 })
-  }
-
-  const statusLine = (() => {
-    if (savingStatus === 'saving') return 'Сохранение…'
-    if (savingStatus === 'error') return 'Ошибка'
-    if (savingStatus === 'saved') return 'Сохранено'
-    return null
-  })()
-
-  const statusClass = (() => {
-    if (savingStatus === 'error') return 'text-[#e64646]'
-    if (savingStatus === 'saved') return 'text-[#4bb34b]'
-    return 'text-[#818c99]'
-  })()
-
-  const baseComplete = useMemo(
-    () => isBaseCartelProgramComplete(orderedL1, data),
-    [orderedL1, data],
-  )
-
-  const activeTierMeta = useMemo(() => {
-    if (activeTier === 3) {
-      return {
-        tierLabel: 'Комбо',
-        badge: `Комбо: ${slider3}/${total3}`,
-        badgeVariant: 'accent',
-        atoms: orderedL3,
-        value: slider3,
-        accent: true,
-        doneHint:
-          total2 > 0 && slider2 >= total2 && total1 > 0 && slider1 >= total1
-            ? 'Программа и ур. 2 закрыты'
-            : null,
-      }
-    }
-    if (activeTier === 2) {
-      return {
-        tierLabel: 'Ур. 2',
-        badge: `Ур.2: ${slider2}/${total2}`,
-        badgeVariant: 'primary',
-        atoms: orderedL2,
-        value: slider2,
-        accent: false,
-        doneHint: total1 > 0 && slider1 >= total1 ? 'Базовая программа закрыта' : null,
-      }
-    }
-    return {
-      tierLabel: 'Программа',
-      badge: `Прогр.: ${slider1}/${total1}`,
-      badgeVariant: 'primary',
-      atoms: orderedL1,
-      value: slider1,
-      accent: false,
-      doneHint: null,
-    }
-  }, [
-    activeTier,
-    orderedL1,
-    orderedL2,
-    orderedL3,
-    slider1,
-    slider2,
-    slider3,
-    total1,
-    total2,
-    total3,
-  ])
-
-  return (
-    <li className={vk.cardPadded}>
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-        <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
-        {baseComplete && activeTier === 1 ? (
-          <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] font-bold text-white"
-            title="29 приёмов базы Cartel на «Умение»"
-            aria-label="База программы закрыта"
-          >
-            ✓
-          </span>
-        ) : null}
-        <span
-          className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${tierBadgeClass(activeTierMeta.badgeVariant)}`}
-        >
-          {activeTierMeta.badge}
-        </span>
-        {statusLine ? (
-          <span className={`text-[10px] font-medium ${statusClass}`}>{statusLine}</span>
-        ) : null}
-      </div>
-
-      {activeTierMeta.doneHint ? (
-        <p className={`mt-1 ${vk.mutedXs}`}>{activeTierMeta.doneHint}</p>
-      ) : null}
-
-      <div className="mt-2">
-        <TechniqueTierStepper
-          atoms={activeTierMeta.atoms}
-          value={activeTierMeta.value}
-          tierLabel={activeTierMeta.tierLabel}
-          accent={activeTierMeta.accent}
-          onChange={(next) => {
-            if (activeTier === 1) {
-              setSlider1(next)
-              emit(next, slider2, slider3)
-            } else if (activeTier === 2) {
-              setSlider2(next)
-              emit(slider1, next, slider3)
-            } else {
-              setSlider3(next)
-              emit(slider1, slider2, next)
-            }
-          }}
-        />
-      </div>
-    </li>
-  )
-}
-
 function ProgressPhase({
   coachId,
   studentsForSession,
@@ -373,12 +387,20 @@ function ProgressPhase({
   onCompleteTraining,
   technicalAtoms,
   slidersByStudentId,
+  initialPracticedByStudentId,
 }) {
   const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
   const pendingTiersRef = useRef(new Map())
   const [savingStatusById, setSavingStatusById] = useState({})
+  const [practicedByStudentId, setPracticedByStudentId] = useState(
+    () => initialPracticedByStudentId ?? {},
+  )
   const localDataRef = useRef(new Map())
   const debounceRef = useRef(new Map())
+
+  useEffect(() => {
+    setPracticedByStudentId(initialPracticedByStudentId ?? {})
+  }, [initialPracticedByStudentId])
 
   useEffect(() => {
     for (const student of studentsForSession) {
@@ -386,6 +408,7 @@ function ProgressPhase({
         localDataRef.current.set(student.id, {
           base: student,
           technicalData: normalizeStudentTechnicalData(student.technicalData),
+          atomReinforcement: normalizeAtomReinforcement(student.atomReinforcement),
         })
       }
     }
@@ -453,6 +476,41 @@ function ProgressPhase({
     }
   }, [flushPendingSaves])
 
+  const handleTogglePracticed = useCallback(
+    (studentId, atomId) => {
+      setPracticedByStudentId((prev) => {
+        const set = new Set(prev[studentId] ?? [])
+        if (set.has(atomId)) set.delete(atomId)
+        else set.add(atomId)
+        const ids = [...set]
+        const next = { ...prev }
+        if (ids.length) next[studentId] = ids
+        else delete next[studentId]
+        if (coachId) updateGroupTrainingSessionPracticed(coachId, studentId, ids)
+        return next
+      })
+    },
+    [coachId],
+  )
+
+  const commitReinforcement = useCallback(async () => {
+    for (const student of studentsForSession) {
+      const atomIds = practicedByStudentId[student.id]
+      if (!Array.isArray(atomIds) || atomIds.length === 0) continue
+      const slot = localDataRef.current.get(student.id)
+      const existing =
+        slot?.atomReinforcement ?? normalizeAtomReinforcement(student.atomReinforcement)
+      const next = applyPracticedAtomsToReinforcement(existing, atomIds)
+      await updateStudentData(student.id, { atomReinforcement: next }, {
+        section: STUDENT_UPDATE_SECTION.groupTraining,
+      })
+      if (slot) {
+        slot.atomReinforcement = next
+        slot.base = { ...slot.base, atomReinforcement: next }
+      }
+    }
+  }, [studentsForSession, practicedByStudentId])
+
   const handleSliderChange = useCallback(
     (studentId, tiers) => {
       pendingTiersRef.current.set(studentId, tiers)
@@ -470,17 +528,24 @@ function ProgressPhase({
     [coachId, commitSliderChange, setStatus],
   )
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     flushPendingSaves()
+    try {
+      await commitReinforcement()
+    } catch (error) {
+      console.error('Не удалось сохранить упрочнение атомов:', error)
+    }
     onCompleteTraining()
-  }, [flushPendingSaves, onCompleteTraining])
+  }, [flushPendingSaves, commitReinforcement, onCompleteTraining])
 
   return (
     <div className="space-y-2">
       <header className="sticky top-12 z-20 -mx-0.5 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2 sm:static sm:border-0 sm:bg-transparent sm:p-0">
         <div className="min-w-0 flex-1">
           <h1 className={vk.h1Lg}>Тренировка</h1>
-          <p className={vk.mutedXs}>{studentsForSession.length} учеников · двигаете ползунки — сохраняется само</p>
+          <p className={vk.mutedXs}>
+            {studentsForSession.length} учеников · двигаете ползунки — сохраняется само
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-1.5">
           <button type="button" onClick={onBack} className={vk.btnSecondary}>
@@ -505,6 +570,8 @@ function ProgressPhase({
             onChange={handleSliderChange}
             savingStatus={savingStatusById[student.id] ?? 'idle'}
             sessionTiers={slidersByStudentId[student.id]}
+            practicedAtomIds={practicedByStudentId[student.id] ?? []}
+            onTogglePracticed={(atomId) => handleTogglePracticed(student.id, atomId)}
           />
         ))}
       </ul>
@@ -544,6 +611,7 @@ export default function GroupTrainingPage({ coachId }) {
             photoUrl: studentPhotoUrl(raw),
             initials: studentInitials(raw),
             technicalData: normalizeStudentTechnicalData(raw.technicalData),
+            atomReinforcement: normalizeAtomReinforcement(raw.atomReinforcement),
           }
         })
         decorated.sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
@@ -569,27 +637,16 @@ export default function GroupTrainingPage({ coachId }) {
   }, [coachId])
 
   useEffect(() => {
-    if (!coachId || isLoading || sessionRestoredRef.current) return
+    if (!coachId || isLoading || rosterInitializedRef.current) return
+    rosterInitializedRef.current = true
+
     const session = getGroupTrainingSession(coachId)
     if (!session?.selectedIds.length) return
+
     sessionRestoredRef.current = true
-    rosterInitializedRef.current = true
     setSelectedIds(new Set(session.selectedIds))
     setPhase('progress')
   }, [coachId, isLoading])
-
-  useEffect(() => {
-    if (!coachId || isLoading || rosterInitializedRef.current) return
-    const session = getGroupTrainingSession(coachId)
-    if (session?.selectedIds.length) return
-
-    const validIds = new Set(students.map((s) => s.id))
-    const last = getLastTrainingRoster(coachId).filter((id) => validIds.has(id))
-    if (last.length > 0) {
-      setSelectedIds(new Set(last))
-    }
-    rosterInitializedRef.current = true
-  }, [coachId, isLoading, students])
 
   const orderedAtoms = useMemo(
     () => orderTechnicalAtomsForProgram(technicalAtoms),
@@ -662,6 +719,7 @@ export default function GroupTrainingPage({ coachId }) {
     setPhase('compose')
     setSelectedIds(new Set())
     sessionRestoredRef.current = false
+    rosterInitializedRef.current = true
   }, [coachId])
 
   if (!coachId) {
@@ -718,6 +776,7 @@ export default function GroupTrainingPage({ coachId }) {
             onBack={handleBackToCompose}
             onCompleteTraining={handleCompleteTraining}
             slidersByStudentId={activeSession?.slidersByStudentId ?? {}}
+            initialPracticedByStudentId={activeSession?.practicedAtomIdsByStudentId ?? {}}
           />
         )}
       </div>

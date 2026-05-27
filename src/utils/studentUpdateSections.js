@@ -36,6 +36,10 @@ export function inferUpdateSectionFromPayload(payload) {
     return STUDENT_UPDATE_SECTION.publicShare
   }
 
+  if (keys.length === 1 && keys[0] === 'atomReinforcement') {
+    return STUDENT_UPDATE_SECTION.groupTraining
+  }
+
   const hasTests = payload.tests && typeof payload.tests === 'object'
   const hasTechniqueOnly =
     (payload.technicalData != null || payload.technicalCombinations != null) &&

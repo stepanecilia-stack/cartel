@@ -82,7 +82,7 @@ function AtomPreviewFrame({ atom, unlocked, compact, title }) {
 }
 
 /**
- * Дискретный прогресс по программе: ±1, превью «как в игре», липкие шаги.
+ * Дискретный прогресс по программе: ±1, превью, лента шагов.
  */
 export default function TechniqueTierStepper({
   atoms,
@@ -90,9 +90,16 @@ export default function TechniqueTierStepper({
   onChange,
   tierLabel = 'Ур.1',
   accent = false,
+  practicedAtomIds,
+  onTogglePracticed,
+  passedCount: passedCountProp,
 }) {
   const total = atoms.length
   const safeValue = Math.min(Math.max(Number(value) || 0, 0), total)
+  const passedCount = Math.min(
+    Math.max(Number(passedCountProp ?? safeValue) || 0, safeValue),
+    total,
+  )
   const stripRef = useRef(null)
   const [pulseKey, setPulseKey] = useState(0)
 
@@ -131,6 +138,12 @@ export default function TechniqueTierStepper({
     ? 'bg-[#6f3ff5] active:bg-[#5e36d6] disabled:opacity-40'
     : 'bg-[#2d81e0] active:bg-[#2875cc] disabled:opacity-40'
 
+  const practicedSet =
+    practicedAtomIds instanceof Set
+      ? practicedAtomIds
+      : new Set(Array.isArray(practicedAtomIds) ? practicedAtomIds : [])
+  const canMarkPracticed = typeof onTogglePracticed === 'function'
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -157,6 +170,19 @@ export default function TechniqueTierStepper({
             <p className="mt-1.5 text-center text-[13px] font-semibold leading-snug text-[#2c2d2e] sm:text-left">
               <span className="text-[#818c99]">#{spotlightAtom.number}</span> {spotlightAtom.name}
             </p>
+          ) : null}
+          {canMarkPracticed && spotlightUnlocked && spotlightAtom ? (
+            <button
+              type="button"
+              onClick={() => onTogglePracticed(spotlightAtom.id)}
+              className={`mt-1.5 w-full sm:w-auto ${
+                practicedSet.has(spotlightAtom.id)
+                  ? 'rounded-full bg-[#2d81e0] px-2.5 py-1 text-[12px] font-semibold text-white'
+                  : vk.btnCompactSecondary
+              }`}
+            >
+              {practicedSet.has(spotlightAtom.id) ? 'Отработан сегодня' : 'Отметить отработку'}
+            </button>
           ) : null}
           {nextAtom && safeValue < total ? (
             <p className={`mt-0.5 text-center ${vk.mutedXs} sm:text-left`}>
@@ -201,25 +227,55 @@ export default function TechniqueTierStepper({
             aria-label="Шаги программы"
           >
             {atoms.map((atom, index) => {
-              const unlocked = index < safeValue
+              const unlocked = index < passedCount
+              const practicedToday = practicedSet.has(atom.id)
+              const ringClass = [
+                index === spotlightIndex ? 'ring-2 ring-[#2d81e0] ring-offset-1' : '',
+                practicedToday ? 'ring-2 ring-[#4bb34b] ring-offset-1' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')
+              const tile = (
+                <AtomPreviewFrame
+                  atom={atom}
+                  unlocked={unlocked}
+                  compact
+                  title={atom.name}
+                />
+              )
               return (
                 <div
                   key={atom.id}
                   data-slot-index={index}
                   role="listitem"
-                  className={`snap-center ${index === spotlightIndex ? 'ring-2 ring-[#2d81e0] ring-offset-1 rounded-md' : ''}`}
+                  className={`snap-center rounded-md ${ringClass}`}
                 >
-                  <AtomPreviewFrame
-                    atom={atom}
-                    unlocked={unlocked}
-                    compact
-                    title={atom.name}
-                  />
+                  {canMarkPracticed && unlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => onTogglePracticed(atom.id)}
+                      className="touch-manipulation rounded-md text-left"
+                      aria-pressed={practicedToday}
+                      aria-label={
+                        practicedToday
+                          ? `${atom.name}, отработан сегодня — снять`
+                          : `${atom.name}, отметить отработку`
+                      }
+                    >
+                      {tile}
+                    </button>
+                  ) : (
+                    tile
+                  )}
                 </div>
               )
             })}
           </div>
-          <p className={`text-center ${vk.mutedXs}`}>Только кнопки + и − — по одному приёму</p>
+          <p className={`text-center ${vk.mutedXs}`}>
+            {canMarkPracticed
+              ? 'Кнопки +/− — прогресс. Тап по миниатюре пройденного — отработали сегодня.'
+              : 'Только кнопки + и − — по одному приёму'}
+          </p>
         </div>
       </div>
     </div>

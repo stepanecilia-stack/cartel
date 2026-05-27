@@ -1,3 +1,4 @@
+import { mergeAtomReinforcementRecords } from './atomReinforcement.js'
 import { dominanceRank, normalizeTechnicalDominanceKey } from './ksrUtils.js'
 import { migrateStudentTests } from './normsCategory.js'
 import { emptyTestsRecord } from './normTestsStorage.js'
@@ -205,6 +206,9 @@ export function buildMergedStudentUpdate(primary, secondaries, opts = {}) {
   )
 
   const technicalData = mergeTechnicalDataRecords(...sources.map((s) => s.technicalData))
+  const atomReinforcement = mergeAtomReinforcementRecords(
+    ...sources.map((s) => s.atomReinforcement),
+  )
   const technicalCombinations = mergeTechnicalCombinationsLists(
     ...sources.map((s) => s.technicalCombinations),
   )
@@ -247,6 +251,7 @@ export function buildMergedStudentUpdate(primary, secondaries, opts = {}) {
     coachId,
     coach_ids,
     technicalData,
+    atomReinforcement,
     technicalCombinations,
     motorQualityWorkLog,
     cartelDocuments,

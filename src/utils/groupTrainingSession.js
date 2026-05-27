@@ -10,6 +10,7 @@ const STORAGE_KEY = 'cartel_group_training_session_v1'
  *   active: boolean,
  *   selectedIds: string[],
  *   slidersByStudentId: Record<string, GroupTrainingSliderTiers>,
+ *   practicedAtomIdsByStudentId: Record<string, string[]>,
  *   startedAt: string,
  * }} GroupTrainingSession
  */
@@ -38,11 +39,20 @@ function readRaw() {
       data.slidersByStudentId && typeof data.slidersByStudentId === 'object'
         ? data.slidersByStudentId
         : {}
+    const practicedAtomIdsByStudentId = {}
+    if (data.practicedAtomIdsByStudentId && typeof data.practicedAtomIdsByStudentId === 'object') {
+      for (const [studentId, ids] of Object.entries(data.practicedAtomIdsByStudentId)) {
+        if (typeof studentId !== 'string' || !studentId || !Array.isArray(ids)) continue
+        const clean = [...new Set(ids.filter((id) => typeof id === 'string' && id))]
+        if (clean.length) practicedAtomIdsByStudentId[studentId] = clean
+      }
+    }
     return {
       coachId: data.coachId,
       active: true,
       selectedIds,
       slidersByStudentId,
+      practicedAtomIdsByStudentId,
       startedAt: typeof data.startedAt === 'string' ? data.startedAt : new Date().toISOString(),
     }
   } catch {
@@ -85,6 +95,7 @@ export function startGroupTrainingSession(coachId, selectedIds) {
     active: true,
     selectedIds: ids,
     slidersByStudentId: {},
+    practicedAtomIdsByStudentId: {},
     startedAt: new Date().toISOString(),
   })
   saveLastTrainingRoster(coachId, ids)
@@ -95,6 +106,21 @@ export function startGroupTrainingSession(coachId, selectedIds) {
  * @param {string} studentId
  * @param {GroupTrainingSliderTiers} tiers
  */
+/**
+ * @param {string} coachId
+ * @param {string} studentId
+ * @param {string[]} atomIds
+ */
+export function updateGroupTrainingSessionPracticed(coachId, studentId, atomIds) {
+  const data = readRaw()
+  if (!data || data.coachId !== coachId) return
+  const clean = [...new Set(atomIds.filter((id) => typeof id === 'string' && id))]
+  const practicedAtomIdsByStudentId = { ...data.practicedAtomIdsByStudentId }
+  if (clean.length) practicedAtomIdsByStudentId[studentId] = clean
+  else delete practicedAtomIdsByStudentId[studentId]
+  writeRaw({ ...data, practicedAtomIdsByStudentId })
+}
+
 export function updateGroupTrainingSessionSliders(coachId, studentId, tiers) {
   const data = readRaw()
   if (!data || data.coachId !== coachId) return
