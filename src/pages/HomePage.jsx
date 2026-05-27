@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
 import { useCoachStudents } from '../hooks/useCoachStudents.js'
+import { useGroupTrainingSession } from '../hooks/useGroupTrainingSession.js'
 import { resolveStudentLastChange } from '../utils/studentLastChange.js'
 import {
   formatAthleteWeightCategory,
@@ -24,6 +25,8 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
   const { students, isLoading, loadError } = useCoachStudents(coachId, {
     viewAllStudents: isProgramAdmin,
   })
+  const trainingSession = useGroupTrainingSession(coachId)
+  const hasActiveTraining = Boolean(trainingSession?.selectedIds.length)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [genderFilter, setGenderFilter] = useState('all')
@@ -115,10 +118,17 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
   const dashboardActions = useMemo(() => {
     const actions = [
       {
+        key: 'training',
+        label: 'Тренировка',
+        icon: '▶',
+        iconClass: 'bg-[#2d81e0] text-white text-base font-bold',
+        to: hasActiveTraining ? '/group-training' : '/group-training?quick=1',
+      },
+      {
         key: 'add',
         label: 'Добавить ученика',
         icon: '+',
-        iconClass: 'bg-[#2d81e0] text-white text-xl font-light',
+        iconClass: 'bg-[#f0f2f5] text-[#2d81e0] text-xl font-light',
         onClick: () => setAddModalOpen(true),
       },
       {
@@ -127,13 +137,6 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
         icon: '▦',
         iconClass: 'bg-[#e0f2f1] text-teal-700 text-base',
         to: '/calendar',
-      },
-      {
-        key: 'group',
-        label: 'Прогресс техники',
-        icon: '⇉',
-        iconClass: 'bg-[#e5f1fb] text-[#2d81e0] text-base',
-        to: '/group-training',
       },
       {
         key: 'norms',
@@ -167,7 +170,7 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
       })
     }
     return actions
-  }, [isProgramAdmin])
+  }, [isProgramAdmin, hasActiveTraining])
 
   const vkTileClass =
     'flex min-h-[4.25rem] w-full touch-manipulation flex-col items-center justify-start gap-1 rounded-md px-0.5 py-1.5 text-center active:bg-[#f5f6f8] dark:active:bg-[#2c2d2e] sm:min-h-[4.5rem]'
@@ -215,6 +218,28 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
           <h1 className="px-0.5 text-[17px] font-semibold leading-5 text-[#2c2d2e] dark:text-[#e1e3e6] sm:text-xl">
             Дашборд учеников
           </h1>
+
+          {!isLoading && !loadError && studentsWithKsr.length > 0 ? (
+            <Link
+              to={hasActiveTraining ? '/group-training' : '/group-training?quick=1'}
+              className="flex touch-manipulation items-center justify-between gap-3 rounded-[10px] bg-[#2d81e0] px-4 py-3 text-white active:bg-[#2875cc]"
+            >
+              <span className="min-w-0">
+                <span className="block text-[16px] font-semibold leading-5">
+                  {hasActiveTraining ? 'Продолжить тренировку' : 'Начать тренировку'}
+                </span>
+                <span className="mt-0.5 block text-[12px] font-normal text-white/85">
+                  {hasActiveTraining
+                    ? `${trainingSession.selectedIds.length} в группе · ползунки сохранены`
+                    : `Сразу в зал · ${studentsWithKsr.length} учеников`}
+                </span>
+              </span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg" aria-hidden>
+                ▶
+              </span>
+            </Link>
+          ) : null}
+
           {isProgramAdmin && !isLoading && !loadError ? (
             <p className="rounded-[10px] bg-[#fff8e6] px-3 py-2 text-[13px] leading-snug text-[#6b4e0a] dark:bg-[#2c2a1a] dark:text-[#e6c86a]">
               Режим администратора: показаны все ученики в базе ({studentsWithKsr.length}

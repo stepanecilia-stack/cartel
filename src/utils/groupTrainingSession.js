@@ -1,3 +1,5 @@
+import { saveLastTrainingRoster } from './groupTrainingPreferences.js'
+
 const STORAGE_KEY = 'cartel_group_training_session_v1'
 
 /** @typedef {{ l1: number, l2: number, l3: number }} GroupTrainingSliderTiers */
@@ -77,13 +79,15 @@ export function getGroupTrainingSession(coachId) {
  * @param {Iterable<string>} selectedIds
  */
 export function startGroupTrainingSession(coachId, selectedIds) {
+  const ids = [...new Set(selectedIds)]
   writeRaw({
     coachId,
     active: true,
-    selectedIds: [...new Set(selectedIds)],
+    selectedIds: ids,
     slidersByStudentId: {},
     startedAt: new Date().toISOString(),
   })
+  saveLastTrainingRoster(coachId, ids)
 }
 
 /**

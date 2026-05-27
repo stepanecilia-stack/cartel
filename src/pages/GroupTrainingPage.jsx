@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
 import { useGroupTrainingSession } from '../hooks/useGroupTrainingSession.js'
@@ -17,7 +17,7 @@ import {
   countLeadingMasteredAtoms,
   isBaseCartelProgramComplete,
 } from '../utils/studentTechnicalUpdate.js'
-import { baseCartelProgramAtomCount } from '../utils/techniqueCatalog.js'
+import { getLastTrainingRoster } from '../utils/groupTrainingPreferences.js'
 import {
   endGroupTrainingSession,
   getGroupTrainingSession,
@@ -98,22 +98,13 @@ function ComposePhase({
   return (
     <div className="space-y-2 pb-[4.5rem] sm:pb-0">
       <header className="px-0.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">Шаг 1</p>
-        <h1 className={`mt-0.5 ${vk.h1Lg}`}>Прогресс техники</h1>
-        <p className={`mt-1 ${vk.muted}`}>Отметьте учеников на сегодняшней тренировке.</p>
-      </header>
-
-      {hasActiveSession ? (
-        <div className="rounded-[10px] border border-[#2d81e0]/35 bg-[#ecf3fc] px-3 py-2.5">
-          <p className="text-[13px] font-medium text-[#2c2d2e]">Тренировка не завершена</p>
-          <p className={`mt-0.5 ${vk.mutedXs}`}>
-            Состав и ползунки сохранены — можно продолжить с любой страницы.
-          </p>
+        <h1 className={vk.h1Lg}>Тренировка</h1>
+        {hasActiveSession ? (
           <button type="button" onClick={onResumeTraining} className={`mt-2 ${vk.btnPrimary}`}>
-            Продолжить тренировку
+            Продолжить
           </button>
-        </div>
-      ) : null}
+        ) : null}
+      </header>
 
       {loadError ? <p className={vk.error}>{loadError}</p> : null}
 
@@ -153,17 +144,6 @@ function ComposePhase({
             />
             {selectedCount} из {students.length}
           </span>
-          {orderedL1.length > 0 ? (
-            <span className={`inline-flex items-center gap-1 ${vk.mutedXs}`}>
-              <span
-                className="flex h-4 w-4 items-center justify-center rounded-full bg-[#4bb34b] text-[9px] font-bold text-white"
-                aria-hidden
-              >
-                ✓
-              </span>
-              — {baseCartelProgramAtomCount(orderedL1)} приёмов базы на «Умение»
-            </span>
-          ) : null}
           {searchQuery.trim() && totalInView !== students.length ? (
             <span className={`${vk.mutedXs} tabular-nums`}>в списке: {totalInView}</span>
           ) : null}
@@ -207,20 +187,20 @@ function ComposePhase({
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e7e8ec] bg-white/96 px-2 py-2 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
         <div className="mx-auto flex max-w-4xl items-center gap-2 sm:justify-end">
           <p className={`min-w-0 flex-1 truncate ${vk.mutedXs} sm:hidden`}>
-            {selectedCount > 0
-              ? `На тренировке: ${selectedCount}`
-              : 'Выберите хотя бы одного ученика'}
+            {selectedCount > 0 ? `${selectedCount} в группе` : 'Отметьте учеников'}
           </p>
           <button
             type="button"
             onClick={onStartTraining}
             disabled={selectedCount === 0}
-            className={`shrink-0 sm:min-w-[9rem] ${vk.btnPrimary} w-full sm:w-auto`}
+            className={`shrink-0 sm:min-w-[10rem] ${vk.btnPrimary} w-full sm:w-auto`}
           >
-            Начать
-            <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
-              {selectedCount}
-            </span>
+            Начать тренировку
+            {selectedCount > 0 ? (
+              <span className="ml-1.5 rounded-full bg-white/25 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums">
+                {selectedCount}
+              </span>
+            ) : null}
           </button>
         </div>
       </div>
@@ -521,20 +501,15 @@ function ProgressPhase({
     <div className="space-y-2">
       <header className="sticky top-12 z-20 -mx-0.5 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2 sm:static sm:border-0 sm:bg-transparent sm:p-0">
         <div className="min-w-0 flex-1">
-          <h1 className={vk.h1Lg}>По шагам</h1>
-          <p className={vk.mutedXs}>
-            <span className="sm:hidden">Шаг 2 · автосохранение · {studentsForSession.length} чел.</span>
-            <span className="hidden sm:inline">
-              Три ползунка: программа, ур.2 и комбинации. Ур.2–3 открываются после закрытия предыдущего.
-            </span>
-          </p>
+          <h1 className={vk.h1Lg}>Тренировка</h1>
+          <p className={vk.mutedXs}>{studentsForSession.length} учеников · двигаете ползунки — сохраняется само</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-1.5">
           <button type="button" onClick={onBack} className={vk.btnSecondary}>
-            Состав
+            Группа
           </button>
           <button type="button" onClick={handleComplete} className={vk.btnPrimary}>
-            Завершить тренировку
+            Готово
           </button>
         </div>
       </header>
@@ -561,6 +536,7 @@ function ProgressPhase({
 
 export default function GroupTrainingPage({ coachId }) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const activeSession = useGroupTrainingSession(coachId)
   const [phase, setPhase] = useState('compose')
   const [students, setStudents] = useState([])
@@ -570,6 +546,8 @@ export default function GroupTrainingPage({ coachId }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const sessionRestoredRef = useRef(false)
+  const rosterInitializedRef = useRef(false)
+  const autoStartedRef = useRef(false)
 
   useEffect(() => {
     if (!coachId) return undefined
@@ -619,9 +597,70 @@ export default function GroupTrainingPage({ coachId }) {
     const session = getGroupTrainingSession(coachId)
     if (!session?.selectedIds.length) return
     sessionRestoredRef.current = true
+    rosterInitializedRef.current = true
+    autoStartedRef.current = true
     setSelectedIds(new Set(session.selectedIds))
     setPhase('progress')
   }, [coachId, isLoading])
+
+  useEffect(() => {
+    if (!coachId || isLoading || rosterInitializedRef.current) return
+    const session = getGroupTrainingSession(coachId)
+    if (session?.selectedIds.length) return
+
+    const validIds = new Set(students.map((s) => s.id))
+    const last = getLastTrainingRoster(coachId).filter((id) => validIds.has(id))
+    const initial = last.length > 0 ? last : [...validIds]
+    if (initial.length > 0) {
+      setSelectedIds(new Set(initial))
+    }
+    rosterInitializedRef.current = true
+  }, [coachId, isLoading, students])
+
+  useEffect(() => {
+    if (!coachId || isLoading || autoStartedRef.current) return
+
+    const session = getGroupTrainingSession(coachId)
+    if (session?.selectedIds.length) return
+
+    const wantQuick = searchParams.get('quick') === '1'
+    const wantPickOnly = searchParams.get('pick') === '1'
+    const last = getLastTrainingRoster(coachId)
+    const shouldAutoStart = wantQuick || (last.length > 0 && !wantPickOnly)
+
+    if (!shouldAutoStart) return
+
+    const validIds = new Set(students.map((s) => s.id))
+    let ids =
+      selectedIds.size > 0
+        ? [...selectedIds].filter((id) => validIds.has(id))
+        : last.filter((id) => validIds.has(id))
+    if (ids.length === 0) ids = [...validIds]
+    if (ids.length === 0) return
+
+    autoStartedRef.current = true
+    setSelectedIds(new Set(ids))
+    startGroupTrainingSession(coachId, ids)
+    setPhase('progress')
+
+    if (wantQuick) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('quick')
+          return next
+        },
+        { replace: true },
+      )
+    }
+  }, [
+    coachId,
+    isLoading,
+    students,
+    selectedIds,
+    searchParams,
+    setSearchParams,
+  ])
 
   const orderedAtoms = useMemo(
     () => orderTechnicalAtomsForProgram(technicalAtoms),
@@ -715,7 +754,15 @@ export default function GroupTrainingPage({ coachId }) {
   return (
     <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
       <div className={`${vk.containerMid} max-w-4xl`}>
-        <BackToHomeBar />
+        {phase === 'compose' ? (
+          <div className="mb-1 flex justify-end">
+            <Link to="/" className={vk.link}>
+              На главную
+            </Link>
+          </div>
+        ) : (
+          <BackToHomeBar />
+        )}
         {phase === 'compose' ? (
           <ComposePhase
             students={students}

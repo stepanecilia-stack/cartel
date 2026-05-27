@@ -158,7 +158,7 @@ function Navbar({ user, coachProfile, programAdmin }) {
                     </span>
                   </>
                 ) : (
-                  'Групповая'
+                  'Тренировка'
                 )}
               </Link>
               <Link to="/leaderboard" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
