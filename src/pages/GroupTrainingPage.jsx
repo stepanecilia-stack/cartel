@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
 import { useGroupTrainingSession } from '../hooks/useGroupTrainingSession.js'
@@ -514,7 +514,6 @@ function ProgressPhase({
 
 export default function GroupTrainingPage({ coachId }) {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const activeSession = useGroupTrainingSession(coachId)
   const [phase, setPhase] = useState('compose')
   const [students, setStudents] = useState([])
@@ -525,7 +524,6 @@ export default function GroupTrainingPage({ coachId }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const sessionRestoredRef = useRef(false)
   const rosterInitializedRef = useRef(false)
-  const autoStartedRef = useRef(false)
 
   useEffect(() => {
     if (!coachId) return undefined
@@ -576,7 +574,6 @@ export default function GroupTrainingPage({ coachId }) {
     if (!session?.selectedIds.length) return
     sessionRestoredRef.current = true
     rosterInitializedRef.current = true
-    autoStartedRef.current = true
     setSelectedIds(new Set(session.selectedIds))
     setPhase('progress')
   }, [coachId, isLoading])
@@ -588,57 +585,11 @@ export default function GroupTrainingPage({ coachId }) {
 
     const validIds = new Set(students.map((s) => s.id))
     const last = getLastTrainingRoster(coachId).filter((id) => validIds.has(id))
-    const initial = last.length > 0 ? last : [...validIds]
-    if (initial.length > 0) {
-      setSelectedIds(new Set(initial))
+    if (last.length > 0) {
+      setSelectedIds(new Set(last))
     }
     rosterInitializedRef.current = true
   }, [coachId, isLoading, students])
-
-  useEffect(() => {
-    if (!coachId || isLoading || autoStartedRef.current) return
-
-    const session = getGroupTrainingSession(coachId)
-    if (session?.selectedIds.length) return
-
-    const wantQuick = searchParams.get('quick') === '1'
-    const wantPickOnly = searchParams.get('pick') === '1'
-    const last = getLastTrainingRoster(coachId)
-    const shouldAutoStart = wantQuick || (last.length > 0 && !wantPickOnly)
-
-    if (!shouldAutoStart) return
-
-    const validIds = new Set(students.map((s) => s.id))
-    let ids =
-      selectedIds.size > 0
-        ? [...selectedIds].filter((id) => validIds.has(id))
-        : last.filter((id) => validIds.has(id))
-    if (ids.length === 0) ids = [...validIds]
-    if (ids.length === 0) return
-
-    autoStartedRef.current = true
-    setSelectedIds(new Set(ids))
-    startGroupTrainingSession(coachId, ids)
-    setPhase('progress')
-
-    if (wantQuick) {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev)
-          next.delete('quick')
-          return next
-        },
-        { replace: true },
-      )
-    }
-  }, [
-    coachId,
-    isLoading,
-    students,
-    selectedIds,
-    searchParams,
-    setSearchParams,
-  ])
 
   const orderedAtoms = useMemo(
     () => orderTechnicalAtomsForProgram(technicalAtoms),

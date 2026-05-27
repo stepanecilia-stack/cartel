@@ -122,7 +122,7 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
         label: 'Тренировка',
         icon: '▶',
         iconClass: 'bg-[#2d81e0] text-white text-base font-bold',
-        to: hasActiveTraining ? '/group-training' : '/group-training?quick=1',
+        to: '/group-training',
       },
       {
         key: 'add',
@@ -221,7 +221,7 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
 
           {!isLoading && !loadError && studentsWithKsr.length > 0 ? (
             <Link
-              to={hasActiveTraining ? '/group-training' : '/group-training?quick=1'}
+              to="/group-training"
               className="flex touch-manipulation items-center justify-between gap-3 rounded-[10px] bg-[#2d81e0] px-4 py-3 text-white active:bg-[#2875cc]"
             >
               <span className="min-w-0">
@@ -231,7 +231,7 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
                 <span className="mt-0.5 block text-[12px] font-normal text-white/85">
                   {hasActiveTraining
                     ? `${trainingSession.selectedIds.length} в группе · ползунки сохранены`
-                    : `Сразу в зал · ${studentsWithKsr.length} учеников`}
+                    : 'Отметьте учеников и нажмите «Начать тренировку»'}
                 </span>
               </span>
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg" aria-hidden>
