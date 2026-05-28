@@ -7,6 +7,7 @@ import {
   NON_ISOLATED_REINFORCEMENT_TITLE,
 } from '../../utils/atomReinforcementEligibility.js'
 import { hasLoopingPreviewMedia } from '../../utils/technicalAtomMedia.js'
+import { compactAtomThumbFrameClass } from '../../utils/trainingAtomThumb.js'
 import { vk } from '../../utils/vkUi.js'
 
 /** Счётчик отработок или метка «только в связке». */
@@ -112,7 +113,7 @@ function AtomPreviewFrame({
   reinforceableInIsolation = true,
 }) {
   const frameClass = compact
-    ? 'relative h-13 w-10 shrink-0 overflow-hidden rounded-md border'
+    ? compactAtomThumbFrameClass
     : 'relative aspect-[4/5] w-full max-w-[132px] overflow-hidden rounded-[10px] border-2 sm:max-w-[184px]'
 
   const borderClass = practicedToday

@@ -45,6 +45,12 @@ import {
 } from '../utils/studentModel'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
+import {
+  COMPACT_ATOM_THUMB_GAP_PX,
+  COMPACT_ATOM_THUMB_H_PX,
+  COMPACT_ATOM_THUMB_W_PX,
+  compactAtomThumbFrameClass,
+} from '../utils/trainingAtomThumb.js'
 import { vk } from '../utils/vkUi.js'
 
 const SAVE_DEBOUNCE_MS = 350
@@ -58,8 +64,6 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-const PRACTICE_TILE_ROW_PX = 40
-const PRACTICE_GRID_GAP_PX = 3
 const PRACTICE_TARGET_MAX_ROWS = 4
 
 function calcPracticeGridLayout(atomCount, viewportWidth) {
@@ -68,10 +72,11 @@ function calcPracticeGridLayout(atomCount, viewportWidth) {
   }
   const usable = Math.max(240, viewportWidth - 52)
   const colsForMaxRows = Math.ceil(atomCount / PRACTICE_TARGET_MAX_ROWS)
-  const colsForWidth = Math.max(colsForMaxRows, Math.floor(usable / PRACTICE_TILE_ROW_PX))
+  const colsForWidth = Math.max(colsForMaxRows, Math.floor(usable / COMPACT_ATOM_THUMB_W_PX))
   const cols = Math.min(atomCount, colsForWidth)
   const rows = Math.ceil(atomCount / cols)
-  const heightPx = rows * PRACTICE_TILE_ROW_PX + Math.max(0, rows - 1) * PRACTICE_GRID_GAP_PX
+  const heightPx =
+    rows * COMPACT_ATOM_THUMB_H_PX + Math.max(0, rows - 1) * COMPACT_ATOM_THUMB_GAP_PX
   return { cols, rows, heightPx }
 }
 
@@ -115,10 +120,10 @@ function AtomCompactPreviewVisual({ atom, dense = false }) {
 function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
   const reinforceable = isAtomReinforceableInIsolation(atom)
   const frameClass = dense
-    ? `relative h-full w-full min-w-0 overflow-hidden rounded border ${
+    ? `${compactAtomThumbFrameClass} ${
         reinforceable
           ? active
-            ? 'border-[#2d81e0] ring-1 ring-[#2d81e0]/40'
+            ? 'border-[#2d81e0] ring-2 ring-[#2d81e0]/35'
             : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
           : 'cursor-not-allowed border-[#d3d9de] bg-[#f5f6f8] opacity-90'
       }`
@@ -134,7 +139,7 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
     <>
       <span
         className={`pointer-events-none absolute left-0 top-0 z-10 rounded-br bg-white/90 font-semibold tabular-nums text-[#818c99] shadow-sm ${
-          dense ? 'px-0.5 py-px text-[8px]' : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
+          dense ? 'px-0.5 py-px text-[9px]' : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
         }`}
       >
         #{atom.number ?? '—'}
@@ -269,11 +274,10 @@ function GroupPracticeBlock({
             style={{ height: gridLayout.heightPx + 4 }}
           >
             <div
-              className="grid w-full [&>*]:min-h-0"
+              className="grid w-full justify-center gap-1 [&>*]:min-h-0"
               style={{
-                gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
-                gridAutoRows: `${PRACTICE_TILE_ROW_PX}px`,
-                gap: `${PRACTICE_GRID_GAP_PX}px`,
+                gridTemplateColumns: `repeat(${gridLayout.cols}, ${COMPACT_ATOM_THUMB_W_PX}px)`,
+                gridAutoRows: `${COMPACT_ATOM_THUMB_H_PX}px`,
                 height: `${gridLayout.heightPx}px`,
               }}
             >
