@@ -58,13 +58,37 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-/** Число колонок, чтобы вся плитка уровня помещалась на экран телефона без скролла. */
-function atomPracticeGridCols(atomCount) {
-  if (atomCount <= 4) return atomCount
-  if (atomCount <= 8) return 5
-  if (atomCount <= 12) return 6
-  if (atomCount <= 16) return 7
-  return 8
+const PRACTICE_TILE_ROW_PX = 36
+
+/** Колонок столько, чтобы уместить все приёмы уровня в 2–3 ряда без внутреннего скролла. */
+function calcPracticeGridCols(atomCount, viewportWidth) {
+  if (atomCount <= 0) return 1
+  const usable = Math.max(260, viewportWidth - 56)
+  const maxCols = Math.max(4, Math.floor(usable / PRACTICE_TILE_ROW_PX))
+  let cols = Math.min(atomCount, maxCols)
+  while (cols < atomCount && cols < maxCols && Math.ceil(atomCount / (cols + 1)) < Math.ceil(atomCount / cols)) {
+    cols += 1
+  }
+  return Math.max(1, cols)
+}
+
+function usePracticeGridCols(atomCount) {
+  const [cols, setCols] = useState(() =>
+    calcPracticeGridCols(atomCount, typeof window !== 'undefined' ? window.innerWidth : 360),
+  )
+
+  useEffect(() => {
+    const sync = () => setCols(calcPracticeGridCols(atomCount, window.innerWidth))
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', sync)
+    }
+  }, [atomCount])
+
+  return cols
 }
 
 function AtomCompactPreviewVisual({ atom, dense = false }) {
@@ -88,7 +112,7 @@ function AtomCompactPreviewVisual({ atom, dense = false }) {
 function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
   const reinforceable = isAtomReinforceableInIsolation(atom)
   const frameClass = dense
-    ? `relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded border ${
+    ? `relative h-full w-full min-w-0 overflow-hidden rounded border ${
         reinforceable
           ? active
             ? 'border-[#2d81e0] ring-1 ring-[#2d81e0]/40'
@@ -190,7 +214,7 @@ function GroupPracticeBlock({
     () => selectedAtomIds.filter((id) => selectableAtomIds.includes(id)),
     [selectedAtomIds, selectableAtomIds],
   )
-  const gridCols = atomPracticeGridCols(atoms.length)
+  const gridCols = usePracticeGridCols(atoms.length)
 
   useEffect(() => {
     const selectableSet = new Set(selectableAtomIds)
@@ -237,10 +261,13 @@ function GroupPracticeBlock({
             })}
           </div>
 
-          <div className="rounded-lg bg-[#fafbfc] p-1 sm:max-h-48 sm:overflow-y-auto">
+          <div className="overflow-visible rounded-lg bg-[#fafbfc] p-0.5 max-sm:max-h-none sm:p-1">
             <div
-              className="grid gap-0.5 sm:gap-1"
-              style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+              className="grid w-full gap-px sm:gap-1"
+              style={{
+                gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+                gridAutoRows: `${PRACTICE_TILE_ROW_PX}px`,
+              }}
             >
               {atoms.map((atom) => {
                 const reinforceable = isAtomReinforceableInIsolation(atom)
