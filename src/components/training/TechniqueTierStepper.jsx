@@ -109,8 +109,8 @@ function AtomPreviewFrame({
   compact,
   dense = false,
   enlargeable = false,
-  webmPriority = 'normal',
-  webmIntersectionRoot = null,
+  webmPlaying = false,
+  onToggleWebmPlay,
   title,
   practicedToday = false,
   reinforcementTotal = 0,
@@ -154,9 +154,9 @@ function AtomPreviewFrame({
         <TechnicalAtomMedia
           atom={atom}
           className="h-full w-full"
-          previewable={enlargeable}
-          webmPriority={webmPriority}
-          webmIntersectionRoot={webmIntersectionRoot}
+          previewable={enlargeable && !hasLoopingPreviewMedia(atom)}
+          playing={webmPlaying}
+          onTogglePlay={onToggleWebmPlay}
           title={atom?.name}
         />
         {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
@@ -210,7 +210,7 @@ export default function TechniqueTierStepper({
     total,
   )
   const stripRef = useRef(null)
-  const [stripRoot, setStripRoot] = useState(null)
+  const [playingAtomId, setPlayingAtomId] = useState(null)
   const [pulseKey, setPulseKey] = useState(0)
 
   const progressSpotlightIndex = useMemo(() => {
@@ -263,6 +263,7 @@ export default function TechniqueTierStepper({
     const nextSpot =
       next <= 0 ? 0 : next >= total ? total - 1 : next - 1
     setFocusIndex(nextSpot)
+    setPlayingAtomId(null)
     if (delta > 0) setPulseKey((k) => k + 1)
   }
 
@@ -311,7 +312,10 @@ export default function TechniqueTierStepper({
               unlocked={focusUnlocked}
               dense={dense}
               enlargeable
-              webmPriority="high"
+              webmPlaying={playingAtomId === focusAtom.id}
+              onToggleWebmPlay={() =>
+                setPlayingAtomId((prev) => (prev === focusAtom.id ? null : focusAtom.id))
+              }
               practicedToday={focusPracticedToday}
               reinforcementTotal={displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
               showReinforcementCount={focusUnlocked}
@@ -384,10 +388,7 @@ export default function TechniqueTierStepper({
           )}
 
           <div
-            ref={(el) => {
-              stripRef.current = el
-              setStripRoot(el)
-            }}
+            ref={stripRef}
             className="flex items-start gap-1 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin]"
             role="list"
             aria-label="Шаги программы"
@@ -413,8 +414,7 @@ export default function TechniqueTierStepper({
                   atom={atom}
                   unlocked={unlocked}
                   practicedToday={practicedToday && reinforceable}
-                  webmPriority="normal"
-                  webmIntersectionRoot={stripRoot}
+                  webmPlaying={false}
                   reinforcementTotal={cumulativeTotal}
                   showReinforcementCount={unlocked}
                   reinforceableInIsolation={reinforceable}
@@ -439,7 +439,10 @@ export default function TechniqueTierStepper({
                   {unlocked ? (
                     <button
                       type="button"
-                      onClick={() => setFocusIndex(index)}
+                      onClick={() => {
+                        setFocusIndex(index)
+                        setPlayingAtomId(atoms[index]?.id ?? null)
+                      }}
                       className={`block shrink-0 touch-manipulation rounded-md text-left ${tileRingClass}`}
                       aria-current={isFocused ? 'true' : undefined}
                       aria-label={

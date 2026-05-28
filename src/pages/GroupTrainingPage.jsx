@@ -67,9 +67,18 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-function AtomCompactPreviewVisual({ atom, dense = false }) {
+function AtomCompactPreviewVisual({ atom, dense = false, playing = false, onTogglePlay }) {
   if (hasLoopingPreviewMedia(atom)) {
-    return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
+    return (
+      <TechnicalAtomMedia
+        atom={atom}
+        className="h-full w-full"
+        previewable={false}
+        playing={playing}
+        onTogglePlay={onTogglePlay}
+        title={atom.name}
+      />
+    )
   }
   const kind = resolveTechnicalAtomMedia(atom).kind
   if (kind === 'embed' || kind === 'link') {
@@ -85,7 +94,15 @@ function AtomCompactPreviewVisual({ atom, dense = false }) {
   )
 }
 
-function AtomCompactPreviewButton({ atom, active, onClick, dense = false, practiceGrid = false }) {
+function AtomCompactPreviewButton({
+  atom,
+  active,
+  onClick,
+  dense = false,
+  practiceGrid = false,
+  playing = false,
+  onTogglePlay,
+}) {
   const reinforceable = isAtomReinforceableInIsolation(atom)
   const frameClass = practiceGrid
     ? `${practiceGridThumbFrameClass} ${
@@ -160,7 +177,12 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false, practi
         title={`#${atom.number ?? '—'} ${atom.name} — ${NON_ISOLATED_REINFORCEMENT_TITLE}`}
         aria-label={`#${atom.number ?? '—'} ${atom.name}. ${NON_ISOLATED_REINFORCEMENT_TITLE}`}
       >
-        <AtomCompactPreviewVisual atom={atom} dense={dense} />
+        <AtomCompactPreviewVisual
+          atom={atom}
+          dense={dense}
+          playing={playing}
+          onTogglePlay={onTogglePlay}
+        />
         {badges}
       </div>
     )
@@ -175,7 +197,12 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false, practi
       aria-label={`#${atom.number ?? '—'} ${atom.name}`}
       aria-pressed={active}
     >
-      <AtomCompactPreviewVisual atom={atom} dense={dense} />
+      <AtomCompactPreviewVisual
+        atom={atom}
+        dense={dense}
+        playing={playing}
+        onTogglePlay={onTogglePlay}
+      />
       {badges}
     </button>
   )
@@ -191,6 +218,7 @@ function GroupPracticeBlock({
 }) {
   const [viewTier, setViewTier] = useState(1)
   const [selectedAtomIds, setSelectedAtomIds] = useState([])
+  const [playingAtomId, setPlayingAtomId] = useState(null)
 
   const atomTiers = useMemo(
     () =>
@@ -231,6 +259,10 @@ function GroupPracticeBlock({
       return selectableAtomIds[0] ? [selectableAtomIds[0]] : []
     })
   }, [selectableAtomIds])
+
+  useEffect(() => {
+    setPlayingAtomId(null)
+  }, [viewTier, activeTier])
 
   return (
     <section className={showHeader ? `${vk.cardPadded} space-y-2` : 'space-y-2'}>
@@ -285,8 +317,10 @@ function GroupPracticeBlock({
                     atom={atom}
                     active={active}
                     practiceGrid
+                    playing={playingAtomId === atom.id}
                     onClick={() => {
                       if (!reinforceable) return
+                      setPlayingAtomId((prev) => (prev === atom.id ? null : atom.id))
                       setSelectedAtomIds((prev) =>
                         prev.includes(atom.id) ? prev.filter((id) => id !== atom.id) : [...prev, atom.id],
                       )

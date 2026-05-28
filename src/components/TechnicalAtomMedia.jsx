@@ -1,20 +1,17 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
-import LoopingWebmPreview from './LoopingWebmPreview.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
 const PREVIEWABLE_KINDS = new Set(['gif', 'webm', 'embed', 'link'])
 
 /**
- * Превью GIF / WebM (и embed) с лайтбоксом по клику — без ухода со страницы.
  * @param {{
  *   atom: object,
  *   className?: string,
  *   previewable?: boolean,
  *   title?: string,
- *   webmPriority?: 'high' | 'normal',
- *   webmAlwaysPlay?: boolean,
- *   webmIntersectionRoot?: Element | null,
+ *   playing?: boolean,
+ *   onTogglePlay?: () => void,
  * }} props
  */
 export default function TechnicalAtomMedia({
@@ -22,15 +19,27 @@ export default function TechnicalAtomMedia({
   className = '',
   previewable = true,
   title,
-  webmPriority = 'normal',
-  webmAlwaysPlay = false,
-  webmIntersectionRoot = null,
+  playing = false,
+  onTogglePlay,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const videoRef = useRef(null)
   const media = resolveTechnicalAtomMedia(atom)
   const displayTitle = title ?? atom?.name ?? ''
 
   const canPreview = previewable && PREVIEWABLE_KINDS.has(media.kind)
+  const tapToPlayWebm = media.kind === 'webm' && typeof onTogglePlay === 'function'
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || media.kind !== 'webm') return
+    if (playing) {
+      void video.play().catch(() => {})
+    } else {
+      video.pause()
+      video.currentTime = 0
+    }
+  }, [playing, media.kind])
 
   const openPreview = useCallback(
     (e) => {
@@ -41,36 +50,54 @@ export default function TechnicalAtomMedia({
     [canPreview],
   )
 
-  const wrapPreviewable = (node) => {
-    if (!canPreview) {
+  const handleActivate = useCallback(
+    (e) => {
+      if (tapToPlayWebm) {
+        e.preventDefault()
+        e.stopPropagation()
+        onTogglePlay()
+        return
+      }
+      if (canPreview) openPreview(e)
+    },
+    [tapToPlayWebm, onTogglePlay, canPreview, openPreview],
+  )
+
+  const wrapInteractive = (node) => {
+    if (!tapToPlayWebm && !canPreview) {
       return <div className={`relative overflow-hidden ${className}`}>{node}</div>
     }
-    const isLooping = media.kind === 'gif' || media.kind === 'webm'
-    if (isLooping) {
-      return (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={openPreview}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') openPreview(e)
-          }}
-          className={`relative cursor-pointer overflow-hidden active:opacity-90 ${className}`}
-          aria-label={`Увеличить: ${displayTitle || 'медиа'}`}
-        >
-          {node}
-        </div>
-      )
-    }
     return (
-      <button
-        type="button"
-        onClick={openPreview}
-        className={`relative shrink-0 overflow-hidden rounded-md bg-[#f0f2f5] active:opacity-90 ${className}`}
-        aria-label={`Увеличить: ${displayTitle || 'медиа'}`}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleActivate}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') handleActivate(e)
+        }}
+        className={`relative cursor-pointer overflow-hidden active:opacity-90 ${className}`}
+        aria-label={
+          tapToPlayWebm
+            ? playing
+              ? `Пауза: ${displayTitle || 'видео'}`
+              : `Воспроизвести: ${displayTitle || 'видео'}`
+            : `Увеличить: ${displayTitle || 'медиа'}`
+        }
       >
         {node}
-      </button>
+        {tapToPlayWebm && !playing ? (
+          <span
+            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25"
+            aria-hidden
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#2d81e0] shadow">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7L8 5z" />
+              </svg>
+            </span>
+          </span>
+        ) : null}
+      </div>
     )
   }
 
@@ -90,12 +117,16 @@ export default function TechnicalAtomMedia({
     thumb = <img src={media.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
   } else if (media.kind === 'webm') {
     thumb = (
-      <LoopingWebmPreview
+      <video
+        ref={videoRef}
         src={media.src}
-        priority={webmPriority}
-        alwaysPlay={webmAlwaysPlay}
-        intersectionRoot={webmIntersectionRoot}
-        className="h-full w-full"
+        className="h-full w-full object-cover bg-[#0f0f0f]"
+        muted
+        playsInline
+        loop
+        preload="metadata"
+        disablePictureInPicture
+        aria-hidden
       />
     )
   } else {
@@ -110,7 +141,7 @@ export default function TechnicalAtomMedia({
 
   return (
     <>
-      {wrapPreviewable(thumb)}
+      {wrapInteractive(thumb)}
       <MediaLightbox
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
