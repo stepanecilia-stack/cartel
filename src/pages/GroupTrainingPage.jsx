@@ -58,27 +58,30 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-const PRACTICE_TILE_ROW_PX = 36
+const PRACTICE_TILE_ROW_PX = 32
+const PRACTICE_GRID_GAP_PX = 2
+const PRACTICE_TARGET_MAX_ROWS = 4
 
-/** Колонок столько, чтобы уместить все приёмы уровня в 2–3 ряда без внутреннего скролла. */
-function calcPracticeGridCols(atomCount, viewportWidth) {
-  if (atomCount <= 0) return 1
-  const usable = Math.max(260, viewportWidth - 56)
-  const maxCols = Math.max(4, Math.floor(usable / PRACTICE_TILE_ROW_PX))
-  let cols = Math.min(atomCount, maxCols)
-  while (cols < atomCount && cols < maxCols && Math.ceil(atomCount / (cols + 1)) < Math.ceil(atomCount / cols)) {
-    cols += 1
+function calcPracticeGridLayout(atomCount, viewportWidth) {
+  if (atomCount <= 0) {
+    return { cols: 1, rows: 0, heightPx: 0 }
   }
-  return Math.max(1, cols)
+  const usable = Math.max(240, viewportWidth - 52)
+  const colsForMaxRows = Math.ceil(atomCount / PRACTICE_TARGET_MAX_ROWS)
+  const colsForWidth = Math.max(colsForMaxRows, Math.floor(usable / PRACTICE_TILE_ROW_PX))
+  const cols = Math.min(atomCount, colsForWidth)
+  const rows = Math.ceil(atomCount / cols)
+  const heightPx = rows * PRACTICE_TILE_ROW_PX + Math.max(0, rows - 1) * PRACTICE_GRID_GAP_PX
+  return { cols, rows, heightPx }
 }
 
-function usePracticeGridCols(atomCount) {
-  const [cols, setCols] = useState(() =>
-    calcPracticeGridCols(atomCount, typeof window !== 'undefined' ? window.innerWidth : 360),
+function usePracticeGridLayout(atomCount) {
+  const [layout, setLayout] = useState(() =>
+    calcPracticeGridLayout(atomCount, typeof window !== 'undefined' ? window.innerWidth : 360),
   )
 
   useEffect(() => {
-    const sync = () => setCols(calcPracticeGridCols(atomCount, window.innerWidth))
+    const sync = () => setLayout(calcPracticeGridLayout(atomCount, window.innerWidth))
     sync()
     window.addEventListener('resize', sync)
     window.addEventListener('orientationchange', sync)
@@ -88,7 +91,7 @@ function usePracticeGridCols(atomCount) {
     }
   }, [atomCount])
 
-  return cols
+  return layout
 }
 
 function AtomCompactPreviewVisual({ atom, dense = false }) {
@@ -214,7 +217,7 @@ function GroupPracticeBlock({
     () => selectedAtomIds.filter((id) => selectableAtomIds.includes(id)),
     [selectedAtomIds, selectableAtomIds],
   )
-  const gridCols = usePracticeGridCols(atoms.length)
+  const gridLayout = usePracticeGridLayout(atoms.length)
 
   useEffect(() => {
     const selectableSet = new Set(selectableAtomIds)
@@ -261,12 +264,17 @@ function GroupPracticeBlock({
             })}
           </div>
 
-          <div className="overflow-visible rounded-lg bg-[#fafbfc] p-0.5 max-sm:max-h-none sm:p-1">
+          <div
+            className="overflow-hidden rounded-lg bg-[#fafbfc] p-0.5"
+            style={{ height: gridLayout.heightPx + 4 }}
+          >
             <div
-              className="grid w-full gap-px sm:gap-1"
+              className="grid w-full [&>*]:min-h-0"
               style={{
-                gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
                 gridAutoRows: `${PRACTICE_TILE_ROW_PX}px`,
+                gap: `${PRACTICE_GRID_GAP_PX}px`,
+                height: `${gridLayout.heightPx}px`,
               }}
             >
               {atoms.map((atom) => {
