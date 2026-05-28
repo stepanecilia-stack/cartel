@@ -58,7 +58,16 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-function AtomCompactPreviewVisual({ atom }) {
+/** Число колонок, чтобы вся плитка уровня помещалась на экран телефона без скролла. */
+function atomPracticeGridCols(atomCount) {
+  if (atomCount <= 4) return atomCount
+  if (atomCount <= 8) return 5
+  if (atomCount <= 12) return 6
+  if (atomCount <= 16) return 7
+  return 8
+}
+
+function AtomCompactPreviewVisual({ atom, dense = false }) {
   if (hasLoopingPreviewMedia(atom)) {
     return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
   }
@@ -67,37 +76,57 @@ function AtomCompactPreviewVisual({ atom }) {
     return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
   }
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f0f2f5] p-1 text-[#818c99]">
-      <span className="text-lg leading-none">✓</span>
-      <span className="line-clamp-2 text-center text-[7px] leading-tight">{atom.name}</span>
+    <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f0f2f5] p-0.5 text-[#818c99]">
+      <span className={`leading-none ${dense ? 'text-sm' : 'text-lg'}`}>✓</span>
+      {!dense ? (
+        <span className="line-clamp-2 text-center text-[7px] leading-tight">{atom.name}</span>
+      ) : null}
     </div>
   )
 }
 
-function AtomCompactPreviewButton({ atom, active, onClick }) {
+function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
   const reinforceable = isAtomReinforceableInIsolation(atom)
-  const frameClass = `relative h-16 w-12 shrink-0 overflow-hidden rounded-md border ${
-    reinforceable
-      ? active
-        ? 'border-[#2d81e0] ring-2 ring-[#2d81e0]/35'
-        : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
-      : 'cursor-not-allowed border-[#d3d9de] bg-[#f5f6f8] opacity-90'
-  }`
+  const frameClass = dense
+    ? `relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded border ${
+        reinforceable
+          ? active
+            ? 'border-[#2d81e0] ring-1 ring-[#2d81e0]/40'
+            : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
+          : 'cursor-not-allowed border-[#d3d9de] bg-[#f5f6f8] opacity-90'
+      }`
+    : `relative h-16 w-12 shrink-0 overflow-hidden rounded-md border ${
+        reinforceable
+          ? active
+            ? 'border-[#2d81e0] ring-2 ring-[#2d81e0]/35'
+            : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
+          : 'cursor-not-allowed border-[#d3d9de] bg-[#f5f6f8] opacity-90'
+      }`
 
   const badges = (
     <>
-      <span className="pointer-events-none absolute left-0.5 top-0.5 z-10 rounded bg-white/90 px-1 py-px text-[9px] font-semibold tabular-nums text-[#818c99] shadow-sm">
+      <span
+        className={`pointer-events-none absolute left-0 top-0 z-10 rounded-br bg-white/90 font-semibold tabular-nums text-[#818c99] shadow-sm ${
+          dense ? 'px-0.5 py-px text-[7px]' : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
+        }`}
+      >
         #{atom.number ?? '—'}
       </span>
       {!reinforceable ? (
         <span
-          className="pointer-events-none absolute right-0 top-0 z-10 rounded-bl-md bg-[#818c99]/95 px-1 py-px text-[11px] font-bold leading-none text-white shadow-sm"
+          className={`pointer-events-none absolute right-0 top-0 z-10 rounded-bl bg-[#818c99]/95 font-bold leading-none text-white shadow-sm ${
+            dense ? 'px-0.5 py-px text-[9px]' : 'px-1 py-px text-[11px]'
+          }`}
           title={NON_ISOLATED_REINFORCEMENT_TITLE}
         >
           {NON_ISOLATED_REINFORCEMENT_SYMBOL}
         </span>
       ) : active ? (
-        <span className="pointer-events-none absolute bottom-0 right-0 z-10 rounded-tl-md bg-[#2d81e0] px-1 py-px text-[9px] font-semibold text-white">
+        <span
+          className={`pointer-events-none absolute bottom-0 right-0 z-10 rounded-tl bg-[#2d81e0] font-semibold text-white ${
+            dense ? 'px-0.5 py-px text-[8px]' : 'px-1 py-px text-[9px]'
+          }`}
+        >
           ✓
         </span>
       ) : null}
@@ -111,7 +140,7 @@ function AtomCompactPreviewButton({ atom, active, onClick }) {
         title={`#${atom.number ?? '—'} ${atom.name} — ${NON_ISOLATED_REINFORCEMENT_TITLE}`}
         aria-label={`#${atom.number ?? '—'} ${atom.name}. ${NON_ISOLATED_REINFORCEMENT_TITLE}`}
       >
-        <AtomCompactPreviewVisual atom={atom} />
+        <AtomCompactPreviewVisual atom={atom} dense={dense} />
         {badges}
       </div>
     )
@@ -126,7 +155,7 @@ function AtomCompactPreviewButton({ atom, active, onClick }) {
       aria-label={`#${atom.number ?? '—'} ${atom.name}`}
       aria-pressed={active}
     >
-      <AtomCompactPreviewVisual atom={atom} />
+      <AtomCompactPreviewVisual atom={atom} dense={dense} />
       {badges}
     </button>
   )
@@ -161,6 +190,7 @@ function GroupPracticeBlock({
     () => selectedAtomIds.filter((id) => selectableAtomIds.includes(id)),
     [selectedAtomIds, selectableAtomIds],
   )
+  const gridCols = atomPracticeGridCols(atoms.length)
 
   useEffect(() => {
     const selectableSet = new Set(selectableAtomIds)
@@ -207,8 +237,11 @@ function GroupPracticeBlock({
             })}
           </div>
 
-          <div className="max-h-32 overflow-y-auto rounded-lg bg-[#fafbfc] p-1.5">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="rounded-lg bg-[#fafbfc] p-1 sm:max-h-48 sm:overflow-y-auto">
+            <div
+              className="grid gap-0.5 sm:gap-1"
+              style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}
+            >
               {atoms.map((atom) => {
                 const reinforceable = isAtomReinforceableInIsolation(atom)
                 const active = reinforceable && selectedAtomIds.includes(atom.id)
@@ -217,6 +250,7 @@ function GroupPracticeBlock({
                     key={atom.id}
                     atom={atom}
                     active={active}
+                    dense
                     onClick={() => {
                       if (!reinforceable) return
                       setSelectedAtomIds((prev) =>
