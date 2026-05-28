@@ -35,14 +35,14 @@ export default function MediaLightbox({ open, onClose, media, title = '' }) {
       <img
         src={media.src}
         alt=""
-        className="max-h-[min(82vh,720px)] max-w-[min(92vw,960px)] rounded-lg object-contain shadow-lg"
+        className="max-h-[min(92dvh,960px)] max-w-[min(96vw,960px)] rounded-lg object-contain shadow-lg"
       />
     )
   } else if (media.kind === 'webm') {
     body = (
       <video
         src={media.src}
-        className="max-h-[min(82vh,720px)] max-w-[min(92vw,960px)] rounded-lg bg-black object-contain shadow-lg"
+        className="max-h-[min(92dvh,960px)] max-w-[min(96vw,960px)] rounded-lg bg-black object-contain shadow-lg"
         autoPlay
         loop
         muted
@@ -52,7 +52,7 @@ export default function MediaLightbox({ open, onClose, media, title = '' }) {
     )
   } else if (media.kind === 'embed') {
     body = (
-      <div className="w-[min(92vw,720px)] overflow-hidden rounded-lg bg-black shadow-lg">
+      <div className="w-[min(96vw,960px)] overflow-hidden rounded-lg bg-black shadow-lg">
         <div className="relative aspect-video w-full">
           <iframe
             src={media.src}
@@ -82,7 +82,7 @@ export default function MediaLightbox({ open, onClose, media, title = '' }) {
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[94vh] w-full max-w-4xl flex-col items-center justify-center p-2 sm:p-4"
+        className="relative flex min-h-[50dvh] max-h-[100dvh] w-full max-w-[100vw] flex-col items-center justify-center p-2 sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-label={label}

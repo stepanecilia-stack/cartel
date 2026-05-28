@@ -108,6 +108,7 @@ function AtomPreviewFrame({
   unlocked,
   compact,
   dense = false,
+  enlargeable = false,
   title,
   practicedToday = false,
   reinforcementTotal = 0,
@@ -151,7 +152,7 @@ function AtomPreviewFrame({
         <TechnicalAtomMedia
           atom={atom}
           className="h-full w-full"
-          previewable={false}
+          previewable={enlargeable}
           title={atom?.name}
         />
         {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
@@ -160,12 +161,12 @@ function AtomPreviewFrame({
     )
   }
 
-  if (!compact) {
+  if (enlargeable) {
     const media = resolveTechnicalAtomMedia(atom)
     if (media.kind === 'embed' || media.kind === 'link') {
       return (
         <div className={`${frameClass} ${borderClass}`} title={title}>
-          <StaticEmbedThumb />
+          <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable title={atom?.name} />
           {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
           {countBadge}
         </div>
@@ -304,6 +305,7 @@ export default function TechniqueTierStepper({
               atom={focusAtom}
               unlocked={focusUnlocked}
               dense={dense}
+              enlargeable
               practicedToday={focusPracticedToday}
               reinforcementTotal={displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
               showReinforcementCount={focusUnlocked}
