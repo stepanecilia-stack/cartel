@@ -70,41 +70,6 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-const PRACTICE_TARGET_MAX_ROWS = 4
-
-function calcPracticeGridLayout(atomCount, viewportWidth) {
-  if (atomCount <= 0) {
-    return { cols: 1, rows: 0, heightPx: 0 }
-  }
-  const usable = Math.max(240, viewportWidth - 52)
-  const colsForMaxRows = Math.ceil(atomCount / PRACTICE_TARGET_MAX_ROWS)
-  const colsForWidth = Math.max(colsForMaxRows, Math.floor(usable / PRACTICE_GRID_THUMB_W_PX))
-  const cols = Math.min(atomCount, colsForWidth)
-  const rows = Math.ceil(atomCount / cols)
-  const heightPx =
-    rows * PRACTICE_GRID_THUMB_H_PX + Math.max(0, rows - 1) * PRACTICE_GRID_THUMB_GAP_PX
-  return { cols, rows, heightPx }
-}
-
-function usePracticeGridLayout(atomCount) {
-  const [layout, setLayout] = useState(() =>
-    calcPracticeGridLayout(atomCount, typeof window !== 'undefined' ? window.innerWidth : 360),
-  )
-
-  useEffect(() => {
-    const sync = () => setLayout(calcPracticeGridLayout(atomCount, window.innerWidth))
-    sync()
-    window.addEventListener('resize', sync)
-    window.addEventListener('orientationchange', sync)
-    return () => {
-      window.removeEventListener('resize', sync)
-      window.removeEventListener('orientationchange', sync)
-    }
-  }, [atomCount])
-
-  return layout
-}
-
 function AtomCompactPreviewVisual({ atom, dense = false }) {
   if (hasLoopingPreviewMedia(atom)) {
     return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
@@ -224,6 +189,7 @@ function GroupPracticeBlock({
   practiceAtomsByTier,
   practicedByStudentId,
   onToggleStudentAtoms,
+  masteryCheckContext,
   showHeader = true,
 }) {
   const [viewTier, setViewTier] = useState(1)
@@ -249,7 +215,16 @@ function GroupPracticeBlock({
     () => selectedAtomIds.filter((id) => selectableAtomIds.includes(id)),
     [selectedAtomIds, selectableAtomIds],
   )
-  const gridLayout = usePracticeGridLayout(atoms.length)
+
+  const studentsForSelectedAtoms = useMemo(() => {
+    if (selectedReinforceableIds.length === 0) return []
+    if (!masteryCheckContext) return selectedStudents
+    return selectedStudents.filter((student) =>
+      selectedReinforceableIds.every((atomId) =>
+        isAtomMasteredByStudent(student, atomId, masteryCheckContext),
+      ),
+    )
+  }, [selectedStudents, selectedReinforceableIds, masteryCheckContext])
 
   useEffect(() => {
     const selectableSet = new Set(selectableAtomIds)
@@ -300,17 +275,13 @@ function GroupPracticeBlock({
             })}
           </div>
 
-          <div
-            className="overflow-hidden rounded-lg bg-[#fafbfc] p-0.5"
-            style={{ height: gridLayout.heightPx + 4 }}
-          >
+          <div className="rounded-lg bg-[#fafbfc] p-1">
             <div
               className="grid w-full justify-center [&>*]:min-h-0"
               style={{
-                gridTemplateColumns: `repeat(${gridLayout.cols}, ${PRACTICE_GRID_THUMB_W_PX}px)`,
+                gridTemplateColumns: `repeat(auto-fill, ${PRACTICE_GRID_THUMB_W_PX}px)`,
                 gridAutoRows: `${PRACTICE_GRID_THUMB_H_PX}px`,
                 gap: `${PRACTICE_GRID_THUMB_GAP_PX}px`,
-                height: `${gridLayout.heightPx}px`,
               }}
             >
               {atoms.map((atom) => {
@@ -347,29 +318,40 @@ function GroupPracticeBlock({
                   Снять выбор
                 </button>
               </p>
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                {selectedStudents.map((student) => {
-                  const ids = practicedByStudentId[student.id] ?? []
-                  const markedAll = selectedReinforceableIds.every((atomId) => ids.includes(atomId))
-                  return (
-                    <button
-                      key={student.id}
-                      type="button"
-                      onClick={() => onToggleStudentAtoms(student.id, selectedReinforceableIds)}
-                      className={`flex min-h-[2.25rem] touch-manipulation items-center justify-between rounded-lg border px-2 py-1 text-left ${
-                        markedAll
-                          ? 'border-[#4bb34b] bg-[#e8f5e9]'
-                          : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
-                      }`}
-                    >
-                      <span className="truncate text-[13px] font-medium text-[#2c2d2e]">{student.displayName}</span>
-                      <span className={`ml-2 text-[11px] font-semibold ${markedAll ? 'text-[#4bb34b]' : 'text-[#818c99]'}`}>
-                        {markedAll ? '✓' : '—'}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+              {studentsForSelectedAtoms.length === 0 ? (
+                <p className={vk.mutedXs}>
+                  Ни у кого в группе нет всех выбранных приёмов в пройденном — снимите лишний выбор или откройте
+                  прогресс ученику.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  {studentsForSelectedAtoms.map((student) => {
+                    const ids = practicedByStudentId[student.id] ?? []
+                    const markedAll = selectedReinforceableIds.every((atomId) => ids.includes(atomId))
+                    return (
+                      <button
+                        key={student.id}
+                        type="button"
+                        onClick={() => onToggleStudentAtoms(student.id, selectedReinforceableIds)}
+                        className={`flex min-h-[2.25rem] touch-manipulation items-center justify-between rounded-lg border px-2 py-1 text-left ${
+                          markedAll
+                            ? 'border-[#4bb34b] bg-[#e8f5e9]'
+                            : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
+                        }`}
+                      >
+                        <span className="truncate text-[13px] font-medium text-[#2c2d2e]">
+                          {student.displayName}
+                        </span>
+                        <span
+                          className={`ml-2 text-[11px] font-semibold ${markedAll ? 'text-[#4bb34b]' : 'text-[#818c99]'}`}
+                        >
+                          {markedAll ? '✓' : '—'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </>
           ) : null}
         </>
@@ -1153,6 +1135,7 @@ function ProgressPhase({
             selectedStudents={studentsForSession}
             practiceAtomsByTier={practiceAtomsByTier}
             practicedByStudentId={practicedByStudentId}
+            masteryCheckContext={masteryCheckContext}
             onToggleStudentAtoms={handleMarkFromGroupBlock}
           />
         </div>
@@ -1162,6 +1145,7 @@ function ProgressPhase({
           selectedStudents={studentsForSession}
           practiceAtomsByTier={practiceAtomsByTier}
           practicedByStudentId={practicedByStudentId}
+          masteryCheckContext={masteryCheckContext}
           onToggleStudentAtoms={handleMarkFromGroupBlock}
         />
       </div>
