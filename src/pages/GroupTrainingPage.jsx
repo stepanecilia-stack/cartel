@@ -44,6 +44,7 @@ import {
   studentPhotoUrl,
 } from '../utils/studentModel'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
+import StaticEmbedThumb from '../components/training/StaticEmbedThumb.jsx'
 import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import {
   COMPACT_ATOM_THUMB_GAP_PX,
@@ -105,7 +106,7 @@ function AtomCompactPreviewVisual({ atom, dense = false }) {
   }
   const kind = resolveTechnicalAtomMedia(atom).kind
   if (kind === 'embed' || kind === 'link') {
-    return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
+    return <StaticEmbedThumb />
   }
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f0f2f5] p-0.5 text-[#818c99]">

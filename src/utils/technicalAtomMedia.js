@@ -20,3 +20,16 @@ export function hasLoopingPreviewMedia(atom) {
   const kind = resolveTechnicalAtomMedia(atom).kind
   return kind === 'gif' || kind === 'webm'
 }
+
+/** Kinescope и др. embed — с автозапуском в крупном превью. */
+export function embedAutoplaySrc(src) {
+  const raw = String(src ?? '').trim()
+  if (!raw) return ''
+  try {
+    const url = new URL(raw)
+    if (!url.searchParams.has('autoplay')) url.searchParams.set('autoplay', '1')
+    return url.toString()
+  } catch {
+    return raw.includes('autoplay=') ? raw : raw.includes('?') ? `${raw}&autoplay=1` : `${raw}?autoplay=1`
+  }
+}

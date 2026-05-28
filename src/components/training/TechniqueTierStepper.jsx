@@ -6,8 +6,13 @@ import {
   NON_ISOLATED_REINFORCEMENT_SYMBOL,
   NON_ISOLATED_REINFORCEMENT_TITLE,
 } from '../../utils/atomReinforcementEligibility.js'
-import { hasLoopingPreviewMedia } from '../../utils/technicalAtomMedia.js'
+import {
+  embedAutoplaySrc,
+  hasLoopingPreviewMedia,
+  resolveTechnicalAtomMedia,
+} from '../../utils/technicalAtomMedia.js'
 import { compactAtomThumbFrameClass } from '../../utils/trainingAtomThumb.js'
+import StaticEmbedThumb from './StaticEmbedThumb.jsx'
 import { vk } from '../../utils/vkUi.js'
 
 /** Счётчик отработок или метка «только в связке». */
@@ -116,10 +121,14 @@ function AtomPreviewFrame({
     ? compactAtomThumbFrameClass
     : 'relative aspect-[4/5] w-full max-w-[132px] overflow-hidden rounded-[10px] border-2 sm:max-w-[184px]'
 
+  const media = resolveTechnicalAtomMedia(atom)
+  const hasLargeEmbed = !compact && media.kind === 'embed' && Boolean(media.src)
+  const hasVisualPreview = hasLoopingPreviewMedia(atom) || hasLargeEmbed
+
   const borderClass = practicedToday
     ? 'border-[#4bb34b] shadow-sm'
     : unlocked
-      ? hasLoopingPreviewMedia(atom)
+      ? hasVisualPreview
         ? 'border-[#2d81e0] shadow-sm'
         : 'border-[#4bb34b]/60'
       : 'border-[#d3d9de]'
@@ -141,24 +150,54 @@ function AtomPreviewFrame({
     )
   }
 
-  if (!hasLoopingPreviewMedia(atom)) {
+  if (hasLoopingPreviewMedia(atom)) {
+    return (
+      <div className={`${frameClass} ${borderClass} bg-[#0f0f0f]`} title={title}>
+        <TechnicalAtomMedia
+          atom={atom}
+          className="h-full w-full"
+          previewable={!compact}
+          title={atom?.name}
+        />
+        {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
+        {countBadge}
+      </div>
+    )
+  }
+
+  if (hasLargeEmbed) {
+    return (
+      <div className={`${frameClass} ${borderClass} bg-black`} title={title}>
+        <iframe
+          src={embedAutoplaySrc(media.src)}
+          title={atom?.name ?? 'Видео приёма'}
+          className="absolute inset-0 h-full w-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+        {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
+        {countBadge}
+      </div>
+    )
+  }
+
+  if (media.kind === 'embed' || media.kind === 'link') {
     return (
       <div className={`${frameClass} ${borderClass}`} title={title}>
-        <UnlockedNoVideoPlaceholder atom={atom} compact={compact} practicedToday={practicedToday} />
+        {compact ? (
+          <StaticEmbedThumb />
+        ) : (
+          <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable title={atom?.name} />
+        )}
+        {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
         {countBadge}
       </div>
     )
   }
 
   return (
-    <div className={`${frameClass} ${borderClass} bg-[#0f0f0f]`} title={title}>
-      <TechnicalAtomMedia
-        atom={atom}
-        className="h-full w-full"
-        previewable={!compact}
-        title={atom?.name}
-      />
-      {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
+    <div className={`${frameClass} ${borderClass}`} title={title}>
+      <UnlockedNoVideoPlaceholder atom={atom} compact={compact} practicedToday={practicedToday} />
       {countBadge}
     </div>
   )
@@ -269,8 +308,8 @@ export default function TechniqueTierStepper({
         </span>
       </div>
 
-      <div className="flex items-start gap-2 sm:gap-2.5">
-        <div key={pulseKey} className="w-[132px] shrink-0 sm:w-[184px]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2.5">
+        <div key={pulseKey} className="mx-auto w-[132px] shrink-0 sm:mx-0 sm:w-[184px]">
           {focusAtom ? (
             <AtomPreviewFrame
               atom={focusAtom}
@@ -338,7 +377,7 @@ export default function TechniqueTierStepper({
 
           <div
             ref={stripRef}
-            className="flex gap-1 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin]"
+            className="flex items-start gap-1 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin]"
             role="list"
             aria-label="Шаги программы"
           >
@@ -347,9 +386,9 @@ export default function TechniqueTierStepper({
               const practicedToday = practicedSet.has(atom.id)
               const reinforceable = isAtomReinforceableInIsolation(atom)
               const isFocused = index === displayIndex
-              const ringClass = [
+              const tileRingClass = [
                 isFocused ? 'ring-2 ring-[#2d81e0] ring-offset-1' : '',
-                practicedToday ? 'ring-2 ring-[#4bb34b]/80 ring-offset-1' : '',
+                practicedToday && reinforceable ? 'ring-2 ring-[#4bb34b]/80 ring-offset-1' : '',
               ]
                 .filter(Boolean)
                 .join(' ')
@@ -382,13 +421,13 @@ export default function TechniqueTierStepper({
                   key={atom.id}
                   data-slot-index={index}
                   role="listitem"
-                  className={`snap-center rounded-md ${ringClass}`}
+                  className="shrink-0 snap-center"
                 >
                   {unlocked ? (
                     <button
                       type="button"
                       onClick={() => setFocusIndex(index)}
-                      className="touch-manipulation rounded-md text-left"
+                      className={`block shrink-0 touch-manipulation rounded-md text-left ${tileRingClass}`}
                       aria-current={isFocused ? 'true' : undefined}
                       aria-label={
                         practicedToday
@@ -399,7 +438,7 @@ export default function TechniqueTierStepper({
                       {tile}
                     </button>
                   ) : (
-                    tile
+                    <div className="shrink-0">{tile}</div>
                   )}
                 </div>
               )
