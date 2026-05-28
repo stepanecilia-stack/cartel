@@ -7,7 +7,7 @@ import {
   NON_ISOLATED_REINFORCEMENT_TITLE,
 } from '../../utils/atomReinforcementEligibility.js'
 import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../../utils/technicalAtomMedia.js'
-import { compactAtomThumbFrameClass } from '../../utils/trainingAtomThumb.js'
+import { compactAtomThumbFrameClass, focusAtomThumbFrameClass } from '../../utils/trainingAtomThumb.js'
 import StaticEmbedThumb from './StaticEmbedThumb.jsx'
 import { vk } from '../../utils/vkUi.js'
 
@@ -117,7 +117,7 @@ function AtomPreviewFrame({
   const frameClass = compact
     ? compactAtomThumbFrameClass
     : dense
-      ? 'relative aspect-[4/5] w-full max-w-[4.5rem] overflow-hidden rounded-lg border-2'
+      ? focusAtomThumbFrameClass
       : 'relative aspect-[4/5] w-full max-w-[132px] overflow-hidden rounded-[10px] border-2 sm:max-w-[184px]'
 
   const borderClass = practicedToday
@@ -297,7 +297,7 @@ export default function TechniqueTierStepper({
       <div className={`flex items-start ${dense ? 'gap-1.5' : 'gap-2 sm:gap-2.5'}`}>
         <div
           key={pulseKey}
-          className={`shrink-0 ${dense ? 'w-[4.5rem]' : 'w-[132px] sm:w-[184px]'}`}
+          className={`shrink-0 ${dense ? 'w-[8.5rem]' : 'w-[132px] sm:w-[184px]'}`}
         >
           {focusAtom ? (
             <AtomPreviewFrame
@@ -317,16 +317,22 @@ export default function TechniqueTierStepper({
               }
             />
           ) : null}
-          {focusAtom && !dense ? (
-            <p className="mt-1 hidden text-[11px] font-semibold leading-snug text-[#2c2d2e] sm:block sm:text-[12px]">
+          {focusAtom ? (
+            <p
+              className={`mt-1 font-semibold leading-snug text-[#2c2d2e] ${
+                dense
+                  ? 'line-clamp-3 text-center text-[10px] leading-tight'
+                  : 'text-[11px] sm:text-[12px]'
+              }`}
+            >
               <span className="text-[#818c99]">#{focusAtom.number}</span> {focusAtom.name}
               {focusUnlocked && focusReinforceable ? (
-                <span className="ml-1.5 tabular-nums text-[#818c99]">
+                <span className="ml-1 tabular-nums text-[#818c99]">
                   ×{displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
                 </span>
               ) : null}
               {focusUnlocked && !focusReinforceable ? (
-                <span className="ml-1.5 text-[#818c99]" title={NON_ISOLATED_REINFORCEMENT_TITLE}>
+                <span className="ml-1 text-[#818c99]" title={NON_ISOLATED_REINFORCEMENT_TITLE}>
                   {NON_ISOLATED_REINFORCEMENT_SYMBOL}
                 </span>
               ) : null}
