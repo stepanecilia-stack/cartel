@@ -113,7 +113,7 @@ function AtomPreviewFrame({
 }) {
   const frameClass = compact
     ? 'relative h-13 w-10 shrink-0 overflow-hidden rounded-md border'
-    : 'relative aspect-[4/5] w-full max-w-[184px] overflow-hidden rounded-[10px] border-2'
+    : 'relative aspect-[4/5] w-full max-w-[132px] overflow-hidden rounded-[10px] border-2 sm:max-w-[184px]'
 
   const borderClass = practicedToday
     ? 'border-[#4bb34b] shadow-sm'
@@ -268,8 +268,8 @@ export default function TechniqueTierStepper({
         </span>
       </div>
 
-      <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:items-start sm:gap-2.5">
-        <div key={pulseKey} className="w-full shrink-0 sm:w-[184px]">
+      <div className="flex items-start gap-2 sm:gap-2.5">
+        <div key={pulseKey} className="w-[132px] shrink-0 sm:w-[184px]">
           {focusAtom ? (
             <AtomPreviewFrame
               atom={focusAtom}
@@ -288,7 +288,7 @@ export default function TechniqueTierStepper({
             />
           ) : null}
           {focusAtom ? (
-            <p className="mt-1 text-center text-[12px] font-semibold leading-snug text-[#2c2d2e] sm:text-left">
+            <p className="mt-1 text-center text-[11px] font-semibold leading-snug text-[#2c2d2e] sm:text-left sm:text-[12px]">
               <span className="text-[#818c99]">#{focusAtom.number}</span> {focusAtom.name}
               {focusUnlocked && focusReinforceable ? (
                 <span className="ml-1.5 tabular-nums text-[#818c99]">
@@ -304,7 +304,7 @@ export default function TechniqueTierStepper({
           ) : null}
         </div>
 
-        <div className="flex w-full min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {progressLocked ? (
             <p className={`text-center ${vk.mutedXs}`}>
               Выберите миниатюру · отметка на крупном превью. Прогресс (+/−) — на вкладке «прогр.»
