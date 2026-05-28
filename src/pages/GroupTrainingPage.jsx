@@ -25,6 +25,8 @@ import {
   buildProgramAtomById,
   filterReinforceableAtomIds,
   isAtomReinforceableInIsolation,
+  NON_ISOLATED_REINFORCEMENT_SYMBOL,
+  NON_ISOLATED_REINFORCEMENT_TITLE,
 } from '../utils/atomReinforcementEligibility.js'
 import {
   endGroupTrainingSession,
@@ -41,6 +43,8 @@ import {
   studentInitials,
   studentPhotoUrl,
 } from '../utils/studentModel'
+import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
+import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import { vk } from '../utils/vkUi.js'
 
 const SAVE_DEBOUNCE_MS = 350
@@ -52,6 +56,221 @@ function normalizeSearchText(value) {
 function tierBadgeClass(variant) {
   if (variant === 'accent') return 'bg-[#f3f0ff] text-[#6f3ff5]'
   return 'bg-[#ecf3fc] text-[#2d81e0]'
+}
+
+function AtomCompactPreviewVisual({ atom }) {
+  if (hasLoopingPreviewMedia(atom)) {
+    return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
+  }
+  const kind = resolveTechnicalAtomMedia(atom).kind
+  if (kind === 'embed' || kind === 'link') {
+    return <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable={false} title={atom.name} />
+  }
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f0f2f5] p-1 text-[#818c99]">
+      <span className="text-lg leading-none">✓</span>
+      <span className="line-clamp-2 text-center text-[7px] leading-tight">{atom.name}</span>
+    </div>
+  )
+}
+
+function AtomCompactPreviewButton({ atom, active, onClick }) {
+  const reinforceable = isAtomReinforceableInIsolation(atom)
+  const frameClass = `relative h-16 w-12 shrink-0 overflow-hidden rounded-md border ${
+    reinforceable
+      ? active
+        ? 'border-[#2d81e0] ring-2 ring-[#2d81e0]/35'
+        : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
+      : 'cursor-not-allowed border-[#d3d9de] bg-[#f5f6f8] opacity-90'
+  }`
+
+  const badges = (
+    <>
+      <span className="pointer-events-none absolute left-0.5 top-0.5 z-10 rounded bg-white/90 px-1 py-px text-[9px] font-semibold tabular-nums text-[#818c99] shadow-sm">
+        #{atom.number ?? '—'}
+      </span>
+      {!reinforceable ? (
+        <span
+          className="pointer-events-none absolute right-0 top-0 z-10 rounded-bl-md bg-[#818c99]/95 px-1 py-px text-[11px] font-bold leading-none text-white shadow-sm"
+          title={NON_ISOLATED_REINFORCEMENT_TITLE}
+        >
+          {NON_ISOLATED_REINFORCEMENT_SYMBOL}
+        </span>
+      ) : active ? (
+        <span className="pointer-events-none absolute bottom-0 right-0 z-10 rounded-tl-md bg-[#2d81e0] px-1 py-px text-[9px] font-semibold text-white">
+          ✓
+        </span>
+      ) : null}
+    </>
+  )
+
+  if (!reinforceable) {
+    return (
+      <div
+        className={frameClass}
+        title={`#${atom.number ?? '—'} ${atom.name} — ${NON_ISOLATED_REINFORCEMENT_TITLE}`}
+        aria-label={`#${atom.number ?? '—'} ${atom.name}. ${NON_ISOLATED_REINFORCEMENT_TITLE}`}
+      >
+        <AtomCompactPreviewVisual atom={atom} />
+        {badges}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={frameClass}
+      title={`#${atom.number ?? '—'} ${atom.name}`}
+      aria-label={`#${atom.number ?? '—'} ${atom.name}`}
+      aria-pressed={active}
+    >
+      <AtomCompactPreviewVisual atom={atom} />
+      {badges}
+    </button>
+  )
+}
+
+function GroupPracticeBlock({
+  selectedStudents,
+  practiceAtomsByTier,
+  practicedByStudentId,
+  onToggleStudentAtoms,
+}) {
+  const [viewTier, setViewTier] = useState(1)
+  const [selectedAtomIds, setSelectedAtomIds] = useState([])
+
+  const atomTiers = useMemo(
+    () =>
+      [
+        { id: 1, label: 'Программа', atoms: practiceAtomsByTier.level1 ?? [] },
+        { id: 2, label: 'Ур. 2', atoms: practiceAtomsByTier.level2 ?? [] },
+        { id: 3, label: 'Комбо', atoms: practiceAtomsByTier.level3 ?? [] },
+      ].filter((t) => t.atoms.length > 0),
+    [practiceAtomsByTier],
+  )
+
+  const activeTier = atomTiers.some((t) => t.id === viewTier) ? viewTier : atomTiers[0]?.id ?? 1
+  const atoms = atomTiers.find((t) => t.id === activeTier)?.atoms ?? []
+  const selectableAtomIds = useMemo(
+    () => atoms.filter((atom) => isAtomReinforceableInIsolation(atom)).map((atom) => atom.id),
+    [atoms],
+  )
+  const selectedReinforceableIds = useMemo(
+    () => selectedAtomIds.filter((id) => selectableAtomIds.includes(id)),
+    [selectedAtomIds, selectableAtomIds],
+  )
+
+  useEffect(() => {
+    const selectableSet = new Set(selectableAtomIds)
+    setSelectedAtomIds((prev) => {
+      const kept = prev.filter((id) => selectableSet.has(id))
+      if (kept.length > 0) return kept
+      return selectableAtomIds[0] ? [selectableAtomIds[0]] : []
+    })
+  }, [selectableAtomIds])
+
+  return (
+    <section className={`${vk.cardPadded} space-y-2`}>
+      <header className="flex flex-wrap items-center gap-2">
+        <h3 className={`min-w-0 flex-1 truncate ${vk.h2}`}>Отработка приёмов</h3>
+        <span className="rounded bg-[#ecf3fc] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#2d81e0]">
+          {selectedStudents.length} в группе
+        </span>
+      </header>
+
+      {selectedStudents.length === 0 ? (
+        <p className={vk.mutedXs}>Сначала отметьте учеников в группе.</p>
+      ) : atomTiers.length === 0 ? (
+        <p className={vk.mutedXs}>Список приёмов пуст.</p>
+      ) : (
+        <>
+          <div className={`${vk.segmentBar} p-0.5`} role="tablist" aria-label="Уровень отработки">
+            {atomTiers.map((tier) => {
+              const active = tier.id === activeTier
+              return (
+                <button
+                  key={tier.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setViewTier(tier.id)}
+                  className={`min-w-0 flex-1 touch-manipulation rounded-md px-1 py-1 text-[11px] font-medium sm:text-[12px] ${
+                    active ? vk.segmentBtnActive : vk.segmentBtnInactive
+                  }`}
+                >
+                  <span className="block truncate">{tier.label}</span>
+                  <span className="block tabular-nums text-[10px] opacity-80">{tier.atoms.length}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="max-h-32 overflow-y-auto rounded-lg bg-[#fafbfc] p-1.5">
+            <div className="flex flex-wrap gap-1.5">
+              {atoms.map((atom) => {
+                const reinforceable = isAtomReinforceableInIsolation(atom)
+                const active = reinforceable && selectedAtomIds.includes(atom.id)
+                return (
+                  <AtomCompactPreviewButton
+                    key={atom.id}
+                    atom={atom}
+                    active={active}
+                    onClick={() => {
+                      if (!reinforceable) return
+                      setSelectedAtomIds((prev) =>
+                        prev.includes(atom.id) ? prev.filter((id) => id !== atom.id) : [...prev, atom.id],
+                      )
+                    }}
+                  />
+                )
+              })}
+            </div>
+          </div>
+
+          {selectedReinforceableIds.length > 0 ? (
+            <>
+              <p className={vk.mutedXs}>
+                Выбрано приёмов:{' '}
+                <span className="font-semibold tabular-nums text-[#2d81e0]">{selectedReinforceableIds.length}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAtomIds([])}
+                  className="ml-2 text-[11px] font-medium text-[#2d81e0] active:opacity-80"
+                >
+                  Снять выбор
+                </button>
+              </p>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {selectedStudents.map((student) => {
+                  const ids = practicedByStudentId[student.id] ?? []
+                  const markedAll = selectedReinforceableIds.every((atomId) => ids.includes(atomId))
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={() => onToggleStudentAtoms(student.id, selectedReinforceableIds)}
+                      className={`flex min-h-[2.25rem] touch-manipulation items-center justify-between rounded-lg border px-2 py-1 text-left ${
+                        markedAll
+                          ? 'border-[#4bb34b] bg-[#e8f5e9]'
+                          : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
+                      }`}
+                    >
+                      <span className="truncate text-[13px] font-medium text-[#2c2d2e]">{student.displayName}</span>
+                      <span className={`ml-2 text-[11px] font-semibold ${markedAll ? 'text-[#4bb34b]' : 'text-[#818c99]'}`}>
+                        {markedAll ? '✓' : '—'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          ) : null}
+        </>
+      )}
+    </section>
+  )
 }
 
 /** Первый незакрытый уровень программы. */
@@ -514,6 +733,25 @@ function ProgressPhase({
   const [reinforcementNotice, setReinforcementNotice] = useState('')
   const localDataRef = useRef(new Map())
   const debounceRef = useRef(new Map())
+  const practiceAtomsByTier = useMemo(() => {
+    const level1 = orderedL1
+    const level2 = TECHNIQUE_LEVEL2_ATOMS
+    const level3ById = new Map()
+    for (const student of studentsForSession) {
+      const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
+      for (let i = 0; i < combos.length; i += 1) {
+        const combo = combos[i]
+        if (!combo?.id || level3ById.has(combo.id)) continue
+        level3ById.set(combo.id, {
+          ...combo,
+          kind: 'combo',
+          number: combo.number ?? i + 1,
+          name: combo.name ?? `Комбо ${i + 1}`,
+        })
+      }
+    }
+    return { level1, level2, level3: [...level3ById.values()] }
+  }, [orderedL1, studentsForSession])
 
   useEffect(() => {
     setPracticedByStudentId(initialPracticedByStudentId ?? {})
@@ -613,6 +851,34 @@ function ProgressPhase({
       })
     },
     [coachId],
+  )
+  const handleMarkFromGroupBlock = useCallback(
+    (studentId, atomIds) => {
+      if (!Array.isArray(atomIds) || atomIds.length === 0) return
+      const atomById = buildProgramAtomById(
+        practiceAtomsByTier.level1,
+        practiceAtomsByTier.level2,
+        practiceAtomsByTier.level3,
+      )
+      setPracticedByStudentId((prev) => {
+        const current = prev[studentId] ?? []
+        const validIds = atomIds.filter((id) => {
+          const atom = atomById.get(id)
+          return atom && isAtomReinforceableInIsolation(atom)
+        })
+        if (validIds.length === 0) return prev
+        const hasAll = validIds.every((id) => current.includes(id))
+        const nextIds = hasAll
+          ? current.filter((id) => !validIds.includes(id))
+          : [...new Set([...current, ...validIds])]
+        const next = { ...prev }
+        if (nextIds.length > 0) next[studentId] = nextIds
+        else delete next[studentId]
+        if (coachId) updateGroupTrainingSessionPracticed(coachId, studentId, nextIds)
+        return next
+      })
+    },
+    [coachId, practiceAtomsByTier],
   )
 
   const commitReinforcement = useCallback(async () => {
@@ -743,6 +1009,13 @@ function ProgressPhase({
           )
         })}
       </ul>
+
+      <GroupPracticeBlock
+        selectedStudents={studentsForSession}
+        practiceAtomsByTier={practiceAtomsByTier}
+        practicedByStudentId={practicedByStudentId}
+        onToggleStudentAtoms={handleMarkFromGroupBlock}
+      />
     </div>
   )
 }

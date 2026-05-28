@@ -87,15 +87,24 @@ export function getGroupTrainingSession(coachId) {
 /**
  * @param {string} coachId
  * @param {Iterable<string>} selectedIds
+ * @param {Record<string, string[]>} [initialPracticedByStudentId]
  */
-export function startGroupTrainingSession(coachId, selectedIds) {
+export function startGroupTrainingSession(coachId, selectedIds, initialPracticedByStudentId) {
   const ids = [...new Set(selectedIds)]
+  const practicedAtomIdsByStudentId = {}
+  if (initialPracticedByStudentId && typeof initialPracticedByStudentId === 'object') {
+    for (const [studentId, atomIds] of Object.entries(initialPracticedByStudentId)) {
+      if (!ids.includes(studentId) || !Array.isArray(atomIds)) continue
+      const clean = [...new Set(atomIds.filter((id) => typeof id === 'string' && id))]
+      if (clean.length) practicedAtomIdsByStudentId[studentId] = clean
+    }
+  }
   writeRaw({
     coachId,
     active: true,
     selectedIds: ids,
     slidersByStudentId: {},
-    practicedAtomIdsByStudentId: {},
+    practicedAtomIdsByStudentId,
     startedAt: new Date().toISOString(),
   })
   saveLastTrainingRoster(coachId, ids)
