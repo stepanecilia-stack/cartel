@@ -58,8 +58,8 @@ function tierBadgeClass(variant) {
   return 'bg-[#ecf3fc] text-[#2d81e0]'
 }
 
-const PRACTICE_TILE_ROW_PX = 32
-const PRACTICE_GRID_GAP_PX = 2
+const PRACTICE_TILE_ROW_PX = 40
+const PRACTICE_GRID_GAP_PX = 3
 const PRACTICE_TARGET_MAX_ROWS = 4
 
 function calcPracticeGridLayout(atomCount, viewportWidth) {
@@ -104,7 +104,7 @@ function AtomCompactPreviewVisual({ atom, dense = false }) {
   }
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f0f2f5] p-0.5 text-[#818c99]">
-      <span className={`leading-none ${dense ? 'text-sm' : 'text-lg'}`}>✓</span>
+      <span className={`leading-none ${dense ? 'text-base' : 'text-lg'}`}>✓</span>
       {!dense ? (
         <span className="line-clamp-2 text-center text-[7px] leading-tight">{atom.name}</span>
       ) : null}
@@ -134,7 +134,7 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
     <>
       <span
         className={`pointer-events-none absolute left-0 top-0 z-10 rounded-br bg-white/90 font-semibold tabular-nums text-[#818c99] shadow-sm ${
-          dense ? 'px-0.5 py-px text-[7px]' : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
+          dense ? 'px-0.5 py-px text-[8px]' : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
         }`}
       >
         #{atom.number ?? '—'}
