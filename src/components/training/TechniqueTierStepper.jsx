@@ -281,7 +281,7 @@ export default function TechniqueTierStepper({
     : 'bg-[#2d81e0] active:bg-[#2875cc] disabled:opacity-40'
 
   const stepBtnClass = dense
-    ? 'flex h-8 w-8 touch-manipulation items-center justify-center rounded-full text-[17px] font-light text-white'
+    ? 'flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-[24px] font-light leading-none text-white'
     : 'flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[20px] font-light text-white'
 
   return (

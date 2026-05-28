@@ -52,9 +52,6 @@ import {
 } from '../utils/groupTrainingPractice.js'
 import {
   compactAtomThumbFrameClass,
-  PRACTICE_GRID_THUMB_GAP_PX,
-  PRACTICE_GRID_THUMB_H_PX,
-  PRACTICE_GRID_THUMB_W_PX,
   practiceGridThumbFrameClass,
 } from '../utils/trainingAtomThumb.js'
 import { vk } from '../utils/vkUi.js'
@@ -275,14 +272,9 @@ function GroupPracticeBlock({
             })}
           </div>
 
-          <div className="rounded-lg bg-[#fafbfc] p-1">
+          <div className="-mx-0.5 rounded-lg bg-[#fafbfc] p-0.5 sm:mx-0 sm:p-1">
             <div
-              className="grid w-full justify-center [&>*]:min-h-0"
-              style={{
-                gridTemplateColumns: `repeat(auto-fill, ${PRACTICE_GRID_THUMB_W_PX}px)`,
-                gridAutoRows: `${PRACTICE_GRID_THUMB_H_PX}px`,
-                gap: `${PRACTICE_GRID_THUMB_GAP_PX}px`,
-              }}
+              className="grid w-full grid-cols-3 gap-1 [&>*]:min-h-0 sm:grid-cols-4 sm:gap-1.5 lg:grid-cols-5"
             >
               {atoms.map((atom) => {
                 const reinforceable = isAtomReinforceableInIsolation(atom)
@@ -1119,7 +1111,7 @@ function ProgressPhase({
         })}
       </ul>
 
-      <details className="rounded-[10px] bg-white sm:hidden">
+      <details className="rounded-[10px] bg-white sm:hidden" open>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-2 py-2 touch-manipulation marker:content-none [&::-webkit-details-marker]:hidden">
           <span className={`min-w-0 flex-1 ${vk.h2}`}>Отработка приёмов</span>
           <span className="rounded bg-[#ecf3fc] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#2d81e0]">

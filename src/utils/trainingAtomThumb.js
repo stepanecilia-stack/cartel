@@ -16,4 +16,4 @@ export const PRACTICE_GRID_THUMB_H_PX = 104
 export const PRACTICE_GRID_THUMB_GAP_PX = 6
 
 export const practiceGridThumbFrameClass =
-  'relative h-[6.5rem] w-20 shrink-0 overflow-hidden rounded-md border'
+  'relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-md border'
