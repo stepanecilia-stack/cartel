@@ -112,8 +112,8 @@ function AtomPreviewFrame({
   reinforceableInIsolation = true,
 }) {
   const frameClass = compact
-    ? 'relative h-14 w-11 shrink-0 overflow-hidden rounded-md border'
-    : 'relative aspect-[4/5] w-full max-w-[200px] overflow-hidden rounded-[10px] border-2'
+    ? 'relative h-13 w-10 shrink-0 overflow-hidden rounded-md border'
+    : 'relative aspect-[4/5] w-full max-w-[184px] overflow-hidden rounded-[10px] border-2'
 
   const borderClass = practicedToday
     ? 'border-[#4bb34b] shadow-sm'
@@ -260,7 +260,7 @@ export default function TechniqueTierStepper({
     : 'bg-[#2d81e0] active:bg-[#2875cc] disabled:opacity-40'
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">{tierLabel}</p>
         <span className="text-[12px] font-semibold tabular-nums text-[#2c2d2e]">
@@ -268,8 +268,8 @@ export default function TechniqueTierStepper({
         </span>
       </div>
 
-      <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start sm:gap-3">
-        <div key={pulseKey} className="w-full shrink-0 sm:w-[200px]">
+      <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:items-start sm:gap-2.5">
+        <div key={pulseKey} className="w-full shrink-0 sm:w-[184px]">
           {focusAtom ? (
             <AtomPreviewFrame
               atom={focusAtom}
@@ -288,7 +288,7 @@ export default function TechniqueTierStepper({
             />
           ) : null}
           {focusAtom ? (
-            <p className="mt-1.5 text-center text-[13px] font-semibold leading-snug text-[#2c2d2e] sm:text-left">
+            <p className="mt-1 text-center text-[12px] font-semibold leading-snug text-[#2c2d2e] sm:text-left">
               <span className="text-[#818c99]">#{focusAtom.number}</span> {focusAtom.name}
               {focusUnlocked && focusReinforceable ? (
                 <span className="ml-1.5 tabular-nums text-[#818c99]">
@@ -302,58 +302,32 @@ export default function TechniqueTierStepper({
               ) : null}
             </p>
           ) : null}
-          {canMarkPracticed && focusUnlocked && focusAtom && focusReinforceable ? (
-            focusPracticedToday ? (
-              <p className="mt-1.5 flex items-center justify-center gap-1.5 text-center text-[12px] font-semibold text-[#4bb34b] sm:justify-start">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] text-white">
-                  ✓
-                </span>
-                Отработан сегодня
-              </p>
-            ) : (
-              <button type="button" onClick={handleMarkFocus} className={`mt-1.5 w-full sm:w-auto ${vk.btnPrimary}`}>
-                Отметить отработку
-              </button>
-            )
-          ) : null}
-          {focusUnlocked && focusAtom && !focusReinforceable ? (
-            <p className={`mt-1.5 ${vk.mutedXs} sm:text-left`}>{NON_ISOLATED_REINFORCEMENT_TITLE}</p>
-          ) : null}
-          {nextAtom && safeValue < total && !progressLocked ? (
-            <p className={`mt-0.5 text-center ${vk.mutedXs} sm:text-left`}>
-              Следующий: #{nextAtom.number} {nextAtom.name}
-            </p>
-          ) : safeValue >= total && total > 0 ? (
-            <p className="mt-0.5 text-center text-[12px] font-medium text-[#4bb34b] sm:text-left">
-              Уровень закрыт
-            </p>
-          ) : null}
         </div>
 
-        <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-1.5">
           {progressLocked ? (
             <p className={`text-center ${vk.mutedXs}`}>
               Выберите миниатюру · отметка на крупном превью. Прогресс (+/−) — на вкладке «прогр.»
             </p>
           ) : (
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-2.5">
               <button
                 type="button"
                 onClick={() => step(-1)}
                 disabled={safeValue <= 0}
-                className={`flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-[22px] font-light text-white ${accentBtn}`}
+                className={`flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[20px] font-light text-white ${accentBtn}`}
                 aria-label="На шаг назад"
               >
                 −
               </button>
-              <span className="min-w-[4.5rem] text-center text-[15px] font-semibold tabular-nums text-[#2c2d2e]">
+              <span className="min-w-[4.2rem] text-center text-[14px] font-semibold tabular-nums text-[#2c2d2e]">
                 {safeValue} / {total}
               </span>
               <button
                 type="button"
                 onClick={() => step(1)}
                 disabled={safeValue >= total}
-                className={`flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-[22px] font-light text-white ${accentBtn}`}
+                className={`flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[20px] font-light text-white ${accentBtn}`}
                 aria-label="Открыть следующий приём"
               >
                 +
@@ -430,11 +404,32 @@ export default function TechniqueTierStepper({
               )
             })}
           </div>
-          <p className={`text-center ${vk.mutedXs}`}>
-            {canMarkPracticed
-              ? 'Миниатюра — выбор приёма. «Отметить отработку» — на крупном превью. Повторно в этот день нельзя.'
-              : 'Только кнопки + и − — по одному приёму'}
-          </p>
+          {canMarkPracticed && focusUnlocked && focusAtom && focusReinforceable ? (
+            focusPracticedToday ? (
+              <p className="flex items-center justify-center gap-1.5 text-center text-[11px] font-semibold text-[#4bb34b] sm:justify-start">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#4bb34b] text-[11px] text-white">
+                  ✓
+                </span>
+                Отработан сегодня
+              </p>
+            ) : (
+              <button type="button" onClick={handleMarkFocus} className={`w-full sm:w-auto ${vk.btnPrimary}`}>
+                Отметить отработку
+              </button>
+            )
+          ) : null}
+          {focusUnlocked && focusAtom && !focusReinforceable ? (
+            <p className={`${vk.mutedXs} sm:text-left`}>{NON_ISOLATED_REINFORCEMENT_TITLE}</p>
+          ) : null}
+          {nextAtom && safeValue < total && !progressLocked ? (
+            <p className={`text-center ${vk.mutedXs} sm:text-left`}>
+              Следующий: #{nextAtom.number} {nextAtom.name}
+            </p>
+          ) : safeValue >= total && total > 0 ? (
+            <p className="text-center text-[12px] font-medium text-[#4bb34b] sm:text-left">
+              Уровень закрыт
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

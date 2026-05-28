@@ -205,7 +205,7 @@ function StudentProgressRow({
   const practiceTierTabs = useMemo(() => {
     /** @type {{ id: number, label: string, count: number, total: number, isProgressTier?: boolean }[]} */
     const tabs = []
-    if (passed1 > 0) {
+    if (total1 > 0 && (passed1 > 0 || activeTier === 1)) {
       tabs.push({
         id: 1,
         label: 'Программа',
@@ -214,7 +214,7 @@ function StudentProgressRow({
         isProgressTier: activeTier === 1,
       })
     }
-    if (passed2 > 0) {
+    if (total2 > 0 && (passed2 > 0 || activeTier === 2)) {
       tabs.push({
         id: 2,
         label: 'Ур. 2',
@@ -223,7 +223,7 @@ function StudentProgressRow({
         isProgressTier: activeTier === 2,
       })
     }
-    if (passed3 > 0) {
+    if (total3 > 0 && (passed3 > 0 || activeTier === 3)) {
       tabs.push({
         id: 3,
         label: 'Комбо',
@@ -294,7 +294,7 @@ function StudentProgressRow({
   )
 
   return (
-    <li className={vk.cardPadded}>
+    <li className={`${vk.cardPadded} !p-2.5 sm:!p-3`}>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
         <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
         {baseComplete && activeTier === 1 ? (
@@ -326,7 +326,7 @@ function StudentProgressRow({
         </p>
       ) : null}
 
-      <div className="mt-2">
+      <div className="mt-1.5">
         <TrainingPracticeTierTabs
           tabs={practiceTierTabs}
           viewTier={practiceViewTier}
@@ -723,7 +723,7 @@ function ProgressPhase({
         </p>
       ) : null}
 
-      <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
+      <ul className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-1.5 lg:space-y-0">
         {studentsForSession.map((student) => {
           const slot = localDataRef.current.get(student.id)
           const reinforcement =

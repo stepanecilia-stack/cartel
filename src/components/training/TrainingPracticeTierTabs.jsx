@@ -12,7 +12,7 @@ function TrainingPracticeTierTabs({ tabs, viewTier, onViewTierChange }) {
   if (tabs.length <= 1) return null
 
   return (
-    <div className={`${vk.segmentBar} mb-2`} role="tablist" aria-label="Уровень для отработки">
+    <div className={`${vk.segmentBar} mb-1.5 p-0.5`} role="tablist" aria-label="Уровень для отработки">
       {tabs.map((tab) => {
         const active = viewTier === tab.id
         return (
@@ -22,11 +22,11 @@ function TrainingPracticeTierTabs({ tabs, viewTier, onViewTierChange }) {
             role="tab"
             aria-selected={active}
             onClick={() => onViewTierChange(tab.id)}
-            className={`${vk.segmentBtn} min-w-0 flex-1 px-1.5 py-1.5 text-[11px] sm:text-[12px] ${
+            className={`min-w-0 flex-1 touch-manipulation rounded-md px-1 py-1 text-[10px] leading-[1.1] sm:px-1.5 sm:py-1.5 sm:text-[11px] ${
               active ? vk.segmentBtnActive : vk.segmentBtnInactive
             }`}
           >
-            <span className="block truncate">{tab.label}</span>
+            <span className="block truncate font-medium">{tab.label}</span>
             <span className="block tabular-nums opacity-80">
               {tab.count}/{tab.total}
               {tab.isProgressTier ? ' · прогр.' : ''}
