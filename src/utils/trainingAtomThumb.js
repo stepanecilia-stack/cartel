@@ -10,10 +10,6 @@ export const compactAtomThumbFrameClass =
 export const focusAtomThumbFrameClass =
   'relative aspect-[4/5] w-full max-w-[8.5rem] overflow-hidden rounded-lg border-2'
 
-/** Сетка «Отработка приёмов» — крупнее ленты шагов (~2×). */
-export const PRACTICE_GRID_THUMB_W_PX = 80
-export const PRACTICE_GRID_THUMB_H_PX = 104
-export const PRACTICE_GRID_THUMB_GAP_PX = 6
-
+/** Сетка «Отработка приёмов» — на всю ширину колонки (3 col на телефоне). */
 export const practiceGridThumbFrameClass =
   'relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-md border'
