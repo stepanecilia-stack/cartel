@@ -199,6 +199,7 @@ function GroupPracticeBlock({
   practiceAtomsByTier,
   practicedByStudentId,
   onToggleStudentAtoms,
+  showHeader = true,
 }) {
   const [viewTier, setViewTier] = useState(1)
   const [selectedAtomIds, setSelectedAtomIds] = useState([])
@@ -235,13 +236,15 @@ function GroupPracticeBlock({
   }, [selectableAtomIds])
 
   return (
-    <section className={`${vk.cardPadded} space-y-2`}>
-      <header className="flex flex-wrap items-center gap-2">
-        <h3 className={`min-w-0 flex-1 truncate ${vk.h2}`}>Отработка приёмов</h3>
-        <span className="rounded bg-[#ecf3fc] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#2d81e0]">
-          {selectedStudents.length} в группе
-        </span>
-      </header>
+    <section className={showHeader ? `${vk.cardPadded} space-y-2` : 'space-y-2'}>
+      {showHeader ? (
+        <header className="flex flex-wrap items-center gap-2">
+          <h3 className={`min-w-0 flex-1 truncate ${vk.h2}`}>Отработка приёмов</h3>
+          <span className="rounded bg-[#ecf3fc] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#2d81e0]">
+            {selectedStudents.length} в группе
+          </span>
+        </header>
+      ) : null}
 
       {selectedStudents.length === 0 ? (
         <p className={vk.mutedXs}>Сначала отметьте учеников в группе.</p>
@@ -587,7 +590,7 @@ function StudentProgressRow({
   )
 
   return (
-    <li className={`${vk.cardPadded} !p-2.5 sm:!p-3`}>
+    <li className={`${vk.cardPadded} !p-2 sm:!p-3`}>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
         <h2 className={`min-w-0 flex-1 truncate ${vk.listItemTitle}`}>{student.displayName}</h2>
         {baseComplete && activeTier === 1 ? (
@@ -610,16 +613,16 @@ function StudentProgressRow({
       </div>
 
       {activeTierMeta.doneHint ? (
-        <p className={`mt-1 ${vk.mutedXs}`}>{activeTierMeta.doneHint}</p>
+        <p className={`mt-0.5 hidden ${vk.mutedXs} sm:block`}>{activeTierMeta.doneHint}</p>
       ) : null}
 
       {practicedTodayCount > 0 ? (
-        <p className={`mt-1 ${vk.mutedXs}`}>
+        <p className={`mt-0.5 hidden ${vk.mutedXs} sm:block`}>
           Сегодня отмечено: {practicedTodayCount} — запишется в базу по «Готово» вверху
         </p>
       ) : null}
 
-      <div className="mt-1.5">
+      <div className="mt-1">
         <TrainingPracticeTierTabs
           tabs={practiceTierTabs}
           viewTier={practiceViewTier}
@@ -635,6 +638,8 @@ function StudentProgressRow({
           practicedAtomIds={practicedAtomIds}
           onMarkPracticed={onMarkPracticed}
           reinforcementMap={atomReinforcement}
+          dense
+          hideHeader={practiceTierTabs.length > 0}
           onChange={(next) => {
             if (activeTier === 1) {
               setSlider1(next)
@@ -1034,8 +1039,8 @@ function ProgressPhase({
   }, [practicedByStudentId])
 
   return (
-    <div className="space-y-2">
-      <header className="sticky top-12 z-20 -mx-0.5 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#e7e8ec] bg-white px-2.5 py-2 sm:static sm:border-0 sm:bg-transparent sm:p-0">
+    <div className="space-y-1 sm:space-y-2">
+      <header className="sticky top-12 z-20 -mx-0.5 flex flex-wrap items-center gap-1.5 rounded-[10px] border border-[#e7e8ec] bg-white px-2 py-1.5 sm:static sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0">
         <div className="min-w-0 flex-1">
           <h1 className={vk.h1Lg}>Тренировка</h1>
           <p className={vk.mutedXs}>
@@ -1063,7 +1068,7 @@ function ProgressPhase({
         </p>
       ) : null}
 
-      <ul className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-1.5 lg:space-y-0">
+      <ul className="space-y-1 lg:grid lg:grid-cols-2 lg:gap-1.5 lg:space-y-0">
         {studentsForSession.map((student) => {
           const slot = localDataRef.current.get(student.id)
           const reinforcement =
@@ -1084,12 +1089,34 @@ function ProgressPhase({
         })}
       </ul>
 
-      <GroupPracticeBlock
-        selectedStudents={studentsForSession}
-        practiceAtomsByTier={practiceAtomsByTier}
-        practicedByStudentId={practicedByStudentId}
-        onToggleStudentAtoms={handleMarkFromGroupBlock}
-      />
+      <details className="rounded-[10px] bg-white sm:hidden">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-2 py-2 touch-manipulation marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className={`min-w-0 flex-1 ${vk.h2}`}>Отработка приёмов</span>
+          <span className="rounded bg-[#ecf3fc] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[#2d81e0]">
+            {studentsForSession.length}
+          </span>
+          <span className="text-[12px] text-[#818c99]" aria-hidden>
+            ▾
+          </span>
+        </summary>
+        <div className="border-t border-[#e7e8ec] px-2 pb-2 pt-1.5">
+          <GroupPracticeBlock
+            showHeader={false}
+            selectedStudents={studentsForSession}
+            practiceAtomsByTier={practiceAtomsByTier}
+            practicedByStudentId={practicedByStudentId}
+            onToggleStudentAtoms={handleMarkFromGroupBlock}
+          />
+        </div>
+      </details>
+      <div className="hidden sm:block">
+        <GroupPracticeBlock
+          selectedStudents={studentsForSession}
+          practiceAtomsByTier={practiceAtomsByTier}
+          practicedByStudentId={practicedByStudentId}
+          onToggleStudentAtoms={handleMarkFromGroupBlock}
+        />
+      </div>
     </div>
   )
 }

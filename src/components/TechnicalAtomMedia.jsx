@@ -25,7 +25,26 @@ export default function TechnicalAtomMedia({ atom, className = '', previewable =
   )
 
   const wrapPreviewable = (node) => {
-    if (!canPreview) return node
+    if (!canPreview) {
+      return <div className={`relative overflow-hidden ${className}`}>{node}</div>
+    }
+    const isLooping = media.kind === 'gif' || media.kind === 'webm'
+    if (isLooping) {
+      return (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openPreview}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') openPreview(e)
+          }}
+          className={`relative cursor-pointer overflow-hidden active:opacity-90 ${className}`}
+          aria-label={`Увеличить: ${displayTitle || 'медиа'}`}
+        >
+          {node}
+        </div>
+      )
+    }
     return (
       <button
         type="button"
@@ -51,7 +70,7 @@ export default function TechnicalAtomMedia({ atom, className = '', previewable =
 
   let thumb = null
   if (media.kind === 'gif') {
-    thumb = <img src={media.src} alt="" loading="lazy" className="h-full w-full object-cover" />
+    thumb = <img src={media.src} alt="" className="h-full w-full object-cover" />
   } else if (media.kind === 'webm') {
     thumb = (
       <video
@@ -61,7 +80,7 @@ export default function TechnicalAtomMedia({ atom, className = '', previewable =
         muted
         playsInline
         loop
-        preload="metadata"
+        preload="auto"
         aria-hidden
       />
     )

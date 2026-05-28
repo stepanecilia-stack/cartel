@@ -6,11 +6,7 @@ import {
   NON_ISOLATED_REINFORCEMENT_SYMBOL,
   NON_ISOLATED_REINFORCEMENT_TITLE,
 } from '../../utils/atomReinforcementEligibility.js'
-import {
-  embedAutoplaySrc,
-  hasLoopingPreviewMedia,
-  resolveTechnicalAtomMedia,
-} from '../../utils/technicalAtomMedia.js'
+import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../../utils/technicalAtomMedia.js'
 import { compactAtomThumbFrameClass } from '../../utils/trainingAtomThumb.js'
 import StaticEmbedThumb from './StaticEmbedThumb.jsx'
 import { vk } from '../../utils/vkUi.js'
@@ -111,6 +107,7 @@ function AtomPreviewFrame({
   atom,
   unlocked,
   compact,
+  dense = false,
   title,
   practicedToday = false,
   reinforcementTotal = 0,
@@ -119,16 +116,14 @@ function AtomPreviewFrame({
 }) {
   const frameClass = compact
     ? compactAtomThumbFrameClass
-    : 'relative aspect-[4/5] w-full max-w-[132px] overflow-hidden rounded-[10px] border-2 sm:max-w-[184px]'
-
-  const media = resolveTechnicalAtomMedia(atom)
-  const hasLargeEmbed = !compact && media.kind === 'embed' && Boolean(media.src)
-  const hasVisualPreview = hasLoopingPreviewMedia(atom) || hasLargeEmbed
+    : dense
+      ? 'relative aspect-[4/5] w-full max-w-[4.5rem] overflow-hidden rounded-lg border-2'
+      : 'relative aspect-[4/5] w-full max-w-[132px] overflow-hidden rounded-[10px] border-2 sm:max-w-[184px]'
 
   const borderClass = practicedToday
     ? 'border-[#4bb34b] shadow-sm'
     : unlocked
-      ? hasVisualPreview
+      ? hasLoopingPreviewMedia(atom)
         ? 'border-[#2d81e0] shadow-sm'
         : 'border-[#4bb34b]/60'
       : 'border-[#d3d9de]'
@@ -156,7 +151,7 @@ function AtomPreviewFrame({
         <TechnicalAtomMedia
           atom={atom}
           className="h-full w-full"
-          previewable={!compact}
+          previewable={false}
           title={atom?.name}
         />
         {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
@@ -165,34 +160,17 @@ function AtomPreviewFrame({
     )
   }
 
-  if (hasLargeEmbed) {
-    return (
-      <div className={`${frameClass} ${borderClass} bg-black`} title={title}>
-        <iframe
-          src={embedAutoplaySrc(media.src)}
-          title={atom?.name ?? 'Видео приёма'}
-          className="absolute inset-0 h-full w-full border-0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-        {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
-        {countBadge}
-      </div>
-    )
-  }
-
-  if (media.kind === 'embed' || media.kind === 'link') {
-    return (
-      <div className={`${frameClass} ${borderClass}`} title={title}>
-        {compact ? (
+  if (!compact) {
+    const media = resolveTechnicalAtomMedia(atom)
+    if (media.kind === 'embed' || media.kind === 'link') {
+      return (
+        <div className={`${frameClass} ${borderClass}`} title={title}>
           <StaticEmbedThumb />
-        ) : (
-          <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable title={atom?.name} />
-        )}
-        {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
-        {countBadge}
-      </div>
-    )
+          {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
+          {countBadge}
+        </div>
+      )
+    }
   }
 
   return (
@@ -217,6 +195,8 @@ export default function TechniqueTierStepper({
   passedCount: passedCountProp,
   progressLocked = false,
   reinforcementMap,
+  dense = false,
+  hideHeader = false,
 }) {
   const total = atoms.length
   const safeValue = Math.min(Math.max(Number(value) || 0, 0), total)
@@ -299,21 +279,31 @@ export default function TechniqueTierStepper({
     ? 'bg-[#6f3ff5] active:bg-[#5e36d6] disabled:opacity-40'
     : 'bg-[#2d81e0] active:bg-[#2875cc] disabled:opacity-40'
 
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">{tierLabel}</p>
-        <span className="text-[12px] font-semibold tabular-nums text-[#2c2d2e]">
-          {safeValue}/{total}
-        </span>
-      </div>
+  const stepBtnClass = dense
+    ? 'flex h-8 w-8 touch-manipulation items-center justify-center rounded-full text-[17px] font-light text-white'
+    : 'flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[20px] font-light text-white'
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2.5">
-        <div key={pulseKey} className="mx-auto w-[132px] shrink-0 sm:mx-0 sm:w-[184px]">
+  return (
+    <div className={dense ? 'space-y-1' : 'space-y-1.5'}>
+      {hideHeader ? null : (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">{tierLabel}</p>
+          <span className="text-[12px] font-semibold tabular-nums text-[#2c2d2e]">
+            {safeValue}/{total}
+          </span>
+        </div>
+      )}
+
+      <div className={`flex items-start ${dense ? 'gap-1.5' : 'gap-2 sm:gap-2.5'}`}>
+        <div
+          key={pulseKey}
+          className={`shrink-0 ${dense ? 'w-[4.5rem]' : 'w-[132px] sm:w-[184px]'}`}
+        >
           {focusAtom ? (
             <AtomPreviewFrame
               atom={focusAtom}
               unlocked={focusUnlocked}
+              dense={dense}
               practicedToday={focusPracticedToday}
               reinforcementTotal={displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
               showReinforcementCount={focusUnlocked}
@@ -327,8 +317,8 @@ export default function TechniqueTierStepper({
               }
             />
           ) : null}
-          {focusAtom ? (
-            <p className="mt-1 text-center text-[11px] font-semibold leading-snug text-[#2c2d2e] sm:text-left sm:text-[12px]">
+          {focusAtom && !dense ? (
+            <p className="mt-1 hidden text-[11px] font-semibold leading-snug text-[#2c2d2e] sm:block sm:text-[12px]">
               <span className="text-[#818c99]">#{focusAtom.number}</span> {focusAtom.name}
               {focusUnlocked && focusReinforceable ? (
                 <span className="ml-1.5 tabular-nums text-[#818c99]">
@@ -344,30 +334,34 @@ export default function TechniqueTierStepper({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className={`flex min-w-0 flex-1 flex-col ${dense ? 'gap-1' : 'gap-1.5'}`}>
           {progressLocked ? (
-            <p className={`text-center ${vk.mutedXs}`}>
+            <p className={`${dense ? 'hidden sm:block' : ''} text-center ${vk.mutedXs}`}>
               Выберите миниатюру · отметка на крупном превью. Прогресс (+/−) — на вкладке «прогр.»
             </p>
           ) : (
-            <div className="flex items-center justify-center gap-2.5">
+            <div className={`flex items-center justify-center ${dense ? 'gap-1.5' : 'gap-2.5'}`}>
               <button
                 type="button"
                 onClick={() => step(-1)}
                 disabled={safeValue <= 0}
-                className={`flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[20px] font-light text-white ${accentBtn}`}
+                className={`${stepBtnClass} ${accentBtn}`}
                 aria-label="На шаг назад"
               >
                 −
               </button>
-              <span className="min-w-[4.2rem] text-center text-[14px] font-semibold tabular-nums text-[#2c2d2e]">
+              <span
+                className={`text-center font-semibold tabular-nums text-[#2c2d2e] ${
+                  dense ? 'min-w-[3.2rem] text-[12px]' : 'min-w-[4.2rem] text-[14px]'
+                }`}
+              >
                 {safeValue} / {total}
               </span>
               <button
                 type="button"
                 onClick={() => step(1)}
                 disabled={safeValue >= total}
-                className={`flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-[20px] font-light text-white ${accentBtn}`}
+                className={`${stepBtnClass} ${accentBtn}`}
                 aria-label="Открыть следующий приём"
               >
                 +
@@ -453,20 +447,26 @@ export default function TechniqueTierStepper({
                 Отработан сегодня
               </p>
             ) : (
-              <button type="button" onClick={handleMarkFocus} className={`w-full sm:w-auto ${vk.btnPrimary}`}>
+              <button
+                type="button"
+                onClick={handleMarkFocus}
+                className={`w-full sm:w-auto ${dense ? vk.btnCompact : vk.btnPrimary}`}
+              >
                 Отметить отработку
               </button>
             )
           ) : null}
           {focusUnlocked && focusAtom && !focusReinforceable ? (
-            <p className={`${vk.mutedXs} sm:text-left`}>{NON_ISOLATED_REINFORCEMENT_TITLE}</p>
+            <p className={`${dense ? 'text-[11px]' : ''} ${vk.mutedXs} sm:text-left`}>
+              {NON_ISOLATED_REINFORCEMENT_TITLE}
+            </p>
           ) : null}
           {nextAtom && safeValue < total && !progressLocked ? (
-            <p className={`text-center ${vk.mutedXs} sm:text-left`}>
+            <p className={`hidden text-center sm:block ${vk.mutedXs} sm:text-left`}>
               Следующий: #{nextAtom.number} {nextAtom.name}
             </p>
           ) : safeValue >= total && total > 0 ? (
-            <p className="text-center text-[12px] font-medium text-[#4bb34b] sm:text-left">
+            <p className="hidden text-center text-[12px] font-medium text-[#4bb34b] sm:block sm:text-left">
               Уровень закрыт
             </p>
           ) : null}
