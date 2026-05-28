@@ -47,10 +47,15 @@ import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import StaticEmbedThumb from '../components/training/StaticEmbedThumb.jsx'
 import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import {
-  COMPACT_ATOM_THUMB_GAP_PX,
-  COMPACT_ATOM_THUMB_H_PX,
-  COMPACT_ATOM_THUMB_W_PX,
+  buildGroupPracticeAtomsByTier,
+  isAtomMasteredByStudent,
+} from '../utils/groupTrainingPractice.js'
+import {
   compactAtomThumbFrameClass,
+  PRACTICE_GRID_THUMB_GAP_PX,
+  PRACTICE_GRID_THUMB_H_PX,
+  PRACTICE_GRID_THUMB_W_PX,
+  practiceGridThumbFrameClass,
 } from '../utils/trainingAtomThumb.js'
 import { vk } from '../utils/vkUi.js'
 
@@ -73,11 +78,11 @@ function calcPracticeGridLayout(atomCount, viewportWidth) {
   }
   const usable = Math.max(240, viewportWidth - 52)
   const colsForMaxRows = Math.ceil(atomCount / PRACTICE_TARGET_MAX_ROWS)
-  const colsForWidth = Math.max(colsForMaxRows, Math.floor(usable / COMPACT_ATOM_THUMB_W_PX))
+  const colsForWidth = Math.max(colsForMaxRows, Math.floor(usable / PRACTICE_GRID_THUMB_W_PX))
   const cols = Math.min(atomCount, colsForWidth)
   const rows = Math.ceil(atomCount / cols)
   const heightPx =
-    rows * COMPACT_ATOM_THUMB_H_PX + Math.max(0, rows - 1) * COMPACT_ATOM_THUMB_GAP_PX
+    rows * PRACTICE_GRID_THUMB_H_PX + Math.max(0, rows - 1) * PRACTICE_GRID_THUMB_GAP_PX
   return { cols, rows, heightPx }
 }
 
@@ -118,9 +123,17 @@ function AtomCompactPreviewVisual({ atom, dense = false }) {
   )
 }
 
-function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
+function AtomCompactPreviewButton({ atom, active, onClick, dense = false, practiceGrid = false }) {
   const reinforceable = isAtomReinforceableInIsolation(atom)
-  const frameClass = dense
+  const frameClass = practiceGrid
+    ? `${practiceGridThumbFrameClass} ${
+        reinforceable
+          ? active
+            ? 'border-[#2d81e0] ring-2 ring-[#2d81e0]/35'
+            : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
+          : 'cursor-not-allowed border-[#d3d9de] bg-[#f5f6f8] opacity-90'
+      }`
+    : dense
     ? `${compactAtomThumbFrameClass} ${
         reinforceable
           ? active
@@ -140,7 +153,11 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
     <>
       <span
         className={`pointer-events-none absolute left-0 top-0 z-10 rounded-br bg-white/90 font-semibold tabular-nums text-[#818c99] shadow-sm ${
-          dense ? 'px-0.5 py-px text-[9px]' : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
+          practiceGrid
+            ? 'left-0.5 top-0.5 px-1 py-px text-[10px]'
+            : dense
+              ? 'px-0.5 py-px text-[9px]'
+              : 'left-0.5 top-0.5 px-1 py-px text-[9px]'
         }`}
       >
         #{atom.number ?? '—'}
@@ -148,7 +165,11 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
       {!reinforceable ? (
         <span
           className={`pointer-events-none absolute right-0 top-0 z-10 rounded-bl bg-[#818c99]/95 font-bold leading-none text-white shadow-sm ${
-            dense ? 'px-0.5 py-px text-[9px]' : 'px-1 py-px text-[11px]'
+            practiceGrid
+              ? 'px-1 py-px text-[11px]'
+              : dense
+                ? 'px-0.5 py-px text-[9px]'
+                : 'px-1 py-px text-[11px]'
           }`}
           title={NON_ISOLATED_REINFORCEMENT_TITLE}
         >
@@ -157,7 +178,11 @@ function AtomCompactPreviewButton({ atom, active, onClick, dense = false }) {
       ) : active ? (
         <span
           className={`pointer-events-none absolute bottom-0 right-0 z-10 rounded-tl bg-[#2d81e0] font-semibold text-white ${
-            dense ? 'px-0.5 py-px text-[8px]' : 'px-1 py-px text-[9px]'
+            practiceGrid
+              ? 'px-1 py-px text-[10px]'
+              : dense
+                ? 'px-0.5 py-px text-[8px]'
+                : 'px-1 py-px text-[9px]'
           }`}
         >
           ✓
@@ -249,7 +274,9 @@ function GroupPracticeBlock({
       {selectedStudents.length === 0 ? (
         <p className={vk.mutedXs}>Сначала отметьте учеников в группе.</p>
       ) : atomTiers.length === 0 ? (
-        <p className={vk.mutedXs}>Список приёмов пуст.</p>
+        <p className={vk.mutedXs}>
+          Нет пройденных приёмов для отработки — откройте новые шаги в карточках учеников выше.
+        </p>
       ) : (
         <>
           <div className={`${vk.segmentBar} p-0.5`} role="tablist" aria-label="Уровень отработки">
@@ -278,10 +305,11 @@ function GroupPracticeBlock({
             style={{ height: gridLayout.heightPx + 4 }}
           >
             <div
-              className="grid w-full justify-center gap-1 [&>*]:min-h-0"
+              className="grid w-full justify-center [&>*]:min-h-0"
               style={{
-                gridTemplateColumns: `repeat(${gridLayout.cols}, ${COMPACT_ATOM_THUMB_W_PX}px)`,
-                gridAutoRows: `${COMPACT_ATOM_THUMB_H_PX}px`,
+                gridTemplateColumns: `repeat(${gridLayout.cols}, ${PRACTICE_GRID_THUMB_W_PX}px)`,
+                gridAutoRows: `${PRACTICE_GRID_THUMB_H_PX}px`,
+                gap: `${PRACTICE_GRID_THUMB_GAP_PX}px`,
                 height: `${gridLayout.heightPx}px`,
               }}
             >
@@ -293,7 +321,7 @@ function GroupPracticeBlock({
                     key={atom.id}
                     atom={atom}
                     active={active}
-                    dense
+                    practiceGrid
                     onClick={() => {
                       if (!reinforceable) return
                       setSelectedAtomIds((prev) =>
@@ -812,25 +840,38 @@ function ProgressPhase({
   const [reinforcementNotice, setReinforcementNotice] = useState('')
   const localDataRef = useRef(new Map())
   const debounceRef = useRef(new Map())
-  const practiceAtomsByTier = useMemo(() => {
-    const level1 = orderedL1
-    const level2 = TECHNIQUE_LEVEL2_ATOMS
-    const level3ById = new Map()
-    for (const student of studentsForSession) {
-      const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
-      for (let i = 0; i < combos.length; i += 1) {
-        const combo = combos[i]
-        if (!combo?.id || level3ById.has(combo.id)) continue
-        level3ById.set(combo.id, {
-          ...combo,
-          kind: 'combo',
-          number: combo.number ?? i + 1,
-          name: combo.name ?? `Комбо ${i + 1}`,
-        })
-      }
-    }
-    return { level1, level2, level3: [...level3ById.values()] }
-  }, [orderedL1, studentsForSession])
+  const [liveSlidersByStudentId, setLiveSlidersByStudentId] = useState(() => ({ ...slidersByStudentId }))
+
+  useEffect(() => {
+    setLiveSlidersByStudentId({ ...slidersByStudentId })
+  }, [slidersByStudentId])
+
+  const getStudentTechnicalData = useCallback((student) => {
+    const slot = localDataRef.current.get(student.id)
+    return slot?.technicalData ?? normalizeStudentTechnicalData(student.technicalData)
+  }, [])
+
+  const practiceAtomsByTier = useMemo(
+    () =>
+      buildGroupPracticeAtomsByTier({
+        students: studentsForSession,
+        orderedL1,
+        orderedL2: orderedL2,
+        slidersByStudentId: liveSlidersByStudentId,
+        getTechnicalData: getStudentTechnicalData,
+      }),
+    [studentsForSession, orderedL1, orderedL2, liveSlidersByStudentId, getStudentTechnicalData],
+  )
+
+  const masteryCheckContext = useMemo(
+    () => ({
+      orderedL1,
+      orderedL2,
+      slidersByStudentId: liveSlidersByStudentId,
+      getTechnicalData: getStudentTechnicalData,
+    }),
+    [orderedL1, orderedL2, liveSlidersByStudentId, getStudentTechnicalData],
+  )
 
   useEffect(() => {
     setPracticedByStudentId(initialPracticedByStudentId ?? {})
@@ -934,6 +975,8 @@ function ProgressPhase({
   const handleMarkFromGroupBlock = useCallback(
     (studentId, atomIds) => {
       if (!Array.isArray(atomIds) || atomIds.length === 0) return
+      const student = studentsForSession.find((s) => s.id === studentId)
+      if (!student) return
       const atomById = buildProgramAtomById(
         practiceAtomsByTier.level1,
         practiceAtomsByTier.level2,
@@ -943,7 +986,11 @@ function ProgressPhase({
         const current = prev[studentId] ?? []
         const validIds = atomIds.filter((id) => {
           const atom = atomById.get(id)
-          return atom && isAtomReinforceableInIsolation(atom)
+          return (
+            atom &&
+            isAtomReinforceableInIsolation(atom) &&
+            isAtomMasteredByStudent(student, id, masteryCheckContext)
+          )
         })
         if (validIds.length === 0) return prev
         const hasAll = validIds.every((id) => current.includes(id))
@@ -957,7 +1004,7 @@ function ProgressPhase({
         return next
       })
     },
-    [coachId, practiceAtomsByTier],
+    [coachId, practiceAtomsByTier, studentsForSession, masteryCheckContext],
   )
 
   const commitReinforcement = useCallback(async () => {
@@ -997,6 +1044,7 @@ function ProgressPhase({
 
   const handleSliderChange = useCallback(
     (studentId, tiers) => {
+      setLiveSlidersByStudentId((prev) => ({ ...prev, [studentId]: tiers }))
       pendingTiersRef.current.set(studentId, tiers)
       if (coachId) updateGroupTrainingSessionSliders(coachId, studentId, tiers)
       setStatus(studentId, 'saving')
