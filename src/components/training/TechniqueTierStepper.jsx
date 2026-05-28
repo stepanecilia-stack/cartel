@@ -157,6 +157,7 @@ function AtomPreviewFrame({
           previewable={enlargeable && !hasLoopingPreviewMedia(atom)}
           playing={webmPlaying}
           onTogglePlay={onToggleWebmPlay}
+          compactThumb={compact}
           title={atom?.name}
         />
         {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}

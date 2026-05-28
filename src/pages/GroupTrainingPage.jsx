@@ -76,6 +76,7 @@ function AtomCompactPreviewVisual({ atom, dense = false, playing = false, onTogg
         previewable={false}
         playing={playing}
         onTogglePlay={onTogglePlay}
+        compactThumb
         title={atom.name}
       />
     )
