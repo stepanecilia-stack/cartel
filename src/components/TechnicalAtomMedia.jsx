@@ -1,14 +1,31 @@
 import { useState, useCallback } from 'react'
 import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
+import LoopingWebmPreview from './LoopingWebmPreview.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
 const PREVIEWABLE_KINDS = new Set(['gif', 'webm', 'embed', 'link'])
 
 /**
  * Превью GIF / WebM (и embed) с лайтбоксом по клику — без ухода со страницы.
- * @param {{ atom: object, className?: string, previewable?: boolean, title?: string }} props
+ * @param {{
+ *   atom: object,
+ *   className?: string,
+ *   previewable?: boolean,
+ *   title?: string,
+ *   webmPriority?: 'high' | 'normal',
+ *   webmAlwaysPlay?: boolean,
+ *   webmIntersectionRoot?: Element | null,
+ * }} props
  */
-export default function TechnicalAtomMedia({ atom, className = '', previewable = true, title }) {
+export default function TechnicalAtomMedia({
+  atom,
+  className = '',
+  previewable = true,
+  title,
+  webmPriority = 'normal',
+  webmAlwaysPlay = false,
+  webmIntersectionRoot = null,
+}) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const media = resolveTechnicalAtomMedia(atom)
   const displayTitle = title ?? atom?.name ?? ''
@@ -70,18 +87,15 @@ export default function TechnicalAtomMedia({ atom, className = '', previewable =
 
   let thumb = null
   if (media.kind === 'gif') {
-    thumb = <img src={media.src} alt="" className="h-full w-full object-cover" />
+    thumb = <img src={media.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
   } else if (media.kind === 'webm') {
     thumb = (
-      <video
+      <LoopingWebmPreview
         src={media.src}
-        className="h-full w-full object-cover bg-[#0f0f0f]"
-        autoPlay
-        muted
-        playsInline
-        loop
-        preload="auto"
-        aria-hidden
+        priority={webmPriority}
+        alwaysPlay={webmAlwaysPlay}
+        intersectionRoot={webmIntersectionRoot}
+        className="h-full w-full"
       />
     )
   } else {

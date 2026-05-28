@@ -109,6 +109,8 @@ function AtomPreviewFrame({
   compact,
   dense = false,
   enlargeable = false,
+  webmPriority = 'normal',
+  webmIntersectionRoot = null,
   title,
   practicedToday = false,
   reinforcementTotal = 0,
@@ -153,6 +155,8 @@ function AtomPreviewFrame({
           atom={atom}
           className="h-full w-full"
           previewable={enlargeable}
+          webmPriority={webmPriority}
+          webmIntersectionRoot={webmIntersectionRoot}
           title={atom?.name}
         />
         {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
@@ -206,6 +210,7 @@ export default function TechniqueTierStepper({
     total,
   )
   const stripRef = useRef(null)
+  const [stripRoot, setStripRoot] = useState(null)
   const [pulseKey, setPulseKey] = useState(0)
 
   const progressSpotlightIndex = useMemo(() => {
@@ -306,6 +311,7 @@ export default function TechniqueTierStepper({
               unlocked={focusUnlocked}
               dense={dense}
               enlargeable
+              webmPriority="high"
               practicedToday={focusPracticedToday}
               reinforcementTotal={displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
               showReinforcementCount={focusUnlocked}
@@ -378,7 +384,10 @@ export default function TechniqueTierStepper({
           )}
 
           <div
-            ref={stripRef}
+            ref={(el) => {
+              stripRef.current = el
+              setStripRoot(el)
+            }}
             className="flex items-start gap-1 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin]"
             role="list"
             aria-label="Шаги программы"
@@ -404,6 +413,8 @@ export default function TechniqueTierStepper({
                   atom={atom}
                   unlocked={unlocked}
                   practicedToday={practicedToday && reinforceable}
+                  webmPriority="normal"
+                  webmIntersectionRoot={stripRoot}
                   reinforcementTotal={cumulativeTotal}
                   showReinforcementCount={unlocked}
                   reinforceableInIsolation={reinforceable}
