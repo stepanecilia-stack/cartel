@@ -115,7 +115,7 @@ function normalizeLevel1(item) {
     whyMistakes: item.whyMistakes ?? '',
     videoLink: item.videoLink ?? '',
     embedUrl: item.embedUrl ?? '',
-    media: { gifSrc: null, webmSrc: null },
+    media: { posterSrc: null, webmSrc: null },
   }
 }
 
@@ -131,7 +131,7 @@ function normalizeLevel2(item, idx) {
     videoLink: '',
     embedUrl: '',
     techniqueTier: 2,
-    media: { gifSrc: null, webmSrc: null },
+    media: { posterSrc: null, webmSrc: null },
   }
 }
 

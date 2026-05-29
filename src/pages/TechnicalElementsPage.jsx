@@ -13,7 +13,7 @@ const TIER_TABS = [
 
 function atomToForm(atom) {
   return {
-    gifSrc: atom.media?.gifSrc ?? '',
+    posterSrc: atom.media?.posterSrc ?? atom.media?.gifSrc ?? '',
     webmSrc: atom.media?.webmSrc ?? '',
     embedUrl: atom.embedUrl ?? '',
     videoLink: atom.videoLink ?? '',
@@ -77,12 +77,12 @@ export default function TechnicalElementsPage() {
         <BackToHomeBar />
         <header>
           <h1 className={vk.h1Lg}>Технические элементы</h1>
-          <p className={vk.mutedXs}>Ссылки на GIF или WebM — превью на карточке ученика.</p>
+          <p className={vk.mutedXs}>Постер (JPG/WebP) + WebM — превью на карточке ученика.</p>
         </header>
 
         {syncError ? (
           <p className={vk.noticeWarn}>
-            {syncError} Список элементов показан из программы по умолчанию; GIF/WebM из облака не подтянулись.
+            {syncError} Список элементов показан из программы по умолчанию; медиа из облака не подтянулись.
           </p>
         ) : (
           <p className={vk.mutedXs}>
@@ -126,11 +126,24 @@ export default function TechnicalElementsPage() {
                   #{editingAtom.number} {editingAtom.name}
                 </p>
               </div>
-              <TechnicalAtomMedia atom={{ ...editingAtom, media: { gifSrc: form.gifSrc, webmSrc: form.webmSrc }, embedUrl: form.embedUrl, videoLink: form.videoLink }} className="h-16 w-24" />
+              <TechnicalAtomMedia
+                atom={{
+                  ...editingAtom,
+                  media: { posterSrc: form.posterSrc, webmSrc: form.webmSrc },
+                  embedUrl: form.embedUrl,
+                  videoLink: form.videoLink,
+                }}
+                className="h-16 w-24"
+              />
             </div>
             <label className="block">
-              <span className={vk.label}>GIF (URL)</span>
-              <input className={vk.input} value={form.gifSrc} onChange={(e) => updateField('gifSrc', e.target.value)} placeholder="https://…gif" />
+              <span className={vk.label}>Постер (URL, JPG или WebP)</span>
+              <input
+                className={vk.input}
+                value={form.posterSrc}
+                onChange={(e) => updateField('posterSrc', e.target.value)}
+                placeholder="https://…jpg"
+              />
             </label>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
@@ -168,7 +181,13 @@ export default function TechnicalElementsPage() {
                     <span className="text-[#818c99]">#{atom.number}</span> {atom.name}
                   </p>
                   <p className={vk.mutedXs}>
-                    {atom.media?.gifSrc ? 'GIF' : atom.media?.webmSrc ? 'WebM' : atom.embedUrl ? 'Embed' : 'Без медиа'}
+                    {atom.media?.posterSrc || atom.media?.gifSrc
+                      ? 'Постер'
+                      : atom.media?.webmSrc
+                        ? 'WebM'
+                        : atom.embedUrl
+                          ? 'Embed'
+                          : 'Без медиа'}
                   </p>
                 </div>
                 <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" />

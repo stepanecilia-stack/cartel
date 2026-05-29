@@ -73,7 +73,7 @@ function mergeAtom(defaultAtom, override) {
     return {
       ...defaultAtom,
       media: {
-        gifSrc: defaultAtom.media?.gifSrc ?? null,
+        posterSrc: defaultAtom.media?.posterSrc ?? null,
         webmSrc: defaultAtom.media?.webmSrc ?? null,
       },
     }
@@ -88,7 +88,7 @@ function mergeAtom(defaultAtom, override) {
     videoLink: pickOverrideField(override, 'videoLink', defaultAtom.videoLink),
     embedUrl: pickOverrideField(override, 'embedUrl', defaultAtom.embedUrl),
     media: {
-      gifSrc: pickOverrideMedia(override, 'gifSrc', defaultAtom.media?.gifSrc),
+      posterSrc: pickOverrideMedia(override, 'posterSrc', defaultAtom.media?.posterSrc),
       webmSrc: pickOverrideMedia(override, 'webmSrc', defaultAtom.media?.webmSrc),
     },
   }
@@ -228,7 +228,7 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
     videoLink: trimOrNull(payload?.videoLink),
     embedUrl: trimOrNull(payload?.embedUrl),
     media: {
-      gifSrc: trimOrNull(payload?.gifSrc),
+      posterSrc: trimOrNull(payload?.posterSrc),
       webmSrc: trimOrNull(payload?.webmSrc),
     },
     updatedAt: serverTimestamp(),

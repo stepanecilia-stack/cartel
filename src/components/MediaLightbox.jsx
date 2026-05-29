@@ -30,7 +30,7 @@ export default function MediaLightbox({ open, onClose, media, title = '' }) {
   const label = title ? `Просмотр: ${title}` : 'Просмотр медиа'
 
   let body = null
-  if (media.kind === 'gif') {
+  if (media.kind === 'gif' || media.kind === 'poster') {
     body = (
       <img
         src={media.src}

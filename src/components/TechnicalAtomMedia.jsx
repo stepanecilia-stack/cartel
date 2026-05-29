@@ -3,7 +3,7 @@ import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import StaticEmbedThumb from './training/StaticEmbedThumb.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
-const PREVIEWABLE_KINDS = new Set(['gif', 'webm', 'embed', 'link'])
+const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link', 'poster'])
 
 function WebmPausedThumb({ posterSrc }) {
   if (posterSrc) {
@@ -135,8 +135,10 @@ export default function TechnicalAtomMedia({
   }
 
   let thumb = null
-  if (media.kind === 'gif') {
-    thumb = <img src={media.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+  if (media.kind === 'poster') {
+    thumb = (
+      <img src={media.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover bg-[#0f0f0f]" />
+    )
   } else if (media.kind === 'webm') {
     thumb =
       playing && videoSrc ? (
