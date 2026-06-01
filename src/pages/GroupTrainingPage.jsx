@@ -111,8 +111,15 @@ function PracticeCoachTile({ atom, playing, onActivate }) {
           title={atom.name}
         />
       ) : (
-        <AtomCompactPreviewVisual atom={atom} />
+        <AtomCompactPreviewVisual atom={atom} dense />
       )}
+      {atom.name ? (
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1.5 pb-1 pt-5 text-left">
+          <span className="line-clamp-2 text-[10px] font-medium leading-snug text-white drop-shadow-sm sm:text-[11px]">
+            {atom.name}
+          </span>
+        </span>
+      ) : null}
     </button>
   )
 }
