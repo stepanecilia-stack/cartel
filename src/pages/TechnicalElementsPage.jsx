@@ -13,7 +13,6 @@ const TIER_TABS = [
 
 function atomToForm(atom) {
   return {
-    posterSrc: atom.media?.posterSrc ?? atom.media?.gifSrc ?? '',
     webmSrc: atom.media?.webmSrc ?? '',
     embedUrl: atom.embedUrl ?? '',
     videoLink: atom.videoLink ?? '',
@@ -77,7 +76,7 @@ export default function TechnicalElementsPage() {
         <BackToHomeBar />
         <header>
           <h1 className={vk.h1Lg}>Технические элементы</h1>
-          <p className={vk.mutedXs}>Постер (JPG/WebP) + WebM — превью на карточке ученика.</p>
+          <p className={vk.mutedXs}>WebM — заставка и превью на карточке (кадр из видео).</p>
         </header>
 
         {syncError ? (
@@ -129,22 +128,13 @@ export default function TechnicalElementsPage() {
               <TechnicalAtomMedia
                 atom={{
                   ...editingAtom,
-                  media: { posterSrc: form.posterSrc, webmSrc: form.webmSrc },
+                  media: { webmSrc: form.webmSrc },
                   embedUrl: form.embedUrl,
                   videoLink: form.videoLink,
                 }}
                 className="h-16 w-24"
               />
             </div>
-            <label className="block">
-              <span className={vk.label}>Постер (URL, JPG или WebP)</span>
-              <input
-                className={vk.input}
-                value={form.posterSrc}
-                onChange={(e) => updateField('posterSrc', e.target.value)}
-                placeholder="https://…jpg"
-              />
-            </label>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
               <input className={vk.input} value={form.webmSrc} onChange={(e) => updateField('webmSrc', e.target.value)} placeholder="https://…webm" />
@@ -181,12 +171,12 @@ export default function TechnicalElementsPage() {
                     <span className="text-[#818c99]">#{atom.number}</span> {atom.name}
                   </p>
                   <p className={vk.mutedXs}>
-                    {atom.media?.posterSrc || atom.media?.gifSrc
-                      ? 'Постер'
-                      : atom.media?.webmSrc
-                        ? 'WebM'
-                        : atom.embedUrl
-                          ? 'Embed'
+                    {atom.media?.webmSrc
+                      ? 'WebM'
+                      : atom.embedUrl
+                        ? 'Embed'
+                        : atom.videoLink
+                          ? 'Ссылка'
                           : 'Без медиа'}
                   </p>
                 </div>

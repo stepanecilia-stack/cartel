@@ -1,29 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
+import { pickWebmCoverTime } from '../utils/webmCoverFrame.js'
 import StaticEmbedThumb from './training/StaticEmbedThumb.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
-const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link', 'poster'])
-
-function WebmPausedThumb({ posterSrc }) {
-  if (posterSrc) {
-    return (
-      <img
-        src={posterSrc}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        className="h-full w-full object-cover bg-[#0f0f0f]"
-      />
-    )
-  }
-  return <StaticEmbedThumb className="bg-[#1a1a1a] text-white/90" />
-}
+const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link'])
 
 function PlayOverlay({ compact = false }) {
   return (
     <span
-      className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20"
+      className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center"
       aria-hidden
     >
       <span
@@ -66,40 +52,58 @@ export default function TechnicalAtomMedia({
   compactThumb = false,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [videoSrc, setVideoSrc] = useState('')
+  const [videoError, setVideoError] = useState(false)
   const videoRef = useRef(null)
+  const coverSeekDoneRef = useRef(false)
   const media = resolveTechnicalAtomMedia(atom)
   const displayTitle = title ?? atom?.name ?? ''
+  const coverSeed = atom?.id ?? media.src
 
   const canPreview = previewable && PREVIEWABLE_KINDS.has(media.kind)
   const tapToPlayWebm = media.kind === 'webm' && typeof onTogglePlay === 'function'
-  const posterSrc = media.kind === 'webm' ? media.poster : ''
   const showPlayOverlay = media.kind === 'webm' && !playing
+  const isWebm = media.kind === 'webm'
 
-  useEffect(() => {
-    if (media.kind !== 'webm') return
-    if (playing) {
-      setVideoSrc(media.src)
-      return
-    }
-    setVideoSrc('')
+  const seekCoverFrame = useCallback(() => {
     const video = videoRef.current
-    if (video) {
-      video.pause()
-      video.removeAttribute('src')
-      video.load()
-    }
-  }, [playing, media.kind, media.src])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || media.kind !== 'webm' || !videoSrc) return
-    if (playing) {
-      void video.play().catch(() => {})
+    if (!video || playing) return
+    const t = pickWebmCoverTime(video.duration, coverSeed)
+    if (Math.abs(video.currentTime - t) > 0.05) {
+      video.currentTime = t
     } else {
       video.pause()
     }
-  }, [playing, media.kind, videoSrc])
+  }, [playing, coverSeed])
+
+  useEffect(() => {
+    coverSeekDoneRef.current = false
+    setVideoError(false)
+  }, [media.src])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !isWebm || !media.src) return
+    if (playing) {
+      video.loop = true
+      void video.play().catch(() => {})
+      return
+    }
+    video.loop = false
+    video.pause()
+    if (coverSeekDoneRef.current && video.readyState >= 2) {
+      seekCoverFrame()
+    }
+  }, [playing, isWebm, media.src, seekCoverFrame])
+
+  const handleLoadedMetadata = useCallback(() => {
+    if (playing || coverSeekDoneRef.current) return
+    coverSeekDoneRef.current = true
+    seekCoverFrame()
+  }, [playing, seekCoverFrame])
+
+  const handleSeeked = useCallback(() => {
+    if (!playing) videoRef.current?.pause()
+  }, [playing])
 
   const openPreview = useCallback(
     (e) => {
@@ -135,27 +139,29 @@ export default function TechnicalAtomMedia({
   }
 
   let thumb = null
-  if (media.kind === 'poster') {
-    thumb = (
-      <img src={media.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover bg-[#0f0f0f]" />
-    )
-  } else if (media.kind === 'webm') {
-    thumb =
-      playing && videoSrc ? (
+  if (isWebm) {
+    thumb = videoError ? (
+      <StaticEmbedThumb className="bg-[#1a1a1a] text-white/90" />
+    ) : (
+      <>
         <video
           ref={videoRef}
-          src={videoSrc}
+          src={media.src}
           className="h-full w-full object-cover bg-[#0f0f0f]"
           muted
           playsInline
-          loop
-          preload="auto"
+          preload={playing ? 'auto' : 'metadata'}
           disablePictureInPicture
           aria-hidden
+          onLoadedMetadata={handleLoadedMetadata}
+          onSeeked={handleSeeked}
+          onError={() => setVideoError(true)}
         />
-      ) : (
-        <WebmPausedThumb posterSrc={posterSrc} />
-      )
+        {!playing ? (
+          <span className="pointer-events-none absolute inset-0 z-[1] bg-black/35" aria-hidden />
+        ) : null}
+      </>
+    )
   } else {
     thumb = (
       <span className="flex h-full w-full items-center justify-center bg-[#ecf3fc] text-[#2d81e0]">
