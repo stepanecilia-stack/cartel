@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useInView } from '../hooks/useInView.js'
 import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import { pickWebmCoverTime } from '../utils/webmCoverFrame.js'
 import StaticEmbedThumb from './training/StaticEmbedThumb.jsx'
@@ -31,6 +32,10 @@ function PlayOverlay({ compact = false }) {
   )
 }
 
+function WebmPlaceholder() {
+  return <StaticEmbedThumb className="bg-[#1a1a1a] text-white/90" />
+}
+
 /**
  * @param {{
  *   atom: object,
@@ -40,6 +45,7 @@ function PlayOverlay({ compact = false }) {
  *   playing?: boolean,
  *   onTogglePlay?: () => void,
  *   compactThumb?: boolean,
+ *   lazyVideo?: boolean,
  * }} props
  */
 export default function TechnicalAtomMedia({
@@ -50,6 +56,7 @@ export default function TechnicalAtomMedia({
   playing = false,
   onTogglePlay,
   compactThumb = false,
+  lazyVideo = true,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [videoError, setVideoError] = useState(false)
@@ -58,11 +65,19 @@ export default function TechnicalAtomMedia({
   const media = resolveTechnicalAtomMedia(atom)
   const displayTitle = title ?? atom?.name ?? ''
   const coverSeed = atom?.id ?? media.src
+  const isWebm = media.kind === 'webm'
+
+  const { ref: inViewRef, inView } = useInView({
+    rootMargin: '120px 0px',
+    enabled: isWebm && lazyVideo,
+  })
+
+  const shouldLoadVideo = isWebm && (!lazyVideo || inView || playing)
 
   const canPreview = previewable && PREVIEWABLE_KINDS.has(media.kind)
-  const tapToPlayWebm = media.kind === 'webm' && typeof onTogglePlay === 'function'
-  const showPlayOverlay = media.kind === 'webm' && !playing
-  const isWebm = media.kind === 'webm'
+  const tapToPlayWebm = isWebm && typeof onTogglePlay === 'function'
+  const showPlayOverlay = isWebm && !playing
+  const showPausedDim = isWebm && !playing
 
   const seekCoverFrame = useCallback(() => {
     const video = videoRef.current
@@ -81,8 +96,14 @@ export default function TechnicalAtomMedia({
   }, [media.src])
 
   useEffect(() => {
+    if (!shouldLoadVideo) {
+      coverSeekDoneRef.current = false
+    }
+  }, [shouldLoadVideo])
+
+  useEffect(() => {
     const video = videoRef.current
-    if (!video || !isWebm || !media.src) return
+    if (!video || !isWebm || !shouldLoadVideo) return
     if (playing) {
       video.loop = true
       void video.play().catch(() => {})
@@ -93,7 +114,7 @@ export default function TechnicalAtomMedia({
     if (coverSeekDoneRef.current && video.readyState >= 2) {
       seekCoverFrame()
     }
-  }, [playing, isWebm, media.src, seekCoverFrame])
+  }, [playing, isWebm, shouldLoadVideo, seekCoverFrame])
 
   const handleLoadedMetadata = useCallback(() => {
     if (playing || coverSeekDoneRef.current) return
@@ -140,10 +161,12 @@ export default function TechnicalAtomMedia({
 
   let thumb = null
   if (isWebm) {
-    thumb = videoError ? (
-      <StaticEmbedThumb className="bg-[#1a1a1a] text-white/90" />
-    ) : (
-      <>
+    if (!shouldLoadVideo) {
+      thumb = <WebmPlaceholder />
+    } else if (videoError) {
+      thumb = <WebmPlaceholder />
+    } else {
+      thumb = (
         <video
           ref={videoRef}
           src={media.src}
@@ -157,11 +180,8 @@ export default function TechnicalAtomMedia({
           onSeeked={handleSeeked}
           onError={() => setVideoError(true)}
         />
-        {!playing ? (
-          <span className="pointer-events-none absolute inset-0 z-[1] bg-black/35" aria-hidden />
-        ) : null}
-      </>
-    )
+      )
+    }
   } else {
     thumb = (
       <span className="flex h-full w-full items-center justify-center bg-[#ecf3fc] text-[#2d81e0]">
@@ -175,10 +195,21 @@ export default function TechnicalAtomMedia({
   const frameClass = `relative overflow-hidden ${className}`
   const isClickable = tapToPlayWebm || canPreview
 
+  const frameInner = (
+    <>
+      {thumb}
+      {showPausedDim ? (
+        <span className="pointer-events-none absolute inset-0 z-[1] bg-black/35" aria-hidden />
+      ) : null}
+      {showPlayOverlay ? <PlayOverlay compact={compactThumb} /> : null}
+    </>
+  )
+
   return (
     <>
       {isClickable ? (
         <div
+          ref={isWebm && lazyVideo ? inViewRef : undefined}
           role="button"
           tabIndex={0}
           onClick={handleActivate}
@@ -194,13 +225,11 @@ export default function TechnicalAtomMedia({
               : `Увеличить: ${displayTitle || 'медиа'}`
           }
         >
-          {thumb}
-          {showPlayOverlay ? <PlayOverlay compact={compactThumb} /> : null}
+          {frameInner}
         </div>
       ) : (
-        <div className={frameClass}>
-          {thumb}
-          {showPlayOverlay ? <PlayOverlay compact={compactThumb} /> : null}
+        <div ref={isWebm && lazyVideo ? inViewRef : undefined} className={frameClass}>
+          {frameInner}
         </div>
       )}
       <MediaLightbox
