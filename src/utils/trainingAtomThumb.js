@@ -10,6 +10,6 @@ export const compactAtomThumbFrameClass =
 export const focusAtomThumbFrameClass =
   'relative aspect-[4/5] w-full max-w-[8.5rem] overflow-hidden rounded-lg border-2'
 
-/** Сетка «Отработка приёмов» — на всю ширину колонки (3 col на телефоне). */
+/** Сетка «Отработка приёмов» — крупные плитки для тренера. */
 export const practiceGridThumbFrameClass =
-  'relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-md border'
+  'relative aspect-[4/5] w-full min-w-0 min-h-[7.5rem] overflow-hidden rounded-lg border sm:min-h-[9rem]'

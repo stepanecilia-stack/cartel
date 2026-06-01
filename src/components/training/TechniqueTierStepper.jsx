@@ -238,6 +238,7 @@ export default function TechniqueTierStepper({
     [practicedAtomIds],
   )
   const canMarkPracticed = typeof onMarkPracticed === 'function'
+  const trackReinforcement = reinforcementMap != null
 
   const displayIndex = Math.min(Math.max(focusIndex, 0), Math.max(total - 1, 0))
   const focusAtom = atoms[displayIndex] ?? null
@@ -319,14 +320,16 @@ export default function TechniqueTierStepper({
               }
               practicedToday={focusPracticedToday}
               reinforcementTotal={displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
-              showReinforcementCount={focusUnlocked}
+              showReinforcementCount={focusUnlocked && trackReinforcement}
               reinforceableInIsolation={focusReinforceable}
               title={
                 !focusReinforceable
                   ? `${focusAtom.name} — ${NON_ISOLATED_REINFORCEMENT_TITLE}`
-                  : focusUnlocked
+                  : focusUnlocked && trackReinforcement
                     ? `${focusAtom.name} — всего отработок: ${displayReinforcementTotal(focusAtom.id, focusPracticedToday)}`
-                    : `${focusAtom.name} — ещё не в пройденном`
+                    : focusUnlocked
+                      ? focusAtom.name
+                      : `${focusAtom.name} — ещё не в пройденном`
               }
             />
           ) : null}
@@ -339,7 +342,7 @@ export default function TechniqueTierStepper({
               }`}
             >
               <span className="text-[#818c99]">#{focusAtom.number}</span> {focusAtom.name}
-              {focusUnlocked && focusReinforceable ? (
+              {focusUnlocked && focusReinforceable && trackReinforcement ? (
                 <span className="ml-1 tabular-nums text-[#818c99]">
                   ×{displayReinforcementTotal(focusAtom.id, focusPracticedToday)}
                 </span>
@@ -417,15 +420,17 @@ export default function TechniqueTierStepper({
                   practicedToday={practicedToday && reinforceable}
                   webmPlaying={false}
                   reinforcementTotal={cumulativeTotal}
-                  showReinforcementCount={unlocked}
+                  showReinforcementCount={unlocked && trackReinforcement}
                   reinforceableInIsolation={reinforceable}
                   compact
                   title={
                     !reinforceable
                       ? `${atom.name} — ${NON_ISOLATED_REINFORCEMENT_TITLE}`
-                      : unlocked
+                      : unlocked && trackReinforcement
                         ? `${atom.name} — всего отработок: ${cumulativeTotal}${practicedToday ? ', сегодня отмечен' : ''}`
-                        : `${atom.name} — не в пройденном`
+                        : unlocked
+                          ? atom.name
+                          : `${atom.name} — не в пройденном`
                   }
                 />
               )

@@ -11,7 +11,32 @@ function resolveTierPassed(orderedAtoms, technicalData, sessionValue) {
 }
 
 /**
+ * Полный каталог приёмов для справочного блока тренера (все шаги программы, без фильтра по прогрессу).
+ */
+export function buildCoachPracticeCatalogByTier({ students, orderedL1, orderedL2 }) {
+  const level3ById = new Map()
+  for (const student of students ?? []) {
+    const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
+    combos.forEach((combo, index) => {
+      if (!combo?.id || level3ById.has(combo.id)) return
+      level3ById.set(combo.id, {
+        ...combo,
+        kind: 'combo',
+        number: combo.number ?? index + 1,
+        name: combo.name ?? `Комбо ${index + 1}`,
+      })
+    })
+  }
+  return {
+    level1: orderedL1 ?? [],
+    level2: orderedL2 ?? [],
+    level3: [...level3ById.values()],
+  }
+}
+
+/**
  * Приёмы для блока «Отработка»: только то, что хотя бы один ученик группы уже прошёл.
+ * @deprecated Используйте buildCoachPracticeCatalogByTier для справочника тренера.
  */
 export function buildGroupPracticeAtomsByTier({
   students,
