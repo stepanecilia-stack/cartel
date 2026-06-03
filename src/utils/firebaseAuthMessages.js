@@ -24,7 +24,11 @@ export function formatFirebaseAuthError(error) {
       'Этот адрес сайта не разрешён для входа. В Firebase Console → Authentication → Settings → Authorized domains добавьте текущий домен (например localhost или ваш-сайт.vercel.app).',
     'auth/user-disabled': 'Этот аккаунт отключён.',
     'auth/operation-not-allowed':
-      'Вход по почте и паролю выключен в проекте Firebase. Включите: Authentication → Sign-in method → Email/Password.',
+      'Этот способ входа выключен в Firebase. Authentication → Sign-in method: для тренера — Email/Password, для кабинета ученика — Anonymous.',
+    'auth/admin-restricted-operation':
+      'Firebase запрещает создание пользователей с клиента. Authentication → Settings → User actions → включите «Enable create (sign-up)». ' +
+      'Для кабинета ученика также: Sign-in method → Anonymous → Enable. ' +
+      'Для тренера: Sign-in method → Email/Password → Enable.',
     'auth/email-already-in-use': 'Аккаунт с такой почтой уже есть — используйте «Вход».',
     'auth/weak-password': 'Пароль слишком простой. Нужно не менее 6 символов.',
     'auth/invalid-api-key': 'Неверный API-ключ Firebase. Проверьте .env.local или переменные на Vercel и пересоберите проект.',

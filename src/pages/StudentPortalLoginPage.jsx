@@ -6,6 +6,7 @@ import {
   STUDENT_PORTAL_CONSENT_LABEL,
 } from '../constants/studentPortalConsent.js'
 import { loginStudentPortal } from '../services/studentPortalService.js'
+import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
 
@@ -34,7 +35,12 @@ export default function StudentPortalLoginPage() {
       navigate('/learn', { replace: true })
     } catch (err) {
       console.error(err)
-      setError(formatFirestoreErrorMessage(err) || err?.message || 'Не удалось войти.')
+      const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+      setError(
+        code.startsWith('auth/')
+          ? formatFirebaseAuthError(err)
+          : formatFirestoreErrorMessage(err) || err?.message || 'Не удалось войти.',
+      )
     } finally {
       setBusy(false)
     }
