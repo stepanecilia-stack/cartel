@@ -6,9 +6,19 @@ import {
   STUDENT_PORTAL_CONSENT_LABEL,
 } from '../constants/studentPortalConsent.js'
 import { loginStudentPortal } from '../services/studentPortalService.js'
+import FirebaseAuthSetupHint from '../components/FirebaseAuthSetupHint.jsx'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
+
+function isFirebaseSetupError(err) {
+  const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+  return (
+    code === 'auth/admin-restricted-operation' ||
+    code === 'auth/operation-not-allowed' ||
+    /admin-restricted-operation/i.test(String(err?.message ?? ''))
+  )
+}
 
 export default function StudentPortalLoginPage() {
   const navigate = useNavigate()
@@ -16,6 +26,7 @@ export default function StudentPortalLoginPage() {
   const [pin, setPin] = useState('')
   const [consent, setConsent] = useState(false)
   const [error, setError] = useState('')
+  const [showFirebaseSetup, setShowFirebaseSetup] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const onSubmit = async (e) => {
@@ -35,9 +46,10 @@ export default function StudentPortalLoginPage() {
       navigate('/learn', { replace: true })
     } catch (err) {
       console.error(err)
-      const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+      const authCode = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+      setShowFirebaseSetup(isFirebaseSetupError(err))
       setError(
-        code.startsWith('auth/')
+        authCode.startsWith('auth/')
           ? formatFirebaseAuthError(err)
           : formatFirestoreErrorMessage(err) || err?.message || 'Не удалось войти.',
       )
@@ -102,6 +114,7 @@ export default function StudentPortalLoginPage() {
             </div>
 
             {error ? <p className={vk.error}>{error}</p> : null}
+            {showFirebaseSetup ? <FirebaseAuthSetupHint /> : null}
 
             <button type="submit" disabled={busy} className={`w-full ${vk.btnPrimary}`}>
               {busy ? 'Вход…' : 'Войти в программу'}
