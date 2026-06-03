@@ -122,7 +122,7 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
       ) : null}
       {student?.portalAuthUid ? (
         <p className={vk.mutedXs}>
-          Устройство привязано. Если ученик сменил телефон или очистил данные браузера — нажмите «Сбросить устройство».
+          Кабинет активен. «Сбросить устройство» — только если ученик не может войти с нового телефона (код и PIN те же).
         </p>
       ) : null}
       {error ? <p className={vk.error}>{error}</p> : null}

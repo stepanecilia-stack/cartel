@@ -47,6 +47,17 @@ service cloud.firestore {
         && request.resource.data.portalAuthUid == request.auth.uid;
     }
 
+    // Повторный вход с тем же PIN (новый анонимный uid после выхода / очистки данных браузера).
+    function studentPortalLoginRebind() {
+      return request.auth != null
+        && resource.data.portalEnabled == true
+        && 'portalAuthUid' in resource.data
+        && resource.data.portalAuthUid != null
+        && resource.data.portalAuthUid != request.auth.uid
+        && request.resource.data.portalAuthUid == request.auth.uid
+        && studentPortalLoginFieldsOnly();
+    }
+
     function studentPortalLoginFieldsOnly() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
         'portalAuthUid', 'portalEnabled', 'portalConsentAt', 'portalConsentVersion',
@@ -74,6 +85,7 @@ service cloud.firestore {
         coachCanAccessStudent()
         || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalLoginFieldsOnly()))
         || (studentPortalBindOk() && studentPortalLoginFieldsOnly())
+        || studentPortalLoginRebind()
       );
       allow delete: if request.auth != null && (
         isProgramAdmin() ||

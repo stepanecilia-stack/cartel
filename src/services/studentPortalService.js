@@ -137,9 +137,8 @@ export async function loginStudentPortal({ shortIdInput, pinInput, consentAccept
     })
   } catch (e) {
     if (e?.code === 'permission-denied') {
-      await signOut(auth)
       throw new Error(
-        'Кабинет открыт на другом телефоне или браузере. Попросите тренера: карточка ученика → вкладка «Техника» → «Сбросить устройство» (код и PIN те же).',
+        'Не удалось войти в кабинет. Проверьте код и PIN. Если ошибка не исчезает — опубликуйте правила Firestore в Firebase или попросите тренера «Сбросить устройство» в карточке ученика.',
       )
     }
     throw e
@@ -152,10 +151,8 @@ export async function loginStudentPortal({ shortIdInput, pinInput, consentAccept
 export async function logoutStudentPortal() {
   const { clearPortalSession } = await import('../utils/studentPortalAuth.js')
   clearPortalSession()
-  const auth = getAuth()
-  if (auth.currentUser?.isAnonymous) {
-    await signOut(auth)
-  }
+  // Не выходим из анонимного Firebase Auth — иначе при следующем входе
+  // на том же телефоне появится новый uid и сработает ложная «блокировка устройства».
 }
 
 export async function fetchStudentForPortalSession(studentId) {
