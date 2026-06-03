@@ -63,11 +63,13 @@ function LoginCoach() {
             {isSubmitting ? 'Входим...' : 'Войти'}
           </button>
         </form>
-        <p className={`mt-3 ${vk.muted}`}>
-          <Link to="/student-login" className={vk.link}>
+        <div className="mt-4 border-t border-[#e7e8ec] pt-4">
+          <p className={`mb-2 text-center ${vk.mutedXs}`}>Ученик? Войдите по коду и PIN</p>
+          <Link to="/student-login" className={vk.btnStudentPortal}>
             Кабинет ученика
           </Link>
-          {' · '}
+        </div>
+        <p className={`mt-3 text-center ${vk.muted}`}>
           Нет аккаунта?{' '}
           <Link to="/register" className={vk.link}>
             Зарегистрироваться

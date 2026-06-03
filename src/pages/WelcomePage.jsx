@@ -10,16 +10,19 @@ function WelcomePage() {
           Ведите учеников, вводите тесты и технику, смотрите понятные баллы и подсказки, что развивать в первую
           очередь.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Link to="/login" className={vk.btnPrimary}>
-            Войти (тренер)
-          </Link>
-          <Link to="/student-login" className={vk.btnSecondary}>
+        <div className="mx-auto mt-6 w-full max-w-sm space-y-3">
+          <Link to="/student-login" className={vk.btnStudentPortal}>
             Кабинет ученика
           </Link>
-          <Link to="/register" className={vk.btnGhost}>
-            Регистрация тренера
-          </Link>
+          <p className={vk.mutedXs}>Код из карточки и PIN, который выдал тренер</p>
+          <div className="flex flex-wrap justify-center gap-2 pt-1">
+            <Link to="/login" className={vk.btnPrimary}>
+              Войти (тренер)
+            </Link>
+            <Link to="/register" className={vk.btnGhost}>
+              Регистрация тренера
+            </Link>
+          </div>
         </div>
       </div>
     </main>
