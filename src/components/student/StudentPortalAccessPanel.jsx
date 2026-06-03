@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  clearStudentPortalDeviceBinding,
   ensureStudentPortalAccess,
   resetStudentPortalPin,
   revokeStudentPortalAccess,
@@ -10,7 +11,7 @@ import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.j
 import { vk } from '../../utils/vkUi.js'
 
 /**
- * @param {{ student: { id: string, short_id?: number }, onPortalChange?: () => void }} props
+ * @param {{ student: object, onPortalChange?: (patch: Record<string, unknown>) => void }} props
  */
 export default function StudentPortalAccessPanel({ student, onPortalChange }) {
   const [pin, setPin] = useState(null)
@@ -31,7 +32,7 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
       const res = await ensureStudentPortalAccess(student.id, shortId)
       setPin(res.pin)
       setEnabled(true)
-      onPortalChange?.()
+      onPortalChange?.({ portalEnabled: true })
     } catch (e) {
       setError(formatFirestoreErrorMessage(e) || e?.message)
     } finally {
@@ -53,7 +54,28 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
       const res = await resetStudentPortalPin(student.id, shortId)
       setPin(res.pin)
       setEnabled(true)
-      onPortalChange?.()
+      onPortalChange?.({ portalEnabled: true })
+    } catch (e) {
+      setError(formatFirestoreErrorMessage(e) || e?.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onUnbindDevice = async () => {
+    if (!student?.id || !shortId) return
+    if (
+      !window.confirm(
+        'Сбросить привязку к телефону/браузеру? Ученик сможет войти с нового устройства с тем же кодом и PIN. Прогресс в программе сохранится.',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await clearStudentPortalDeviceBinding(student.id)
+      onPortalChange?.({ portalAuthUid: undefined, portalEnabled: true })
     } catch (e) {
       setError(formatFirestoreErrorMessage(e) || e?.message)
     } finally {
@@ -70,7 +92,7 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
       await revokeStudentPortalAccess(student.id, shortId)
       setPin(null)
       setEnabled(false)
-      onPortalChange?.()
+      onPortalChange?.({ portalAuthUid: undefined, portalEnabled: false })
     } catch (e) {
       setError(formatFirestoreErrorMessage(e) || e?.message)
     } finally {
@@ -98,13 +120,23 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
           PIN: {pin}
         </p>
       ) : null}
+      {student?.portalAuthUid ? (
+        <p className={vk.mutedXs}>
+          Устройство привязано. Если ученик сменил телефон или очистил данные браузера — нажмите «Сбросить устройство».
+        </p>
+      ) : null}
       {error ? <p className={vk.error}>{error}</p> : null}
       <div className="flex flex-wrap gap-1.5">
         <button type="button" disabled={busy} onClick={() => void runEnable()} className={vk.btnPrimary}>
           {busy ? '…' : pin ? 'Обновить доступ' : 'Включить кабинет'}
         </button>
-        {pin || enabled ? (
+        {pin || enabled || student?.portalEnabled ? (
           <>
+            {(student?.portalAuthUid || student?.portalEnabled) && (
+              <button type="button" disabled={busy} onClick={() => void onUnbindDevice()} className={vk.btnSecondary}>
+                Сбросить устройство
+              </button>
+            )}
             <button type="button" disabled={busy} onClick={() => void onResetPin()} className={vk.btnSecondary}>
               Новый PIN
             </button>

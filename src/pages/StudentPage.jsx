@@ -1713,7 +1713,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
             {activeTab === 'technical' && (
               <>
-              <StudentPortalAccessPanel student={student} />
+              <StudentPortalAccessPanel
+                student={student}
+                onPortalChange={(patch) => onStudentUpdated?.(patch)}
+              />
               <StudentTechnicalTab
                 loadingNorms={loadingNorms}
                 technicalAtomsCount={technicalAtoms.length}

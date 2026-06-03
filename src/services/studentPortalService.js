@@ -72,6 +72,16 @@ export async function resetStudentPortalPin(studentId, shortId) {
   return ensureStudentPortalAccess(studentId, shortId, { pin: generatePortalPin() })
 }
 
+/** Снять привязку к браузеру/телефону; код и PIN не меняются. */
+export async function clearStudentPortalDeviceBinding(studentId) {
+  if (!studentId) throw new Error('Не указан ученик')
+  await updateDoc(doc(ensureDb(), 'students', studentId), {
+    portalAuthUid: deleteField(),
+    portalEnabled: true,
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function revokeStudentPortalAccess(studentId, shortId) {
   const sid = normalizePortalShortIdInput(shortId) ?? String(shortId)
   if (sid) {
@@ -129,7 +139,7 @@ export async function loginStudentPortal({ shortIdInput, pinInput, consentAccept
     if (e?.code === 'permission-denied') {
       await signOut(auth)
       throw new Error(
-        'Кабинет уже привязан к другому устройству. Попросите тренера сбросить доступ в карточке.',
+        'Кабинет открыт на другом телефоне или браузере. Попросите тренера: карточка ученика → вкладка «Техника» → «Сбросить устройство» (код и PIN те же).',
       )
     }
     throw e
