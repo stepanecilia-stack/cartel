@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerCoach } from '../services/firebaseService'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
+import { exitStudentPortalForCoachLogin } from '../utils/studentPortalAuth.js'
 import { vk } from '../utils/vkUi.js'
 
 const initialForm = {
@@ -15,6 +16,11 @@ const initialForm = {
 
 function RegisterCoach() {
   const navigate = useNavigate()
+
+  useEffect(() => {
+    void exitStudentPortalForCoachLogin()
+  }, [])
+
   const [formData, setFormData] = useState(initialForm)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)

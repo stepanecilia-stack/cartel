@@ -80,3 +80,24 @@ export function isStudentPortalFirebaseUser(user) {
 export function studentPortalHomePath() {
   return readPortalSession() ? '/learn' : '/student-login'
 }
+
+/** Пути, куда тренер может зайти даже при сохранённой анонимной сессии ученика. */
+export const COACH_AUTH_ENTRY_PATHS = new Set(['/welcome', '/login', '/register'])
+
+export function isCoachAuthEntryPath(pathname) {
+  return COACH_AUTH_ENTRY_PATHS.has(pathname)
+}
+
+/** Сброс кабинета ученика перед входом тренера (Firebase Anonymous + sessionStorage). */
+export async function exitStudentPortalForCoachLogin() {
+  clearPortalSession()
+  try {
+    const { getAuth, signOut } = await import('firebase/auth')
+    const auth = getAuth()
+    if (auth.currentUser?.isAnonymous) {
+      await signOut(auth)
+    }
+  } catch {
+    /* ignore */
+  }
+}

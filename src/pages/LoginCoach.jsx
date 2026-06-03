@@ -1,12 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loginCoach } from '../services/firebaseService'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
+import { exitStudentPortalForCoachLogin } from '../utils/studentPortalAuth.js'
 import { vk } from '../utils/vkUi.js'
 
 function LoginCoach() {
   const navigate = useNavigate()
+
+  useEffect(() => {
+    void exitStudentPortalForCoachLogin()
+  }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

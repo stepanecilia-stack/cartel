@@ -377,6 +377,15 @@ export const createAccessCode = async (accessCodePayload) => {
 export const registerCoach = async (email, password, coachData) => {
   const safeAuth = ensureAuth()
   const safeDb = ensureDb()
+  if (safeAuth.currentUser?.isAnonymous) {
+    await signOut(safeAuth)
+    try {
+      const { clearPortalSession } = await import('../utils/studentPortalAuth.js')
+      clearPortalSession()
+    } catch {
+      /* ignore */
+    }
+  }
   const userCredential = await createUserWithEmailAndPassword(safeAuth, email, password)
   const { user } = userCredential
 

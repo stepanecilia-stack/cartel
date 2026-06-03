@@ -9,6 +9,7 @@ import { loginStudentPortal } from '../services/studentPortalService.js'
 import FirebaseAuthSetupHint from '../components/FirebaseAuthSetupHint.jsx'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
+import { exitStudentPortalForCoachLogin } from '../utils/studentPortalAuth.js'
 import { vk } from '../utils/vkUi.js'
 
 function isFirebaseSetupError(err) {
@@ -121,11 +122,16 @@ export default function StudentPortalLoginPage() {
             </button>
           </form>
 
-          <p className={`mt-3 text-center ${vk.mutedXs}`}>
-            <Link to="/login" className={vk.link}>
-              Вход для тренера
+          <div className="mt-4 border-t border-[#e7e8ec] pt-4">
+            <p className={`mb-2 text-center ${vk.mutedXs}`}>Вы тренер?</p>
+            <Link
+              to="/login"
+              onClick={() => void exitStudentPortalForCoachLogin()}
+              className={`block w-full text-center ${vk.btnPrimary}`}
+            >
+              Войти как тренер
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </main>

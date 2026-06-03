@@ -41,7 +41,10 @@ import { useGroupTrainingSession } from './hooks/useGroupTrainingSession.js'
 import { isProgramAdmin } from './utils/coachRoles.js'
 import { clearGroupTrainingSession } from './utils/groupTrainingSession.js'
 import {
+  exitStudentPortalForCoachLogin,
+  isCoachAuthEntryPath,
   isStudentPortalFirebaseUser,
+  readPortalSession,
   studentPortalHomePath,
 } from './utils/studentPortalAuth.js'
 import { vk } from './utils/vkUi.js'
@@ -143,19 +146,34 @@ function Navbar({ user, coachProfile, programAdmin }) {
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {user ? (
-            <>
-              <span className="min-w-0 max-w-[42vw] truncate text-right text-[13px] text-[#818c99] sm:max-w-none">
-                {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
-                {programAdmin ? (
-                  <span className="ml-1 rounded bg-[#fff8e6] px-1 py-0.5 text-[10px] font-semibold text-[#e6a817]">
-                    админ
-                  </span>
-                ) : null}
-              </span>
-              <button type="button" onClick={() => logoutCoach()} className={vk.btnGhost}>
-                Выйти
-              </button>
-            </>
+            isStudentPortalFirebaseUser(user) ? (
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => void exitStudentPortalForCoachLogin()}
+                  className={vk.btnPrimary}
+                >
+                  Я тренер
+                </Link>
+                <Link to="/student-login" className={vk.btnGhost}>
+                  Ученик
+                </Link>
+              </>
+            ) : (
+              <>
+                <span className="min-w-0 max-w-[42vw] truncate text-right text-[13px] text-[#818c99] sm:max-w-none">
+                  {coachProfile?.firstName ? `${coachProfile.firstName} ${coachProfile.lastName}` : user.email}
+                  {programAdmin ? (
+                    <span className="ml-1 rounded bg-[#fff8e6] px-1 py-0.5 text-[10px] font-semibold text-[#e6a817]">
+                      админ
+                    </span>
+                  ) : null}
+                </span>
+                <button type="button" onClick={() => logoutCoach()} className={vk.btnGhost}>
+                  Выйти
+                </button>
+              </>
+            )
           ) : (
             <div className="flex shrink-0 items-center gap-1">
               <Link to="/login" className={vk.btnGhost}>
@@ -175,14 +193,14 @@ function Navbar({ user, coachProfile, programAdmin }) {
 function ProtectedRoute({ user, element }) {
   if (!user) return <Navigate to="/login" replace />
   if (isStudentPortalFirebaseUser(user)) {
-    return <Navigate to={studentPortalHomePath()} replace />
+    return <Navigate to="/welcome" replace />
   }
   return element
 }
 
 function AdminRoute({ user, coachProfile, element }) {
   if (!user) return <Navigate to="/login" replace />
-  if (isStudentPortalFirebaseUser(user)) return <Navigate to={studentPortalHomePath()} replace />
+  if (isStudentPortalFirebaseUser(user)) return <Navigate to="/welcome" replace />
   if (!isProgramAdmin(coachProfile)) return <Navigate to="/" replace />
   return element
 }
@@ -205,9 +223,9 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
 
   useEffect(() => {
     if (!isStudentAuth) return
-    if (isStudentPortalRoute) return
+    if (isStudentPortalRoute || isCoachAuthEntryPath(location.pathname)) return
     navigate(studentPortalHomePath(), { replace: true })
-  }, [isStudentAuth, isStudentPortalRoute, navigate])
+  }, [isStudentAuth, isStudentPortalRoute, location.pathname, navigate])
 
   const openStudentFromQualityPage = (student) => {
     if (!student) return
@@ -401,27 +419,11 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         />
         <Route
           path="/login"
-          element={
-            isCoachFirebaseUser(authUser) ? (
-              <Navigate to="/" replace />
-            ) : isStudentAuth ? (
-              <Navigate to={studentPortalHomePath()} replace />
-            ) : (
-              <LoginCoach />
-            )
-          }
+          element={isCoachFirebaseUser(authUser) ? <Navigate to="/" replace /> : <LoginCoach />}
         />
         <Route
           path="/register"
-          element={
-            isCoachFirebaseUser(authUser) ? (
-              <Navigate to="/" replace />
-            ) : isStudentAuth ? (
-              <Navigate to={studentPortalHomePath()} replace />
-            ) : (
-              <RegisterCoach />
-            )
-          }
+          element={isCoachFirebaseUser(authUser) ? <Navigate to="/" replace /> : <RegisterCoach />}
         />
         <Route
           path="*"
@@ -429,7 +431,9 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
             <Navigate
               to={
                 isStudentAuth
-                  ? studentPortalHomePath()
+                  ? readPortalSession()
+                    ? studentPortalHomePath()
+                    : '/welcome'
                   : isCoachFirebaseUser(authUser)
                     ? '/'
                     : '/welcome'
