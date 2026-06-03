@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
@@ -9,6 +9,7 @@ import { vk } from '../utils/vkUi.js'
 const TIER_TABS = [
   { id: 1, label: 'Ур.1' },
   { id: 2, label: 'Ур.2' },
+  { id: 3, label: 'Комбо' },
 ]
 
 function atomToForm(atom) {
@@ -22,7 +23,9 @@ function atomToForm(atom) {
 }
 
 export default function TechnicalElementsPage() {
-  const { level1, level2, syncError } = useTechnicalProgramAtoms()
+  const { orderedLevel1, orderedLevel2, orderedLevel3, syncError } = useTechnicalProgramAtoms()
+  const [previewPlaying, setPreviewPlaying] = useState(false)
+  const togglePreviewPlaying = useCallback(() => setPreviewPlaying((p) => !p), [])
   const [tier, setTier] = useState(1)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(null)
@@ -30,7 +33,8 @@ export default function TechnicalElementsPage() {
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
 
-  const list = tier === 2 ? level2 : level1
+  const list =
+    tier === 3 ? orderedLevel3 : tier === 2 ? orderedLevel2 : orderedLevel1
 
   const editingAtom = useMemo(
     () => list.find((a) => a.id === editingId) ?? null,
@@ -40,6 +44,7 @@ export default function TechnicalElementsPage() {
   const openEdit = (atom) => {
     setEditingId(atom.id)
     setForm(atomToForm(atom))
+    setPreviewPlaying(false)
     setError('')
     setOk('')
   }
@@ -76,7 +81,7 @@ export default function TechnicalElementsPage() {
         <BackToHomeBar />
         <header>
           <h1 className={vk.h1Lg}>Технические элементы</h1>
-          <p className={vk.mutedXs}>WebM — заставка и превью на карточке (кадр из видео).</p>
+          <p className={vk.mutedXs}>WebM — воспроизведение по нажатию play; повторный тап — на весь экран.</p>
         </header>
 
         {syncError ? (
@@ -122,8 +127,19 @@ export default function TechnicalElementsPage() {
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <p className={vk.h2}>
-                  #{editingAtom.number} {editingAtom.name}
+                  {tier === 3 ? (
+                    <>
+                      <span className="text-[#818c99]">Комбо {editingAtom.number}</span> {editingAtom.name}
+                    </>
+                  ) : (
+                    <>
+                      #{editingAtom.number} {editingAtom.name}
+                    </>
+                  )}
                 </p>
+                {tier === 3 && editingAtom.chainPreview ? (
+                  <p className={vk.mutedXs}>Цепочка: {editingAtom.chainPreview}</p>
+                ) : null}
               </div>
               <TechnicalAtomMedia
                 atom={{
@@ -133,6 +149,9 @@ export default function TechnicalElementsPage() {
                   videoLink: form.videoLink,
                 }}
                 className="h-16 w-24"
+                playing={previewPlaying}
+                onTogglePlay={togglePreviewPlaying}
+                previewable
               />
             </div>
             <label className="block">
@@ -168,8 +187,19 @@ export default function TechnicalElementsPage() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-medium text-[#2c2d2e]">
-                    <span className="text-[#818c99]">#{atom.number}</span> {atom.name}
+                    {tier === 3 ? (
+                      <>
+                        <span className="text-[#818c99]">Комбо {atom.number}</span> {atom.name}
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[#818c99]">#{atom.number}</span> {atom.name}
+                      </>
+                    )}
                   </p>
+                  {tier === 3 && atom.chainPreview ? (
+                    <p className={`${vk.mutedXs} truncate`}>{atom.chainPreview}</p>
+                  ) : null}
                   <p className={vk.mutedXs}>
                     {atom.media?.webmSrc
                       ? 'WebM'
@@ -180,7 +210,7 @@ export default function TechnicalElementsPage() {
                           : 'Без медиа'}
                   </p>
                 </div>
-                <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" />
+                <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" previewable />
               </button>
             </li>
           ))}

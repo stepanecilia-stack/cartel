@@ -1,4 +1,5 @@
-import { mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
+import { mapCombinationsToDisplayAtoms, mergeWithRequiredLevel3Combinations } from './techniqueCatalog.js'
+import { resolveProgramLevel3Atoms } from './technicalProgramAtomsResolved.js'
 import { countLeadingMasteredAtoms } from './studentTechnicalUpdate.js'
 import { normalizeStudentTechnicalData } from './technicalProgramProgress.js'
 
@@ -13,18 +14,14 @@ function resolveTierPassed(orderedAtoms, technicalData, sessionValue) {
 /**
  * Полный каталог приёмов для справочного блока тренера (все шаги программы, без фильтра по прогрессу).
  */
-export function buildCoachPracticeCatalogByTier({ students, orderedL1, orderedL2 }) {
+export function buildCoachPracticeCatalogByTier({ students, orderedL1, orderedL2, orderedL3Catalog }) {
+  const catalogL3 = orderedL3Catalog ?? resolveProgramLevel3Atoms(undefined, orderedL1)
   const level3ById = new Map()
   for (const student of students ?? []) {
-    const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
-    combos.forEach((combo, index) => {
+    const combos = mapCombinationsToDisplayAtoms(student.technicalCombinations, catalogL3, orderedL1)
+    combos.forEach((combo) => {
       if (!combo?.id || level3ById.has(combo.id)) return
-      level3ById.set(combo.id, {
-        ...combo,
-        kind: 'combo',
-        number: combo.number ?? index + 1,
-        name: combo.name ?? `Комбо ${index + 1}`,
-      })
+      level3ById.set(combo.id, combo)
     })
   }
   return {

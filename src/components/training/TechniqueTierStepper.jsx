@@ -148,16 +148,19 @@ function AtomPreviewFrame({
     )
   }
 
+  const stripThumbOnly = compact && !enlargeable
+
   if (hasLoopingPreviewMedia(atom)) {
     return (
       <div className={`${frameClass} ${borderClass} bg-[#0f0f0f]`} title={title}>
         <TechnicalAtomMedia
           atom={atom}
-          className="h-full w-full"
-          previewable={enlargeable && !hasLoopingPreviewMedia(atom)}
-          playing={webmPlaying}
-          onTogglePlay={onToggleWebmPlay}
+          className={`h-full w-full ${stripThumbOnly ? 'pointer-events-none' : ''}`}
+          previewable={enlargeable}
+          playing={stripThumbOnly ? false : webmPlaying}
+          onTogglePlay={stripThumbOnly ? undefined : onToggleWebmPlay}
           compactThumb={compact}
+          stopClickPropagation={!stripThumbOnly}
           title={atom?.name}
         />
         {practicedToday ? <PracticedTodayOverlay compact={compact} /> : null}
@@ -418,7 +421,6 @@ export default function TechniqueTierStepper({
                   atom={atom}
                   unlocked={unlocked}
                   practicedToday={practicedToday && reinforceable}
-                  webmPlaying={false}
                   reinforcementTotal={cumulativeTotal}
                   showReinforcementCount={unlocked && trackReinforcement}
                   reinforceableInIsolation={reinforceable}
@@ -447,7 +449,12 @@ export default function TechniqueTierStepper({
                       type="button"
                       onClick={() => {
                         setFocusIndex(index)
-                        setPlayingAtomId(atoms[index]?.id ?? null)
+                        const picked = atoms[index]
+                        if (picked && hasLoopingPreviewMedia(picked)) {
+                          setPlayingAtomId(picked.id)
+                        } else {
+                          setPlayingAtomId(null)
+                        }
                       }}
                       className={`block shrink-0 touch-manipulation rounded-md text-left ${tileRingClass}`}
                       aria-current={isFocused ? 'true' : undefined}

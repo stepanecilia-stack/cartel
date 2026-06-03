@@ -3,13 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import { getCoachStudentsForCoach } from '../data/coachStudentsCache.js'
 import { useGroupTrainingSession } from '../hooks/useGroupTrainingSession.js'
+import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import { updateStudentData } from '../services/firebaseService'
-import { loadLegacyTechnicalAtoms, TECHNIQUE_LEVEL2_ATOMS } from '../utils/ksrUtils'
+import { normalizeStudentTechnicalData } from '../utils/technicalProgramProgress.js'
 import {
-  orderTechnicalAtomsForProgram,
-  normalizeStudentTechnicalData,
-} from '../utils/technicalProgramProgress.js'
-import { mergeWithRequiredLevel3Combinations } from '../utils/techniqueCatalog.js'
+  mapCombinationsToDisplayAtoms,
+  mergeWithRequiredLevel3Combinations,
+} from '../utils/techniqueCatalog.js'
 import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
 import {
   applyProgressSliderToTechnicalData,
@@ -230,17 +230,11 @@ function resolveActiveTrainingTier({ total1, total2, total3, progress1, progress
   return 1
 }
 
-function StudentProgressRow({ student, orderedL1, onChange, savingStatus, sessionTiers }) {
-  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
-  const orderedL3 = useMemo(() => {
-    const combos = mergeWithRequiredLevel3Combinations(student.technicalCombinations)
-    return combos.map((c, index) => ({
-      ...c,
-      kind: 'combo',
-      number: index + 1,
-      name: c.name ?? `Комбо ${index + 1}`,
-    }))
-  }, [student.technicalCombinations])
+function StudentProgressRow({ student, orderedL1, orderedL2, orderedL3Catalog, onChange, savingStatus, sessionTiers }) {
+  const orderedL3 = useMemo(
+    () => mapCombinationsToDisplayAtoms(student.technicalCombinations, orderedL3Catalog, orderedL1),
+    [student.technicalCombinations, orderedL3Catalog, orderedL1],
+  )
 
   const total1 = orderedL1.length
   const total2 = orderedL2.length
@@ -640,12 +634,13 @@ function ProgressPhase({
   coachId,
   studentsForSession,
   orderedL1,
+  orderedL2,
+  orderedL3Catalog,
   onBack,
   onCompleteTraining,
-  technicalAtoms,
+  programLevel1,
   slidersByStudentId,
 }) {
-  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
   const pendingTiersRef = useRef(new Map())
   const [savingStatusById, setSavingStatusById] = useState({})
   const localDataRef = useRef(new Map())
@@ -657,8 +652,9 @@ function ProgressPhase({
         students: studentsForSession,
         orderedL1,
         orderedL2,
+        orderedL3Catalog,
       }),
-    [studentsForSession, orderedL1, orderedL2],
+    [studentsForSession, orderedL1, orderedL2, orderedL3Catalog],
   )
 
   useEffect(() => {
@@ -692,7 +688,7 @@ function ProgressPhase({
         setStatus(studentId, 'saving')
         const patch = buildTechnicalOnlyUpdatePayload(
           { ...slot.base, technicalData: nextTechnical },
-          technicalAtoms,
+          programLevel1,
           nextTechnical,
         )
         await updateStudentData(studentId, patch, { section: STUDENT_UPDATE_SECTION.groupTraining })
@@ -703,7 +699,7 @@ function ProgressPhase({
         setStatus(studentId, 'error')
       }
     },
-    [orderedL1, orderedL2, setStatus, technicalAtoms],
+    [orderedL1, orderedL2, setStatus, programLevel1],
   )
 
   const flushPendingSaves = useCallback(() => {
@@ -786,6 +782,8 @@ function ProgressPhase({
             key={student.id}
             student={student}
             orderedL1={orderedL1}
+            orderedL2={orderedL2}
+            orderedL3Catalog={orderedL3Catalog}
             onChange={handleSliderChange}
             savingStatus={savingStatusById[student.id] ?? 'idle'}
             sessionTiers={slidersByStudentId[student.id]}
@@ -814,9 +812,9 @@ function ProgressPhase({
 export default function GroupTrainingPage({ coachId }) {
   const navigate = useNavigate()
   const activeSession = useGroupTrainingSession(coachId)
+  const { orderedLevel1, orderedLevel2, orderedLevel3 } = useTechnicalProgramAtoms()
   const [phase, setPhase] = useState('compose')
   const [students, setStudents] = useState([])
-  const [technicalAtoms, setTechnicalAtoms] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -829,10 +827,7 @@ export default function GroupTrainingPage({ coachId }) {
     let cancelled = false
     const run = async () => {
       try {
-        const [data, atoms] = await Promise.all([
-          getCoachStudentsForCoach(coachId),
-          loadLegacyTechnicalAtoms(),
-        ])
+        const data = await getCoachStudentsForCoach(coachId)
         if (cancelled) return
         const decorated = data.map((raw) => {
           const displayName = displayNameFromStudent(raw)
@@ -847,7 +842,6 @@ export default function GroupTrainingPage({ coachId }) {
         })
         decorated.sort((a, b) => a.nameSearch.localeCompare(b.nameSearch, 'ru'))
         setStudents(decorated)
-        setTechnicalAtoms(Array.isArray(atoms) ? atoms : [])
         setLoadError('')
       } catch (error) {
         console.error('Ошибка загрузки данных для групповой тренировки:', error)
@@ -878,11 +872,6 @@ export default function GroupTrainingPage({ coachId }) {
     setSelectedIds(new Set(session.selectedIds))
     setPhase('progress')
   }, [coachId, isLoading])
-
-  const orderedAtoms = useMemo(
-    () => orderTechnicalAtomsForProgram(technicalAtoms),
-    [technicalAtoms],
-  )
 
   const filteredStudents = useMemo(() => {
     const q = normalizeSearchText(searchQuery)
@@ -996,14 +985,16 @@ export default function GroupTrainingPage({ coachId }) {
             onResumeTraining={handleResumeTraining}
             hasActiveSession={Boolean(activeSession?.selectedIds.length)}
             filteredStudents={filteredStudents}
-            orderedL1={orderedAtoms}
+            orderedL1={orderedLevel1}
           />
         ) : (
           <ProgressPhase
             coachId={coachId}
             studentsForSession={studentsForSession}
-            orderedL1={orderedAtoms}
-            technicalAtoms={technicalAtoms}
+            orderedL1={orderedLevel1}
+            orderedL2={orderedLevel2}
+            orderedL3Catalog={orderedLevel3}
+            programLevel1={orderedLevel1}
             onBack={handleBackToCompose}
             onCompleteTraining={handleCompleteTraining}
             slidersByStudentId={activeSession?.slidersByStudentId ?? {}}

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
-import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
+import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import {
   fetchStudentForPortalSession,
   logoutStudentPortal,
   saveStudentPortalKnowledge,
 } from '../services/studentPortalService.js'
-import { loadLegacyTechnicalAtoms, TECHNIQUE_LEVEL2_ATOMS, TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils.js'
+import { TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
 import {
   applyStudentKnowledgeMark,
@@ -17,11 +17,8 @@ import {
   resolveStudentPortalFocusIndex,
   STUDENT_PORTAL_LEVEL,
 } from '../utils/studentPortalProgress.js'
-import {
-  normalizeStudentTechnicalData,
-  orderTechnicalAtomsForProgram,
-} from '../utils/technicalProgramProgress.js'
-import { mergeWithRequiredLevel3Combinations } from '../utils/techniqueCatalog.js'
+import { normalizeStudentTechnicalData } from '../utils/technicalProgramProgress.js'
+import { mapCombinationsToDisplayAtoms } from '../utils/techniqueCatalog.js'
 import { readPortalSession, clearPortalSession } from '../utils/studentPortalAuth.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
@@ -38,7 +35,7 @@ export default function StudentLearnPage() {
   const navigate = useNavigate()
   const session = readPortalSession()
   const [student, setStudent] = useState(null)
-  const [technicalAtoms, setTechnicalAtoms] = useState(() => getTechnicalProgramAtomsCache() ?? [])
+  const { orderedLevel1, orderedLevel2, orderedLevel3 } = useTechnicalProgramAtoms()
   const [tier, setTier] = useState(1)
   const [viewIndex, setViewIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -54,13 +51,9 @@ export default function StudentLearnPage() {
     let cancelled = false
     const run = async () => {
       try {
-        const [s, atoms] = await Promise.all([
-          fetchStudentForPortalSession(session.studentId),
-          technicalAtoms.length ? Promise.resolve(technicalAtoms) : loadLegacyTechnicalAtoms(),
-        ])
+        const s = await fetchStudentForPortalSession(session.studentId)
         if (cancelled) return
         setStudent(s)
-        if (atoms?.length) setTechnicalAtoms(atoms)
       } catch (e) {
         if (cancelled) return
         console.error(e)
@@ -71,26 +64,17 @@ export default function StudentLearnPage() {
       }
     }
     void run()
-    const unsub = subscribeTechnicalProgramAtomsCache((list) => {
-      if (list?.length) setTechnicalAtoms(list)
-    })
     return () => {
       cancelled = true
-      unsub?.()
     }
-  }, [session?.studentId, navigate, technicalAtoms.length])
+  }, [session?.studentId, navigate])
 
-  const orderedL1 = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
-  const orderedL2 = TECHNIQUE_LEVEL2_ATOMS
-  const orderedL3 = useMemo(() => {
-    const combos = mergeWithRequiredLevel3Combinations(student?.technicalCombinations)
-    return combos.map((c, index) => ({
-      ...c,
-      kind: 'combo',
-      number: index + 1,
-      name: c.name ?? `Комбо ${index + 1}`,
-    }))
-  }, [student?.technicalCombinations])
+  const orderedL1 = orderedLevel1
+  const orderedL2 = orderedLevel2
+  const orderedL3 = useMemo(
+    () => mapCombinationsToDisplayAtoms(student?.technicalCombinations, orderedLevel3, orderedLevel1),
+    [student?.technicalCombinations, orderedLevel3, orderedLevel1],
+  )
 
   const technicalData = useMemo(
     () => normalizeStudentTechnicalData(student?.technicalData),
@@ -270,13 +254,14 @@ export default function StudentLearnPage() {
                   </button>
                 </div>
 
-                <div className="mx-auto w-full max-w-[12rem]">
+                <div className="mx-auto w-full max-w-[11rem]">
                   <TechnicalAtomMedia
                     atom={viewAtom}
-                    className="aspect-[4/5] w-full rounded-lg"
+                    className="aspect-video w-full rounded-lg"
                     playing={playing}
                     onTogglePlay={() => setPlaying((p) => !p)}
                     previewable={false}
+                    compactThumb
                   />
                 </div>
                 <h2 className={vk.h2}>

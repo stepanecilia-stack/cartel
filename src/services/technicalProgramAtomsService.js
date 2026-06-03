@@ -7,10 +7,8 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore'
-import {
-  DEFAULT_TECHNICAL_LEVEL2,
-  getDefaultTechnicalProgramAtoms,
-} from '../data/technicalProgramAtomsDefaults.js'
+import { getDefaultTechnicalProgramAtoms } from '../data/technicalProgramAtomsDefaults.js'
+import { getDefaultTechnicalLevel3Atoms } from '../utils/technicalProgramAtomsResolved.js'
 import {
   getTechnicalProgramAtomsCache,
   setTechnicalProgramAtomsCache,
@@ -106,7 +104,8 @@ function buildCacheFromOverrides(overrideDocs) {
 
   const level1 = defaults.level1.map((d) => mergeAtom(d, byId.get(d.id)))
   const level2 = defaults.level2.map((d) => mergeAtom(d, byId.get(d.id)))
-  setTechnicalProgramAtomsCache({ level1, level2 })
+  const level3 = getDefaultTechnicalLevel3Atoms(level1).map((d) => mergeAtom(d, byId.get(d.id)))
+  setTechnicalProgramAtomsCache({ level1, level2, level3 })
 }
 
 function setSyncError(err) {
@@ -133,9 +132,13 @@ export async function getTechnicalProgramAtoms() {
 }
 
 export function getTechnicalProgramAtomsLevel2() {
-  return getTechnicalProgramAtomsCache().level2.length
-    ? getTechnicalProgramAtomsCache().level2
-    : DEFAULT_TECHNICAL_LEVEL2
+  const { level2 } = getTechnicalProgramAtomsCache()
+  return level2.length ? level2 : getDefaultTechnicalProgramAtoms().level2
+}
+
+export function getTechnicalProgramAtomsLevel3() {
+  const { level1, level3 } = getTechnicalProgramAtomsCache()
+  return level3.length ? level3 : getDefaultTechnicalLevel3Atoms(level1)
 }
 
 export async function loadTechnicalProgramAtomsOnce() {
@@ -191,7 +194,7 @@ export function subscribeTechnicalProgramAtoms() {
 
 /**
  * @param {string} atomId
- * @param {number} tier 1 | 2
+ * @param {number} tier 1 | 2 | 3
  * @param {object} payload
  */
 export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
@@ -211,7 +214,15 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
   }
 
   const defaults = getDefaultTechnicalProgramAtoms()
-  const list = tier === 2 ? defaults.level2 : defaults.level1
+  const level1 = getTechnicalProgramAtomsCache().level1.length
+    ? getTechnicalProgramAtomsCache().level1
+    : defaults.level1
+  const list =
+    tier === 3
+      ? getDefaultTechnicalLevel3Atoms(level1)
+      : tier === 2
+        ? defaults.level2
+        : defaults.level1
   const base = list.find((a) => a.id === atomId)
   if (!base) throw new Error('Неизвестный элемент программы')
 

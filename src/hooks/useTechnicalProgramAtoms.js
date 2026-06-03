@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   getTechnicalProgramAtomsCache,
   subscribeTechnicalProgramAtomsCache,
@@ -7,6 +7,7 @@ import {
   getTechnicalProgramAtomsSyncError,
   loadTechnicalProgramAtomsOnce,
 } from '../services/technicalProgramAtomsService.js'
+import { resolveProgramAtomsBundle } from '../utils/technicalProgramAtomsResolved.js'
 
 export function useTechnicalProgramAtoms() {
   const [bundle, setBundle] = useState(() => getTechnicalProgramAtomsCache())
@@ -31,5 +32,16 @@ export function useTechnicalProgramAtoms() {
     }
   }, [])
 
-  return { level1: bundle.level1, level2: bundle.level2, syncError }
+  const resolved = useMemo(() => resolveProgramAtomsBundle(bundle), [bundle])
+
+  return {
+    level1: bundle.level1,
+    level2: bundle.level2,
+    level3: bundle.level3,
+    orderedLevel1: resolved.level1,
+    orderedLevel2: resolved.level2,
+    orderedLevel3: resolved.level3,
+    allProgramAtoms: resolved.all,
+    syncError,
+  }
 }

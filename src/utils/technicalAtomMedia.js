@@ -13,7 +13,7 @@ export function resolveTechnicalAtomMedia(atom) {
   return { kind: 'none', src: '' }
 }
 
-/** WebM — превью на карточке (кадр из видео, без отдельного постера). */
+/** WebM — воспроизведение по нажатию (без превью-кадра на карточке). */
 export function hasLoopingPreviewMedia(atom) {
   return resolveTechnicalAtomMedia(atom).kind === 'webm'
 }

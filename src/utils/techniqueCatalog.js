@@ -1,26 +1,54 @@
-import { TECHNIQUE_LEVEL2_ATOMS } from './ksrUtils.js'
+import { getTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
+import {
+  REQUIRED_LEVEL3_COMBO_IDS,
+  REQUIRED_LEVEL3_COMBO_TEMPLATES,
+} from '../data/requiredLevel3Combos.js'
 import { orderTechnicalAtomsForProgram } from './technicalProgramProgress.js'
+import {
+  resolveProgramLevel2Atoms,
+  resolveProgramLevel3Atoms,
+} from './technicalProgramAtomsResolved.js'
 
 /**
  * Комбинации уровня 3: произвольные цепочки из атомов уровней 1–2 (хранятся на карточке ученика).
  * @typedef {{ id: string, name: string, steps: string[] }} TechnicalCombination
  */
 
-/** Две обязательные комбинации программы (id стабильны для Firestore и UI). */
-export const REQUIRED_LEVEL3_COMBO_TEMPLATES = [
-  {
-    id: 'combo_std_double_podashag',
-    name: 'Двойка подшаг',
-    steps: ['atom_7', 'atom_7'],
-  },
-  {
-    id: 'combo_std_double_tolchok',
-    name: 'Двойка толчок',
-    steps: ['atom_7', 'atom_11'],
-  },
-]
+export { REQUIRED_LEVEL3_COMBO_TEMPLATES, REQUIRED_LEVEL3_COMBO_IDS }
 
-export const REQUIRED_LEVEL3_COMBO_IDS = REQUIRED_LEVEL3_COMBO_TEMPLATES.map((t) => t.id)
+/**
+ * Комбо ученика + медиа из каталога (обязательные комбо клуба).
+ * @param {unknown} combinations
+ * @param {object[]} [catalogLevel3]
+ * @param {object[]} [level1Atoms]
+ */
+export function mapCombinationsToDisplayAtoms(combinations, catalogLevel3, level1Atoms) {
+  const catalog =
+    Array.isArray(catalogLevel3) && catalogLevel3.length > 0
+      ? catalogLevel3
+      : resolveProgramLevel3Atoms(undefined, level1Atoms)
+  const byId = new Map(catalog.map((a) => [a.id, a]))
+  const stepLookup = buildAtomLookupById(level1Atoms)
+  const merged = mergeWithRequiredLevel3Combinations(combinations)
+  return merged.map((c, index) => {
+    const cat = byId.get(c.id)
+    const steps = c.steps ?? cat?.steps ?? []
+    return {
+      ...(cat ?? {}),
+      ...c,
+      kind: 'combo',
+      number: cat?.number ?? index + 1,
+      name: c.name ?? cat?.name ?? `Комбо ${index + 1}`,
+      steps,
+      chainPreview: buildComboChainPreview(steps, stepLookup),
+      embedUrl: cat?.embedUrl ?? '',
+      videoLink: cat?.videoLink ?? '',
+      media: cat?.media ?? { posterSrc: null, webmSrc: null },
+      howTo: cat?.howTo ?? '',
+      mistakes: cat?.mistakes ?? '',
+    }
+  })
+}
 
 /** База Cartel: ур.1 + ур.2 + 2 обязательные комбинации (19 + 8 + 2 = 29). */
 export function buildBaseCartelProgramAtoms(level1Atoms) {
@@ -31,7 +59,7 @@ export function buildBaseCartelProgramAtoms(level1Atoms) {
     name: t.name,
     kind: 'combo',
   }))
-  return [...l1, ...TECHNIQUE_LEVEL2_ATOMS, ...comboAtoms]
+  return [...l1, ...resolveProgramLevel2Atoms(), ...comboAtoms]
 }
 
 /** @param {object[]} [level1Atoms] */
@@ -84,7 +112,7 @@ export function buildAtomLookupById(level1Atoms) {
   for (const a of orderTechnicalAtomsForProgram(level1Atoms || [])) {
     if (a?.id) m.set(a.id, a)
   }
-  for (const a of TECHNIQUE_LEVEL2_ATOMS) {
+  for (const a of resolveProgramLevel2Atoms()) {
     if (a?.id) m.set(a.id, a)
   }
   return m
@@ -110,20 +138,7 @@ export function buildFullTechnicalProgramAtoms(level1Atoms, combinations = []) {
   const l1 = orderTechnicalAtomsForProgram(level1Atoms || [])
   const byId = buildAtomLookupById(level1Atoms)
 
-  const mergedCombos = mergeWithRequiredLevel3Combinations(combinations)
-  const combos = mergedCombos.map((c) => ({
-    id: c.id,
-    number: 'III',
-    name: c.name,
-    kind: 'combo',
-    steps: c.steps,
-    chainPreview: buildComboChainPreview(c.steps, byId),
-    embedUrl: '',
-    howTo: '',
-    whyHowTo: '',
-    mistakes: '',
-    whyMistakes: '',
-    videoLink: '',
-  }))
-  return [...l1, ...TECHNIQUE_LEVEL2_ATOMS, ...combos]
+  const catalogL3 = getTechnicalProgramAtomsCache().level3
+  const combos = mapCombinationsToDisplayAtoms(combinations, catalogL3, level1Atoms)
+  return [...l1, ...resolveProgramLevel2Atoms(), ...combos]
 }

@@ -13,6 +13,7 @@ import {
   TECHNIQUE_LEVEL2_ATOMS,
 } from '../utils/ksrUtils'
 import { buildTechnicalLocksById, orderTechnicalAtomsForProgram } from '../utils/technicalProgramProgress.js'
+import { resolveProgramLevel2Atoms } from '../utils/technicalProgramAtomsResolved.js'
 import { applyProgressSliderToTechnicalData } from '../utils/studentTechnicalUpdate.js'
 import {
   buildFullTechnicalProgramAtoms,
@@ -1359,10 +1360,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const orderedTechnicalAtoms = useMemo(() => orderTechnicalAtomsForProgram(technicalAtoms), [technicalAtoms])
 
-  const level2Atoms = useMemo(() => {
-    const fromCache = programAtomsCache.level2
-    return fromCache.length > 0 ? fromCache : TECHNIQUE_LEVEL2_ATOMS
-  }, [programAtomsCache])
+  const level2Atoms = useMemo(
+    () => resolveProgramLevel2Atoms(programAtomsCache.level2),
+    [programAtomsCache.level2],
+  )
 
   const technicalLocksById = useMemo(
     () => buildTechnicalLocksById(orderedTechnicalAtoms, technicalData),
