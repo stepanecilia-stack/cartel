@@ -61,12 +61,12 @@ if (hasFirebaseConfig) {
   }
 }
 
-const ensureDb = () => {
+export const ensureDb = () => {
   if (!db) throw new Error('Firebase не настроен: отсутствует валидный конфиг')
   return db
 }
 
-const ensureAuth = () => {
+export const ensureAuth = () => {
   if (!auth) throw new Error('Firebase Auth недоступен: проверьте конфигурацию')
   return auth
 }

@@ -64,6 +64,10 @@ function LoginCoach() {
           </button>
         </form>
         <p className={`mt-3 ${vk.muted}`}>
+          <Link to="/student-login" className={vk.link}>
+            Кабинет ученика
+          </Link>
+          {' · '}
           Нет аккаунта?{' '}
           <Link to="/register" className={vk.link}>
             Зарегистрироваться

@@ -81,6 +81,7 @@ import {
   resolveTypicalSeasonCalendar,
 } from '../utils/plannedCompetitions.js'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
+import StudentPortalAccessPanel from '../components/student/StudentPortalAccessPanel.jsx'
 import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
 import { normalizeAtomReinforcement } from '../utils/atomReinforcement.js'
 import { daysUntilCompetition } from '../utils/competitionDate.js'
@@ -1711,6 +1712,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             )}
 
             {activeTab === 'technical' && (
+              <>
+              <StudentPortalAccessPanel student={student} />
               <StudentTechnicalTab
                 loadingNorms={loadingNorms}
                 technicalAtomsCount={technicalAtoms.length}
@@ -1731,6 +1734,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 combosProps={technicalCombosSectionProps}
                 atomReinforcement={atomReinforcement}
               />
+              </>
             )}
           </div>
 

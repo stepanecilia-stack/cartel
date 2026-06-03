@@ -8,8 +8,10 @@ import RegisterCoach from './pages/RegisterCoach'
 import ShareProgressPage from './pages/ShareProgressPage'
 import ShareLeaderboardPage from './pages/ShareLeaderboardPage'
 import WelcomePage from './pages/WelcomePage'
+import StudentPortalLoginPage from './pages/StudentPortalLoginPage.jsx'
 
 const StudentPage = lazy(() => import('./pages/StudentPage'))
+const StudentLearnPage = lazy(() => import('./pages/StudentLearnPage.jsx'))
 const BulkNormSessionPage = lazy(() => import('./pages/BulkNormSessionPage'))
 const GroupTrainingPage = lazy(() => import('./pages/GroupTrainingPage'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
@@ -182,7 +184,10 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
   const location = useLocation()
   const navigate = useNavigate()
   const isShareRoute =
-    location.pathname.startsWith('/share/') || location.pathname.startsWith('/leaderboard/share/')
+    location.pathname.startsWith('/share/') ||
+    location.pathname.startsWith('/leaderboard/share/') ||
+    location.pathname === '/student-login' ||
+    location.pathname === '/learn'
 
   const openStudentFromQualityPage = (student) => {
     if (!student) return
@@ -210,6 +215,15 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         <Route path="/share/:student_hash" element={<ShareProgressPage />} />
         <Route path="/leaderboard/share/:token" element={<ShareLeaderboardPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
+        <Route path="/student-login" element={<StudentPortalLoginPage />} />
+        <Route
+          path="/learn"
+          element={
+            <LazyRoute label="Программа…">
+              <StudentLearnPage />
+            </LazyRoute>
+          }
+        />
         <Route
           path="/"
           element={

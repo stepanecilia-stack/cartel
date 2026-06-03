@@ -10,6 +10,7 @@ export const STUDENT_UPDATE_SECTION = {
   motorQualityWork: 'Двигательные качества',
   competitionPrep: 'Сезон и старты',
   card: 'Карточка ученика',
+  studentPortal: 'Кабинет ученика',
 }
 
 /**
@@ -47,6 +48,19 @@ export function inferUpdateSectionFromPayload(payload) {
     payload.height == null &&
     payload.weight == null &&
     payload.scores == null
+
+  if (keys.length === 1 && keys[0] === 'portalLastActivityAt') {
+    return STUDENT_UPDATE_SECTION.studentPortal
+  }
+
+  if (
+    keys.every((k) =>
+      ['technicalData', 'portalLastActivityAt', 'portalConsentAt', 'portalConsentVersion', 'portalLastLoginAt'].includes(k),
+    ) &&
+    payload.technicalData != null
+  ) {
+    return STUDENT_UPDATE_SECTION.studentPortal
+  }
 
   if (hasTechniqueOnly) return STUDENT_UPDATE_SECTION.technique
 

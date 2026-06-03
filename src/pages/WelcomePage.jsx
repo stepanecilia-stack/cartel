@@ -12,10 +12,13 @@ function WelcomePage() {
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link to="/login" className={vk.btnPrimary}>
-            Войти
+            Войти (тренер)
           </Link>
-          <Link to="/register" className={vk.btnSecondary}>
-            Зарегистрироваться
+          <Link to="/student-login" className={vk.btnSecondary}>
+            Кабинет ученика
+          </Link>
+          <Link to="/register" className={vk.btnGhost}>
+            Регистрация тренера
           </Link>
         </div>
       </div>

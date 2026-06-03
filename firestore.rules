@@ -27,15 +27,54 @@ service cloud.firestore {
     // отдельная коллекция для поиска по short_id, Cloud Functions и т.д.).
     // ---------------------------------------------------------------------------
 
+    function coachCanAccessStudent() {
+      return request.auth != null && (
+        isProgramAdmin() ||
+        resource.data.coachId == request.auth.uid ||
+        (resource.data.coach_ids is list && request.auth.uid in resource.data.coach_ids) ||
+        (resource.data.coachIds is list && request.auth.uid in resource.data.coachIds)
+      );
+    }
+
+    function isStudentPortalUser() {
+      return request.auth != null
+        && resource.data.portalAuthUid == request.auth.uid;
+    }
+
+    function studentPortalBindOk() {
+      return request.auth != null
+        && (!('portalAuthUid' in resource.data) || resource.data.portalAuthUid == null)
+        && request.resource.data.portalAuthUid == request.auth.uid;
+    }
+
+    function studentPortalLoginFieldsOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'portalAuthUid', 'portalEnabled', 'portalConsentAt', 'portalConsentVersion',
+        'portalLastLoginAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+      ]);
+    }
+
+    function studentPortalProgressOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'technicalData', 'portalLastActivityAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+      ]);
+    }
+
     match /students/{studentId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (
+        coachCanAccessStudent() || isStudentPortalUser()
+      );
       // coachId (новое приложение), coach_ids (массив), coachIds (legacy script.js) — создатель должен быть в списке или совпадать с coachId
       allow create: if request.auth != null && (
         request.resource.data.coachId == request.auth.uid ||
         (request.resource.data.coach_ids is list && request.auth.uid in request.resource.data.coach_ids) ||
         (request.resource.data.coachIds is list && request.auth.uid in request.resource.data.coachIds)
       );
-      allow update: if request.auth != null;
+      allow update: if request.auth != null && (
+        coachCanAccessStudent()
+        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalLoginFieldsOnly()))
+        || (studentPortalBindOk() && studentPortalLoginFieldsOnly())
+      );
       allow delete: if request.auth != null && (
         isProgramAdmin() ||
         resource.data.coachId == request.auth.uid ||
@@ -109,6 +148,13 @@ service cloud.firestore {
     }
 
     // Участники ориентиров Минспорта (календарь федерации, не редактируется).
+    // Вход ученика: код (short_id) → PIN-hash. Чтение без авторизации (только get по id кода).
+    match /student_portal_auth/{shortId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if request.auth != null;
+    }
+
     match /orientir_participation/{docId} {
       allow read: if request.auth != null
         && resource.data.coachId == request.auth.uid;
