@@ -25,6 +25,11 @@ import { mapCombinationsToDisplayAtoms } from '../utils/techniqueCatalog.js'
 import { readPortalSession, clearPortalSession } from '../utils/studentPortalAuth.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
+import StudentKnowledgeIntro from '../components/student/StudentKnowledgeIntro.jsx'
+import {
+  dismissStudentKnowledgeIntro,
+  isStudentKnowledgeIntroDismissed,
+} from '../constants/studentPortalKnowledgeGuide.js'
 
 const KNOWLEDGE_LABEL = TECH_DOMINANCE_OPTIONS.find((o) => o.key === STUDENT_PORTAL_LEVEL)?.label ?? 'Знание'
 
@@ -45,6 +50,7 @@ export default function StudentLearnPage() {
   const [loadError, setLoadError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [introDismissed, setIntroDismissed] = useState(true)
 
   useEffect(() => {
     if (!session?.studentId) {
@@ -57,6 +63,7 @@ export default function StudentLearnPage() {
         const s = await fetchStudentForPortalSession(session.studentId)
         if (cancelled) return
         setStudent(s)
+        setIntroDismissed(isStudentKnowledgeIntroDismissed(s.id))
       } catch (e) {
         if (cancelled) return
         console.error(e)
@@ -203,6 +210,25 @@ export default function StudentLearnPage() {
 
   const name = displayNameFromStudent(student)
 
+  const handleIntroContinue = () => {
+    dismissStudentKnowledgeIntro(student.id)
+    setIntroDismissed(true)
+  }
+
+  if (!introDismissed) {
+    return (
+      <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
+        <div className="mx-auto w-full max-w-2xl space-y-2">
+          <header>
+            <h1 className={vk.h1Lg}>Моя программа</h1>
+            <p className={vk.mutedXs}>{name}</p>
+          </header>
+          <StudentKnowledgeIntro onContinue={handleIntroContinue} />
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
       <div className="mx-auto w-full max-w-2xl space-y-2">
@@ -216,9 +242,14 @@ export default function StudentLearnPage() {
           </button>
         </header>
 
-        <p className={vk.noticeInfo}>
-          В кабинете вы отмечаете только «{KNOWLEDGE_LABEL}». Уровни «Умение» и выше ставит тренер на занятии.
-        </p>
+        <button
+          type="button"
+          onClick={() => setIntroDismissed(false)}
+          className={`w-full text-left ${vk.noticeInfo} touch-manipulation`}
+        >
+          Напоминание: этап «{KNOWLEDGE_LABEL}» — три образа (логика, зрение, кинестетика). Нажмите, чтобы
+          открыть схему.
+        </button>
 
         <nav className={`${vk.segmentBar} p-0.5`} aria-label="Этап программы">
           {[1, 2, 3].map((t) => {
