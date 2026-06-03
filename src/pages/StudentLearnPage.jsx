@@ -15,8 +15,10 @@ import {
   countAtomsAtKnowledgeOrAbove,
   isTierCompleteForStudentPortal,
   countLeadingKnowledgeAtoms,
+  hasStudentPortalKnowledgeProgress,
   resolveStudentPortalBrowseMaxIndex,
   resolveStudentPortalFocusIndex,
+  resolveStudentPortalResumeTier,
   isAtomMarkedKnowledge,
   STUDENT_PORTAL_LEVEL,
 } from '../utils/studentPortalProgress.js'
@@ -50,7 +52,8 @@ export default function StudentLearnPage() {
   const [loadError, setLoadError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [introDismissed, setIntroDismissed] = useState(true)
+  const [introOpen, setIntroOpen] = useState(false)
+  const [resumeReady, setResumeReady] = useState(false)
 
   useEffect(() => {
     if (!session?.studentId) {
@@ -63,7 +66,6 @@ export default function StudentLearnPage() {
         const s = await fetchStudentForPortalSession(session.studentId)
         if (cancelled) return
         setStudent(s)
-        setIntroDismissed(isStudentKnowledgeIntroDismissed(s.id))
       } catch (e) {
         if (cancelled) return
         console.error(e)
@@ -136,14 +138,30 @@ export default function StudentLearnPage() {
     isViewingCurrentStep && viewAtom && canStudentMarkKnowledge(atomsForTier, technicalData, viewAtom.id)
 
   useEffect(() => {
-    if (!student?.id) return
+    if (!student?.id || resumeReady) return
+    const td = normalizeStudentTechnicalData(student.technicalData)
+    const resumeTier = resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, td)
+    const atoms = resumeTier === 3 ? orderedL3 : resumeTier === 2 ? orderedL2 : orderedL1
+    const complete = isTierCompleteForStudentPortal(atoms, td)
+    const fi = resolveStudentPortalFocusIndex(atoms, td)
+    setTier(resumeTier)
+    setViewIndex(complete ? 0 : fi)
+    setPlaying(false)
+    const seenIntro = isStudentKnowledgeIntroDismissed(student.id)
+    const hasProgress = hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, td)
+    setIntroOpen(!seenIntro && !hasProgress)
+    setResumeReady(true)
+  }, [student, orderedL1, orderedL2, orderedL3, resumeReady])
+
+  useEffect(() => {
+    if (!student?.id || !resumeReady) return
     const td = technicalDataRef.current
     const atoms = tier === 3 ? orderedL3 : tier === 2 ? orderedL2 : orderedL1
     const complete = isTierCompleteForStudentPortal(atoms, td)
     const fi = resolveStudentPortalFocusIndex(atoms, td)
     setViewIndex(complete ? 0 : fi)
     setPlaying(false)
-  }, [tier, student?.id, orderedL1, orderedL2, orderedL3])
+  }, [tier, student?.id, orderedL1, orderedL2, orderedL3, resumeReady])
 
   const handleMark = useCallback(async () => {
     if (!student?.id || !focusAtom || !canMark) return
@@ -200,7 +218,7 @@ export default function StudentLearnPage() {
     )
   }
 
-  if (!student) {
+  if (!student || !resumeReady) {
     return (
       <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
         <p className={`text-center ${vk.muted}`}>Загрузка программы…</p>
@@ -209,13 +227,14 @@ export default function StudentLearnPage() {
   }
 
   const name = displayNameFromStudent(student)
+  const introSeen = isStudentKnowledgeIntroDismissed(student.id)
 
   const handleIntroContinue = () => {
-    dismissStudentKnowledgeIntro(student.id)
-    setIntroDismissed(true)
+    if (!introSeen) dismissStudentKnowledgeIntro(student.id)
+    setIntroOpen(false)
   }
 
-  if (!introDismissed) {
+  if (introOpen) {
     return (
       <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
         <div className="mx-auto w-full max-w-2xl space-y-2">
@@ -223,7 +242,10 @@ export default function StudentLearnPage() {
             <h1 className={vk.h1Lg}>Моя программа</h1>
             <p className={vk.mutedXs}>{name}</p>
           </header>
-          <StudentKnowledgeIntro onContinue={handleIntroContinue} />
+          <StudentKnowledgeIntro
+            onContinue={handleIntroContinue}
+            continueLabel={introSeen ? 'Закрыть' : 'Понятно — к программе'}
+          />
         </div>
       </main>
     )
@@ -237,19 +259,19 @@ export default function StudentLearnPage() {
             <h1 className={vk.h1Lg}>Моя программа</h1>
             <p className={vk.mutedXs}>{name}</p>
           </div>
-          <button type="button" onClick={() => void handleLogout()} className={vk.btnSecondary}>
-            Выйти
-          </button>
+          <div className="flex shrink-0 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIntroOpen(true)}
+              className={`${vk.btnSecondary} text-[12px]`}
+            >
+              Как учить
+            </button>
+            <button type="button" onClick={() => void handleLogout()} className={vk.btnSecondary}>
+              Выйти
+            </button>
+          </div>
         </header>
-
-        <button
-          type="button"
-          onClick={() => setIntroDismissed(false)}
-          className={`w-full text-left ${vk.noticeInfo} touch-manipulation`}
-        >
-          Напоминание: этап «{KNOWLEDGE_LABEL}» — три образа (логика, зрение, кинестетика). Нажмите, чтобы
-          открыть схему.
-        </button>
 
         <nav className={`${vk.segmentBar} p-0.5`} aria-label="Этап программы">
           {[1, 2, 3].map((t) => {

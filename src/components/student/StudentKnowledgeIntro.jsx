@@ -6,9 +6,13 @@ import {
 import { vk } from '../../utils/vkUi.js'
 
 /**
- * @param {{ onContinue?: () => void, showContinue?: boolean }} props
+ * @param {{ onContinue?: () => void, showContinue?: boolean, continueLabel?: string }} props
  */
-export default function StudentKnowledgeIntro({ onContinue, showContinue = true }) {
+export default function StudentKnowledgeIntro({
+  onContinue,
+  showContinue = true,
+  continueLabel = 'Понятно — к программе',
+}) {
   return (
     <section className={`${vk.cardPadded} space-y-3`}>
       <div>
@@ -70,7 +74,7 @@ export default function StudentKnowledgeIntro({ onContinue, showContinue = true 
 
       {showContinue && onContinue ? (
         <button type="button" onClick={onContinue} className={`w-full ${vk.btnPrimary}`}>
-          Понятно — к программе
+          {continueLabel}
         </button>
       ) : null}
     </section>

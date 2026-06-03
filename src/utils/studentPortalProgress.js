@@ -29,6 +29,22 @@ export function countAtomsAtKnowledgeOrAbove(orderedAtoms, technicalData) {
   return n
 }
 
+export function hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, technicalData) {
+  for (const list of [orderedL1, orderedL2, orderedL3]) {
+    if (countAtomsAtKnowledgeOrAbove(list, technicalData) > 0) return true
+  }
+  return false
+}
+
+/** На каком этапе программы продолжать (где ещё не всё «Знание»). */
+export function resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, technicalData) {
+  if (orderedL1.length > 0 && !isTierCompleteForStudentPortal(orderedL1, technicalData)) return 1
+  if (orderedL2.length > 0 && !isTierCompleteForStudentPortal(orderedL2, technicalData)) return 2
+  if (orderedL3.length > 0) return 3
+  if (orderedL2.length > 0) return 2
+  return 1
+}
+
 export function isTierCompleteForStudentPortal(orderedAtoms, technicalData) {
   const total = orderedAtoms?.length ?? 0
   if (total === 0) return true

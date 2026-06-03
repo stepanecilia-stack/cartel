@@ -11,7 +11,6 @@ import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { exitStudentPortalForCoachLogin } from '../utils/studentPortalAuth.js'
 import { vk } from '../utils/vkUi.js'
-import StudentKnowledgeIntro from '../components/student/StudentKnowledgeIntro.jsx'
 
 function isFirebaseSetupError(err) {
   const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
@@ -81,12 +80,14 @@ export default function StudentPortalLoginPage() {
 
   return (
     <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
-      <div className={`${vk.containerMid} max-w-lg space-y-3`}>
+      <div className={`${vk.containerMid} max-w-md space-y-3`}>
         <BackToHomeBar to="/welcome" />
-        <StudentKnowledgeIntro showContinue={false} />
         <div className={vk.cardPadded}>
           <h1 className={vk.h1Lg}>Вход в программу</h1>
-          <p className={vk.mutedXs}>Код и PIN выдаёт тренер.</p>
+          <p className={vk.mutedXs}>
+            Код и PIN выдаёт тренер. Памятку про этап «Знание» и три образа можно открыть в программе — кнопка
+            «Как учить».
+          </p>
 
           <form className="mt-3 space-y-3" onSubmit={onSubmit}>
             <label className="block">
