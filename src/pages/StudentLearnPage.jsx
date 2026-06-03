@@ -60,10 +60,14 @@ export default function StudentLearnPage() {
       } catch (e) {
         if (cancelled) return
         console.error(e)
-        clearPortalSession()
-        setLoadError(
-          formatFirestoreErrorMessage(e, { context: 'student_portal' }) || e?.message || 'Сессия недействительна.',
-        )
+        const msg =
+          formatFirestoreErrorMessage(e, { context: 'student_portal' }) ||
+          e?.message ||
+          'Не удалось загрузить программу.'
+        const revoke =
+          /отключён|не найден|нет доступа|недоступен/i.test(msg) || e?.code === 'permission-denied'
+        if (revoke) clearPortalSession()
+        setLoadError(msg)
       }
     }
     void run()
@@ -169,9 +173,21 @@ export default function StudentLearnPage() {
       <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
         <div className={`${vk.containerMid} max-w-md space-y-3`}>
           <p className={vk.error}>{loadError}</p>
-          <Link to="/student-login" className={vk.btnPrimary}>
-            Войти снова
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={vk.btnSecondary}
+              onClick={() => {
+                setLoadError('')
+                window.location.reload()
+              }}
+            >
+              Повторить
+            </button>
+            <Link to="/student-login" className={vk.btnPrimary}>
+              Войти снова
+            </Link>
+          </div>
         </div>
       </main>
     )

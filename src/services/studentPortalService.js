@@ -1,8 +1,4 @@
-import {
-  getAuth,
-  signInAnonymously,
-  signOut,
-} from 'firebase/auth'
+import { onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth'
 import {
   deleteField,
   doc,
@@ -25,6 +21,19 @@ import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
 import { ensureAuth, ensureDb } from './firebaseService.js'
 
 const PORTAL_AUTH_COLLECTION = 'student_portal_auth'
+
+async function waitAuthReady(auth) {
+  if (typeof auth.authStateReady === 'function') {
+    await auth.authStateReady()
+    return
+  }
+  await new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, () => {
+      unsub()
+      resolve()
+    })
+  })
+}
 
 function portalAuthRef(shortId) {
   return doc(ensureDb(), PORTAL_AUTH_COLLECTION, shortId)
@@ -119,6 +128,7 @@ export async function loginStudentPortal({ shortIdInput, pinInput, consentAccept
   const studentRef = doc(ensureDb(), 'students', studentId)
 
   const auth = ensureAuth()
+  await waitAuthReady(auth)
   let user = auth.currentUser
   if (!user || user.isAnonymous !== true) {
     if (user) await signOut(auth)
@@ -148,6 +158,39 @@ export async function loginStudentPortal({ shortIdInput, pinInput, consentAccept
   return { studentId, shortId, uid: user.uid }
 }
 
+/** Дождаться восстановления сессии Firebase (иначе ложное «Сессия истекла»). */
+export async function waitForFirebaseAuthReady() {
+  const auth = ensureAuth()
+  await waitAuthReady(auth)
+  return auth.currentUser
+}
+
+/** Анонимный uid для кабинета; создаёт новый, если браузер «забыл» старый. */
+export async function ensureStudentPortalAnonymousUser() {
+  const auth = ensureAuth()
+  await waitAuthReady(auth)
+  const user = auth.currentUser
+  if (user?.isAnonymous) return user
+  if (user && !user.isAnonymous) {
+    throw new Error('На этом устройстве открыт вход тренера. Выйдите из тренерского аккаунта или откройте кабинет ученика в другом браузере.')
+  }
+  const cred = await signInAnonymously(auth)
+  return cred.user
+}
+
+async function rebindPortalAuthUid(studentId) {
+  const user = await ensureStudentPortalAnonymousUser()
+  const studentRef = doc(ensureDb(), 'students', studentId)
+  await updateDoc(studentRef, {
+    portalAuthUid: user.uid,
+    portalEnabled: true,
+    portalLastLoginAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+  })
+  return user.uid
+}
+
 export async function logoutStudentPortal() {
   const { clearPortalSession } = await import('../utils/studentPortalAuth.js')
   clearPortalSession()
@@ -156,25 +199,66 @@ export async function logoutStudentPortal() {
 }
 
 export async function fetchStudentForPortalSession(studentId) {
-  const auth = ensureAuth()
-  if (!auth.currentUser?.isAnonymous) {
-    throw new Error('Сессия истекла. Войдите снова.')
-  }
+  if (!studentId) throw new Error('Сессия ученика не найдена.')
+  const user = await ensureStudentPortalAnonymousUser()
   const ref = doc(ensureDb(), 'students', studentId)
-  const snap = await getDoc(ref)
+
+  const loadSnap = () => getDoc(ref)
+
+  let snap
+  try {
+    snap = await loadSnap()
+  } catch (e) {
+    if (e?.code !== 'permission-denied') throw e
+    try {
+      await rebindPortalAuthUid(studentId)
+    } catch (rebindErr) {
+      if (rebindErr?.code === 'permission-denied') {
+        throw new Error(
+          'Вход с этого устройства недоступен. Попросите тренера «Сбросить устройство» в карточке и войдите по коду и PIN.',
+        )
+      }
+      throw rebindErr
+    }
+    snap = await loadSnap()
+  }
+
   if (!snap.exists()) throw new Error('Профиль не найден.')
-  const data = { id: snap.id, ...snap.data() }
-  if (data.portalAuthUid !== auth.currentUser.uid) {
+  let data = { id: snap.id, ...snap.data() }
+  if (data.portalEnabled === false) {
+    throw new Error('Кабинет отключён. Попросите тренера включить доступ.')
+  }
+  if (data.portalAuthUid !== user.uid) {
+    try {
+      await rebindPortalAuthUid(studentId)
+      snap = await loadSnap()
+      data = { id: snap.id, ...snap.data() }
+    } catch (e) {
+      if (e?.code === 'permission-denied') {
+        throw new Error(
+          'Вход с этого устройства недоступен. Попросите тренера «Сбросить устройство» в карточке и войдите по коду и PIN.',
+        )
+      }
+      throw e
+    }
+  }
+  if (data.portalAuthUid !== user.uid) {
     throw new Error('Нет доступа к этой карточке.')
   }
   return data
 }
 
+/** Восстановить кабинет по сохранённому коду (без повторного ввода PIN). */
+export async function resumeStudentPortalSession() {
+  const { readPortalSession } = await import('../utils/studentPortalAuth.js')
+  const session = readPortalSession()
+  if (!session?.studentId) return null
+  const student = await fetchStudentForPortalSession(session.studentId)
+  return { session, student }
+}
+
 export async function saveStudentPortalKnowledge(studentId, technicalData) {
-  const auth = ensureAuth()
-  if (!auth.currentUser?.isAnonymous) {
-    throw new Error('Сессия ученика недействительна. Выйдите и войдите снова.')
-  }
+  await ensureStudentPortalAnonymousUser()
   const normalized = normalizeTechnicalDataForSave(technicalData)
   await updateDoc(doc(ensureDb(), 'students', studentId), {
     technicalData: normalized,

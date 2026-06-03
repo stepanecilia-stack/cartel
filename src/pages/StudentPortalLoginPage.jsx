@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import {
   STUDENT_PORTAL_CONSENT_DETAILS,
   STUDENT_PORTAL_CONSENT_LABEL,
 } from '../constants/studentPortalConsent.js'
-import { loginStudentPortal } from '../services/studentPortalService.js'
+import { loginStudentPortal, resumeStudentPortalSession } from '../services/studentPortalService.js'
 import FirebaseAuthSetupHint from '../components/FirebaseAuthSetupHint.jsx'
 import { formatFirebaseAuthError } from '../utils/firebaseAuthMessages.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
@@ -29,6 +29,25 @@ export default function StudentPortalLoginPage() {
   const [error, setError] = useState('')
   const [showFirebaseSetup, setShowFirebaseSetup] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [resuming, setResuming] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        const ok = await resumeStudentPortalSession()
+        if (!cancelled && ok) navigate('/learn', { replace: true })
+      } catch {
+        /* остаёмся на форме входа */
+      } finally {
+        if (!cancelled) setResuming(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [navigate])
 
   const onSubmit = async (e) => {
     e.preventDefault()
@@ -117,8 +136,8 @@ export default function StudentPortalLoginPage() {
             {error ? <p className={vk.error}>{error}</p> : null}
             {showFirebaseSetup ? <FirebaseAuthSetupHint /> : null}
 
-            <button type="submit" disabled={busy} className={`w-full ${vk.btnPrimary}`}>
-              {busy ? 'Вход…' : 'Войти в программу'}
+            <button type="submit" disabled={busy || resuming} className={`w-full ${vk.btnPrimary}`}>
+              {resuming ? 'Проверка входа…' : busy ? 'Вход…' : 'Войти в программу'}
             </button>
           </form>
 

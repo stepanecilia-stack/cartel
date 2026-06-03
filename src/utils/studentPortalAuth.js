@@ -44,9 +44,36 @@ export async function verifyPortalPin(pin, shortId, pinHash) {
 
 export const PORTAL_SESSION_STORAGE_KEY = 'cartel_student_portal_v1'
 
+/** localStorage — сессия переживает закрытие вкладки; sessionStorage — только миграция. */
+function portalSessionStore() {
+  try {
+    return localStorage
+  } catch {
+    return null
+  }
+}
+
+function readRawPortalSession() {
+  const store = portalSessionStore()
+  if (!store) return null
+  let raw = store.getItem(PORTAL_SESSION_STORAGE_KEY)
+  if (!raw) {
+    try {
+      raw = sessionStorage.getItem(PORTAL_SESSION_STORAGE_KEY)
+      if (raw) {
+        store.setItem(PORTAL_SESSION_STORAGE_KEY, raw)
+        sessionStorage.removeItem(PORTAL_SESSION_STORAGE_KEY)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return raw
+}
+
 export function readPortalSession() {
   try {
-    const raw = sessionStorage.getItem(PORTAL_SESSION_STORAGE_KEY)
+    const raw = readRawPortalSession()
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (!parsed?.studentId || !parsed?.shortId) return null
@@ -57,19 +84,29 @@ export function readPortalSession() {
 }
 
 export function writePortalSession({ studentId, shortId }) {
-  sessionStorage.setItem(
-    PORTAL_SESSION_STORAGE_KEY,
-    JSON.stringify({
-      studentId,
-      shortId,
-      consentVersion: STUDENT_PORTAL_CONSENT_VERSION,
-      at: Date.now(),
-    }),
-  )
+  const payload = JSON.stringify({
+    studentId,
+    shortId,
+    consentVersion: STUDENT_PORTAL_CONSENT_VERSION,
+    at: Date.now(),
+  })
+  const store = portalSessionStore()
+  if (store) store.setItem(PORTAL_SESSION_STORAGE_KEY, payload)
+  try {
+    sessionStorage.removeItem(PORTAL_SESSION_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 export function clearPortalSession() {
-  sessionStorage.removeItem(PORTAL_SESSION_STORAGE_KEY)
+  const store = portalSessionStore()
+  if (store) store.removeItem(PORTAL_SESSION_STORAGE_KEY)
+  try {
+    sessionStorage.removeItem(PORTAL_SESSION_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Анонимный Firebase Auth после входа ученика (не тренер). */
