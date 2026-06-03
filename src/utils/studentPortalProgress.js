@@ -43,6 +43,21 @@ export function resolveStudentPortalFocusIndex(orderedAtoms, technicalData) {
   return passed
 }
 
+/** До какого индекса можно листать (включая пройденные для повторения). */
+export function resolveStudentPortalBrowseMaxIndex(orderedAtoms, technicalData) {
+  const total = orderedAtoms?.length ?? 0
+  if (total === 0) return 0
+  if (isTierCompleteForStudentPortal(orderedAtoms, technicalData)) {
+    return total - 1
+  }
+  return resolveStudentPortalFocusIndex(orderedAtoms, technicalData)
+}
+
+export function isAtomMarkedKnowledge(technicalData, atomId) {
+  const data = normalizeStudentTechnicalData(technicalData)
+  return dominanceRank(data[atomId]?.level) >= MIN_RANK
+}
+
 export function canStudentMarkKnowledge(orderedAtoms, technicalData, atomId) {
   const idx = orderedAtoms.findIndex((a) => a.id === atomId)
   if (idx < 0) return false

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
@@ -14,7 +14,10 @@ import {
   canStudentMarkKnowledge,
   countAtomsAtKnowledgeOrAbove,
   isTierCompleteForStudentPortal,
+  countLeadingKnowledgeAtoms,
+  resolveStudentPortalBrowseMaxIndex,
   resolveStudentPortalFocusIndex,
+  isAtomMarkedKnowledge,
   STUDENT_PORTAL_LEVEL,
 } from '../utils/studentPortalProgress.js'
 import { normalizeStudentTechnicalData } from '../utils/technicalProgramProgress.js'
@@ -80,6 +83,17 @@ export default function StudentLearnPage() {
     () => normalizeStudentTechnicalData(student?.technicalData),
     [student?.technicalData],
   )
+  const technicalDataRef = useRef(technicalData)
+  technicalDataRef.current = technicalData
+
+  const tierProgress = useMemo(
+    () => ({
+      1: { total: orderedL1.length, done: countAtomsAtKnowledgeOrAbove(orderedL1, technicalData) },
+      2: { total: orderedL2.length, done: countAtomsAtKnowledgeOrAbove(orderedL2, technicalData) },
+      3: { total: orderedL3.length, done: countAtomsAtKnowledgeOrAbove(orderedL3, technicalData) },
+    }),
+    [orderedL1, orderedL2, orderedL3, technicalData],
+  )
 
   const tierUnlocked = useMemo(
     () => ({
@@ -92,24 +106,33 @@ export default function StudentLearnPage() {
 
   const atomsForTier = tier === 3 ? orderedL3 : tier === 2 ? orderedL2 : orderedL1
   const focusIndex = resolveStudentPortalFocusIndex(atomsForTier, technicalData)
+  const browseMaxIndex = resolveStudentPortalBrowseMaxIndex(atomsForTier, technicalData)
   const focusAtom = atomsForTier[focusIndex] ?? null
-  const doneCount = countAtomsAtKnowledgeOrAbove(atomsForTier, technicalData)
+  const leadingDone = countLeadingKnowledgeAtoms(atomsForTier, technicalData)
   const total = atomsForTier.length
-  const tierComplete = total > 0 && doneCount >= total
+  const tierComplete =
+    total > 0 &&
+    (leadingDone >= total || isTierCompleteForStudentPortal(atomsForTier, technicalData))
 
-  const safeViewIndex = total > 0 ? Math.min(Math.max(0, viewIndex), focusIndex) : 0
+  const safeViewIndex =
+    total > 0 ? Math.min(Math.max(0, viewIndex), Math.max(0, browseMaxIndex)) : 0
   const viewAtom = atomsForTier[safeViewIndex] ?? null
   const canGoBack = safeViewIndex > 0
-  const canGoForward = safeViewIndex < focusIndex
-  const isViewingCurrentStep = safeViewIndex === focusIndex
+  const canGoForward = safeViewIndex < browseMaxIndex
+  const isViewingCurrentStep = safeViewIndex === focusIndex && !tierComplete
+  const viewAtomMarked = viewAtom ? isAtomMarkedKnowledge(technicalData, viewAtom.id) : false
   const canMark =
     isViewingCurrentStep && viewAtom && canStudentMarkKnowledge(atomsForTier, technicalData, viewAtom.id)
 
   useEffect(() => {
     if (!student?.id) return
-    setViewIndex(resolveStudentPortalFocusIndex(atomsForTier, technicalData))
+    const td = technicalDataRef.current
+    const atoms = tier === 3 ? orderedL3 : tier === 2 ? orderedL2 : orderedL1
+    const complete = isTierCompleteForStudentPortal(atoms, td)
+    const fi = resolveStudentPortalFocusIndex(atoms, td)
+    setViewIndex(complete ? 0 : fi)
     setPlaying(false)
-  }, [tier, student?.id])
+  }, [tier, student?.id, orderedL1, orderedL2, orderedL3])
 
   const handleMark = useCallback(async () => {
     if (!student?.id || !focusAtom || !canMark) return
@@ -165,8 +188,8 @@ export default function StudentLearnPage() {
   const name = displayNameFromStudent(student)
 
   return (
-    <main className={`${vk.pageWithNav} ${vk.pagePad}`}>
-      <div className={`${vk.containerMid} max-w-lg space-y-2`}>
+    <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
+      <div className="mx-auto w-full max-w-2xl space-y-2">
         <header className="flex flex-wrap items-center gap-2">
           <div className="min-w-0 flex-1">
             <h1 className={vk.h1Lg}>Моя программа</h1>
@@ -185,8 +208,8 @@ export default function StudentLearnPage() {
           {[1, 2, 3].map((t) => {
             const disabled = !tierUnlocked[t]
             const active = tier === t
-            const count = t === 1 ? orderedL1.length : t === 2 ? orderedL2.length : orderedL3.length
-            if (count === 0 && t !== 1) return null
+            const prog = tierProgress[t]
+            if (prog.total === 0 && t !== 1) return null
             return (
               <button
                 key={t}
@@ -196,102 +219,120 @@ export default function StudentLearnPage() {
                   setTier(t)
                   setPlaying(false)
                 }}
-                className={`min-w-0 flex-1 rounded-md px-1 py-1.5 text-[11px] font-medium sm:text-[12px] ${
+                className={`min-w-0 flex-1 touch-manipulation rounded-md px-1 py-1.5 text-[11px] font-medium sm:text-[12px] ${
                   active ? vk.segmentBtnActive : disabled ? 'opacity-40' : vk.segmentBtnInactive
                 }`}
               >
-                {tierLabel(t)}
+                <span className="block truncate">{tierLabel(t)}</span>
+                {prog.total > 0 ? (
+                  <span className="block tabular-nums text-[10px] opacity-80">
+                    {prog.done}/{prog.total}
+                  </span>
+                ) : null}
               </button>
             )
           })}
         </nav>
 
+        {tier === 2 && !isTierCompleteForStudentPortal(orderedL1, technicalData) ? (
+          <p className={vk.mutedXs}>
+            Новые приёмы ур. 2 откроются после «{KNOWLEDGE_LABEL}» по всей программе (ур. 1). Уровень 1 можно
+            смотреть в любой момент.
+          </p>
+        ) : null}
+
         {!tierUnlocked[tier] ? (
-          <p className={vk.mutedXs}>Сначала отметьте все приёмы предыдущего этапа как «{KNOWLEDGE_LABEL}».</p>
+          <p className={vk.mutedXs}>Сначала завершите предыдущий этап или отметьте его приёмы.</p>
         ) : total === 0 ? (
           <p className={vk.mutedXs}>На этом этапе пока нет элементов.</p>
-        ) : (
-          <section className={`${vk.cardPadded} space-y-2`}>
-            <div className="flex items-center justify-between gap-2">
+        ) : viewAtom ? (
+          <section className="space-y-2 rounded-[10px] bg-white p-2 sm:p-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <span className="text-[12px] font-semibold tabular-nums text-[#2d81e0]">
-                {doneCount} / {total}
+                По порядку: {leadingDone} / {total}
               </span>
               <span className={vk.mutedXs}>{tierLabel(tier)}</span>
             </div>
 
             {tierComplete ? (
               <p className="text-[13px] font-medium text-[#4bb34b]">
-                Этап «{tierLabel(tier)}» пройден по знанию.{' '}
-                {tier < 3 ? 'Перейдите на следующую вкладку.' : 'Покажите прогресс тренеру.'}
+                Этап пройден. Листайте «Назад» / «Далее» для повторения
+                {tier < 3 ? ' или откройте следующую вкладку.' : '.'}
               </p>
-            ) : viewAtom ? (
-              <>
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    disabled={!canGoBack}
-                    onClick={() => {
-                      setViewIndex((i) => Math.max(0, i - 1))
-                      setPlaying(false)
-                    }}
-                    className={vk.btnSecondary}
-                  >
-                    Назад
-                  </button>
-                  <span className={`${vk.mutedXs} tabular-nums`}>
-                    {safeViewIndex + 1} / {total}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!canGoForward}
-                    onClick={() => {
-                      setViewIndex((i) => Math.min(focusIndex, i + 1))
-                      setPlaying(false)
-                    }}
-                    className={vk.btnSecondary}
-                  >
-                    Далее
-                  </button>
-                </div>
-
-                <div className="mx-auto w-full max-w-[11rem]">
-                  <TechnicalAtomMedia
-                    atom={viewAtom}
-                    className="aspect-video w-full rounded-lg"
-                    playing={playing}
-                    onTogglePlay={() => setPlaying((p) => !p)}
-                    previewable={false}
-                    compactThumb
-                  />
-                </div>
-                <h2 className={vk.h2}>
-                  <span className="text-[#818c99]">#{viewAtom.number}</span> {viewAtom.name}
-                </h2>
-                {viewAtom.howTo ? <p className={`${vk.mutedXs} whitespace-pre-wrap`}>{viewAtom.howTo}</p> : null}
-
-                {canMark ? (
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void handleMark()}
-                    className={`w-full ${vk.btnPrimary}`}
-                  >
-                    {saving ? 'Сохранение…' : `Понял — отметить «${KNOWLEDGE_LABEL}» и далее`}
-                  </button>
-                ) : isViewingCurrentStep ? (
-                  <p className={vk.mutedXs}>Этот приём уже отмечен. Нажмите «Далее» или перейдите к следующему этапу.</p>
-                ) : (
-                  <p className={vk.mutedXs}>
-                    Повторение пройденного приёма. «Понял» доступно только на текущем шаге
-                    {focusAtom ? ` (#${focusAtom.number})` : ''}.
-                  </p>
-                )}
-              </>
             ) : null}
+
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                disabled={!canGoBack}
+                onClick={() => {
+                  setViewIndex((i) => Math.max(0, i - 1))
+                  setPlaying(false)
+                }}
+                className={`min-w-[4.5rem] ${vk.btnSecondary}`}
+              >
+                Назад
+              </button>
+              <span className={`${vk.mutedXs} shrink-0 tabular-nums`}>
+                {safeViewIndex + 1} / {total}
+                {viewAtomMarked ? ' · ✓' : ''}
+              </span>
+              <button
+                type="button"
+                disabled={!canGoForward}
+                onClick={() => {
+                  setViewIndex((i) => Math.min(browseMaxIndex, i + 1))
+                  setPlaying(false)
+                }}
+                className={`min-w-[4.5rem] ${vk.btnSecondary}`}
+              >
+                Далее
+              </button>
+            </div>
+
+            <div className="w-full overflow-hidden rounded-lg bg-[#0f0f0f]">
+              <TechnicalAtomMedia
+                atom={viewAtom}
+                className="aspect-[4/5] max-h-[min(70dvh,640px)] w-full sm:aspect-video"
+                playing={playing}
+                onTogglePlay={() => setPlaying((p) => !p)}
+                previewable
+              />
+            </div>
+
+            <h2 className={`${vk.h2} px-0.5`}>
+              <span className="text-[#818c99]">#{viewAtom.number}</span> {viewAtom.name}
+            </h2>
+            {viewAtom.chainPreview ? (
+              <p className={`${vk.mutedXs} px-0.5`}>Цепочка: {viewAtom.chainPreview}</p>
+            ) : null}
+            {viewAtom.howTo ? (
+              <p className={`${vk.mutedXs} whitespace-pre-wrap px-0.5`}>{viewAtom.howTo}</p>
+            ) : null}
+
+            {canMark ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void handleMark()}
+                className={`w-full ${vk.btnPrimary}`}
+              >
+                {saving ? 'Сохранение…' : `Понял — отметить «${KNOWLEDGE_LABEL}» и далее`}
+              </button>
+            ) : tierComplete ? (
+              <p className={vk.mutedXs}>Повторение материала. Отметка «Понял» уже не нужна на этом этапе.</p>
+            ) : isViewingCurrentStep && viewAtomMarked ? (
+              <p className={vk.mutedXs}>Этот приём уже отмечен. Листайте дальше или вернитесь к программе.</p>
+            ) : (
+              <p className={vk.mutedXs}>
+                Повторение. «Понял» — только на текущем шаге
+                {focusAtom ? ` (#${focusAtom.number})` : ''}.
+              </p>
+            )}
 
             {saveError ? <p className={vk.error}>{saveError}</p> : null}
           </section>
-        )}
+        ) : null}
       </div>
     </main>
   )
