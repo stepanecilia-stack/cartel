@@ -1,8 +1,11 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
-import { saveTechnicalProgramAtomMedia } from '../services/technicalProgramAtomsService.js'
+import {
+  saveTechnicalProgramAtomMedia,
+  saveTechnicalProgramTierCover,
+} from '../services/technicalProgramAtomsService.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage'
 import { vk } from '../utils/vkUi.js'
 
@@ -22,19 +25,34 @@ function atomToForm(atom) {
   }
 }
 
+const TIER_COVER_LABELS = {
+  1: 'Ур.1 — программа',
+  2: 'Ур.2',
+  3: 'Комбо',
+}
+
 export default function TechnicalElementsPage() {
-  const { orderedLevel1, orderedLevel2, orderedLevel3, syncError } = useTechnicalProgramAtoms()
+  const { orderedLevel1, orderedLevel2, orderedLevel3, tierCovers, syncError } =
+    useTechnicalProgramAtoms()
   const [previewPlaying, setPreviewPlaying] = useState(false)
   const togglePreviewPlaying = useCallback(() => setPreviewPlaying((p) => !p), [])
   const [tier, setTier] = useState(1)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(null)
+  const [tierCoverInput, setTierCoverInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingCover, setSavingCover] = useState(false)
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
 
   const list =
     tier === 3 ? orderedLevel3 : tier === 2 ? orderedLevel2 : orderedLevel1
+
+  const activeTierCover = tierCovers?.[tier] ?? ''
+
+  useEffect(() => {
+    setTierCoverInput(activeTierCover)
+  }, [tier, activeTierCover])
 
   const editingAtom = useMemo(
     () => list.find((a) => a.id === editingId) ?? null,
@@ -59,6 +77,20 @@ export default function TechnicalElementsPage() {
     setError('')
   }
 
+  const handleSaveTierCover = async () => {
+    setSavingCover(true)
+    setError('')
+    setOk('')
+    try {
+      await saveTechnicalProgramTierCover(tier, tierCoverInput)
+      setOk('Обложка уровня сохранена')
+    } catch (err) {
+      setError(formatFirestoreErrorMessage(err))
+    } finally {
+      setSavingCover(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!editingAtom || !form) return
     setSaving(true)
@@ -81,7 +113,10 @@ export default function TechnicalElementsPage() {
         <BackToHomeBar />
         <header>
           <h1 className={vk.h1Lg}>Технические элементы</h1>
-          <p className={vk.mutedXs}>WebM — воспроизведение по нажатию play; повторный тап — на весь экран.</p>
+          <p className={vk.mutedXs}>
+            WebM — по play на карточке. Обложка уровня — общая картинка для всех приёмов этого уровня (пока нет
+            своего видео и как фон под play).
+          </p>
         </header>
 
         {syncError ? (
@@ -115,6 +150,70 @@ export default function TechnicalElementsPage() {
 
         {error ? <p className={vk.error}>{error}</p> : null}
         {ok ? <p className={vk.success}>{ok}</p> : null}
+
+        <section className={`${vk.cardPadded} space-y-2`}>
+          <h2 className={vk.h2}>Обложка уровня — {TIER_COVER_LABELS[tier]}</h2>
+          <p className={vk.mutedXs}>
+            Одна картинка (URL) для всего уровня. Показывается на карточках без WebM и под иконкой play.
+          </p>
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-[#e7e8ec] bg-[#f0f2f5]">
+              {tierCoverInput.trim() ? (
+                <img
+                  src={tierCoverInput.trim()}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full items-center justify-center text-[11px] text-[#aeb7c2]">
+                  Нет обложки
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <label className="block">
+                <span className={vk.label}>URL картинки (JPG, PNG, WebP)</span>
+                <input
+                  className={vk.input}
+                  value={tierCoverInput}
+                  onChange={(e) => {
+                    setTierCoverInput(e.target.value)
+                    setError('')
+                  }}
+                  placeholder="https://…"
+                />
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  disabled={savingCover}
+                  onClick={() => void handleSaveTierCover()}
+                  className={vk.btnPrimary}
+                >
+                  {savingCover ? 'Сохранение…' : 'Сохранить обложку'}
+                </button>
+                {activeTierCover || tierCoverInput.trim() ? (
+                  <button
+                    type="button"
+                    disabled={savingCover}
+                    onClick={() => {
+                      setTierCoverInput('')
+                      setSavingCover(true)
+                      setError('')
+                      void saveTechnicalProgramTierCover(tier, '')
+                        .then(() => setOk('Обложка удалена'))
+                        .catch((err) => setError(formatFirestoreErrorMessage(err)))
+                        .finally(() => setSavingCover(false))
+                    }}
+                    className={vk.btnSecondary}
+                  >
+                    Убрать
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {editingAtom && form ? (
           <form
@@ -207,7 +306,9 @@ export default function TechnicalElementsPage() {
                         ? 'Embed'
                         : atom.videoLink
                           ? 'Ссылка'
-                          : 'Без медиа'}
+                          : activeTierCover
+                            ? 'Обложка уровня'
+                            : 'Без медиа'}
                   </p>
                 </div>
                 <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" previewable />

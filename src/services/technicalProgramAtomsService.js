@@ -7,7 +7,9 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore'
+import { EMPTY_TIER_COVERS } from '../data/technicalProgramAtomsCache.js'
 import { getDefaultTechnicalProgramAtoms } from '../data/technicalProgramAtomsDefaults.js'
+import { PROGRAM_TIER_COVER_DOC_IDS } from '../utils/technicalProgramTierCovers.js'
 import { getDefaultTechnicalLevel3Atoms } from '../utils/technicalProgramAtomsResolved.js'
 import {
   getTechnicalProgramAtomsCache,
@@ -92,20 +94,34 @@ function mergeAtom(defaultAtom, override) {
   }
 }
 
+function parseTierCoverDoc(data) {
+  if (!data || data.kind !== 'tier_cover') return null
+  const tier = Number(data.tier)
+  if (tier !== 1 && tier !== 2 && tier !== 3) return null
+  const posterSrc = trimOrNull(data.media?.posterSrc)
+  return { tier, posterSrc }
+}
+
 function buildCacheFromOverrides(overrideDocs) {
   const defaults = getDefaultTechnicalProgramAtoms()
   const byId = new Map()
+  const tierCovers = { ...EMPTY_TIER_COVERS }
   for (const snap of overrideDocs) {
     const data = typeof snap.data === 'function' ? snap.data() : snap
+    const cover = parseTierCoverDoc(data)
+    if (cover) {
+      tierCovers[cover.tier] = cover.posterSrc
+      continue
+    }
     const atomId = trimOrNull(data?.atomId) || snap.id
-    if (!atomId) continue
+    if (!atomId || atomId.startsWith('tier_cover_')) continue
     byId.set(atomId, { atomId, ...data })
   }
 
   const level1 = defaults.level1.map((d) => mergeAtom(d, byId.get(d.id)))
   const level2 = defaults.level2.map((d) => mergeAtom(d, byId.get(d.id)))
   const level3 = getDefaultTechnicalLevel3Atoms(level1).map((d) => mergeAtom(d, byId.get(d.id)))
-  setTechnicalProgramAtomsCache({ level1, level2, level3 })
+  setTechnicalProgramAtomsCache({ level1, level2, level3, tierCovers })
 }
 
 function setSyncError(err) {
@@ -247,4 +263,34 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
 
   await setDoc(doc(ensureDb(), COLLECTION_ID, atomId), record)
   return atomId
+}
+
+/**
+ * Общая обложка уровня (картинка для атомов без своего WebM).
+ * @param {1 | 2 | 3} tier
+ * @param {string | null | undefined} posterSrc
+ */
+export async function saveTechnicalProgramTierCover(tier, posterSrc) {
+  if (!isFirebaseConfigured) {
+    throw new Error('Firebase не настроен.')
+  }
+  const t = Number(tier)
+  if (t !== 1 && t !== 2 && t !== 3) throw new Error('Некорректный уровень программы.')
+
+  const coachId = getCurrentCoachId()
+  if (!coachId) throw new Error('Войдите в аккаунт тренера.')
+  const profile = await getCoachProfile(coachId)
+  if (!isProgramAdmin(profile)) {
+    throw new Error('Редактирование каталога техники доступно только администратору программы.')
+  }
+
+  const docId = PROGRAM_TIER_COVER_DOC_IDS[t]
+  await setDoc(doc(ensureDb(), COLLECTION_ID, docId), {
+    kind: 'tier_cover',
+    tier: t,
+    atomId: docId,
+    media: { posterSrc: trimOrNull(posterSrc) },
+    updatedAt: serverTimestamp(),
+  })
+  return docId
 }

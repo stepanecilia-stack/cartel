@@ -3,7 +3,7 @@ import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import StaticEmbedThumb from './training/StaticEmbedThumb.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
-const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link'])
+const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link', 'poster'])
 
 function PlayOverlay({ compact = false }) {
   return (
@@ -27,6 +27,18 @@ function PlayOverlay({ compact = false }) {
         </svg>
       </span>
     </span>
+  )
+}
+
+function CoverImage({ src, className = '' }) {
+  return (
+    <img
+      src={src}
+      alt=""
+      className={`h-full w-full object-cover ${className}`}
+      loading="lazy"
+      decoding="async"
+    />
   )
 }
 
@@ -58,6 +70,7 @@ export default function TechnicalAtomMedia({
   const media = resolveTechnicalAtomMedia(atom)
   const displayTitle = title ?? atom?.name ?? ''
   const isWebm = media.kind === 'webm'
+  const tierCoverSrc = isWebm ? media.tierCoverSrc : null
 
   const canPreview = previewable && PREVIEWABLE_KINDS.has(media.kind)
   const tapToPlayWebm = isWebm && typeof onTogglePlay === 'function'
@@ -139,9 +152,13 @@ export default function TechnicalAtomMedia({
           onError={() => setVideoError(true)}
         />
       )
+    } else if (tierCoverSrc) {
+      thumb = <CoverImage src={tierCoverSrc} />
     } else {
       thumb = <StaticEmbedThumb className={videoError && playing ? 'bg-[#f0f2f5] text-[#818c99]' : ''} />
     }
+  } else if (media.kind === 'poster') {
+    thumb = <CoverImage src={media.src} />
   } else {
     thumb = <StaticEmbedThumb />
   }
@@ -155,6 +172,13 @@ export default function TechnicalAtomMedia({
       {showPlayOverlay ? <PlayOverlay compact={compactThumb} /> : null}
     </>
   )
+
+  const lightboxMedia =
+    isWebm && playing
+      ? { kind: 'webm', src: media.src }
+      : media.kind === 'poster'
+        ? media
+        : media
 
   return (
     <>
@@ -185,7 +209,7 @@ export default function TechnicalAtomMedia({
       <MediaLightbox
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
-        media={media}
+        media={lightboxMedia}
         title={displayTitle}
       />
     </>

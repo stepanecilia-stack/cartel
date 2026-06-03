@@ -38,6 +38,7 @@ export function useTechnicalProgramAtoms() {
     level1: bundle.level1,
     level2: bundle.level2,
     level3: bundle.level3,
+    tierCovers: bundle.tierCovers ?? { 1: null, 2: null, 3: null },
     orderedLevel1: resolved.level1,
     orderedLevel2: resolved.level2,
     orderedLevel3: resolved.level3,
