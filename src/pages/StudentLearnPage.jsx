@@ -64,7 +64,9 @@ export default function StudentLearnPage() {
         if (cancelled) return
         console.error(e)
         clearPortalSession()
-        setLoadError(formatFirestoreErrorMessage(e) || e?.message || 'Сессия недействительна.')
+        setLoadError(
+          formatFirestoreErrorMessage(e, { context: 'student_portal' }) || e?.message || 'Сессия недействительна.',
+        )
       }
     }
     void run()
@@ -127,7 +129,7 @@ export default function StudentLearnPage() {
       setPlaying(false)
     } catch (e) {
       console.error(e)
-      setSaveError(formatFirestoreErrorMessage(e) || 'Не удалось сохранить.')
+      setSaveError(formatFirestoreErrorMessage(e, { context: 'student_portal' }) || 'Не удалось сохранить.')
     } finally {
       setSaving(false)
     }

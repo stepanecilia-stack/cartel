@@ -22,7 +22,7 @@ import {
 } from '../utils/studentPortalAuth.js'
 import { normalizeTechnicalDataForSave } from '../utils/studentTechnicalUpdate.js'
 import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
-import { ensureAuth, ensureDb, updateStudentData } from './firebaseService.js'
+import { ensureAuth, ensureDb } from './firebaseService.js'
 
 const PORTAL_AUTH_COLLECTION = 'student_portal_auth'
 
@@ -174,14 +174,16 @@ export async function fetchStudentForPortalSession(studentId) {
 }
 
 export async function saveStudentPortalKnowledge(studentId, technicalData) {
+  const auth = ensureAuth()
+  if (!auth.currentUser?.isAnonymous) {
+    throw new Error('Сессия ученика недействительна. Выйдите и войдите снова.')
+  }
   const normalized = normalizeTechnicalDataForSave(technicalData)
-  await updateStudentData(
-    studentId,
-    {
-      technicalData: normalized,
-      portalLastActivityAt: serverTimestamp(),
-    },
-    { section: STUDENT_UPDATE_SECTION.studentPortal },
-  )
+  await updateDoc(doc(ensureDb(), 'students', studentId), {
+    technicalData: normalized,
+    portalLastActivityAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+    updatedAt: serverTimestamp(),
+  })
   return normalized
 }

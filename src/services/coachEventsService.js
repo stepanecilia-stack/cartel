@@ -54,7 +54,7 @@ export function subscribeCoachEvents(coachId, onData, onError) {
     },
     (err) => {
       console.error('[coach_events]', err)
-      onError?.(new Error(formatFirestoreErrorMessage(err)))
+      onError?.(new Error(formatFirestoreErrorMessage(err, { context: 'coach_events' })))
       onData([])
     },
   )

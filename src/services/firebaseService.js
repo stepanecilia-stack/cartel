@@ -303,8 +303,9 @@ const deepOmitUndefined = (value) => {
 
 export async function resolveCurrentCoachAuditFields() {
   const safeAuth = ensureAuth()
-  const uid = safeAuth.currentUser?.uid
-  if (!uid) return {}
+  const user = safeAuth.currentUser
+  const uid = user?.uid
+  if (!uid || user?.isAnonymous) return {}
 
   const cached = getCoachProfileCache(uid)
   if (cached) {
