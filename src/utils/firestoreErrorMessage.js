@@ -7,10 +7,14 @@ export function formatFirestoreErrorMessage(err) {
   const raw = err instanceof Error ? err.message : String(err ?? '')
 
   if (code === 'permission-denied' || /insufficient permissions/i.test(raw)) {
+    const projectHint =
+      typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_PROJECT_ID
+        ? String(import.meta.env.VITE_FIREBASE_PROJECT_ID).trim()
+        : 'cartel-academy'
     return (
       'Нет доступа к календарю событий в Firestore (коллекция coach_events). ' +
-      'Опубликуйте актуальные firestore.rules в Firebase Console или командой: ' +
-      'npx firebase-tools deploy --only firestore:rules --project ВАШ_PROJECT_ID'
+      'Опубликуйте файл firestore.rules из репозитория: Firebase Console → Firestore → Правила → «Опубликовать», ' +
+      `или в терминале: npm run deploy:firestore-rules (проект ${projectHint}, нужен firebase login).`
     )
   }
   if (code === 'unauthenticated') {

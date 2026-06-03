@@ -137,14 +137,19 @@ service cloud.firestore {
       allow delete: if request.auth != null;
     }
 
-    // Общий календарь тренера: события сезона и участники (ученики).
+    function isCoachEventOwner() {
+      return request.auth != null && resource.data.coachId == request.auth.uid;
+    }
+
+    function isCoachEventCreate() {
+      return request.auth != null && request.resource.data.coachId == request.auth.uid;
+    }
+
+    // Общий календарь тренера: coachId в документе = uid тренера (запрос: where coachId == uid).
     match /coach_events/{eventId} {
-      allow read: if request.auth != null
-        && resource.data.coachId == request.auth.uid;
-      allow create: if request.auth != null
-        && request.resource.data.coachId == request.auth.uid;
-      allow update, delete: if request.auth != null
-        && resource.data.coachId == request.auth.uid;
+      allow read: if isProgramAdmin() || isCoachEventOwner();
+      allow create: if isCoachEventCreate();
+      allow update, delete: if isProgramAdmin() || isCoachEventOwner();
     }
 
     // Участники ориентиров Минспорта (календарь федерации, не редактируется).
