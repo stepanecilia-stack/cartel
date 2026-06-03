@@ -71,3 +71,12 @@ export function writePortalSession({ studentId, shortId }) {
 export function clearPortalSession() {
   sessionStorage.removeItem(PORTAL_SESSION_STORAGE_KEY)
 }
+
+/** Анонимный Firebase Auth после входа ученика (не тренер). */
+export function isStudentPortalFirebaseUser(user) {
+  return Boolean(user?.isAnonymous)
+}
+
+export function studentPortalHomePath() {
+  return readPortalSession() ? '/learn' : '/student-login'
+}

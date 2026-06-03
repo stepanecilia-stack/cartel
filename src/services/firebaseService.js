@@ -394,6 +394,15 @@ export const registerCoach = async (email, password, coachData) => {
 
 export const loginCoach = async (email, password) => {
   const safeAuth = ensureAuth()
+  if (safeAuth.currentUser?.isAnonymous) {
+    await signOut(safeAuth)
+    try {
+      const { clearPortalSession } = await import('../utils/studentPortalAuth.js')
+      clearPortalSession()
+    } catch {
+      /* ignore */
+    }
+  }
   const userCredential = await signInWithEmailAndPassword(safeAuth, email, password)
   return userCredential.user
 }

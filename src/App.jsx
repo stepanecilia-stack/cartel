@@ -40,7 +40,15 @@ import { subscribeTechnicalProgramAtoms } from './services/technicalProgramAtoms
 import { useGroupTrainingSession } from './hooks/useGroupTrainingSession.js'
 import { isProgramAdmin } from './utils/coachRoles.js'
 import { clearGroupTrainingSession } from './utils/groupTrainingSession.js'
+import {
+  isStudentPortalFirebaseUser,
+  studentPortalHomePath,
+} from './utils/studentPortalAuth.js'
 import { vk } from './utils/vkUi.js'
+
+function isCoachFirebaseUser(user) {
+  return Boolean(user && !isStudentPortalFirebaseUser(user))
+}
 
 function Navbar({ user, coachProfile, programAdmin }) {
   const location = useLocation()
@@ -166,11 +174,15 @@ function Navbar({ user, coachProfile, programAdmin }) {
 
 function ProtectedRoute({ user, element }) {
   if (!user) return <Navigate to="/login" replace />
+  if (isStudentPortalFirebaseUser(user)) {
+    return <Navigate to={studentPortalHomePath()} replace />
+  }
   return element
 }
 
 function AdminRoute({ user, coachProfile, element }) {
   if (!user) return <Navigate to="/login" replace />
+  if (isStudentPortalFirebaseUser(user)) return <Navigate to={studentPortalHomePath()} replace />
   if (!isProgramAdmin(coachProfile)) return <Navigate to="/" replace />
   return element
 }
@@ -183,11 +195,19 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
   const programAdmin = isProgramAdmin(coachProfile)
   const location = useLocation()
   const navigate = useNavigate()
+  const isStudentPortalRoute =
+    location.pathname === '/student-login' || location.pathname === '/learn'
   const isShareRoute =
     location.pathname.startsWith('/share/') ||
     location.pathname.startsWith('/leaderboard/share/') ||
-    location.pathname === '/student-login' ||
-    location.pathname === '/learn'
+    isStudentPortalRoute
+  const isStudentAuth = isStudentPortalFirebaseUser(authUser)
+
+  useEffect(() => {
+    if (!isStudentAuth) return
+    if (isStudentPortalRoute) return
+    navigate(studentPortalHomePath(), { replace: true })
+  }, [isStudentAuth, isStudentPortalRoute, navigate])
 
   const openStudentFromQualityPage = (student) => {
     if (!student) return
@@ -381,15 +401,42 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         />
         <Route
           path="/login"
-          element={authUser ? <Navigate to="/" replace /> : <LoginCoach />}
+          element={
+            isCoachFirebaseUser(authUser) ? (
+              <Navigate to="/" replace />
+            ) : isStudentAuth ? (
+              <Navigate to={studentPortalHomePath()} replace />
+            ) : (
+              <LoginCoach />
+            )
+          }
         />
         <Route
           path="/register"
-          element={authUser ? <Navigate to="/" replace /> : <RegisterCoach />}
+          element={
+            isCoachFirebaseUser(authUser) ? (
+              <Navigate to="/" replace />
+            ) : isStudentAuth ? (
+              <Navigate to={studentPortalHomePath()} replace />
+            ) : (
+              <RegisterCoach />
+            )
+          }
         />
         <Route
           path="*"
-          element={<Navigate to={authUser ? '/' : '/welcome'} replace />}
+          element={
+            <Navigate
+              to={
+                isStudentAuth
+                  ? studentPortalHomePath()
+                  : isCoachFirebaseUser(authUser)
+                    ? '/'
+                    : '/welcome'
+              }
+              replace
+            />
+          }
         />
       </Routes>
     </div>
@@ -416,7 +463,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!authUser?.uid) return undefined
+    if (!isCoachFirebaseUser(authUser)) return undefined
     return subscribeCoachProfile(
       authUser.uid,
       (profile) => {
@@ -432,15 +479,15 @@ function App() {
   }, [authUser?.uid])
 
   useEffect(() => {
-    if (!authUser?.uid) return undefined
+    if (!isCoachFirebaseUser(authUser)) return undefined
     startCoachStudentsSync(authUser.uid, {
       viewAllStudents: isProgramAdmin(coachProfile),
     })
     return () => stopCoachStudentsSync()
-  }, [authUser?.uid, coachProfile])
+  }, [authUser, coachProfile])
 
   useEffect(() => {
-    if (!authUser) return undefined
+    if (!isCoachFirebaseUser(authUser)) return undefined
     const unsubNorms = subscribeLegacyNorms()
     loadNormsOnce().catch(() => {})
     const unsubExercises = subscribeMotorQualityExercises()
