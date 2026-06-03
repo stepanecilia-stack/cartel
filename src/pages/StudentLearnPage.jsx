@@ -40,6 +40,7 @@ export default function StudentLearnPage() {
   const [student, setStudent] = useState(null)
   const [technicalAtoms, setTechnicalAtoms] = useState(() => getTechnicalProgramAtomsCache() ?? [])
   const [tier, setTier] = useState(1)
+  const [viewIndex, setViewIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -112,7 +113,19 @@ export default function StudentLearnPage() {
   const total = atomsForTier.length
   const tierComplete = total > 0 && doneCount >= total
 
-  const canMark = focusAtom && canStudentMarkKnowledge(atomsForTier, technicalData, focusAtom.id)
+  const safeViewIndex = total > 0 ? Math.min(Math.max(0, viewIndex), focusIndex) : 0
+  const viewAtom = atomsForTier[safeViewIndex] ?? null
+  const canGoBack = safeViewIndex > 0
+  const canGoForward = safeViewIndex < focusIndex
+  const isViewingCurrentStep = safeViewIndex === focusIndex
+  const canMark =
+    isViewingCurrentStep && viewAtom && canStudentMarkKnowledge(atomsForTier, technicalData, viewAtom.id)
+
+  useEffect(() => {
+    if (!student?.id) return
+    setViewIndex(resolveStudentPortalFocusIndex(atomsForTier, technicalData))
+    setPlaying(false)
+  }, [tier, student?.id])
 
   const handleMark = useCallback(async () => {
     if (!student?.id || !focusAtom || !canMark) return
@@ -126,6 +139,8 @@ export default function StudentLearnPage() {
       }
       const saved = await saveStudentPortalKnowledge(student.id, next)
       setStudent((prev) => (prev ? { ...prev, technicalData: saved } : prev))
+      const nextFocus = resolveStudentPortalFocusIndex(atomsForTier, saved)
+      setViewIndex(nextFocus)
       setPlaying(false)
     } catch (e) {
       console.error(e)
@@ -225,11 +240,39 @@ export default function StudentLearnPage() {
                 Этап «{tierLabel(tier)}» пройден по знанию.{' '}
                 {tier < 3 ? 'Перейдите на следующую вкладку.' : 'Покажите прогресс тренеру.'}
               </p>
-            ) : focusAtom ? (
+            ) : viewAtom ? (
               <>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    disabled={!canGoBack}
+                    onClick={() => {
+                      setViewIndex((i) => Math.max(0, i - 1))
+                      setPlaying(false)
+                    }}
+                    className={vk.btnSecondary}
+                  >
+                    Назад
+                  </button>
+                  <span className={`${vk.mutedXs} tabular-nums`}>
+                    {safeViewIndex + 1} / {total}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!canGoForward}
+                    onClick={() => {
+                      setViewIndex((i) => Math.min(focusIndex, i + 1))
+                      setPlaying(false)
+                    }}
+                    className={vk.btnSecondary}
+                  >
+                    Далее
+                  </button>
+                </div>
+
                 <div className="mx-auto w-full max-w-[12rem]">
                   <TechnicalAtomMedia
-                    atom={focusAtom}
+                    atom={viewAtom}
                     className="aspect-[4/5] w-full rounded-lg"
                     playing={playing}
                     onTogglePlay={() => setPlaying((p) => !p)}
@@ -237,9 +280,9 @@ export default function StudentLearnPage() {
                   />
                 </div>
                 <h2 className={vk.h2}>
-                  <span className="text-[#818c99]">#{focusAtom.number}</span> {focusAtom.name}
+                  <span className="text-[#818c99]">#{viewAtom.number}</span> {viewAtom.name}
                 </h2>
-                {focusAtom.howTo ? <p className={`${vk.mutedXs} whitespace-pre-wrap`}>{focusAtom.howTo}</p> : null}
+                {viewAtom.howTo ? <p className={`${vk.mutedXs} whitespace-pre-wrap`}>{viewAtom.howTo}</p> : null}
 
                 {canMark ? (
                   <button
@@ -250,8 +293,13 @@ export default function StudentLearnPage() {
                   >
                     {saving ? 'Сохранение…' : `Понял — отметить «${KNOWLEDGE_LABEL}» и далее`}
                   </button>
+                ) : isViewingCurrentStep ? (
+                  <p className={vk.mutedXs}>Этот приём уже отмечен. Нажмите «Далее» или перейдите к следующему этапу.</p>
                 ) : (
-                  <p className={vk.mutedXs}>Этот приём уже отмечен. Переходите к следующему в списке.</p>
+                  <p className={vk.mutedXs}>
+                    Повторение пройденного приёма. «Понял» доступно только на текущем шаге
+                    {focusAtom ? ` (#${focusAtom.number})` : ''}.
+                  </p>
                 )}
               </>
             ) : null}
