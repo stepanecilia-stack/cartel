@@ -213,38 +213,67 @@ export const subscribeCoachStudents = (coachId, onData, onError) => {
   const col = collection(ensureDb(), 'students')
   let arrayDocs = []
   let legacyDocs = []
+  let legacyIdsDocs = []
+  const errors = { coach_ids: null, coachId: null, coachIds: null }
 
   const emit = () => {
-    onData?.(mergeCoachStudentsDocs([...arrayDocs, ...legacyDocs]))
+    const failed = Object.values(errors).filter(Boolean)
+    const merged = mergeCoachStudentsDocs([...arrayDocs, ...legacyDocs, ...legacyIdsDocs])
+    if (failed.length >= 3) {
+      onError?.(failed[0])
+      return
+    }
+    if (failed.length > 0) {
+      console.warn(
+        '[subscribeCoachStudents] Часть запросов недоступна — список собран из оставшихся.',
+        failed.map((e) => e?.code || e?.message),
+      )
+    }
+    onData?.(merged)
   }
 
-  const unsubArray = onSnapshot(
+  const bindSnapshot = (label, q, assignDocs) =>
+    onSnapshot(
+      q,
+      (snap) => {
+        errors[label] = null
+        assignDocs(snap.docs)
+        emit()
+      },
+      (err) => {
+        console.error(`subscribeCoachStudents ${label}`, err)
+        errors[label] = err
+        assignDocs([])
+        emit()
+      },
+    )
+
+  const unsubArray = bindSnapshot(
+    'coach_ids',
     query(col, where('coach_ids', 'array-contains', coachId)),
-    (snap) => {
-      arrayDocs = snap.docs
-      emit()
-    },
-    (err) => {
-      console.error('subscribeCoachStudents coach_ids', err)
-      onError?.(err)
+    (docs) => {
+      arrayDocs = docs
     },
   )
-
-  const unsubLegacy = onSnapshot(
+  const unsubLegacy = bindSnapshot(
+    'coachId',
     query(col, where('coachId', '==', coachId)),
-    (snap) => {
-      legacyDocs = snap.docs
-      emit()
+    (docs) => {
+      legacyDocs = docs
     },
-    (err) => {
-      console.error('subscribeCoachStudents coachId', err)
-      onError?.(err)
+  )
+  const unsubLegacyIds = bindSnapshot(
+    'coachIds',
+    query(col, where('coachIds', 'array-contains', coachId)),
+    (docs) => {
+      legacyIdsDocs = docs
     },
   )
 
   return () => {
     unsubArray()
     unsubLegacy()
+    unsubLegacyIds()
   }
 }
 
@@ -565,6 +594,9 @@ export const getCoachStudents = async (coachId) => {
   const col = collection(safeDb, 'students')
 
   let arrayDocs = []
+  let legacyDocs = []
+  let legacyIdsDocs = []
+
   try {
     const snapArray = await getDocs(query(col, where('coach_ids', 'array-contains', coachId)))
     arrayDocs = snapArray.docs
@@ -573,7 +605,7 @@ export const getCoachStudents = async (coachId) => {
       if (!coachIdsQueryDeniedLogged) {
         coachIdsQueryDeniedLogged = true
         console.info(
-          '[Cartel] Второй список тренеров в базе отключён настройками — показываются только «свои» ученики по старому полю. Это нормально, пока администратор не обновит правила.',
+          '[Cartel] Запрос coach_ids недоступен по правилам — используем coachId / coachIds.',
         )
       }
     } else {
@@ -581,7 +613,6 @@ export const getCoachStudents = async (coachId) => {
     }
   }
 
-  let legacyDocs = []
   try {
     const snapLegacy = await getDocs(query(col, where('coachId', '==', coachId)))
     legacyDocs = snapLegacy.docs
@@ -589,7 +620,14 @@ export const getCoachStudents = async (coachId) => {
     console.warn('[getCoachStudents] Запрос coachId:', e)
   }
 
-  return mergeCoachStudentsDocs([...arrayDocs, ...legacyDocs])
+  try {
+    const snapLegacyIds = await getDocs(query(col, where('coachIds', 'array-contains', coachId)))
+    legacyIdsDocs = snapLegacyIds.docs
+  } catch (e) {
+    console.warn('[getCoachStudents] Запрос coachIds:', e)
+  }
+
+  return mergeCoachStudentsDocs([...arrayDocs, ...legacyDocs, ...legacyIdsDocs])
 }
 
 /**

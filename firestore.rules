@@ -17,16 +17,6 @@ service cloud.firestore {
         );
     }
 
-    // ---------------------------------------------------------------------------
-    // Cartel Boxing — пример правил для локальной отладки.
-    //
-    // Сейчас: любой авторизованный пользователь может ЧИТАТЬ и ОБНОВЛЯТЬ любого ученика.
-    // Это нужно, чтобы работали: выдача short_id, присоединение по коду, запрос coach_ids.
-    //
-    // Для продакшена сузьте allow read / allow update (например только coachId + coach_ids,
-    // отдельная коллекция для поиска по short_id, Cloud Functions и т.д.).
-    // ---------------------------------------------------------------------------
-
     function coachCanAccessStudent() {
       return request.auth != null && (
         isProgramAdmin() ||
@@ -72,9 +62,17 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      allow read: if request.auth != null && (
-        coachCanAccessStudent() || isStudentPortalUser()
-      );
+      // Отдельные allow read — Firestore сопоставляет их с where(coachId) и array-contains(coach_ids/coachIds).
+      allow read: if request.auth != null && isProgramAdmin();
+      allow read: if request.auth != null && resource.data.coachId == request.auth.uid;
+      allow read: if request.auth != null
+        && resource.data.coach_ids is list
+        && request.auth.uid in resource.data.coach_ids;
+      allow read: if request.auth != null
+        && resource.data.coachIds is list
+        && request.auth.uid in resource.data.coachIds;
+      allow read: if request.auth != null
+        && resource.data.portalAuthUid == request.auth.uid;
       // coachId (новое приложение), coach_ids (массив), coachIds (legacy script.js) — создатель должен быть в списке или совпадать с coachId
       allow create: if request.auth != null && (
         request.resource.data.coachId == request.auth.uid ||

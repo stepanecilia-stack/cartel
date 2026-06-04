@@ -1,4 +1,5 @@
-import { subscribeAllStudents, subscribeCoachStudents } from '../services/firebaseService.js'
+import { subscribeAllStudents, subscribeCoachStudents, getCoachStudents } from '../services/firebaseService.js'
+import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 
 /** @type {string | null} */
 let activeCoachId = null
@@ -86,13 +87,28 @@ export function startCoachStudentsSync(coachId, options = {}) {
     notify()
   }
   const onErr = (err) => {
-    console.error('[coachStudentsCache]', err)
-    students = []
-    ready = true
-    loadError = viewAll
-      ? 'Не удалось загрузить всех учеников базы.'
-      : 'Не удалось подписаться на список учеников.'
-    notify()
+    console.error('[coachStudentsCache] subscribe failed', err)
+    void (async () => {
+      try {
+        const list = viewAll ? [] : await getCoachStudents(coachId)
+        if (list.length > 0) {
+          students = list
+          ready = true
+          loadError = ''
+          notify()
+          return
+        }
+      } catch (fallbackErr) {
+        console.error('[coachStudentsCache] fallback getCoachStudents', fallbackErr)
+      }
+      students = []
+      ready = true
+      loadError = viewAll
+        ? formatFirestoreErrorMessage(err) || 'Не удалось загрузить всех учеников базы.'
+        : formatFirestoreErrorMessage(err) ||
+          'Не удалось загрузить список учеников. Опубликуйте правила Firestore (npm run deploy:firestore-rules).'
+      notify()
+    })()
   }
 
   unsubFirestore = viewAll
