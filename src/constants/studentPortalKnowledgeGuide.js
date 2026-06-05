@@ -2,27 +2,27 @@
 export const STUDENT_KNOWLEDGE_INTRO_STORAGE_KEY = 'cartel_student_knowledge_intro_v1'
 
 export const MOTOR_SKILL_STAGES = [
-  { key: 'knowledge', label: 'Знание', active: true },
-  { key: 'skill', label: 'Умение', active: false },
-  { key: 'habit', label: 'Навык', active: false },
-  { key: 'automation', label: 'Автоматизация', active: false },
+  { key: 'knowledge', label: 'Знание', active: true, locked: false },
+  { key: 'skill', label: 'Умение', active: false, locked: true },
+  { key: 'habit', label: 'Навык', active: false, locked: true },
+  { key: 'automation', label: 'Автоматизация', active: false, locked: true },
 ]
 
 export const KNOWLEDGE_THREE_IMAGES = [
   {
     key: 'logic',
-    title: 'Логика',
-    text: 'Понимаешь, почему приём делается именно так и можешь объяснить.',
+    title: 'Логический образ',
+    text: 'Понимаешь, почему технический элемент выполняется именно так и можешь объяснить.',
   },
   {
     key: 'vision',
-    title: 'Зрение',
-    text: 'Видишь в голове правильное выполнение — ролик, демонстрация тренера.',
+    title: 'Зрительный образ',
+    text: 'Видишь и представляешь правильное выполнение — ролик, демонстрация тренера.',
   },
   {
     key: 'kinesthesia',
     title: 'Кинестетика',
-    text: 'Прочувствовал движение своим телом — знаешь ощущения в мышцах.',
+    text: 'Прочувствовал технический элемент своим телом — знаешь ощущения в мышцах.',
   },
 ]
 
