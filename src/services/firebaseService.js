@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth'
 import {
   addDoc,
+  arrayUnion,
   collection,
   deleteDoc,
   deleteField,
@@ -517,21 +518,36 @@ export const isValidSixDigitShortId = (value) => {
   return Number.isFinite(n) && n >= 100000 && n <= 999999
 }
 
-/** Уникальный 6-значный short_id (100000–999999). */
+/** Уникальный 6-значный short_id (100000–999999). Индекс student_codes — без list-запроса по students. */
 export const generateUniqueShortId = async () => {
   if (!studentsCollection) throw new Error('Коллекция students недоступна')
+  const safeDb = ensureDb()
   for (let attempt = 0; attempt < 48; attempt += 1) {
     const n = 100000 + Math.floor(Math.random() * 900000)
-    const snap = await getDocs(query(studentsCollection, where('short_id', '==', n), limit(1)))
-    if (snap.empty) return n
+    const snap = await getDoc(doc(safeDb, 'student_codes', String(n)))
+    if (!snap.exists()) return n
   }
   throw new Error('Не удалось сгенерировать уникальный код ученика')
+}
+
+async function writeStudentCodeIndex(shortId, { studentId, coachId, name, fullName, photoURL }) {
+  await setDoc(doc(ensureDb(), 'student_codes', String(shortId)), {
+    studentId,
+    coachId,
+    name: name ?? fullName ?? '',
+    fullName: fullName ?? name ?? '',
+    photoURL: photoURL ?? '',
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export const addStudent = async (studentData) => {
   const safeAuth = ensureAuth()
   const currentCoach = safeAuth.currentUser
   if (!currentCoach) throw new Error('Тренер не авторизован')
+  if (currentCoach.isAnonymous) {
+    throw new Error('Войдите как тренер (email и пароль), а не через кабинет ученика.')
+  }
   if (!studentsCollection) throw new Error('Коллекция students недоступна')
 
   const short_id = await generateUniqueShortId()
@@ -547,6 +563,13 @@ export const addStudent = async (studentData) => {
   }
 
   const ref = await addDoc(studentsCollection, payload)
+  await writeStudentCodeIndex(short_id, {
+    studentId: ref.id,
+    coachId: currentCoach.uid,
+    name: payload.name,
+    fullName: payload.fullName,
+    photoURL: payload.photoURL,
+  })
   return ref.id
 }
 
@@ -576,6 +599,13 @@ export const ensureStudentShortId = async (studentId) => {
     await updateDoc(ref, {
       short_id,
       updatedAt: serverTimestamp(),
+    })
+    await writeStudentCodeIndex(short_id, {
+      studentId,
+      coachId: data.coachId ?? data.coach_ids?.[0] ?? getCurrentCoachId(),
+      name: data.name,
+      fullName: data.fullName ?? data.name,
+      photoURL: data.photoURL ?? data.photo,
     })
     return { short_id }
   } catch (e) {
@@ -638,10 +668,38 @@ export const findStudentByShortId = async (digits) => {
   if (!studentsCollection) return null
   const n = typeof digits === 'string' ? Number(String(digits).replace(/\D/g, '')) : Number(digits)
   if (!Number.isFinite(n) || n < 100000 || n > 999999) return null
-  const snap = await getDocs(query(studentsCollection, where('short_id', '==', n), limit(1)))
-  if (snap.empty) return null
-  const d = snap.docs[0]
-  return { id: d.id, ...d.data() }
+
+  const codeSnap = await getDoc(doc(ensureDb(), 'student_codes', String(n)))
+  if (codeSnap.exists()) {
+    const idx = codeSnap.data()
+    const studentId = idx?.studentId
+    if (studentId) {
+      try {
+        const studentSnap = await getDoc(doc(ensureDb(), 'students', studentId))
+        if (studentSnap.exists()) {
+          return { id: studentSnap.id, ...studentSnap.data() }
+        }
+      } catch {
+        /* карточку ещё не читаем — достаточно индекса для превью */
+      }
+      return {
+        id: studentId,
+        short_id: n,
+        name: idx.name,
+        fullName: idx.fullName ?? idx.name,
+        photoURL: idx.photoURL,
+      }
+    }
+  }
+
+  try {
+    const snap = await getDocs(query(studentsCollection, where('short_id', '==', n), limit(1)))
+    if (snap.empty) return null
+    const d = snap.docs[0]
+    return { id: d.id, ...d.data() }
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -650,15 +708,8 @@ export const findStudentByShortId = async (digits) => {
  */
 export const attachCoachToStudent = async (studentId, coachId) => {
   const ref = doc(ensureDb(), 'students', studentId)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) throw new Error('Ученик не найден')
-  const data = snap.data()
-  const set = new Set(Array.isArray(data.coach_ids) ? data.coach_ids : [])
-  if (data.coachId) set.add(data.coachId)
-  if (set.has(coachId)) return { status: 'already' }
-  set.add(coachId)
   await updateDoc(ref, {
-    coach_ids: Array.from(set),
+    coach_ids: arrayUnion(coachId),
     updatedAt: serverTimestamp(),
   })
   return { status: 'attached' }

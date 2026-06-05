@@ -6,6 +6,7 @@ import {
   findLikelyDuplicateStudents,
 } from '../utils/studentDuplicateMatch.js'
 import { formatBirthYearRu, normalizeBirthYearNumber } from '../utils/studentModel'
+import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
 
 const initialForm = {
@@ -127,7 +128,11 @@ function NewStudentForm({
       onSuccess?.()
     } catch (submitError) {
       console.error(submitError)
-      setError('Не удалось сохранить ученика. Проверьте авторизацию тренера.')
+      setError(
+        formatFirestoreErrorMessage(submitError) ||
+          submitError?.message ||
+          'Не удалось сохранить ученика. Проверьте авторизацию тренера.',
+      )
     } finally {
       setIsSaving(false)
     }

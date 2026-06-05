@@ -61,6 +61,21 @@ service cloud.firestore {
       ]);
     }
 
+    /** Тренер добавляет себя в coach_ids по коду (ещё без read карточки). */
+    function coachJoinStudentByCodeOk() {
+      return request.auth != null
+        && resource.data.short_id != null
+        && request.auth.uid in request.resource.data.coach_ids
+        && (
+          !('coach_ids' in resource.data)
+          || resource.data.coach_ids == null
+          || !(request.auth.uid in resource.data.coach_ids)
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'coach_ids', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+        ]);
+    }
+
     match /students/{studentId} {
       // Отдельные allow read — Firestore сопоставляет их с where(coachId) и array-contains(coach_ids/coachIds).
       allow read: if request.auth != null && isProgramAdmin();
@@ -81,6 +96,7 @@ service cloud.firestore {
       );
       allow update: if request.auth != null && (
         coachCanAccessStudent()
+        || coachJoinStudentByCodeOk()
         || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalLoginFieldsOnly()))
         || (studentPortalBindOk() && studentPortalLoginFieldsOnly())
         || studentPortalLoginRebind()
@@ -91,6 +107,16 @@ service cloud.firestore {
         (resource.data.coach_ids is list && request.auth.uid in resource.data.coach_ids) ||
         (resource.data.coachIds is list && request.auth.uid in resource.data.coachIds)
       );
+    }
+
+    match /student_codes/{code} {
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create: if request.auth != null
+        && code.matches('^[0-9]{6}$')
+        && request.resource.data.studentId is string
+        && request.resource.data.coachId == request.auth.uid;
+      allow update, delete: if false;
     }
 
     match /coaches/{coachId} {
