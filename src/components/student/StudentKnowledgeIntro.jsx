@@ -5,6 +5,19 @@ import {
 } from '../../constants/studentPortalKnowledgeGuide.js'
 import { vk } from '../../utils/vkUi.js'
 
+function StageCheckIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0 text-[#4bb34b]"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M6.5 11.2 3.3 8l1.2-1.2 2 2 5-5 1.2 1.2-6.2 6.2Z" />
+    </svg>
+  )
+}
+
 function StageLockIcon() {
   return (
     <svg
@@ -46,7 +59,11 @@ export default function StudentKnowledgeIntro({
             }`}
           >
             <span>{stage.label}</span>
-            {stage.locked ? (
+            {stage.active && !stage.locked ? (
+              <span className="flex items-center gap-1" aria-label="Текущий этап">
+                <StageCheckIcon />
+              </span>
+            ) : stage.locked ? (
               <span className="flex items-center gap-1 text-[11px] font-medium">
                 <StageLockIcon />
                 <span className="sr-only">Закрыто до тренировки с тренером</span>
@@ -71,8 +88,11 @@ export default function StudentKnowledgeIntro({
         decoding="async"
       />
 
+      <p className="text-[13px] font-semibold leading-snug text-[#2c2d2e]">
+        «Знание» подразумевает наличие трёх образов каждого технического элемента.
+      </p>
+
       <div className="space-y-2">
-        <p className="text-[12px] font-semibold text-[#2c2d2e]">Три образа — все обязательны</p>
         <ul className="space-y-2">
           {KNOWLEDGE_THREE_IMAGES.map((item, index) => (
             <li key={item.key} className="flex gap-2">
