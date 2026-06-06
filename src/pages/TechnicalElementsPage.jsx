@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import TechnicalAtomMediaCarousel from '../components/TechnicalAtomMediaCarousel.jsx'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
+import AtomBookSheet from '../components/student/AtomBookSheet.jsx'
 import { atomHasDetailMediaSlide } from '../utils/technicalAtomMediaSlides.js'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import {
@@ -300,6 +301,31 @@ export default function TechnicalElementsPage() {
               <input className={vk.input} value={form.detailVideoLink} onChange={(e) => updateField('detailVideoLink', e.target.value)} />
             </label>
             </fieldset>
+            <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">3. Книжный лист для ученика</legend>
+              <p className={vk.mutedXs}>
+                Короткое описание под каруселью на странице обучения. Отображается как открытая книга с названием приёма.
+              </p>
+              <label className="block">
+                <span className={vk.label}>Текст описания</span>
+                <textarea
+                  className={`${vk.input} min-h-[7rem] resize-y font-serif leading-relaxed`}
+                  value={form.howTo}
+                  onChange={(e) => updateField('howTo', e.target.value)}
+                  placeholder="Кратко: что делать, на что обратить внимание…"
+                />
+              </label>
+              <div className="rounded-lg bg-[#f5f6f8] p-2">
+                <p className="mb-2 text-[11px] font-medium text-[#818c99]">Предпросмотр</p>
+                <AtomBookSheet
+                  number={editingAtom.number}
+                  name={editingAtom.name}
+                  description={form.howTo}
+                  chainPreview={editingAtom.chainPreview}
+                  compact
+                />
+              </div>
+            </fieldset>
             <div className="flex flex-wrap gap-1.5">
               <button type="submit" disabled={saving} className={vk.btnPrimary}>
                 {saving ? 'Сохранение…' : 'Сохранить'}
@@ -345,6 +371,7 @@ export default function TechnicalElementsPage() {
                             ? 'Обложка уровня'
                             : 'Без медиа'}
                     {atomHasDetailMediaSlide(atom) ? ' · + подробное' : ''}
+                    {atom.howTo?.trim() ? ' · книжный лист' : ''}
                   </p>
                 </div>
                 <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" previewable />
