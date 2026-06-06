@@ -1,6 +1,8 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
+import TechnicalAtomMediaCarousel from '../components/TechnicalAtomMediaCarousel.jsx'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
+import { atomHasDetailMediaSlide } from '../utils/technicalAtomMediaSlides.js'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import {
   saveTechnicalProgramAtomMedia,
@@ -20,8 +22,26 @@ function atomToForm(atom) {
     webmSrc: atom.media?.webmSrc ?? '',
     embedUrl: atom.embedUrl ?? '',
     videoLink: atom.videoLink ?? '',
+    detailWebmSrc: atom.media?.detailWebmSrc ?? '',
+    detailEmbedUrl: atom.media?.detailEmbedUrl ?? '',
+    detailVideoLink: atom.media?.detailVideoLink ?? '',
     howTo: atom.howTo ?? '',
     mistakes: atom.mistakes ?? '',
+  }
+}
+
+function formToPreviewAtom(atom, form) {
+  return {
+    ...atom,
+    embedUrl: form.embedUrl,
+    videoLink: form.videoLink,
+    media: {
+      ...atom.media,
+      webmSrc: form.webmSrc,
+      detailWebmSrc: form.detailWebmSrc,
+      detailEmbedUrl: form.detailEmbedUrl,
+      detailVideoLink: form.detailVideoLink,
+    },
   }
 }
 
@@ -35,7 +55,6 @@ export default function TechnicalElementsPage() {
   const { orderedLevel1, orderedLevel2, orderedLevel3, tierCovers, syncError } =
     useTechnicalProgramAtoms()
   const [previewPlaying, setPreviewPlaying] = useState(false)
-  const togglePreviewPlaying = useCallback(() => setPreviewPlaying((p) => !p), [])
   const [tier, setTier] = useState(1)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(null)
@@ -240,19 +259,16 @@ export default function TechnicalElementsPage() {
                   <p className={vk.mutedXs}>Цепочка: {editingAtom.chainPreview}</p>
                 ) : null}
               </div>
-              <TechnicalAtomMedia
-                atom={{
-                  ...editingAtom,
-                  media: { webmSrc: form.webmSrc },
-                  embedUrl: form.embedUrl,
-                  videoLink: form.videoLink,
-                }}
+              <TechnicalAtomMediaCarousel
+                atom={formToPreviewAtom(editingAtom, form)}
                 className="h-16 w-24"
                 playing={previewPlaying}
-                onTogglePlay={togglePreviewPlaying}
+                onPlayingChange={setPreviewPlaying}
                 previewable
               />
             </div>
+            <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">1. Демонстрация</legend>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
               <input className={vk.input} value={form.webmSrc} onChange={(e) => updateField('webmSrc', e.target.value)} placeholder="https://…webm" />
@@ -265,6 +281,25 @@ export default function TechnicalElementsPage() {
               <span className={vk.label}>Ссылка на видео</span>
               <input className={vk.input} value={form.videoLink} onChange={(e) => updateField('videoLink', e.target.value)} />
             </label>
+            </fieldset>
+            <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">2. Подробное объяснение (слайд карусели)</legend>
+              <p className={vk.mutedXs}>
+                Ученик смахивает влево после демонстрации. Можно задать позже — карусель появится, когда будет хотя бы одно поле.
+              </p>
+            <label className="block">
+              <span className={vk.label}>WebM (URL)</span>
+              <input className={vk.input} value={form.detailWebmSrc} onChange={(e) => updateField('detailWebmSrc', e.target.value)} placeholder="https://…webm" />
+            </label>
+            <label className="block">
+              <span className={vk.label}>Встраивание (Kinescope embed)</span>
+              <input className={vk.input} value={form.detailEmbedUrl} onChange={(e) => updateField('detailEmbedUrl', e.target.value)} placeholder="https://kinescope.io/embed/…" />
+            </label>
+            <label className="block">
+              <span className={vk.label}>Ссылка на видео</span>
+              <input className={vk.input} value={form.detailVideoLink} onChange={(e) => updateField('detailVideoLink', e.target.value)} />
+            </label>
+            </fieldset>
             <div className="flex flex-wrap gap-1.5">
               <button type="submit" disabled={saving} className={vk.btnPrimary}>
                 {saving ? 'Сохранение…' : 'Сохранить'}
@@ -309,6 +344,7 @@ export default function TechnicalElementsPage() {
                           : activeTierCover
                             ? 'Обложка уровня'
                             : 'Без медиа'}
+                    {atomHasDetailMediaSlide(atom) ? ' · + подробное' : ''}
                   </p>
                 </div>
                 <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" previewable />

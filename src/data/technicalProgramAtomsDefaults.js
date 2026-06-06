@@ -104,6 +104,17 @@ const INTERNAL_LEVEL2_RAW = [
   { number: '2.8', name: 'Передней сбоку (на выходе)' },
 ]
 
+function emptyAtomMedia() {
+  return {
+    posterSrc: null,
+    webmSrc: null,
+    detailPosterSrc: null,
+    detailWebmSrc: null,
+    detailEmbedUrl: null,
+    detailVideoLink: null,
+  }
+}
+
 function normalizeLevel1(item) {
   return {
     id: `atom_${item.number}`,
@@ -115,7 +126,7 @@ function normalizeLevel1(item) {
     whyMistakes: item.whyMistakes ?? '',
     videoLink: item.videoLink ?? '',
     embedUrl: item.embedUrl ?? '',
-    media: { posterSrc: null, webmSrc: null },
+    media: emptyAtomMedia(),
   }
 }
 
@@ -131,7 +142,7 @@ function normalizeLevel2(item, idx) {
     videoLink: '',
     embedUrl: '',
     techniqueTier: 2,
-    media: { posterSrc: null, webmSrc: null },
+    media: emptyAtomMedia(),
   }
 }
 

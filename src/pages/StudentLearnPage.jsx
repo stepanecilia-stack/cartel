@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
+import TechnicalAtomMediaCarousel from '../components/TechnicalAtomMediaCarousel.jsx'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import {
   fetchStudentForPortalSession,
@@ -360,11 +360,11 @@ export default function StudentLearnPage() {
             </div>
 
             <div className="w-full overflow-hidden rounded-lg bg-[#0f0f0f]">
-              <TechnicalAtomMedia
+              <TechnicalAtomMediaCarousel
                 atom={viewAtom}
                 className="aspect-[4/5] max-h-[min(70dvh,640px)] w-full sm:aspect-video"
                 playing={playing}
-                onTogglePlay={() => setPlaying((p) => !p)}
+                onPlayingChange={setPlaying}
                 previewable
               />
             </div>

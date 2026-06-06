@@ -75,6 +75,10 @@ function mergeAtom(defaultAtom, override) {
       media: {
         posterSrc: defaultAtom.media?.posterSrc ?? null,
         webmSrc: defaultAtom.media?.webmSrc ?? null,
+        detailPosterSrc: defaultAtom.media?.detailPosterSrc ?? null,
+        detailWebmSrc: defaultAtom.media?.detailWebmSrc ?? null,
+        detailEmbedUrl: defaultAtom.media?.detailEmbedUrl ?? null,
+        detailVideoLink: defaultAtom.media?.detailVideoLink ?? null,
       },
     }
   }
@@ -90,6 +94,10 @@ function mergeAtom(defaultAtom, override) {
     media: {
       posterSrc: pickOverrideMedia(override, 'posterSrc', defaultAtom.media?.posterSrc),
       webmSrc: pickOverrideMedia(override, 'webmSrc', defaultAtom.media?.webmSrc),
+      detailPosterSrc: pickOverrideMedia(override, 'detailPosterSrc', defaultAtom.media?.detailPosterSrc),
+      detailWebmSrc: pickOverrideMedia(override, 'detailWebmSrc', defaultAtom.media?.detailWebmSrc),
+      detailEmbedUrl: pickOverrideMedia(override, 'detailEmbedUrl', defaultAtom.media?.detailEmbedUrl),
+      detailVideoLink: pickOverrideMedia(override, 'detailVideoLink', defaultAtom.media?.detailVideoLink),
     },
   }
 }
@@ -257,6 +265,10 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
     media: {
       posterSrc: trimOrNull(payload?.posterSrc),
       webmSrc: trimOrNull(payload?.webmSrc),
+      detailPosterSrc: trimOrNull(payload?.detailPosterSrc),
+      detailWebmSrc: trimOrNull(payload?.detailWebmSrc),
+      detailEmbedUrl: trimOrNull(payload?.detailEmbedUrl),
+      detailVideoLink: trimOrNull(payload?.detailVideoLink),
     },
     updatedAt: serverTimestamp(),
   }
