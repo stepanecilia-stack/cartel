@@ -10,6 +10,7 @@ import { resolveTechnicalAtomMediaSlides } from '../utils/technicalAtomMediaSlid
  *   playing?: boolean,
  *   onPlayingChange?: (playing: boolean) => void,
  *   previewable?: boolean,
+ *   autoPlay?: boolean,
  * }} props
  */
 export default function TechnicalAtomMediaCarousel({
@@ -18,16 +19,32 @@ export default function TechnicalAtomMediaCarousel({
   playing = false,
   onPlayingChange,
   previewable = true,
+  autoPlay = false,
 }) {
   const slides = resolveTechnicalAtomMediaSlides(atom)
   const scrollRef = useRef(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
+  const slideHasWebm = useCallback((index) => slides[index]?.media?.kind === 'webm', [slides])
+
   useEffect(() => {
     setActiveIndex(0)
-    onPlayingChange?.(false)
     if (scrollRef.current) scrollRef.current.scrollLeft = 0
-  }, [atom?.id, onPlayingChange])
+    if (autoPlay && slideHasWebm(0)) {
+      onPlayingChange?.(true)
+    } else {
+      onPlayingChange?.(false)
+    }
+  }, [atom?.id, autoPlay, onPlayingChange, slideHasWebm])
+
+  useEffect(() => {
+    if (!autoPlay) return
+    if (slideHasWebm(activeIndex)) {
+      onPlayingChange?.(true)
+    } else {
+      onPlayingChange?.(false)
+    }
+  }, [activeIndex, autoPlay, onPlayingChange, slideHasWebm])
 
   const scrollToIndex = useCallback((index) => {
     const el = scrollRef.current
@@ -35,8 +52,12 @@ export default function TechnicalAtomMediaCarousel({
     const next = Math.max(0, Math.min(index, slides.length - 1))
     el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' })
     setActiveIndex(next)
-    onPlayingChange?.(false)
-  }, [slides.length, onPlayingChange])
+    if (autoPlay && slides[next]?.media?.kind === 'webm') {
+      onPlayingChange?.(true)
+    } else {
+      onPlayingChange?.(false)
+    }
+  }, [slides, autoPlay, onPlayingChange])
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
@@ -44,9 +65,13 @@ export default function TechnicalAtomMediaCarousel({
     const next = Math.round(el.scrollLeft / el.clientWidth)
     if (next !== activeIndex) {
       setActiveIndex(next)
-      onPlayingChange?.(false)
+      if (autoPlay && slides[next]?.media?.kind === 'webm') {
+        onPlayingChange?.(true)
+      } else {
+        onPlayingChange?.(false)
+      }
     }
-  }, [activeIndex, onPlayingChange])
+  }, [activeIndex, autoPlay, onPlayingChange, slides])
 
   if (slides.length <= 1) {
     return (
@@ -56,6 +81,8 @@ export default function TechnicalAtomMediaCarousel({
         playing={playing}
         onTogglePlay={() => onPlayingChange?.(!playing)}
         previewable={previewable}
+        videoFit="contain"
+        showSoundToggle
       />
     )
   }
@@ -85,6 +112,8 @@ export default function TechnicalAtomMediaCarousel({
               }}
               previewable={previewable}
               title={slide.label}
+              videoFit="contain"
+              showSoundToggle
             />
           </div>
         ))}

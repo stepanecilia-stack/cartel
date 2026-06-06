@@ -366,6 +366,7 @@ export default function StudentLearnPage() {
                 playing={playing}
                 onPlayingChange={setPlaying}
                 previewable
+                autoPlay
               />
             </div>
 
