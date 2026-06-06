@@ -103,14 +103,15 @@ export default function TechnicalAtomMediaCarousel({
 
   const atStart = activeIndex <= 0
   const atEnd = activeIndex >= slides.length - 1
+  const viewportClass = className || 'h-[min(72dvh,680px)] w-full'
 
   return (
     <div className="space-y-3">
-      <div className="relative">
+      <div className={`relative ${viewportClass}`}>
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+          className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
           style={{ touchAction: 'pan-x pinch-zoom' }}
           aria-roledescription="carousel"
           aria-label={`Медиа: ${atom?.name ?? 'приём'}`}
@@ -118,12 +119,12 @@ export default function TechnicalAtomMediaCarousel({
           {slides.map((slide, index) => (
             <div
               key={slide.key}
-              className="min-w-full shrink-0 snap-center snap-always"
+              className="flex min-h-full min-w-full shrink-0 snap-center snap-always items-stretch"
               aria-hidden={index !== activeIndex}
             >
               <TechnicalAtomMedia
                 atom={slide.atom}
-                className={className}
+                className="h-full w-full"
                 playing={playing && activeIndex === index}
                 onTogglePlay={() => {
                   if (activeIndex !== index) scrollToIndex(index)

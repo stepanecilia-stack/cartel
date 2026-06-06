@@ -35,7 +35,11 @@ function CoverImage({ src, className = '', fit = 'cover' }) {
     <img
       src={src}
       alt=""
-      className={`h-full w-full ${fit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
+      className={
+        fit === 'contain'
+          ? `block max-h-full max-w-full object-contain ${className}`
+          : `h-full w-full object-cover ${className}`
+      }
       loading="lazy"
       decoding="async"
     />
@@ -207,7 +211,11 @@ export default function TechnicalAtomMedia({
           key={media.src}
           ref={videoRef}
           src={media.src}
-          className={`h-full w-full bg-[#0f0f0f] ${letterbox ? 'object-contain' : 'object-cover'}`}
+          className={
+            letterbox
+              ? 'block max-h-full max-w-full object-contain'
+              : 'h-full w-full bg-[#0f0f0f] object-cover'
+          }
           muted={audioMuted}
           playsInline
           preload="auto"
@@ -227,7 +235,9 @@ export default function TechnicalAtomMedia({
     thumb = <StaticEmbedThumb />
   }
 
-  const frameClass = `relative overflow-hidden ${letterbox ? 'bg-[#0f0f0f]' : ''} ${className}`
+  const frameClass = letterbox
+    ? `relative flex items-center justify-center overflow-hidden bg-[#0f0f0f] ${className}`
+    : `relative overflow-hidden ${className}`
   const isClickable = !carouselSlide && (tapToPlayWebm || canPreview)
 
   const frameInner = (

@@ -362,7 +362,7 @@ export default function StudentLearnPage() {
             <div className="w-full rounded-lg bg-[#0f0f0f]">
               <TechnicalAtomMediaCarousel
                 atom={viewAtom}
-                className="aspect-[4/5] max-h-[min(70dvh,640px)] w-full sm:aspect-video"
+                className="h-[min(72dvh,680px)] w-full"
                 playing={playing}
                 onPlayingChange={setPlaying}
                 previewable
