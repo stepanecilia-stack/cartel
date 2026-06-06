@@ -4,6 +4,8 @@ import StaticEmbedThumb from './training/StaticEmbedThumb.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
 const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link', 'poster'])
+const PLAYBACK_RATE_NORMAL = 1
+const PLAYBACK_RATE_FAST = 1.25
 
 function PlayOverlay({ compact = false, onClick = null }) {
   const buttonClass = compact ? 'h-7 w-7' : 'h-14 w-14 sm:h-16 sm:w-16'
@@ -77,6 +79,35 @@ function CoverImage({ src, className = '', fit = 'cover' }) {
   )
 }
 
+function SpeedToggleButton({ fast, onToggle, prominent = false }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onToggle()
+      }}
+      className={`absolute z-[4] flex items-center justify-center rounded-full font-bold shadow-lg transition-transform active:scale-95 ${
+        prominent
+          ? `bottom-3 left-3 h-12 min-w-[3rem] px-2 text-[13px] sm:bottom-4 sm:left-4 sm:h-14 sm:min-w-[3.25rem] sm:text-sm ${
+              fast
+                ? 'bg-[#2d81e0] text-white ring-4 ring-[#2d81e0]/30'
+                : 'bg-white/95 text-[#2d81e0] ring-2 ring-white/60'
+            }`
+          : `bottom-1.5 left-1.5 h-8 min-w-[2.25rem] px-1.5 text-[11px] ${
+              fast ? 'bg-[#2d81e0] text-white' : 'bg-white/95 text-[#2d81e0]'
+            }`
+      }`}
+      aria-pressed={fast}
+      aria-label={fast ? 'Обычная скорость воспроизведения' : 'Ускорить воспроизведение до 1.25×'}
+      title={fast ? 'Скорость 1×' : 'Скорость 1.25×'}
+    >
+      {fast ? '1×' : '1.25×'}
+    </button>
+  )
+}
+
 function SoundToggleButton({ muted, onToggle, prominent = false }) {
   return (
     <button
@@ -136,6 +167,7 @@ function SoundToggleButton({ muted, onToggle, prominent = false }) {
  *   stopClickPropagation?: boolean,
  *   videoFit?: 'cover' | 'contain',
  *   showSoundToggle?: boolean,
+ *   showSpeedToggle?: boolean,
  *   carouselSlide?: boolean,
  * }} props
  */
@@ -150,11 +182,13 @@ export default function TechnicalAtomMedia({
   stopClickPropagation = true,
   videoFit = 'cover',
   showSoundToggle = false,
+  showSpeedToggle = false,
   carouselSlide = false,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [videoError, setVideoError] = useState(false)
   const [audioMuted, setAudioMuted] = useState(true)
+  const [playbackFast, setPlaybackFast] = useState(false)
   const videoRef = useRef(null)
   const media = resolveTechnicalAtomMedia(atom)
   const displayTitle = title ?? atom?.name ?? ''
@@ -167,10 +201,13 @@ export default function TechnicalAtomMedia({
   const showPlayOverlay = isWebm && !playing
   const shouldLoadVideo = isWebm && playing
   const showSoundControl = showSoundToggle && isWebm && playing && !videoError
+  const showSpeedControl = showSpeedToggle && isWebm && playing && !videoError
+  const playbackRate = playbackFast ? PLAYBACK_RATE_FAST : PLAYBACK_RATE_NORMAL
 
   useEffect(() => {
     setVideoError(false)
     setAudioMuted(true)
+    setPlaybackFast(false)
   }, [media.src])
 
   useEffect(() => {
@@ -178,14 +215,21 @@ export default function TechnicalAtomMedia({
     if (!video || !shouldLoadVideo) return
     video.loop = true
     video.muted = audioMuted
+    video.playbackRate = playbackRate
     void video.play().catch(() => {})
-  }, [playing, shouldLoadVideo, media.src, audioMuted])
+  }, [playing, shouldLoadVideo, media.src, audioMuted, playbackRate])
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
     video.muted = audioMuted
   }, [audioMuted])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    video.playbackRate = playbackRate
+  }, [playbackRate])
 
   useEffect(() => {
     const video = videoRef.current
@@ -299,6 +343,13 @@ export default function TechnicalAtomMedia({
           Пауза
         </button>
       ) : null}
+      {showSpeedControl ? (
+        <SpeedToggleButton
+          fast={playbackFast}
+          onToggle={() => setPlaybackFast((v) => !v)}
+          prominent={showSpeedToggle && !compactThumb}
+        />
+      ) : null}
       {showSoundControl ? (
         <SoundToggleButton
           muted={audioMuted}
@@ -307,7 +358,7 @@ export default function TechnicalAtomMedia({
         />
       ) : null}
       {showSoundControl && audioMuted && showSoundToggle && !compactThumb ? (
-        <span className="pointer-events-none absolute bottom-3 left-3 z-[3] rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300 sm:bottom-4 sm:left-4 sm:text-xs">
+        <span className="pointer-events-none absolute bottom-3 left-1/2 z-[3] -translate-x-1/2 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300 sm:bottom-4 sm:text-xs">
           Без звука
         </span>
       ) : null}

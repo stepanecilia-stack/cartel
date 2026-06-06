@@ -145,6 +145,7 @@ export default function TechnicalAtomMediaCarousel({
                 title={slide.label}
                 videoFit="contain"
                 showSoundToggle={slide.key === 'detail'}
+                showSpeedToggle={slide.key === 'detail'}
                 carouselSlide
               />
             </div>
