@@ -101,7 +101,6 @@ export default function TechnicalAtomMediaCarousel({
         onTogglePlay={() => onPlayingChange?.(!playing)}
         previewable={previewable}
         videoFit="contain"
-        showSoundToggle
       />
     )
   }
@@ -145,7 +144,7 @@ export default function TechnicalAtomMediaCarousel({
                 previewable={previewable}
                 title={slide.label}
                 videoFit="contain"
-                showSoundToggle
+                showSoundToggle={slide.key === 'detail'}
                 carouselSlide
               />
             </div>
