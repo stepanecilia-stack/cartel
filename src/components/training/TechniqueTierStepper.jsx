@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import TechnicalAtomMedia from '../TechnicalAtomMedia.jsx'
+import AtomStudyModal from '../AtomStudyModal.jsx'
 import { getAtomReinforcementTotal } from '../../utils/atomReinforcement.js'
 import {
   isAtomReinforceableInIsolation,
@@ -215,6 +216,7 @@ export default function TechniqueTierStepper({
   )
   const stripRef = useRef(null)
   const [playingAtomId, setPlayingAtomId] = useState(null)
+  const [studyOpen, setStudyOpen] = useState(false)
   const [pulseKey, setPulseKey] = useState(0)
 
   const progressSpotlightIndex = useMemo(() => {
@@ -250,6 +252,11 @@ export default function TechniqueTierStepper({
   const focusReinforceable = focusAtom ? isAtomReinforceableInIsolation(focusAtom) : false
 
   const nextAtom = safeValue < total ? atoms[safeValue] : null
+
+  useEffect(() => {
+    setStudyOpen(false)
+    setPlayingAtomId(null)
+  }, [focusAtom?.id])
 
   useEffect(() => {
     const el = stripRef.current
@@ -356,6 +363,15 @@ export default function TechniqueTierStepper({
                 </span>
               ) : null}
             </p>
+          ) : null}
+          {focusAtom ? (
+            <button
+              type="button"
+              onClick={() => setStudyOpen(true)}
+              className={`mt-1.5 w-full touch-manipulation rounded-md border border-[#2d81e0]/35 bg-[#ecf3fc] px-2 py-1.5 text-[10px] font-semibold text-[#2d81e0] active:bg-[#dceaf8] sm:text-[11px]`}
+            >
+              Смотреть как ученик
+            </button>
           ) : null}
         </div>
 
@@ -507,6 +523,8 @@ export default function TechniqueTierStepper({
           ) : null}
         </div>
       </div>
+
+      <AtomStudyModal open={studyOpen} onClose={() => setStudyOpen(false)} atom={focusAtom} />
     </div>
   )
 }

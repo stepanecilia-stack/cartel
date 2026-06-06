@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import TechnicalAtomMediaCarousel from '../components/TechnicalAtomMediaCarousel.jsx'
-import AtomBookSheet from '../components/student/AtomBookSheet.jsx'
+import AtomStudyPanel from '../components/AtomStudyPanel.jsx'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import {
   fetchStudentForPortalSession,
@@ -360,23 +359,7 @@ export default function StudentLearnPage() {
               </button>
             </div>
 
-            <div className="w-full rounded-lg bg-[#0f0f0f]">
-              <TechnicalAtomMediaCarousel
-                atom={viewAtom}
-                className="h-[min(72dvh,680px)] w-full"
-                playing={playing}
-                onPlayingChange={setPlaying}
-                previewable
-                autoPlay
-              />
-            </div>
-
-            <AtomBookSheet
-              number={viewAtom.number}
-              name={viewAtom.name}
-              description={viewAtom.howTo}
-              chainPreview={viewAtom.chainPreview}
-            />
+            <AtomStudyPanel atom={viewAtom} playing={playing} onPlayingChange={setPlaying} autoPlay />
 
             {canMark ? (
               <button

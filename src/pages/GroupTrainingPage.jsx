@@ -36,7 +36,7 @@ import StaticEmbedThumb from '../components/training/StaticEmbedThumb.jsx'
 import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import { buildCoachPracticeCatalogByTier } from '../utils/groupTrainingPractice.js'
 import { practiceGridThumbFrameClass } from '../utils/trainingAtomThumb.js'
-import MediaLightbox from '../components/MediaLightbox.jsx'
+import AtomStudyModal from '../components/AtomStudyModal.jsx'
 import { vk } from '../utils/vkUi.js'
 
 const SAVE_DEBOUNCE_MS = 350
@@ -78,56 +78,71 @@ function AtomCompactPreviewVisual({ atom, dense = false, playing = false, onTogg
   )
 }
 
-function PracticeCoachTile({ atom, playing, onActivate }) {
+function PracticeCoachTile({ atom, playing, onActivate, onOpenStudy }) {
   const hasMedia = hasLoopingPreviewMedia(atom)
   const playingThis = playing && hasMedia
 
   return (
-    <button
-      type="button"
-      onClick={() => onActivate(atom)}
-      className={`${practiceGridThumbFrameClass} touch-manipulation border-[#e7e8ec] bg-white text-left active:bg-[#f0f2f5] ${
+    <div
+      className={`${practiceGridThumbFrameClass} relative border-[#e7e8ec] bg-white ${
         playingThis ? 'ring-2 ring-[#2d81e0] ring-offset-1' : ''
       }`}
-      title={`#${atom.number ?? '—'} ${atom.name}`}
-      aria-label={
-        playingThis
-          ? `${atom.name}, на весь экран`
-          : hasMedia
-            ? `Воспроизвести: ${atom.name}`
-            : atom.name
-      }
     >
-      <span className="pointer-events-none absolute left-1 top-1 z-10 rounded bg-white/90 px-1 py-px text-[11px] font-semibold tabular-nums text-[#818c99] shadow-sm">
-        #{atom.number ?? '—'}
-      </span>
-      {hasMedia ? (
-        <TechnicalAtomMedia
-          atom={atom}
-          className="h-full w-full"
-          previewable={false}
-          playing={playingThis}
-          onTogglePlay={() => onActivate(atom)}
-          title={atom.name}
-        />
-      ) : (
-        <AtomCompactPreviewVisual atom={atom} dense />
-      )}
-      {atom.name ? (
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1.5 pb-1 pt-5 text-left">
-          <span className="line-clamp-2 text-[10px] font-medium leading-snug text-white drop-shadow-sm sm:text-[11px]">
-            {atom.name}
-          </span>
+      <button
+        type="button"
+        onClick={() => onActivate(atom)}
+        className="absolute inset-0 touch-manipulation text-left active:bg-[#f0f2f5]"
+        title={`#${atom.number ?? '—'} ${atom.name}`}
+        aria-label={
+          playingThis
+            ? `${atom.name}, полный просмотр`
+            : hasMedia
+              ? `Воспроизвести: ${atom.name}`
+              : atom.name
+        }
+      >
+        <span className="pointer-events-none absolute left-1 top-1 z-10 rounded bg-white/90 px-1 py-px text-[11px] font-semibold tabular-nums text-[#818c99] shadow-sm">
+          #{atom.number ?? '—'}
         </span>
-      ) : null}
-    </button>
+        {hasMedia ? (
+          <TechnicalAtomMedia
+            atom={atom}
+            className="h-full w-full"
+            previewable={false}
+            playing={playingThis}
+            onTogglePlay={() => onActivate(atom)}
+            title={atom.name}
+          />
+        ) : (
+          <AtomCompactPreviewVisual atom={atom} dense />
+        )}
+        {atom.name ? (
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-1.5 pb-1 pt-5 text-left">
+            <span className="line-clamp-2 text-[10px] font-medium leading-snug text-white drop-shadow-sm sm:text-[11px]">
+              {atom.name}
+            </span>
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        onClick={() => onOpenStudy(atom)}
+        className="absolute right-1 top-1 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-[#2d81e0] text-white shadow-md active:bg-[#2875cc]"
+        aria-label={`Полный просмотр: ${atom.name}`}
+        title="Смотреть как ученик"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5" aria-hidden>
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+        </svg>
+      </button>
+    </div>
   )
 }
 
 function GroupPracticeBlock({ practiceAtomsByTier, showHeader = true }) {
   const [viewTier, setViewTier] = useState(1)
   const [playingAtomId, setPlayingAtomId] = useState(null)
-  const [lightbox, setLightbox] = useState({ open: false, media: null, title: '' })
+  const [studyAtom, setStudyAtom] = useState(null)
 
   const atomTiers = useMemo(
     () =>
@@ -148,16 +163,21 @@ function GroupPracticeBlock({ practiceAtomsByTier, showHeader = true }) {
 
   const handleActivate = useCallback((atom) => {
     if (playingAtomId === atom.id) {
-      const media = resolveTechnicalAtomMedia(atom)
-      if (media.kind !== 'none') {
-        setLightbox({ open: true, media, title: atom.name ?? '' })
-      }
+      setPlayingAtomId(null)
+      setStudyAtom(atom)
       return
     }
     if (hasLoopingPreviewMedia(atom)) {
       setPlayingAtomId(atom.id)
+      return
     }
+    setStudyAtom(atom)
   }, [playingAtomId])
+
+  const handleOpenStudy = useCallback((atom) => {
+    setPlayingAtomId(null)
+    setStudyAtom(atom)
+  }, [])
 
   return (
     <section className={showHeader ? `${vk.cardPadded} space-y-2` : 'space-y-2'}>
@@ -165,7 +185,7 @@ function GroupPracticeBlock({ practiceAtomsByTier, showHeader = true }) {
         <header className="space-y-0.5">
           <h3 className={vk.h2}>Отработка приёмов</h3>
           <p className={vk.mutedXs}>
-            Справочник для тренера · 1-й тап — воспроизведение, повторный тап — на весь экран
+            1-й тап — превью на плитке · повторный тап или ↗ — полный просмотр как у ученика
           </p>
         </header>
       ) : null}
@@ -203,6 +223,7 @@ function GroupPracticeBlock({ practiceAtomsByTier, showHeader = true }) {
                   atom={atom}
                   playing={playingAtomId === atom.id}
                   onActivate={handleActivate}
+                  onOpenStudy={handleOpenStudy}
                 />
               ))}
             </div>
@@ -210,11 +231,10 @@ function GroupPracticeBlock({ practiceAtomsByTier, showHeader = true }) {
         </>
       )}
 
-      <MediaLightbox
-        open={lightbox.open}
-        onClose={() => setLightbox({ open: false, media: null, title: '' })}
-        media={lightbox.media ?? { kind: 'none', src: '' }}
-        title={lightbox.title}
+      <AtomStudyModal
+        open={Boolean(studyAtom)}
+        onClose={() => setStudyAtom(null)}
+        atom={studyAtom}
       />
     </section>
   )
