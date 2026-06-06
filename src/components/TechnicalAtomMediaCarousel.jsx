@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TechnicalAtomMedia from './TechnicalAtomMedia.jsx'
 import { resolveTechnicalAtomMediaSlides } from '../utils/technicalAtomMediaSlides.js'
 
+const SWIPE_THRESHOLD_PX = 48
+
 function CarouselNavButton({ direction, disabled, onClick, label }) {
   return (
     <button
@@ -38,8 +40,8 @@ export default function TechnicalAtomMediaCarousel({
   autoPlay = false,
 }) {
   const slides = useMemo(() => resolveTechnicalAtomMediaSlides(atom), [atom])
-  const scrollRef = useRef(null)
   const onPlayingChangeRef = useRef(onPlayingChange)
+  const touchStartXRef = useRef(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
   onPlayingChangeRef.current = onPlayingChange
@@ -55,8 +57,6 @@ export default function TechnicalAtomMediaCarousel({
 
   useEffect(() => {
     setActiveIndex(0)
-    const el = scrollRef.current
-    if (el) el.scrollLeft = 0
     if (autoPlay) {
       onPlayingChangeRef.current?.(slides[0]?.media?.kind === 'webm')
     } else {
@@ -64,28 +64,33 @@ export default function TechnicalAtomMediaCarousel({
     }
   }, [atom?.id, autoPlay, slides])
 
-  const scrollToIndex = useCallback(
+  const goToIndex = useCallback(
     (index) => {
-      const el = scrollRef.current
-      if (!el) return
       const next = Math.max(0, Math.min(index, slides.length - 1))
-      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' })
       setActiveIndex(next)
       syncPlaybackForIndex(next)
     },
     [slides.length, syncPlaybackForIndex],
   )
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current
-    if (!el || el.clientWidth <= 0) return
-    const next = Math.round(el.scrollLeft / el.clientWidth)
-    setActiveIndex((prev) => {
-      if (next === prev) return prev
-      syncPlaybackForIndex(next)
-      return next
-    })
-  }, [syncPlaybackForIndex])
+  const handleTouchStart = useCallback((event) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null
+  }, [])
+
+  const handleTouchEnd = useCallback(
+    (event) => {
+      const startX = touchStartXRef.current
+      touchStartXRef.current = null
+      if (startX == null) return
+      const endX = event.changedTouches[0]?.clientX
+      if (endX == null) return
+      const delta = endX - startX
+      if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return
+      if (delta < 0) goToIndex(activeIndex + 1)
+      else goToIndex(activeIndex - 1)
+    },
+    [activeIndex, goToIndex],
+  )
 
   if (slides.length <= 1) {
     return (
@@ -104,22 +109,29 @@ export default function TechnicalAtomMediaCarousel({
   const atStart = activeIndex <= 0
   const atEnd = activeIndex >= slides.length - 1
   const viewportClass = className || 'h-[min(72dvh,680px)] w-full'
+  const slideSharePct = 100 / slides.length
+  const trackOffsetPct = activeIndex * slideSharePct
 
   return (
     <div className="space-y-3">
-      <div className={`relative ${viewportClass}`}>
+      <div
+        className={`relative overflow-hidden ${viewportClass}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
-          style={{ touchAction: 'pan-x pinch-zoom' }}
-          aria-roledescription="carousel"
-          aria-label={`Медиа: ${atom?.name ?? 'приём'}`}
+          className="flex h-full transition-transform duration-300 ease-out"
+          style={{
+            width: `${slides.length * 100}%`,
+            transform: `translateX(-${trackOffsetPct}%)`,
+          }}
+          aria-live="polite"
         >
           {slides.map((slide, index) => (
             <div
               key={slide.key}
-              className="flex min-h-full min-w-full shrink-0 snap-center snap-always items-stretch"
+              className="h-full shrink-0"
+              style={{ width: `${slideSharePct}%` }}
               aria-hidden={index !== activeIndex}
             >
               <TechnicalAtomMedia
@@ -127,7 +139,7 @@ export default function TechnicalAtomMediaCarousel({
                 className="h-full w-full"
                 playing={playing && activeIndex === index}
                 onTogglePlay={() => {
-                  if (activeIndex !== index) scrollToIndex(index)
+                  if (activeIndex !== index) goToIndex(index)
                   onPlayingChange?.(!(playing && activeIndex === index))
                 }}
                 previewable={previewable}
@@ -143,7 +155,7 @@ export default function TechnicalAtomMediaCarousel({
         <button
           type="button"
           disabled={atStart}
-          onClick={() => scrollToIndex(activeIndex - 1)}
+          onClick={() => goToIndex(activeIndex - 1)}
           className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 sm:inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/90 bg-[#2d81e0]/95 text-white shadow-lg disabled:pointer-events-none disabled:opacity-0"
           aria-label="Предыдущее видео"
         >
@@ -154,7 +166,7 @@ export default function TechnicalAtomMediaCarousel({
         <button
           type="button"
           disabled={atEnd}
-          onClick={() => scrollToIndex(activeIndex + 1)}
+          onClick={() => goToIndex(activeIndex + 1)}
           className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 sm:inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/90 bg-[#2d81e0]/95 text-white shadow-lg disabled:pointer-events-none disabled:opacity-0"
           aria-label="Следующее видео"
         >
@@ -169,7 +181,7 @@ export default function TechnicalAtomMediaCarousel({
           <CarouselNavButton
             direction="prev"
             disabled={atStart}
-            onClick={() => scrollToIndex(activeIndex - 1)}
+            onClick={() => goToIndex(activeIndex - 1)}
             label="Предыдущее видео"
           />
           <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
@@ -178,7 +190,7 @@ export default function TechnicalAtomMediaCarousel({
                 <button
                   key={slide.key}
                   type="button"
-                  onClick={() => scrollToIndex(index)}
+                  onClick={() => goToIndex(index)}
                   className={`rounded-full transition-all ${
                     index === activeIndex
                       ? 'h-3 w-8 bg-[#2d81e0] shadow-sm'
@@ -199,7 +211,7 @@ export default function TechnicalAtomMediaCarousel({
           <CarouselNavButton
             direction="next"
             disabled={atEnd}
-            onClick={() => scrollToIndex(activeIndex + 1)}
+            onClick={() => goToIndex(activeIndex + 1)}
             label="Следующее видео"
           />
         </div>

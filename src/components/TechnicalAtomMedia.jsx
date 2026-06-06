@@ -5,16 +5,47 @@ import MediaLightbox from './MediaLightbox.jsx'
 
 const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link', 'poster'])
 
-function PlayOverlay({ compact = false }) {
+function PlayOverlay({ compact = false, onClick = null }) {
+  const buttonClass = compact ? 'h-7 w-7' : 'h-14 w-14 sm:h-16 sm:w-16'
+  const iconSize = compact ? 14 : 28
+
+  if (typeof onClick === 'function') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onClick()
+        }}
+        className="absolute inset-0 z-[3] flex items-center justify-center"
+        aria-label="Воспроизвести видео"
+      >
+        <span
+          className={`flex items-center justify-center rounded-full bg-white/95 text-[#2d81e0] shadow-lg ring-4 ring-white/40 ${buttonClass}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width={iconSize}
+            height={iconSize}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path d="M8 5v14l11-7L8 5z" />
+          </svg>
+        </span>
+      </button>
+    )
+  }
+
   return (
     <span
       className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center"
       aria-hidden
     >
       <span
-        className={`flex items-center justify-center rounded-full bg-white/90 text-[#2d81e0] shadow ${
-          compact ? 'h-7 w-7' : 'h-9 w-9'
-        }`}
+        className={`flex items-center justify-center rounded-full bg-white/90 text-[#2d81e0] shadow ${buttonClass}`}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -213,7 +244,7 @@ export default function TechnicalAtomMedia({
           src={media.src}
           className={
             letterbox
-              ? 'block max-h-full max-w-full object-contain'
+              ? 'absolute inset-0 h-full w-full object-contain'
               : 'h-full w-full bg-[#0f0f0f] object-cover'
           }
           muted={audioMuted}
@@ -225,25 +256,49 @@ export default function TechnicalAtomMedia({
         />
       )
     } else if (tierCoverSrc) {
-      thumb = <CoverImage src={tierCoverSrc} fit={videoFit} />
+      thumb = (
+        <div className={letterbox ? 'absolute inset-0 flex items-center justify-center' : 'h-full w-full'}>
+          <CoverImage src={tierCoverSrc} fit={videoFit} />
+        </div>
+      )
     } else {
       thumb = <StaticEmbedThumb className={videoError && playing ? 'bg-[#f0f2f5] text-[#818c99]' : ''} />
     }
   } else if (media.kind === 'poster') {
-    thumb = <CoverImage src={media.src} fit={videoFit} />
+    thumb = (
+      <div className={letterbox ? 'absolute inset-0 flex items-center justify-center' : 'h-full w-full'}>
+        <CoverImage src={media.src} fit={videoFit} />
+      </div>
+    )
   } else {
     thumb = <StaticEmbedThumb />
   }
 
   const frameClass = letterbox
-    ? `relative flex items-center justify-center overflow-hidden bg-[#0f0f0f] ${className}`
+    ? `relative overflow-hidden bg-[#0f0f0f] ${className}`
     : `relative overflow-hidden ${className}`
   const isClickable = !carouselSlide && (tapToPlayWebm || canPreview)
+  const carouselPlayHandler =
+    carouselSlide && tapToPlayWebm && !playing ? () => onTogglePlay?.() : null
 
   const frameInner = (
     <>
       {thumb}
-      {showPlayOverlay ? <PlayOverlay compact={compactThumb} /> : null}
+      {showPlayOverlay ? (
+        <PlayOverlay compact={compactThumb} onClick={carouselPlayHandler} />
+      ) : null}
+      {carouselSlide && tapToPlayWebm && playing ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePlay?.()
+          }}
+          className="absolute left-3 top-3 z-[4] rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm sm:text-xs"
+        >
+          Пауза
+        </button>
+      ) : null}
       {showSoundControl ? (
         <SoundToggleButton
           muted={audioMuted}
@@ -302,9 +357,7 @@ export default function TechnicalAtomMedia({
           {frameInner}
         </div>
       ) : (
-        <div className={frameClass} style={carouselSlide ? { touchAction: 'pan-x pinch-zoom' } : undefined}>
-          {frameInner}
-        </div>
+        <div className={frameClass}>{frameInner}</div>
       )}
       <MediaLightbox
         open={lightboxOpen}
