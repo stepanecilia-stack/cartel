@@ -359,7 +359,7 @@ export default function StudentLearnPage() {
               </button>
             </div>
 
-            <div className="w-full overflow-hidden rounded-lg bg-[#0f0f0f]">
+            <div className="w-full rounded-lg bg-[#0f0f0f]">
               <TechnicalAtomMediaCarousel
                 atom={viewAtom}
                 className="aspect-[4/5] max-h-[min(70dvh,640px)] w-full sm:aspect-video"

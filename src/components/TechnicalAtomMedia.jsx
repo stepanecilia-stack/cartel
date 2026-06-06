@@ -101,6 +101,7 @@ function SoundToggleButton({ muted, onToggle, prominent = false }) {
  *   stopClickPropagation?: boolean,
  *   videoFit?: 'cover' | 'contain',
  *   showSoundToggle?: boolean,
+ *   carouselSlide?: boolean,
  * }} props
  */
 export default function TechnicalAtomMedia({
@@ -114,6 +115,7 @@ export default function TechnicalAtomMedia({
   stopClickPropagation = true,
   videoFit = 'cover',
   showSoundToggle = false,
+  carouselSlide = false,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [videoError, setVideoError] = useState(false)
@@ -226,7 +228,7 @@ export default function TechnicalAtomMedia({
   }
 
   const frameClass = `relative overflow-hidden ${letterbox ? 'bg-[#0f0f0f]' : ''} ${className}`
-  const isClickable = tapToPlayWebm || canPreview
+  const isClickable = !carouselSlide && (tapToPlayWebm || canPreview)
 
   const frameInner = (
     <>
@@ -243,6 +245,18 @@ export default function TechnicalAtomMedia({
         <span className="pointer-events-none absolute bottom-3 left-3 z-[3] rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300 sm:bottom-4 sm:left-4 sm:text-xs">
           Без звука
         </span>
+      ) : null}
+      {carouselSlide && canPreview ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setLightboxOpen(true)
+          }}
+          className="pointer-events-auto absolute right-3 top-3 z-[4] rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm sm:text-xs"
+        >
+          На весь экран
+        </button>
       ) : null}
     </>
   )
@@ -278,7 +292,9 @@ export default function TechnicalAtomMedia({
           {frameInner}
         </div>
       ) : (
-        <div className={frameClass}>{frameInner}</div>
+        <div className={frameClass} style={carouselSlide ? { touchAction: 'pan-x pinch-zoom' } : undefined}>
+          {frameInner}
+        </div>
       )}
       <MediaLightbox
         open={lightboxOpen}

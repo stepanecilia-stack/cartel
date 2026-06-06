@@ -1,6 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TechnicalAtomMedia from './TechnicalAtomMedia.jsx'
 import { resolveTechnicalAtomMediaSlides } from '../utils/technicalAtomMediaSlides.js'
+
+function CarouselNavButton({ direction, disabled, onClick, label }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-[#2d81e0] bg-white text-[#2d81e0] shadow-md transition-transform active:scale-95 disabled:border-[#d3d9de] disabled:bg-[#f0f2f5] disabled:text-[#aeb7c2] disabled:shadow-none sm:h-12 sm:w-12"
+      aria-label={label}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6" aria-hidden>
+        {direction === 'prev' ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 18l6-6-6-6" />}
+      </svg>
+    </button>
+  )
+}
 
 /**
  * Горизонтальная карусель: демонстрация → подробное видео (если задано в каталоге).
@@ -21,57 +37,55 @@ export default function TechnicalAtomMediaCarousel({
   previewable = true,
   autoPlay = false,
 }) {
-  const slides = resolveTechnicalAtomMediaSlides(atom)
+  const slides = useMemo(() => resolveTechnicalAtomMediaSlides(atom), [atom])
   const scrollRef = useRef(null)
+  const onPlayingChangeRef = useRef(onPlayingChange)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const slideHasWebm = useCallback((index) => slides[index]?.media?.kind === 'webm', [slides])
+  onPlayingChangeRef.current = onPlayingChange
+
+  const syncPlaybackForIndex = useCallback(
+    (index) => {
+      if (!autoPlay) return
+      const kind = slides[index]?.media?.kind
+      onPlayingChangeRef.current?.(kind === 'webm')
+    },
+    [autoPlay, slides],
+  )
 
   useEffect(() => {
     setActiveIndex(0)
-    if (scrollRef.current) scrollRef.current.scrollLeft = 0
-    if (autoPlay && slideHasWebm(0)) {
-      onPlayingChange?.(true)
-    } else {
-      onPlayingChange?.(false)
-    }
-  }, [atom?.id, autoPlay, onPlayingChange, slideHasWebm])
-
-  useEffect(() => {
-    if (!autoPlay) return
-    if (slideHasWebm(activeIndex)) {
-      onPlayingChange?.(true)
-    } else {
-      onPlayingChange?.(false)
-    }
-  }, [activeIndex, autoPlay, onPlayingChange, slideHasWebm])
-
-  const scrollToIndex = useCallback((index) => {
     const el = scrollRef.current
-    if (!el) return
-    const next = Math.max(0, Math.min(index, slides.length - 1))
-    el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' })
-    setActiveIndex(next)
-    if (autoPlay && slides[next]?.media?.kind === 'webm') {
-      onPlayingChange?.(true)
+    if (el) el.scrollLeft = 0
+    if (autoPlay) {
+      onPlayingChangeRef.current?.(slides[0]?.media?.kind === 'webm')
     } else {
-      onPlayingChange?.(false)
+      onPlayingChangeRef.current?.(false)
     }
-  }, [slides, autoPlay, onPlayingChange])
+  }, [atom?.id, autoPlay, slides])
+
+  const scrollToIndex = useCallback(
+    (index) => {
+      const el = scrollRef.current
+      if (!el) return
+      const next = Math.max(0, Math.min(index, slides.length - 1))
+      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' })
+      setActiveIndex(next)
+      syncPlaybackForIndex(next)
+    },
+    [slides.length, syncPlaybackForIndex],
+  )
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el || el.clientWidth <= 0) return
     const next = Math.round(el.scrollLeft / el.clientWidth)
-    if (next !== activeIndex) {
-      setActiveIndex(next)
-      if (autoPlay && slides[next]?.media?.kind === 'webm') {
-        onPlayingChange?.(true)
-      } else {
-        onPlayingChange?.(false)
-      }
-    }
-  }, [activeIndex, autoPlay, onPlayingChange, slides])
+    setActiveIndex((prev) => {
+      if (next === prev) return prev
+      syncPlaybackForIndex(next)
+      return next
+    })
+  }, [syncPlaybackForIndex])
 
   if (slides.length <= 1) {
     return (
@@ -87,78 +101,108 @@ export default function TechnicalAtomMediaCarousel({
     )
   }
 
-  return (
-    <div className="space-y-2">
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        aria-roledescription="carousel"
-        aria-label={`Медиа: ${atom?.name ?? 'приём'}`}
-      >
-        {slides.map((slide, index) => (
-          <div
-            key={slide.key}
-            className="w-full shrink-0 snap-center"
-            aria-hidden={index !== activeIndex}
-          >
-            <TechnicalAtomMedia
-              atom={slide.atom}
-              className={className}
-              playing={playing && activeIndex === index}
-              onTogglePlay={() => {
-                if (activeIndex !== index) scrollToIndex(index)
-                onPlayingChange?.(!(playing && activeIndex === index))
-              }}
-              previewable={previewable}
-              title={slide.label}
-              videoFit="contain"
-              showSoundToggle
-            />
-          </div>
-        ))}
-      </div>
+  const atStart = activeIndex <= 0
+  const atEnd = activeIndex >= slides.length - 1
 
-      <div className="flex items-center justify-between gap-2 px-0.5">
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+          style={{ touchAction: 'pan-x pinch-zoom' }}
+          aria-roledescription="carousel"
+          aria-label={`Медиа: ${atom?.name ?? 'приём'}`}
+        >
+          {slides.map((slide, index) => (
+            <div
+              key={slide.key}
+              className="min-w-full shrink-0 snap-center snap-always"
+              aria-hidden={index !== activeIndex}
+            >
+              <TechnicalAtomMedia
+                atom={slide.atom}
+                className={className}
+                playing={playing && activeIndex === index}
+                onTogglePlay={() => {
+                  if (activeIndex !== index) scrollToIndex(index)
+                  onPlayingChange?.(!(playing && activeIndex === index))
+                }}
+                previewable={previewable}
+                title={slide.label}
+                videoFit="contain"
+                showSoundToggle
+                carouselSlide
+              />
+            </div>
+          ))}
+        </div>
+
         <button
           type="button"
-          disabled={activeIndex <= 0}
+          disabled={atStart}
           onClick={() => scrollToIndex(activeIndex - 1)}
-          className="min-w-[2rem] rounded-md px-2 py-1 text-[12px] font-medium text-[#2d81e0] disabled:opacity-30"
+          className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 sm:inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/90 bg-[#2d81e0]/95 text-white shadow-lg disabled:pointer-events-none disabled:opacity-0"
           aria-label="Предыдущее видео"
         >
-          ‹
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6" aria-hidden>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
         </button>
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <div className="flex items-center justify-center gap-1.5">
-            {slides.map((slide, index) => (
-              <button
-                key={slide.key}
-                type="button"
-                onClick={() => scrollToIndex(index)}
-                className={`h-2 w-2 rounded-full transition-colors ${
-                  index === activeIndex ? 'bg-[#2d81e0]' : 'bg-[#d3d9de]'
-                }`}
-                aria-label={`${slide.label}, ${index + 1} из ${slides.length}`}
-                aria-current={index === activeIndex ? 'true' : undefined}
-              />
-            ))}
-          </div>
-          <p className="truncate text-center text-[11px] font-medium text-[#818c99]">
-            {slides[activeIndex]?.label} · {activeIndex + 1}/{slides.length}
-          </p>
-        </div>
         <button
           type="button"
-          disabled={activeIndex >= slides.length - 1}
+          disabled={atEnd}
           onClick={() => scrollToIndex(activeIndex + 1)}
-          className="min-w-[2rem] rounded-md px-2 py-1 text-[12px] font-medium text-[#2d81e0] disabled:opacity-30"
+          className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 sm:inline-flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/90 bg-[#2d81e0]/95 text-white shadow-lg disabled:pointer-events-none disabled:opacity-0"
           aria-label="Следующее видео"
         >
-          ›
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6" aria-hidden>
+            <path d="M9 18l6-6-6-6" />
+          </svg>
         </button>
       </div>
-      <p className="px-0.5 text-center text-[10px] text-[#aeb7c2]">Смахните влево — подробное объяснение</p>
+
+      <div className="rounded-xl border border-[#e7e8ec] bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <CarouselNavButton
+            direction="prev"
+            disabled={atStart}
+            onClick={() => scrollToIndex(activeIndex - 1)}
+            label="Предыдущее видео"
+          />
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <div className="flex items-center justify-center gap-2">
+              {slides.map((slide, index) => (
+                <button
+                  key={slide.key}
+                  type="button"
+                  onClick={() => scrollToIndex(index)}
+                  className={`rounded-full transition-all ${
+                    index === activeIndex
+                      ? 'h-3 w-8 bg-[#2d81e0] shadow-sm'
+                      : 'h-3 w-3 bg-[#c5ccd3] hover:bg-[#aeb7c2]'
+                  }`}
+                  aria-label={`${slide.label}, ${index + 1} из ${slides.length}`}
+                  aria-current={index === activeIndex ? 'true' : undefined}
+                />
+              ))}
+            </div>
+            <p className="truncate text-center text-[13px] font-semibold text-[#2c2d2e]">
+              {slides[activeIndex]?.label}
+            </p>
+            <p className="text-center text-[11px] font-medium text-[#818c99]">
+              {activeIndex + 1} из {slides.length} · смахните влево
+            </p>
+          </div>
+          <CarouselNavButton
+            direction="next"
+            disabled={atEnd}
+            onClick={() => scrollToIndex(activeIndex + 1)}
+            label="Следующее видео"
+          />
+        </div>
+      </div>
     </div>
   )
 }
