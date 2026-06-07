@@ -8,20 +8,17 @@ import {
   saveStudentPortalKnowledge,
   saveStudentPortalOnboarding,
 } from '../services/studentPortalService.js'
-import { TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
 import {
   applyStudentKnowledgeMark,
   canStudentMarkKnowledge,
   countLeadingKnowledgeAtoms,
   countAtomsAtKnowledgeOrAbove,
-  hasStudentPortalKnowledgeProgress,
   resolveStudentPortalBrowseMaxIndex,
   resolveStudentPortalFocusIndex,
   resolveStudentPortalResumeTier,
   isAtomMarkedKnowledge,
   isTierCompleteForStudentPortal,
-  STUDENT_PORTAL_LEVEL,
 } from '../utils/studentPortalProgress.js'
 import { normalizePortalKnowledgeData } from '../utils/portalKnowledgeData.js'
 import { mapCombinationsToDisplayAtoms } from '../utils/techniqueCatalog.js'
@@ -29,12 +26,13 @@ import { readPortalSession, clearPortalSession } from '../utils/studentPortalAut
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
 import StudentPortalOnboardingWizard from '../components/student/StudentPortalOnboardingWizard.jsx'
+import StudentPersonaAvatar from '../components/student/StudentPersonaAvatar.jsx'
+import StudentPersonaBubble from '../components/student/StudentPersonaBubble.jsx'
 import {
   isPortalOnboardingComplete,
-  normalizePortalTrainingGoal,
+  normalizePortalTrainingGoals,
 } from '../constants/studentPortalOnboarding.js'
-
-const KNOWLEDGE_LABEL = TECH_DOMINANCE_OPTIONS.find((o) => o.key === STUDENT_PORTAL_LEVEL)?.label ?? 'Знание'
+import { getPortalPersona, normalizePortalPersonaId, formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
 
 function tierLabel(tier) {
   if (tier === 2) return 'Ур. 2'
@@ -56,6 +54,7 @@ export default function StudentLearnPage() {
   const [onboardingBusy, setOnboardingBusy] = useState(false)
   const [onboardingError, setOnboardingError] = useState('')
   const [guideOpen, setGuideOpen] = useState(false)
+  const [personaMessage, setPersonaMessage] = useState('')
   const [resumeReady, setResumeReady] = useState(false)
 
   useEffect(() => {
@@ -140,13 +139,6 @@ export default function StudentLearnPage() {
   const canMark =
     isViewingCurrentStep && viewAtom && canStudentMarkKnowledge(atomsForTier, portalKnowledgeData, viewAtom.id)
 
-  const portalSelfStudyStarted = hasStudentPortalKnowledgeProgress(
-    orderedL1,
-    orderedL2,
-    orderedL3,
-    portalKnowledgeData,
-  )
-
   useEffect(() => {
     if (!student?.id || resumeReady) return
     const pk = normalizePortalKnowledgeData(student.portalKnowledgeData)
@@ -170,14 +162,24 @@ export default function StudentLearnPage() {
     setPlaying(false)
   }, [tier, student?.id, orderedL1, orderedL2, orderedL3, resumeReady])
 
+  const portalPersonaId = normalizePortalPersonaId(student?.portalPersonaId)
+  const persona = getPortalPersona(portalPersonaId)
+
+  useEffect(() => {
+    if (!personaMessage) return undefined
+    const t = window.setTimeout(() => setPersonaMessage(''), 4000)
+    return () => window.clearTimeout(t)
+  }, [personaMessage])
+
   const handleMark = useCallback(async () => {
     if (!student?.id || !focusAtom || !canMark) return
     setSaving(true)
     setSaveError('')
+    setPersonaMessage('')
     try {
       const { ok, next } = applyStudentKnowledgeMark(portalKnowledgeData, focusAtom.id, atomsForTier)
       if (!ok) {
-        setSaveError('Сначала завершите предыдущий приём.')
+        setPersonaMessage(persona.phrases.markBlocked)
         return
       }
       const saved = await saveStudentPortalKnowledge(student.id, next)
@@ -185,13 +187,15 @@ export default function StudentLearnPage() {
       const nextFocus = resolveStudentPortalFocusIndex(atomsForTier, saved)
       setViewIndex(nextFocus)
       setPlaying(false)
+      setPersonaMessage(persona.phrases.markOk)
     } catch (e) {
       console.error(e)
       setSaveError(formatFirestoreErrorMessage(e, { context: 'student_portal' }) || 'Не удалось сохранить.')
+      setPersonaMessage(persona.phrases.markSaveFail)
     } finally {
       setSaving(false)
     }
-  }, [student?.id, focusAtom, canMark, portalKnowledgeData, atomsForTier])
+  }, [student?.id, focusAtom, canMark, portalKnowledgeData, atomsForTier, persona])
 
   const handleLogout = async () => {
     await logoutStudentPortal()
@@ -199,17 +203,18 @@ export default function StudentLearnPage() {
   }
 
   const handleOnboardingComplete = useCallback(
-    async ({ goal }) => {
+    async ({ goals, personaId }) => {
       if (!student?.id) return
       setOnboardingBusy(true)
       setOnboardingError('')
       try {
-        await saveStudentPortalOnboarding(student.id, { goal })
+        const saved = await saveStudentPortalOnboarding(student.id, { goals, personaId })
         setStudent((prev) =>
           prev
             ? {
                 ...prev,
-                portalTrainingGoal: goal ?? prev.portalTrainingGoal,
+                portalTrainingGoals: saved.goals,
+                portalPersonaId: saved.personaId,
                 portalOnboardingCompletedAt: new Date().toISOString(),
               }
             : prev,
@@ -232,7 +237,9 @@ export default function StudentLearnPage() {
   }, [])
 
   const onboardingComplete = isPortalOnboardingComplete(student)
-  const portalGoal = normalizePortalTrainingGoal(student?.portalTrainingGoal)
+  const portalGoals = normalizePortalTrainingGoals(
+    student?.portalTrainingGoals ?? student?.portalTrainingGoal,
+  )
 
   if (!session?.studentId) return null
 
@@ -281,7 +288,8 @@ export default function StudentLearnPage() {
           </header>
           <StudentPortalOnboardingWizard
             mode="full"
-            initialGoal={portalGoal}
+            initialGoals={portalGoals}
+            initialPersonaId={student?.portalPersonaId}
             busy={onboardingBusy}
             error={onboardingError}
             onComplete={handleOnboardingComplete}
@@ -314,9 +322,11 @@ export default function StudentLearnPage() {
     <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
       <div className="mx-auto w-full max-w-2xl space-y-2">
         <header className="flex flex-wrap items-center gap-2">
+          <StudentPersonaAvatar personaId={portalPersonaId} size="lg" />
           <div className="min-w-0 flex-1">
             <h1 className={vk.h1Lg}>Моя программа</h1>
-            <p className={vk.mutedXs}>{name}</p>
+            <p className="text-[13px] font-bold leading-tight text-[#2c2d2e]">{formatPortalPersonaName(persona)}</p>
+            <p className={vk.mutedXs}>{persona.roleLabel}</p>
           </div>
           <div className="flex shrink-0 gap-1.5">
             <button
@@ -362,21 +372,8 @@ export default function StudentLearnPage() {
           })}
         </nav>
 
-        {tier === 2 && !isTierCompleteForStudentPortal(orderedL1, portalKnowledgeData) ? (
-          <p className={vk.mutedXs}>
-            Ур. 2 откроется после того, как вы сами отметите «{KNOWLEDGE_LABEL}» по всей программе (ур. 1).
-          </p>
-        ) : null}
-
-        {!portalSelfStudyStarted ? (
-          <p className={`${vk.notice} text-[12px] leading-snug`}>
-            Это ваше самостоятельное обучение. Отметки тренера в зале здесь не засчитываются — пройдите
-            программу с первого приёма и отмечайте «Понял» сами.
-          </p>
-        ) : null}
-
         {!tierUnlocked[tier] ? (
-          <p className={vk.mutedXs}>Сначала завершите предыдущий этап или отметьте его приёмы.</p>
+          <StudentPersonaBubble personaId={portalPersonaId} message={persona.phrases.tierLocked} />
         ) : total === 0 ? (
           <p className={vk.mutedXs}>На этом этапе пока нет элементов.</p>
         ) : viewAtom ? (
@@ -387,13 +384,6 @@ export default function StudentLearnPage() {
               </span>
               <span className={vk.mutedXs}>{tierLabel(tier)}</span>
             </div>
-
-            {tierComplete ? (
-              <p className="text-[13px] font-medium text-[#4bb34b]">
-                Этап пройден. Листайте «Назад» / «Далее» для повторения
-                {tier < 3 ? ' или откройте следующую вкладку.' : '.'}
-              </p>
-            ) : null}
 
             <div className="flex items-center justify-between gap-2">
               <button
@@ -426,6 +416,10 @@ export default function StudentLearnPage() {
 
             <AtomStudyPanel atom={viewAtom} playing={playing} onPlayingChange={setPlaying} autoPlay />
 
+            {personaMessage ? (
+              <StudentPersonaBubble personaId={portalPersonaId} message={personaMessage} compact />
+            ) : null}
+
             {canMark ? (
               <button
                 type="button"
@@ -433,18 +427,9 @@ export default function StudentLearnPage() {
                 onClick={() => void handleMark()}
                 className={`w-full ${vk.btnPrimary}`}
               >
-                {saving ? 'Сохранение…' : `Понял — отметить «${KNOWLEDGE_LABEL}» и далее`}
+                {saving ? 'Сохранение…' : 'Понял'}
               </button>
-            ) : tierComplete ? (
-              <p className={vk.mutedXs}>Повторение материала. Отметка «Понял» уже не нужна на этом этапе.</p>
-            ) : isViewingCurrentStep && viewAtomMarked ? (
-              <p className={vk.mutedXs}>Этот приём уже отмечен. Листайте дальше или вернитесь к программе.</p>
-            ) : (
-              <p className={vk.mutedXs}>
-                Повторение. «Понял» — только на текущем шаге
-                {focusAtom ? ` (#${focusAtom.number})` : ''}.
-              </p>
-            )}
+            ) : null}
 
             {saveError ? <p className={vk.error}>{saveError}</p> : null}
           </section>

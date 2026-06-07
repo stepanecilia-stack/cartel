@@ -56,7 +56,8 @@ export function inferUpdateSectionFromPayload(payload) {
   if (
     keys.every((k) =>
       [
-        'portalTrainingGoal',
+        'portalTrainingGoals',
+        'portalPersonaId',
         'portalOnboardingCompletedAt',
         'portalLastActivityAt',
         'updatedAt',

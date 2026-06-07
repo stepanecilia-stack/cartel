@@ -12,7 +12,8 @@ import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.j
 import { mapCombinationsToDisplayAtoms } from '../../utils/techniqueCatalog.js'
 import { summarizeStudentPortalProgress } from '../../utils/studentPortalProgress.js'
 import { normalizePortalKnowledgeData } from '../../utils/portalKnowledgeData.js'
-import { isPortalOnboardingComplete, trainingGoalLabel } from '../../constants/studentPortalOnboarding.js'
+import { isPortalOnboardingComplete, trainingGoalsLabels } from '../../constants/studentPortalOnboarding.js'
+import { portalPersonaDisplayName } from '../../constants/studentPortalPersonas.js'
 import { vk } from '../../utils/vkUi.js'
 
 /**
@@ -37,7 +38,8 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     return summarizeStudentPortalProgress(orderedLevel1, orderedLevel2, orderedL3, pk)
   }, [student?.portalKnowledgeData, orderedLevel1, orderedLevel2, orderedL3])
 
-  const goalLabel = trainingGoalLabel(student?.portalTrainingGoal)
+  const goalLabels = trainingGoalsLabels(student?.portalTrainingGoals ?? student?.portalTrainingGoal)
+  const personaLabel = portalPersonaDisplayName(student?.portalPersonaId)
   const onboardingDone = isPortalOnboardingComplete(student)
 
   const runEnable = useCallback(async () => {
@@ -165,11 +167,12 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
         )}
         {onboardingDone ? (
           <p className={`mt-1.5 ${vk.mutedXs}`}>
-            Онбординг пройден
-            {goalLabel ? (
+            Онбординг пройден · виртуальный наставник:{' '}
+            <span className="font-medium text-[#2c2d2e]">{personaLabel}</span>
+            {goalLabels.length > 0 ? (
               <>
                 {' '}
-                · цель: <span className="font-medium text-[#2c2d2e]">{goalLabel}</span>
+                · цели: <span className="font-medium text-[#2c2d2e]">{goalLabels.join(', ')}</span>
               </>
             ) : null}
           </p>

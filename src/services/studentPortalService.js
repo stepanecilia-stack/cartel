@@ -17,6 +17,8 @@ import {
   writePortalSession,
 } from '../utils/studentPortalAuth.js'
 import { normalizePortalKnowledgeDataForSave } from '../utils/portalKnowledgeData.js'
+import { normalizePortalTrainingGoals } from '../constants/studentPortalOnboarding.js'
+import { normalizePortalPersonaId } from '../constants/studentPortalPersonas.js'
 import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
 import { ensureAuth, ensureDb } from './firebaseService.js'
 
@@ -269,16 +271,18 @@ export async function saveStudentPortalKnowledge(studentId, portalKnowledgeData)
   return normalized
 }
 
-/** Завершение онбординга кабинета (цель + отметка прохождения). */
-export async function saveStudentPortalOnboarding(studentId, { goal }) {
+/** Завершение онбординга кабинета (цели, наставник, отметка прохождения). */
+export async function saveStudentPortalOnboarding(studentId, { goals, personaId }) {
   await ensureStudentPortalAnonymousUser()
-  const goalId = typeof goal === 'string' && goal.trim() ? goal.trim() : null
+  const normalizedGoals = normalizePortalTrainingGoals(goals)
+  const normalizedPersona = normalizePortalPersonaId(personaId)
   await updateDoc(doc(ensureDb(), 'students', studentId), {
-    ...(goalId ? { portalTrainingGoal: goalId } : {}),
+    portalTrainingGoals: normalizedGoals,
+    portalPersonaId: normalizedPersona,
     portalOnboardingCompletedAt: serverTimestamp(),
     portalLastActivityAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),
   })
-  return { goal: goalId }
+  return { goals: normalizedGoals, personaId: normalizedPersona }
 }

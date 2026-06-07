@@ -1,25 +1,10 @@
-/** Варианты цели — черновик для обсуждения с тренером (легко менять id/тексты). */
+/** Цели занятий — можно выбрать несколько. */
 export const TRAINING_GOAL_OPTIONS = [
-  {
-    id: 'technique',
-    title: 'Освоить технику',
-    subtitle: 'Понять каждый приём по программе Cartel',
-  },
-  {
-    id: 'stronger',
-    title: 'Стать сильнее',
-    subtitle: 'Нормативы, физика, выносливость',
-  },
-  {
-    id: 'ring',
-    title: 'Выйти на ринг',
-    subtitle: 'Спарринги и соревнования',
-  },
-  {
-    id: 'explore',
-    title: 'Пока разбираюсь',
-    subtitle: 'Занимаюсь и смотрю, куда расти',
-  },
+  { id: 'boxing_from_zero', title: 'Научиться боксу с нуля' },
+  { id: 'fitness', title: 'Улучшить физическую форму' },
+  { id: 'competition', title: 'Подготовиться к соревнованиям' },
+  { id: 'self_defense', title: 'Научиться защищаться' },
+  { id: 'child_martial', title: 'Подготовить ребенка к занятиям единоборствами' },
 ]
 
 export const MOTOR_SKILL_STAGES = [
@@ -33,26 +18,27 @@ export const KNOWLEDGE_THREE_IMAGES = [
   {
     key: 'logic',
     title: 'Логический образ',
-    text: 'Понимаешь, почему приём делается именно так — можешь объяснить своими словами.',
+    text: 'Ты понимаешь, почему элемент выполняется именно так, и можешь объяснить своими словами.',
   },
   {
     key: 'vision',
     title: 'Зрительный образ',
-    text: 'Видишь правильное выполнение: ролик, демонстрация, картинка в голове.',
+    text: 'Ты четко представляешь / видишь правильное выполнение: в памяти, на видео или в исполнении тренера.',
   },
   {
     key: 'kinesthesia',
     title: 'Кинестетика',
-    text: 'Прочувствовал движение телом — знаешь, какие мышцы работают.',
+    text: 'Кинестетический образ — ты прочувствовал элемент своими мышцами и можешь воспроизвести его по ощущениям тела.',
   },
 ]
 
-/** @typedef {'welcome' | 'goal' | 'path' | 'knowledge-what' | 'logic' | 'vision' | 'kinesthesia' | 'knowledge-rule'} OnboardingStepId */
+/** @typedef {'welcome' | 'goal' | 'persona' | 'path' | 'knowledge-what' | 'logic' | 'vision' | 'kinesthesia' | 'knowledge-rule'} OnboardingStepId */
 
 /** @type {OnboardingStepId[]} */
 export const ONBOARDING_STEP_ORDER = [
   'welcome',
   'goal',
+  'persona',
   'path',
   'knowledge-what',
   'logic',
@@ -61,14 +47,21 @@ export const ONBOARDING_STEP_ORDER = [
   'knowledge-rule',
 ]
 
-/** Шаги «Как учить» без выбора цели. */
-export const KNOWLEDGE_GUIDE_STEP_ORDER = ONBOARDING_STEP_ORDER.filter((id) => id !== 'welcome' && id !== 'goal')
+export const KNOWLEDGE_GUIDE_STEP_ORDER = ONBOARDING_STEP_ORDER.filter(
+  (id) => id !== 'welcome' && id !== 'goal' && id !== 'persona',
+)
+
+const GOAL_IDS = new Set(TRAINING_GOAL_OPTIONS.map((o) => o.id))
 
 /** @param {unknown} raw */
-export function normalizePortalTrainingGoal(raw) {
-  const id = typeof raw === 'string' ? raw.trim() : ''
-  if (!id) return null
-  return TRAINING_GOAL_OPTIONS.some((o) => o.id === id) ? id : null
+export function normalizePortalTrainingGoals(raw) {
+  const list = Array.isArray(raw) ? raw : typeof raw === 'string' && raw.trim() ? [raw.trim()] : []
+  const out = []
+  for (const item of list) {
+    const id = typeof item === 'string' ? item.trim() : ''
+    if (id && GOAL_IDS.has(id) && !out.includes(id)) out.push(id)
+  }
+  return out
 }
 
 /** @param {object | null | undefined} student */
@@ -76,9 +69,14 @@ export function isPortalOnboardingComplete(student) {
   return Boolean(student?.portalOnboardingCompletedAt)
 }
 
-/** @param {string | null | undefined} goalId */
+/** @param {unknown} goalsRaw */
+export function trainingGoalsLabels(goalsRaw) {
+  const ids = normalizePortalTrainingGoals(goalsRaw)
+  if (ids.length === 0) return []
+  return ids.map((id) => TRAINING_GOAL_OPTIONS.find((o) => o.id === id)?.title).filter(Boolean)
+}
+
+/** @deprecated одиночная цель — для старых карточек */
 export function trainingGoalLabel(goalId) {
-  const id = normalizePortalTrainingGoal(goalId)
-  if (!id) return null
-  return TRAINING_GOAL_OPTIONS.find((o) => o.id === id)?.title ?? null
+  return trainingGoalsLabels(goalId)[0] ?? null
 }

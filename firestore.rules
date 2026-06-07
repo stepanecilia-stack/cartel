@@ -63,7 +63,7 @@ service cloud.firestore {
 
     function studentPortalOnboardingOnly() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'portalTrainingGoal', 'portalOnboardingCompletedAt', 'portalLastActivityAt',
+        'portalTrainingGoals', 'portalPersonaId', 'portalOnboardingCompletedAt', 'portalLastActivityAt',
         'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
       ]);
     }
