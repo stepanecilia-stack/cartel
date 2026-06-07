@@ -61,6 +61,13 @@ service cloud.firestore {
       ]);
     }
 
+    function studentPortalOnboardingOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'portalTrainingGoal', 'portalOnboardingCompletedAt', 'portalLastActivityAt',
+        'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+      ]);
+    }
+
     /** Тренер добавляет себя в coach_ids по коду (ещё без read карточки). */
     function coachJoinStudentByCodeOk() {
       return request.auth != null
@@ -97,7 +104,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         coachCanAccessStudent()
         || coachJoinStudentByCodeOk()
-        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalLoginFieldsOnly()))
+        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalOnboardingOnly() || studentPortalLoginFieldsOnly()))
         || (studentPortalBindOk() && studentPortalLoginFieldsOnly())
         || studentPortalLoginRebind()
       );

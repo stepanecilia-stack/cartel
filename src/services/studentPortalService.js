@@ -268,3 +268,17 @@ export async function saveStudentPortalKnowledge(studentId, portalKnowledgeData)
   })
   return normalized
 }
+
+/** Завершение онбординга кабинета (цель + отметка прохождения). */
+export async function saveStudentPortalOnboarding(studentId, { goal }) {
+  await ensureStudentPortalAnonymousUser()
+  const goalId = typeof goal === 'string' && goal.trim() ? goal.trim() : null
+  await updateDoc(doc(ensureDb(), 'students', studentId), {
+    ...(goalId ? { portalTrainingGoal: goalId } : {}),
+    portalOnboardingCompletedAt: serverTimestamp(),
+    portalLastActivityAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+    updatedAt: serverTimestamp(),
+  })
+  return { goal: goalId }
+}

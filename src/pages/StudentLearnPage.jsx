@@ -6,6 +6,7 @@ import {
   fetchStudentForPortalSession,
   logoutStudentPortal,
   saveStudentPortalKnowledge,
+  saveStudentPortalOnboarding,
 } from '../services/studentPortalService.js'
 import { TECH_DOMINANCE_OPTIONS } from '../utils/ksrUtils.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
@@ -27,11 +28,11 @@ import { mapCombinationsToDisplayAtoms } from '../utils/techniqueCatalog.js'
 import { readPortalSession, clearPortalSession } from '../utils/studentPortalAuth.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
-import StudentKnowledgeIntro from '../components/student/StudentKnowledgeIntro.jsx'
+import StudentPortalOnboardingWizard from '../components/student/StudentPortalOnboardingWizard.jsx'
 import {
-  dismissStudentKnowledgeIntro,
-  isStudentKnowledgeIntroDismissed,
-} from '../constants/studentPortalKnowledgeGuide.js'
+  isPortalOnboardingComplete,
+  normalizePortalTrainingGoal,
+} from '../constants/studentPortalOnboarding.js'
 
 const KNOWLEDGE_LABEL = TECH_DOMINANCE_OPTIONS.find((o) => o.key === STUDENT_PORTAL_LEVEL)?.label ?? 'Знание'
 
@@ -52,7 +53,9 @@ export default function StudentLearnPage() {
   const [loadError, setLoadError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [introOpen, setIntroOpen] = useState(false)
+  const [onboardingBusy, setOnboardingBusy] = useState(false)
+  const [onboardingError, setOnboardingError] = useState('')
+  const [guideOpen, setGuideOpen] = useState(false)
   const [resumeReady, setResumeReady] = useState(false)
 
   useEffect(() => {
@@ -154,9 +157,6 @@ export default function StudentLearnPage() {
     setTier(resumeTier)
     setViewIndex(complete ? 0 : fi)
     setPlaying(false)
-    const seenIntro = isStudentKnowledgeIntroDismissed(student.id)
-    const hasProgress = hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, pk)
-    setIntroOpen(!seenIntro && !hasProgress)
     setResumeReady(true)
   }, [student, orderedL1, orderedL2, orderedL3, resumeReady])
 
@@ -198,6 +198,42 @@ export default function StudentLearnPage() {
     navigate('/student-login', { replace: true })
   }
 
+  const handleOnboardingComplete = useCallback(
+    async ({ goal }) => {
+      if (!student?.id) return
+      setOnboardingBusy(true)
+      setOnboardingError('')
+      try {
+        await saveStudentPortalOnboarding(student.id, { goal })
+        setStudent((prev) =>
+          prev
+            ? {
+                ...prev,
+                portalTrainingGoal: goal ?? prev.portalTrainingGoal,
+                portalOnboardingCompletedAt: new Date().toISOString(),
+              }
+            : prev,
+        )
+        setGuideOpen(false)
+      } catch (e) {
+        console.error(e)
+        setOnboardingError(
+          formatFirestoreErrorMessage(e, { context: 'student_portal' }) || 'Не удалось сохранить.',
+        )
+      } finally {
+        setOnboardingBusy(false)
+      }
+    },
+    [student?.id],
+  )
+
+  const handleGuideComplete = useCallback(async () => {
+    setGuideOpen(false)
+  }, [])
+
+  const onboardingComplete = isPortalOnboardingComplete(student)
+  const portalGoal = normalizePortalTrainingGoal(student?.portalTrainingGoal)
+
   if (!session?.studentId) return null
 
   if (loadError) {
@@ -234,14 +270,8 @@ export default function StudentLearnPage() {
   }
 
   const name = displayNameFromStudent(student)
-  const introSeen = isStudentKnowledgeIntroDismissed(student.id)
 
-  const handleIntroContinue = () => {
-    if (!introSeen) dismissStudentKnowledgeIntro(student.id)
-    setIntroOpen(false)
-  }
-
-  if (introOpen) {
+  if (!onboardingComplete) {
     return (
       <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
         <div className="mx-auto w-full max-w-2xl space-y-2">
@@ -249,10 +279,32 @@ export default function StudentLearnPage() {
             <h1 className={vk.h1Lg}>Моя программа</h1>
             <p className={vk.mutedXs}>{name}</p>
           </header>
-          <StudentKnowledgeIntro
-            onContinue={handleIntroContinue}
-            continueLabel={introSeen ? 'Закрыть' : 'Понятно — начать с первого приёма'}
+          <StudentPortalOnboardingWizard
+            mode="full"
+            initialGoal={portalGoal}
+            busy={onboardingBusy}
+            error={onboardingError}
+            onComplete={handleOnboardingComplete}
           />
+        </div>
+      </main>
+    )
+  }
+
+  if (guideOpen) {
+    return (
+      <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
+        <div className="mx-auto w-full max-w-2xl space-y-2">
+          <header className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h1 className={vk.h1Lg}>Как учить</h1>
+              <p className={vk.mutedXs}>{name}</p>
+            </div>
+            <button type="button" onClick={() => setGuideOpen(false)} className={vk.btnSecondary}>
+              К программе
+            </button>
+          </header>
+          <StudentPortalOnboardingWizard mode="guide" onComplete={handleGuideComplete} />
         </div>
       </main>
     )
@@ -269,7 +321,7 @@ export default function StudentLearnPage() {
           <div className="flex shrink-0 gap-1.5">
             <button
               type="button"
-              onClick={() => setIntroOpen(true)}
+              onClick={() => setGuideOpen(true)}
               className={`${vk.btnSecondary} text-[12px]`}
             >
               Как учить
