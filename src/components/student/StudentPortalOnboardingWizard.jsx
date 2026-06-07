@@ -4,13 +4,12 @@ import {
   MOTOR_SKILL_STAGES,
   ONBOARDING_STEP_ORDER,
   KNOWLEDGE_GUIDE_STEP_ORDER,
-  TRAINING_GOAL_OPTIONS,
   normalizePortalTrainingGoals,
 } from '../../constants/studentPortalOnboarding.js'
 import { formatPortalPersonaName, normalizePortalPersonaId, PORTAL_PERSONAS } from '../../constants/studentPortalPersonas.js'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import StudentReceptionMonologue from './StudentReceptionMonologue.jsx'
-import StudentPortalReception from './StudentPortalReception.jsx'
+import StudentReceptionQuestionnaire from './StudentReceptionQuestionnaire.jsx'
 import { vk } from '../../utils/vkUi.js'
 
 const highlight = 'font-semibold text-[#2d81e0]'
@@ -41,6 +40,8 @@ export default function StudentPortalOnboardingWizard({
   const stepId = steps[stepIndex] ?? steps[0]
   const isLast = stepIndex >= steps.length - 1
   const isWelcome = stepId === 'welcome'
+  const isGoal = stepId === 'goal'
+  const isImmersive = isWelcome || isGoal
 
   const toggleGoal = (id) => {
     setGoals((prev) => {
@@ -62,37 +63,13 @@ export default function StudentPortalOnboardingWizard({
         }
       case 'goal':
         return {
-          title: 'Выберите одну или несколько целей занятий',
+          title: '',
           body: (
-            <ul className="space-y-1.5">
-              {TRAINING_GOAL_OPTIONS.map((option) => {
-                const selected = goals.has(option.id)
-                return (
-                  <li key={option.id}>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => toggleGoal(option.id)}
-                      className={`flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                        selected
-                          ? 'border-[#2d81e0] bg-[#ecf3fc] ring-1 ring-[#2d81e0]/20'
-                          : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
-                          selected ? 'border-[#2d81e0] bg-[#2d81e0] text-white' : 'border-[#c5d0db] bg-white'
-                        }`}
-                        aria-hidden
-                      >
-                        {selected ? '✓' : ''}
-                      </span>
-                      <span className="text-[14px] font-semibold text-[#2c2d2e]">{option.title}</span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+            <StudentReceptionQuestionnaire
+              selectedGoals={goals}
+              onToggleGoal={toggleGoal}
+              disabled={busy}
+            />
           ),
           action: 'Дальше',
           canAdvance: goals.size > 0,
@@ -252,7 +229,7 @@ export default function StudentPortalOnboardingWizard({
   )
 
   const actions = (
-    <div className={`flex gap-2 ${isWelcome ? 'pt-1' : ''}`}>
+    <div className={`flex gap-2 ${isImmersive ? 'pt-1' : ''}`}>
       {stepIndex > 0 ? (
         <button type="button" disabled={busy} onClick={handleBack} className={`flex-1 ${vk.btnSecondary}`}>
           Назад
@@ -269,7 +246,7 @@ export default function StudentPortalOnboardingWizard({
     </div>
   )
 
-  if (isWelcome) {
+  if (isImmersive) {
     return (
       <div className="space-y-3">
         {progressBar}
