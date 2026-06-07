@@ -6,7 +6,7 @@ import { vk } from '../../utils/vkUi.js'
  * @param {{ showSubtitle?: boolean, className?: string }} props
  */
 export default function StudentPortalReception({ showSubtitle = true, className = '' }) {
-  const { sceneSrc, adminName, adminTitle, welcomeTitle, welcomeSubtitle } = STUDENT_PORTAL_RECEPTION
+  const { sceneSrc, adminName, adminRole, welcomeTitle, welcomeSubtitle } = STUDENT_PORTAL_RECEPTION
 
   return (
     <div className={`overflow-hidden rounded-[10px] border border-[#e7e8ec] bg-white ${className}`}>
@@ -23,7 +23,7 @@ export default function StudentPortalReception({ showSubtitle = true, className 
 
       <div className="space-y-1.5 p-3 sm:p-4">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-[#2d81e0] sm:text-[11px]">
-          {adminTitle}
+          {adminRole}
         </p>
         <h2 className="text-[15px] font-semibold leading-snug text-[#2c2d2e] sm:text-[16px]">{welcomeTitle}</h2>
         {showSubtitle ? (

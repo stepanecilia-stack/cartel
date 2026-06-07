@@ -9,6 +9,7 @@ import {
 } from '../../constants/studentPortalOnboarding.js'
 import { formatPortalPersonaName, normalizePortalPersonaId, PORTAL_PERSONAS } from '../../constants/studentPortalPersonas.js'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
+import StudentReceptionMonologue from './StudentReceptionMonologue.jsx'
 import StudentPortalReception from './StudentPortalReception.jsx'
 import { vk } from '../../utils/vkUi.js'
 
@@ -55,8 +56,8 @@ export default function StudentPortalOnboardingWizard({
       case 'welcome':
         return {
           title: '',
-          body: <StudentPortalReception />,
-          action: 'Шагнуть в зал',
+          body: <StudentReceptionMonologue />,
+          action: 'Заполнить анкету',
           canAdvance: true,
         }
       case 'goal':
