@@ -1,105 +1,123 @@
-import { dominanceRank, normalizeTechnicalDominanceKey } from './ksrUtils.js'
-import { normalizeStudentTechnicalData } from './technicalProgramProgress.js'
+import { normalizePortalKnowledgeData, STUDENT_PORTAL_LEVEL } from './portalKnowledgeData.js'
 
-export const STUDENT_PORTAL_LEVEL = 'KNOWLEDGE'
-const MIN_RANK = dominanceRank(STUDENT_PORTAL_LEVEL)
+export { STUDENT_PORTAL_LEVEL }
 
 /**
- * Сколько первых атомов подряд уже на «Знание» или выше (в т.ч. уровень тренера).
+ * Сколько первых атомов подряд отмечено «Знание» в кабинете ученика.
  */
-export function countLeadingKnowledgeAtoms(orderedAtoms, technicalData) {
-  const data = normalizeStudentTechnicalData(technicalData)
+export function countLeadingPortalKnowledgeAtoms(orderedAtoms, portalKnowledgeData) {
+  const data = normalizePortalKnowledgeData(portalKnowledgeData)
   if (!Array.isArray(orderedAtoms) || orderedAtoms.length === 0) return 0
   let count = 0
   for (const atom of orderedAtoms) {
-    const rank = dominanceRank(data[atom?.id]?.level)
-    if (rank >= MIN_RANK) count += 1
+    if (data[atom?.id]?.level === STUDENT_PORTAL_LEVEL) count += 1
     else break
   }
   return count
 }
 
-export function countAtomsAtKnowledgeOrAbove(orderedAtoms, technicalData) {
-  const data = normalizeStudentTechnicalData(technicalData)
+export function countPortalKnowledgeAtoms(orderedAtoms, portalKnowledgeData) {
+  const data = normalizePortalKnowledgeData(portalKnowledgeData)
   if (!Array.isArray(orderedAtoms)) return 0
   let n = 0
   for (const atom of orderedAtoms) {
-    if (atom?.id && dominanceRank(data[atom.id]?.level) >= MIN_RANK) n += 1
+    if (atom?.id && data[atom.id]?.level === STUDENT_PORTAL_LEVEL) n += 1
   }
   return n
 }
 
-export function hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, technicalData) {
+export function hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, portalKnowledgeData) {
   for (const list of [orderedL1, orderedL2, orderedL3]) {
-    if (countAtomsAtKnowledgeOrAbove(list, technicalData) > 0) return true
+    if (countPortalKnowledgeAtoms(list, portalKnowledgeData) > 0) return true
   }
   return false
 }
 
-/** На каком этапе программы продолжать (где ещё не всё «Знание»). */
-export function resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, technicalData) {
-  if (orderedL1.length > 0 && !isTierCompleteForStudentPortal(orderedL1, technicalData)) return 1
-  if (orderedL2.length > 0 && !isTierCompleteForStudentPortal(orderedL2, technicalData)) return 2
+/** На каком этапе программы продолжать самостоятельное обучение. */
+export function resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, portalKnowledgeData) {
+  if (orderedL1.length > 0 && !isTierCompleteForStudentPortal(orderedL1, portalKnowledgeData)) return 1
+  if (orderedL2.length > 0 && !isTierCompleteForStudentPortal(orderedL2, portalKnowledgeData)) return 2
   if (orderedL3.length > 0) return 3
   if (orderedL2.length > 0) return 2
   return 1
 }
 
-export function isTierCompleteForStudentPortal(orderedAtoms, technicalData) {
+export function isTierCompleteForStudentPortal(orderedAtoms, portalKnowledgeData) {
   const total = orderedAtoms?.length ?? 0
   if (total === 0) return true
-  return countAtomsAtKnowledgeOrAbove(orderedAtoms, technicalData) >= total
+  return countPortalKnowledgeAtoms(orderedAtoms, portalKnowledgeData) >= total
 }
 
-/** Индекс текущего шага: первый не на «Знание»+ в цепочке. */
-export function resolveStudentPortalFocusIndex(orderedAtoms, technicalData) {
-  const passed = countLeadingKnowledgeAtoms(orderedAtoms, technicalData)
+/** Индекс текущего шага: первый не отмеченный в кабинете. */
+export function resolveStudentPortalFocusIndex(orderedAtoms, portalKnowledgeData) {
+  const passed = countLeadingPortalKnowledgeAtoms(orderedAtoms, portalKnowledgeData)
   const total = orderedAtoms?.length ?? 0
   if (passed >= total) return Math.max(0, total - 1)
   return passed
 }
 
 /** До какого индекса можно листать (включая пройденные для повторения). */
-export function resolveStudentPortalBrowseMaxIndex(orderedAtoms, technicalData) {
+export function resolveStudentPortalBrowseMaxIndex(orderedAtoms, portalKnowledgeData) {
   const total = orderedAtoms?.length ?? 0
   if (total === 0) return 0
-  if (isTierCompleteForStudentPortal(orderedAtoms, technicalData)) {
+  if (isTierCompleteForStudentPortal(orderedAtoms, portalKnowledgeData)) {
     return total - 1
   }
-  return resolveStudentPortalFocusIndex(orderedAtoms, technicalData)
+  return resolveStudentPortalFocusIndex(orderedAtoms, portalKnowledgeData)
 }
 
-export function isAtomMarkedKnowledge(technicalData, atomId) {
-  const data = normalizeStudentTechnicalData(technicalData)
-  return dominanceRank(data[atomId]?.level) >= MIN_RANK
+export function isAtomMarkedKnowledge(portalKnowledgeData, atomId) {
+  const data = normalizePortalKnowledgeData(portalKnowledgeData)
+  return data[atomId]?.level === STUDENT_PORTAL_LEVEL
 }
 
-export function canStudentMarkKnowledge(orderedAtoms, technicalData, atomId) {
+export function canStudentMarkKnowledge(orderedAtoms, portalKnowledgeData, atomId) {
   const idx = orderedAtoms.findIndex((a) => a.id === atomId)
   if (idx < 0) return false
-  const focusIdx = resolveStudentPortalFocusIndex(orderedAtoms, technicalData)
+  const focusIdx = resolveStudentPortalFocusIndex(orderedAtoms, portalKnowledgeData)
   if (idx !== focusIdx) return false
-  const data = normalizeStudentTechnicalData(technicalData)
-  const rank = dominanceRank(data[atomId]?.level)
-  return rank < MIN_RANK
+  return !isAtomMarkedKnowledge(portalKnowledgeData, atomId)
 }
 
-/**
- * Отметить текущий атом «Знание» (не понижает уровни тренера выше «Знание»).
- */
-export function applyStudentKnowledgeMark(technicalData, atomId, orderedAtoms) {
-  if (!canStudentMarkKnowledge(orderedAtoms, technicalData, atomId)) {
-    return { ok: false, next: normalizeStudentTechnicalData(technicalData) }
+/** Отметить текущий атом «Знание» в ветке самостоятельного обучения. */
+export function applyStudentKnowledgeMark(portalKnowledgeData, atomId, orderedAtoms) {
+  if (!canStudentMarkKnowledge(orderedAtoms, portalKnowledgeData, atomId)) {
+    return { ok: false, next: normalizePortalKnowledgeData(portalKnowledgeData) }
   }
-  const data = normalizeStudentTechnicalData(technicalData)
-  const prev = data[atomId] ?? {}
-  const rank = dominanceRank(prev.level)
-  const level = rank >= MIN_RANK ? normalizeTechnicalDominanceKey(prev.level) : STUDENT_PORTAL_LEVEL
+  const data = normalizePortalKnowledgeData(portalKnowledgeData)
   return {
     ok: true,
     next: {
       ...data,
-      [atomId]: { ...prev, level },
+      [atomId]: { level: STUDENT_PORTAL_LEVEL },
     },
   }
 }
+
+/** Сводка для панели тренера. */
+export function summarizeStudentPortalProgress(orderedL1, orderedL2, orderedL3, portalKnowledgeData) {
+  const tiers = [
+    { id: 1, label: 'Программа', atoms: orderedL1 },
+    { id: 2, label: 'Ур. 2', atoms: orderedL2 },
+    { id: 3, label: 'Комбо', atoms: orderedL3 },
+  ].filter((t) => t.atoms.length > 0)
+
+  const items = tiers.map((t) => ({
+    ...t,
+    done: countPortalKnowledgeAtoms(t.atoms, portalKnowledgeData),
+    total: t.atoms.length,
+    complete: isTierCompleteForStudentPortal(t.atoms, portalKnowledgeData),
+  }))
+
+  const started = hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, portalKnowledgeData)
+  const activeTier = resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, portalKnowledgeData)
+  const activeAtoms = activeTier === 3 ? orderedL3 : activeTier === 2 ? orderedL2 : orderedL1
+  const focusIndex = resolveStudentPortalFocusIndex(activeAtoms, portalKnowledgeData)
+  const focusAtom = activeAtoms[focusIndex] ?? null
+
+  return { started, items, activeTier, focusAtom }
+}
+
+// Совместимость со старыми импортами (теперь только portalKnowledgeData).
+export const countLeadingKnowledgeAtoms = countLeadingPortalKnowledgeAtoms
+export const countAtomsAtKnowledgeOrAbove = countPortalKnowledgeAtoms

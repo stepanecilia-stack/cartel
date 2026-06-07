@@ -55,9 +55,15 @@ export function inferUpdateSectionFromPayload(payload) {
 
   if (
     keys.every((k) =>
-      ['technicalData', 'portalLastActivityAt', 'portalConsentAt', 'portalConsentVersion', 'portalLastLoginAt'].includes(k),
+      [
+        'portalKnowledgeData',
+        'portalLastActivityAt',
+        'portalConsentAt',
+        'portalConsentVersion',
+        'portalLastLoginAt',
+      ].includes(k),
     ) &&
-    payload.technicalData != null
+    payload.portalKnowledgeData != null
   ) {
     return STUDENT_UPDATE_SECTION.studentPortal
   }

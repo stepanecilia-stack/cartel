@@ -57,7 +57,7 @@ service cloud.firestore {
 
     function studentPortalProgressOnly() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'technicalData', 'portalLastActivityAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+        'portalKnowledgeData', 'portalLastActivityAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
       ]);
     }
 

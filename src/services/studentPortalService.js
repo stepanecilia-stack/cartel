@@ -16,7 +16,7 @@ import {
   verifyPortalPin,
   writePortalSession,
 } from '../utils/studentPortalAuth.js'
-import { normalizeTechnicalDataForSave } from '../utils/studentTechnicalUpdate.js'
+import { normalizePortalKnowledgeDataForSave } from '../utils/portalKnowledgeData.js'
 import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
 import { ensureAuth, ensureDb } from './firebaseService.js'
 
@@ -257,11 +257,11 @@ export async function resumeStudentPortalSession() {
   return { session, student }
 }
 
-export async function saveStudentPortalKnowledge(studentId, technicalData) {
+export async function saveStudentPortalKnowledge(studentId, portalKnowledgeData) {
   await ensureStudentPortalAnonymousUser()
-  const normalized = normalizeTechnicalDataForSave(technicalData)
+  const normalized = normalizePortalKnowledgeDataForSave(portalKnowledgeData)
   await updateDoc(doc(ensureDb(), 'students', studentId), {
-    technicalData: normalized,
+    portalKnowledgeData: normalized,
     portalLastActivityAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),

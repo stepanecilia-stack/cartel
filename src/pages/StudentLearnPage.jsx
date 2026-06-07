@@ -12,17 +12,17 @@ import { displayNameFromStudent } from '../utils/studentModel.js'
 import {
   applyStudentKnowledgeMark,
   canStudentMarkKnowledge,
-  countAtomsAtKnowledgeOrAbove,
-  isTierCompleteForStudentPortal,
   countLeadingKnowledgeAtoms,
+  countAtomsAtKnowledgeOrAbove,
   hasStudentPortalKnowledgeProgress,
   resolveStudentPortalBrowseMaxIndex,
   resolveStudentPortalFocusIndex,
   resolveStudentPortalResumeTier,
   isAtomMarkedKnowledge,
+  isTierCompleteForStudentPortal,
   STUDENT_PORTAL_LEVEL,
 } from '../utils/studentPortalProgress.js'
-import { normalizeStudentTechnicalData } from '../utils/technicalProgramProgress.js'
+import { normalizePortalKnowledgeData } from '../utils/portalKnowledgeData.js'
 import { mapCombinationsToDisplayAtoms } from '../utils/techniqueCatalog.js'
 import { readPortalSession, clearPortalSession } from '../utils/studentPortalAuth.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
@@ -92,40 +92,40 @@ export default function StudentLearnPage() {
     [student?.technicalCombinations, orderedLevel3, orderedLevel1],
   )
 
-  const technicalData = useMemo(
-    () => normalizeStudentTechnicalData(student?.technicalData),
-    [student?.technicalData],
+  const portalKnowledgeData = useMemo(
+    () => normalizePortalKnowledgeData(student?.portalKnowledgeData),
+    [student?.portalKnowledgeData],
   )
-  const technicalDataRef = useRef(technicalData)
-  technicalDataRef.current = technicalData
+  const portalKnowledgeDataRef = useRef(portalKnowledgeData)
+  portalKnowledgeDataRef.current = portalKnowledgeData
 
   const tierProgress = useMemo(
     () => ({
-      1: { total: orderedL1.length, done: countAtomsAtKnowledgeOrAbove(orderedL1, technicalData) },
-      2: { total: orderedL2.length, done: countAtomsAtKnowledgeOrAbove(orderedL2, technicalData) },
-      3: { total: orderedL3.length, done: countAtomsAtKnowledgeOrAbove(orderedL3, technicalData) },
+      1: { total: orderedL1.length, done: countAtomsAtKnowledgeOrAbove(orderedL1, portalKnowledgeData) },
+      2: { total: orderedL2.length, done: countAtomsAtKnowledgeOrAbove(orderedL2, portalKnowledgeData) },
+      3: { total: orderedL3.length, done: countAtomsAtKnowledgeOrAbove(orderedL3, portalKnowledgeData) },
     }),
-    [orderedL1, orderedL2, orderedL3, technicalData],
+    [orderedL1, orderedL2, orderedL3, portalKnowledgeData],
   )
 
   const tierUnlocked = useMemo(
     () => ({
       1: true,
-      2: isTierCompleteForStudentPortal(orderedL1, technicalData),
-      3: isTierCompleteForStudentPortal(orderedL2, technicalData),
+      2: isTierCompleteForStudentPortal(orderedL1, portalKnowledgeData),
+      3: isTierCompleteForStudentPortal(orderedL2, portalKnowledgeData),
     }),
-    [orderedL1, orderedL2, technicalData],
+    [orderedL1, orderedL2, portalKnowledgeData],
   )
 
   const atomsForTier = tier === 3 ? orderedL3 : tier === 2 ? orderedL2 : orderedL1
-  const focusIndex = resolveStudentPortalFocusIndex(atomsForTier, technicalData)
-  const browseMaxIndex = resolveStudentPortalBrowseMaxIndex(atomsForTier, technicalData)
+  const focusIndex = resolveStudentPortalFocusIndex(atomsForTier, portalKnowledgeData)
+  const browseMaxIndex = resolveStudentPortalBrowseMaxIndex(atomsForTier, portalKnowledgeData)
   const focusAtom = atomsForTier[focusIndex] ?? null
-  const leadingDone = countLeadingKnowledgeAtoms(atomsForTier, technicalData)
+  const leadingDone = countLeadingKnowledgeAtoms(atomsForTier, portalKnowledgeData)
   const total = atomsForTier.length
   const tierComplete =
     total > 0 &&
-    (leadingDone >= total || isTierCompleteForStudentPortal(atomsForTier, technicalData))
+    (leadingDone >= total || isTierCompleteForStudentPortal(atomsForTier, portalKnowledgeData))
 
   const safeViewIndex =
     total > 0 ? Math.min(Math.max(0, viewIndex), Math.max(0, browseMaxIndex)) : 0
@@ -133,32 +133,39 @@ export default function StudentLearnPage() {
   const canGoBack = safeViewIndex > 0
   const canGoForward = safeViewIndex < browseMaxIndex
   const isViewingCurrentStep = safeViewIndex === focusIndex && !tierComplete
-  const viewAtomMarked = viewAtom ? isAtomMarkedKnowledge(technicalData, viewAtom.id) : false
+  const viewAtomMarked = viewAtom ? isAtomMarkedKnowledge(portalKnowledgeData, viewAtom.id) : false
   const canMark =
-    isViewingCurrentStep && viewAtom && canStudentMarkKnowledge(atomsForTier, technicalData, viewAtom.id)
+    isViewingCurrentStep && viewAtom && canStudentMarkKnowledge(atomsForTier, portalKnowledgeData, viewAtom.id)
+
+  const portalSelfStudyStarted = hasStudentPortalKnowledgeProgress(
+    orderedL1,
+    orderedL2,
+    orderedL3,
+    portalKnowledgeData,
+  )
 
   useEffect(() => {
     if (!student?.id || resumeReady) return
-    const td = normalizeStudentTechnicalData(student.technicalData)
-    const resumeTier = resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, td)
+    const pk = normalizePortalKnowledgeData(student.portalKnowledgeData)
+    const resumeTier = resolveStudentPortalResumeTier(orderedL1, orderedL2, orderedL3, pk)
     const atoms = resumeTier === 3 ? orderedL3 : resumeTier === 2 ? orderedL2 : orderedL1
-    const complete = isTierCompleteForStudentPortal(atoms, td)
-    const fi = resolveStudentPortalFocusIndex(atoms, td)
+    const complete = isTierCompleteForStudentPortal(atoms, pk)
+    const fi = resolveStudentPortalFocusIndex(atoms, pk)
     setTier(resumeTier)
     setViewIndex(complete ? 0 : fi)
     setPlaying(false)
     const seenIntro = isStudentKnowledgeIntroDismissed(student.id)
-    const hasProgress = hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, td)
+    const hasProgress = hasStudentPortalKnowledgeProgress(orderedL1, orderedL2, orderedL3, pk)
     setIntroOpen(!seenIntro && !hasProgress)
     setResumeReady(true)
   }, [student, orderedL1, orderedL2, orderedL3, resumeReady])
 
   useEffect(() => {
     if (!student?.id || !resumeReady) return
-    const td = technicalDataRef.current
+    const pk = portalKnowledgeDataRef.current
     const atoms = tier === 3 ? orderedL3 : tier === 2 ? orderedL2 : orderedL1
-    const complete = isTierCompleteForStudentPortal(atoms, td)
-    const fi = resolveStudentPortalFocusIndex(atoms, td)
+    const complete = isTierCompleteForStudentPortal(atoms, pk)
+    const fi = resolveStudentPortalFocusIndex(atoms, pk)
     setViewIndex(complete ? 0 : fi)
     setPlaying(false)
   }, [tier, student?.id, orderedL1, orderedL2, orderedL3, resumeReady])
@@ -168,13 +175,13 @@ export default function StudentLearnPage() {
     setSaving(true)
     setSaveError('')
     try {
-      const { ok, next } = applyStudentKnowledgeMark(technicalData, focusAtom.id, atomsForTier)
+      const { ok, next } = applyStudentKnowledgeMark(portalKnowledgeData, focusAtom.id, atomsForTier)
       if (!ok) {
         setSaveError('Сначала завершите предыдущий приём.')
         return
       }
       const saved = await saveStudentPortalKnowledge(student.id, next)
-      setStudent((prev) => (prev ? { ...prev, technicalData: saved } : prev))
+      setStudent((prev) => (prev ? { ...prev, portalKnowledgeData: saved } : prev))
       const nextFocus = resolveStudentPortalFocusIndex(atomsForTier, saved)
       setViewIndex(nextFocus)
       setPlaying(false)
@@ -184,7 +191,7 @@ export default function StudentLearnPage() {
     } finally {
       setSaving(false)
     }
-  }, [student?.id, focusAtom, canMark, technicalData, atomsForTier])
+  }, [student?.id, focusAtom, canMark, portalKnowledgeData, atomsForTier])
 
   const handleLogout = async () => {
     await logoutStudentPortal()
@@ -244,7 +251,7 @@ export default function StudentLearnPage() {
           </header>
           <StudentKnowledgeIntro
             onContinue={handleIntroContinue}
-            continueLabel={introSeen ? 'Закрыть' : 'Понятно — к программе'}
+            continueLabel={introSeen ? 'Закрыть' : 'Понятно — начать с первого приёма'}
           />
         </div>
       </main>
@@ -303,10 +310,16 @@ export default function StudentLearnPage() {
           })}
         </nav>
 
-        {tier === 2 && !isTierCompleteForStudentPortal(orderedL1, technicalData) ? (
+        {tier === 2 && !isTierCompleteForStudentPortal(orderedL1, portalKnowledgeData) ? (
           <p className={vk.mutedXs}>
-            Новые приёмы ур. 2 откроются после «{KNOWLEDGE_LABEL}» по всей программе (ур. 1). Уровень 1 можно
-            смотреть в любой момент.
+            Ур. 2 откроется после того, как вы сами отметите «{KNOWLEDGE_LABEL}» по всей программе (ур. 1).
+          </p>
+        ) : null}
+
+        {!portalSelfStudyStarted ? (
+          <p className={`${vk.notice} text-[12px] leading-snug`}>
+            Это ваше самостоятельное обучение. Отметки тренера в зале здесь не засчитываются — пройдите
+            программу с первого приёма и отмечайте «Понял» сами.
           </p>
         ) : null}
 

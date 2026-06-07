@@ -26,7 +26,7 @@ export function formatFirestoreErrorMessage(err, options = {}) {
       return (
         'Не удалось сохранить прогресс в кабинете ученика. ' +
         rulesHint +
-        ' Нужны правила с доступом portalAuthUid и полями technicalData / portalLastActivityAt.'
+        ' Нужны правила с доступом portalAuthUid и полями portalKnowledgeData / portalLastActivityAt.'
       )
     }
     return `Нет доступа к данным в Firestore. ${rulesHint}`
