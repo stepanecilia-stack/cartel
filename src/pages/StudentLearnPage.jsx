@@ -280,12 +280,8 @@ export default function StudentLearnPage() {
 
   if (!onboardingComplete) {
     return (
-      <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
-        <div className="mx-auto w-full max-w-2xl space-y-2">
-          <header>
-            <h1 className={vk.h1Lg}>Моя программа</h1>
-            <p className={vk.mutedXs}>{name}</p>
-          </header>
+      <main className={`${vk.pageWithNav} pb-3 pt-2 sm:px-4`}>
+        <div className="mx-auto w-full max-w-2xl space-y-3 px-2">
           <StudentPortalOnboardingWizard
             mode="full"
             initialGoals={portalGoals}

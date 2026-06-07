@@ -39,6 +39,7 @@ export default function StudentPortalOnboardingWizard({
 
   const stepId = steps[stepIndex] ?? steps[0]
   const isLast = stepIndex >= steps.length - 1
+  const isWelcome = stepId === 'welcome'
 
   const toggleGoal = (id) => {
     setGoals((prev) => {
@@ -54,7 +55,7 @@ export default function StudentPortalOnboardingWizard({
       case 'welcome':
         return {
           title: '',
-          body: <StudentPortalReception compact />,
+          body: <StudentPortalReception />,
           action: 'Шагнуть в зал',
           canAdvance: true,
         }
@@ -118,9 +119,9 @@ export default function StudentPortalOnboardingWizard({
                             : 'border-[#e7e8ec] bg-white active:bg-[#f0f2f5]'
                         }`}
                       >
-                        <StudentPersonaAvatar personaId={persona.id} size="xl" />
+                        <StudentPersonaAvatar personaId={persona.id} size="lg" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-[16px] font-bold leading-tight text-[#2c2d2e]">
+                          <p className="text-[15px] font-bold leading-tight text-[#2c2d2e]">
                             {formatPortalPersonaName(persona)}
                           </p>
                           <p className={`mt-0.5 text-[12px] ${vk.mutedXs}`}>{persona.roleLabel}</p>
@@ -183,27 +184,21 @@ export default function StudentPortalOnboardingWizard({
       case 'logic':
         return {
           title: KNOWLEDGE_THREE_IMAGES[0].title,
-          body: (
-            <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[0].text}</p>
-          ),
+          body: <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[0].text}</p>,
           action: 'Понял',
           canAdvance: true,
         }
       case 'vision':
         return {
           title: KNOWLEDGE_THREE_IMAGES[1].title,
-          body: (
-            <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[1].text}</p>
-          ),
+          body: <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[1].text}</p>,
           action: 'Понял',
           canAdvance: true,
         }
       case 'kinesthesia':
         return {
           title: KNOWLEDGE_THREE_IMAGES[2].title,
-          body: (
-            <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[2].text}</p>
-          ),
+          body: <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[2].text}</p>,
           action: 'Понял',
           canAdvance: true,
         }
@@ -238,45 +233,61 @@ export default function StudentPortalOnboardingWizard({
     setStepIndex((i) => Math.max(0, i - 1))
   }
 
+  const progressBar = (
+    <div className="flex items-center justify-between gap-2">
+      <p className={`${vk.mutedXs} tabular-nums`}>
+        {stepIndex + 1} / {steps.length}
+      </p>
+      <div className="flex gap-1">
+        {steps.map((id, i) => (
+          <span
+            key={id}
+            className={`h-1.5 w-1.5 rounded-full ${i <= stepIndex ? 'bg-[#2d81e0]' : 'bg-[#dce1e6]'}`}
+            aria-hidden
+          />
+        ))}
+      </div>
+    </div>
+  )
+
+  const actions = (
+    <div className={`flex gap-2 ${isWelcome ? 'pt-1' : ''}`}>
+      {stepIndex > 0 ? (
+        <button type="button" disabled={busy} onClick={handleBack} className={`flex-1 ${vk.btnSecondary}`}>
+          Назад
+        </button>
+      ) : null}
+      <button
+        type="button"
+        disabled={busy || !content.canAdvance}
+        onClick={handleAdvance}
+        className={`${stepIndex > 0 ? 'flex-1' : 'w-full'} ${vk.btnPrimary}`}
+      >
+        {busy ? 'Сохранение…' : content.action}
+      </button>
+    </div>
+  )
+
+  if (isWelcome) {
+    return (
+      <div className="space-y-3">
+        {progressBar}
+        {content.body}
+        {error ? <p className={vk.error}>{error}</p> : null}
+        {actions}
+      </div>
+    )
+  }
+
   return (
     <section className={`${vk.cardPadded} space-y-3`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className={`${vk.mutedXs} tabular-nums`}>
-          {stepIndex + 1} / {steps.length}
-        </p>
-        <div className="flex gap-1">
-          {steps.map((id, i) => (
-            <span
-              key={id}
-              className={`h-1.5 w-1.5 rounded-full ${i <= stepIndex ? 'bg-[#2d81e0]' : 'bg-[#dce1e6]'}`}
-              aria-hidden
-            />
-          ))}
-        </div>
-      </div>
-
+      {progressBar}
       <div>
         {content.title ? <h2 className={vk.h2}>{content.title}</h2> : null}
         <div className={content.title ? 'mt-2' : ''}>{content.body}</div>
       </div>
-
       {error ? <p className={vk.error}>{error}</p> : null}
-
-      <div className="flex gap-2">
-        {stepIndex > 0 ? (
-          <button type="button" disabled={busy} onClick={handleBack} className={`flex-1 ${vk.btnSecondary}`}>
-            Назад
-          </button>
-        ) : null}
-        <button
-          type="button"
-          disabled={busy || !content.canAdvance}
-          onClick={handleAdvance}
-          className={`${stepIndex > 0 ? 'flex-1' : 'w-full'} ${vk.btnPrimary}`}
-        >
-          {busy ? 'Сохранение…' : content.action}
-        </button>
-      </div>
+      {actions}
     </section>
   )
 }

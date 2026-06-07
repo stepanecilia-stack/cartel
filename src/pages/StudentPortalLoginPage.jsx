@@ -84,7 +84,7 @@ export default function StudentPortalLoginPage() {
       <div className={`${vk.containerMid} max-w-md space-y-3`}>
         <BackToHomeBar to="/welcome" />
         <StudentPortalReception />
-        <div className={vk.cardPadded}>
+        <div className={`${vk.cardPadded} shadow-sm`}>
           <h1 className={vk.h1Lg}>Вход в программу</h1>
           <p className={vk.mutedXs}>Код и PIN — на ресепшене или от тренера.</p>
 
