@@ -14,6 +14,8 @@ const MAX_KINESTHESIA_SNIPPET = 200
  *   kinesthesiaConfirmed?: boolean,
  *   kinesthesiaConfirmedAt?: string | null,
  *   kinesthesiaAnswerSnippet?: string,
+ *   onboardingSkipped?: boolean,
+ *   onboardingSkippedAt?: string | null,
  * }} PortalPersonaMemory
  */
 
@@ -29,6 +31,8 @@ export function normalizePortalPersonaMemory(raw) {
       kinesthesiaConfirmed: false,
       kinesthesiaConfirmedAt: null,
       kinesthesiaAnswerSnippet: '',
+      onboardingSkipped: false,
+      onboardingSkippedAt: null,
     }
   }
   const levelNotes =
@@ -53,6 +57,11 @@ export function normalizePortalPersonaMemory(raw) {
     typeof raw.kinesthesiaAnswerSnippet === 'string'
       ? raw.kinesthesiaAnswerSnippet.trim().slice(0, MAX_KINESTHESIA_SNIPPET)
       : ''
+  const onboardingSkipped = raw.onboardingSkipped === true
+  const onboardingSkippedAt =
+    typeof raw.onboardingSkippedAt === 'string' && raw.onboardingSkippedAt.trim()
+      ? raw.onboardingSkippedAt.trim()
+      : null
   return {
     levelNotes,
     conversationSummary,
@@ -62,6 +71,8 @@ export function normalizePortalPersonaMemory(raw) {
     kinesthesiaConfirmed,
     kinesthesiaConfirmedAt,
     kinesthesiaAnswerSnippet,
+    onboardingSkipped,
+    onboardingSkippedAt,
   }
 }
 
@@ -160,7 +171,7 @@ export function formatPortalPersonaMemoryForPrompt({ personaMemory, trainingGoal
  */
 export function hasPersonaMemoryMilestones(memory) {
   const m = normalizePortalPersonaMemory(memory)
-  return m.stagesQuizPassed || m.kinesthesiaConfirmed
+  return m.stagesQuizPassed || m.kinesthesiaConfirmed || m.onboardingSkipped
 }
 
 /**
@@ -210,6 +221,14 @@ export function getPersonaMemoryMilestonesForCoach(memory) {
     })
   }
 
+  if (m.onboardingSkipped) {
+    const when = formatCoachMilestoneDate(m.onboardingSkippedAt)
+    items.push({
+      label: 'Инструктаж пропущен — сразу к программе',
+      detail: when ? `Пропуск: ${when}` : 'Ученик попросил сразу к тренировкам',
+    })
+  }
+
   return items
 }
 
@@ -245,6 +264,26 @@ export function applyOnboardingStagesMilestones(memory, milestones) {
 }
 
 /**
+ * @param {PortalPersonaMemory} memory
+ * @returns {PortalPersonaMemory}
+ */
+export function applyOnboardingSkippedMemory(memory) {
+  const normalized = normalizePortalPersonaMemory(memory)
+  const now = new Date().toISOString()
+  return normalizePortalPersonaMemory({
+    ...normalized,
+    onboardingSkipped: true,
+    onboardingSkippedAt: now,
+    levelNotes: mergeTextBlock(
+      normalized.levelNotes,
+      'Ученик пропустил инструктаж и квиз в кабинете — сразу перешёл к программе (по просьбе в чате с виртуальным тренером).',
+      MAX_LEVEL_NOTES,
+    ),
+    updatedAt: now,
+  })
+}
+
+/**
  * @param {PortalPersonaMemory} summarized
  * @param {PortalPersonaMemory} preserved
  */
@@ -258,6 +297,8 @@ export function mergePersonaMemoryAfterSummarize(summarized, preserved) {
     kinesthesiaConfirmed: keep.kinesthesiaConfirmed || next.kinesthesiaConfirmed,
     kinesthesiaConfirmedAt: keep.kinesthesiaConfirmedAt ?? next.kinesthesiaConfirmedAt,
     kinesthesiaAnswerSnippet: keep.kinesthesiaAnswerSnippet || next.kinesthesiaAnswerSnippet,
+    onboardingSkipped: keep.onboardingSkipped || next.onboardingSkipped,
+    onboardingSkippedAt: keep.onboardingSkippedAt ?? next.onboardingSkippedAt,
     levelNotes: next.levelNotes || keep.levelNotes,
   })
 }

@@ -1,4 +1,14 @@
 import { MARKER_QUIZ_PASS, MARKER_READY_FOR_STAGES } from './personaChatMarkers.js'
+import { buildOnboardingSkipAllowReply, detectOnboardingSkipIntent } from './onboardingSkipIntent.js'
+import {
+  formatOnboardingStagesTheoryPrompt,
+  findOnboardingStagesTheoryOption,
+  getOnboardingStagesTheoryQuestion,
+  isOnboardingStagesHelpMessage,
+  isOnboardingStagesUiMetaMessage,
+  isOnboardingStagesTheoryAnswerCorrect,
+  ONBOARDING_STAGES_THEORY_QUESTIONS,
+} from '../constants/onboardingTheoryQuiz.js'
 import { buildStagesQuizStuckHint, stagesQuizShouldHint } from './onboardingStagesHints.js'
 import {
   assessThreeImagesAnswer,
@@ -44,21 +54,48 @@ function countStagesQuizCriteria(criteria) {
   return [criteria.stageName, criteria.logic, criteria.vision, criteria.kinesthesia].filter(Boolean).length
 }
 
+/** @param {StagesQuizCriteria} criteria */
+export function stagesQuizQuestionIndexFromCriteria(criteria) {
+  if (!criteria.stageName) return 0
+  if (!criteria.logic) return 1
+  if (!criteria.vision) return 2
+  if (!criteria.kinesthesia) return 3
+  return STAGES_QUIZ_QUESTION_COUNT
+}
+
+/**
+ * Последовательная проверка: ответ засчитывается только на текущий открытый вопрос.
+ * @param {import('../services/portalPersonaAiService.js').PortalChatMessage[]} messages
+ * @returns {StagesQuizCriteria}
+ */
+export function collectStagesQuizCriteriaFromUserSequential(messages) {
+  const criteria = emptyStagesQuizCriteria()
+
+  for (const m of messages) {
+    if (m.role !== 'user' || typeof m.content !== 'string' || !m.content.trim()) continue
+    const text = m.content.trim()
+    if (isOnboardingStagesUiMetaMessage(text) || isOnboardingStagesHelpMessage(text)) continue
+    if (detectOnboardingSkipIntent(text)) continue
+
+    const qIndex = stagesQuizQuestionIndexFromCriteria(criteria)
+    if (qIndex >= STAGES_QUIZ_QUESTION_COUNT) break
+    if (!evaluateOnboardingStagesAnswer(text, qIndex)) continue
+
+    if (qIndex === 0) criteria.stageName = true
+    else if (qIndex === 1) criteria.logic = true
+    else if (qIndex === 2) criteria.vision = true
+    else if (qIndex === 3) criteria.kinesthesia = true
+  }
+
+  return criteria
+}
+
 /**
  * @param {import('../services/portalPersonaAiService.js').PortalChatMessage[]} messages
  * @returns {StagesQuizCriteria}
  */
 export function collectStagesQuizCriteriaFromUser(messages) {
-  const criteria = emptyStagesQuizCriteria()
-  for (const m of messages) {
-    if (m.role !== 'user' || typeof m.content !== 'string' || !m.content.trim()) continue
-    const text = m.content
-    if (!criteria.stageName && evaluateOnboardingStagesAnswer(text, 0)) criteria.stageName = true
-    if (!criteria.logic && evaluateOnboardingStagesAnswer(text, 1)) criteria.logic = true
-    if (!criteria.vision && evaluateOnboardingStagesAnswer(text, 2)) criteria.vision = true
-    if (!criteria.kinesthesia && evaluateOnboardingStagesAnswer(text, 3)) criteria.kinesthesia = true
-  }
-  return criteria
+  return collectStagesQuizCriteriaFromUserSequential(messages)
 }
 
 /**
@@ -69,7 +106,9 @@ export function inferStagesQuizCriteriaFromTrainer(messages) {
   const criteria = emptyStagesQuizCriteria()
   for (const m of messages) {
     if (m.role !== 'assistant' || typeof m.content !== 'string') continue
-    const lower = m.content.toLowerCase()
+    const text = m.content.trim()
+    const lower = text.toLowerCase()
+    if (/\?\s*$/.test(text) || /^вопрос \d/i.test(text)) continue
 
     if (/«знание»|этап.*знан|знан[иея].*(верно|засчит|точно|принят)|засчитан.*знан/i.test(lower)) {
       criteria.stageName = true
@@ -111,14 +150,7 @@ export function inferStagesQuizCriteriaFromTrainer(messages) {
  * @returns {StagesQuizCriteria}
  */
 export function mergeStagesQuizCriteria(messages) {
-  const user = collectStagesQuizCriteriaFromUser(messages)
-  const trainer = inferStagesQuizCriteriaFromTrainer(messages)
-  return {
-    stageName: user.stageName || trainer.stageName,
-    logic: user.logic || trainer.logic,
-    vision: user.vision || trainer.vision,
-    kinesthesia: user.kinesthesia || trainer.kinesthesia,
-  }
+  return collectStagesQuizCriteriaFromUserSequential(messages)
 }
 
 /**
@@ -167,20 +199,20 @@ export function buildOnboardingStagesOpener(persona) {
 
 ${STAGES_LADDER}
 
-Следующий у нас — «Знание». Как называется этот этап?`
+Следующий у нас — «Знание». Как называется первый этап формирования навыка?`
   }
   if (persona.id === 'arkady') {
     return `Друг, любой удар растёт по шагам — четыре этапа:
 
 ${STAGES_LADDER}
 
-Начинаем со «Знания». Как называется этот этап?`
+Начинаем со «Знания». Как называется первый этап формирования навыка?`
   }
   return `Четыре этапа формирования навыка:
 
 ${STAGES_LADDER}
 
-Следующий — «Знание». Как называется этот этап?`
+Первый этап — «Знание». Как он называется?`
 }
 
 /**
@@ -246,15 +278,7 @@ export function enrichOnboardingStagesReply(personaId, userMessage, messages, ra
  * @param {number} questionIndex 0..3
  */
 export function evaluateOnboardingStagesAnswer(text, questionIndex) {
-  const lower = text.trim().toLowerCase()
-  if (!lower || lower.length < 2) return false
-
-  if (questionIndex === 0) return /знан/i.test(lower)
-  if (questionIndex === 1) return evaluateLogicImageAnswer(text)
-  if (questionIndex === 2) return evaluateVisionImageAnswer(text)
-  if (questionIndex === 3) return evaluateKinesthesiaImageAnswer(text)
-
-  return false
+  return isOnboardingStagesTheoryAnswerCorrect(text, questionIndex)
 }
 
 /**
@@ -262,31 +286,8 @@ export function evaluateOnboardingStagesAnswer(text, questionIndex) {
  * @param {number} nextQuestionIndex 1..3
  */
 function nextStagesQuizQuestion(personaId, nextQuestionIndex) {
-  if (nextQuestionIndex === 1) {
-    if (personaId === 'vasily') {
-      return 'Вопрос 2 из 4: что такое логический образ «Знания»?'
-    }
-    if (personaId === 'arkady') {
-      return 'Вопрос 2 из 4: что такое логический образ «Знания»?'
-    }
-    return 'Вопрос 2 из 4: логический образ «Знания» — что это?'
-  }
-  if (nextQuestionIndex === 2) {
-    if (personaId === 'vasily') {
-      return 'Вопрос 3 из 4: зрительный образ — что это?'
-    }
-    if (personaId === 'arkady') {
-      return 'Вопрос 3 из 4: зрительный образ — сформулируй.'
-    }
-    return 'Вопрос 3 из 4: зрительный образ — определение.'
-  }
-  if (personaId === 'vasily') {
-    return 'Вопрос 4 из 4: кинестетический образ — что это?'
-  }
-  if (personaId === 'arkady') {
-    return 'Вопрос 4 из 4: кинестетический образ — своими словами.'
-  }
-  return 'Вопрос 4 из 4: кинестетический образ — определение.'
+  void personaId
+  return formatOnboardingStagesTheoryPrompt(nextQuestionIndex)
 }
 
 /**
@@ -318,32 +319,78 @@ function stagesQuizPassAck(personaId, questionIndex) {
   return 'Кинестетика — засчитано. Все четыре пункта закрыты.'
 }
 
+function buildStagesQuizHelpReply(personaId, questionIndex) {
+  const prompt = formatOnboardingStagesTheoryPrompt(questionIndex)
+  if (questionIndex === 0) {
+    if (personaId === 'vasily') {
+      return `Первый из четырёх этапов — «Знание». Не «Умение» и не «Навык». ${prompt}`
+    }
+    if (personaId === 'arkady') {
+      return `Друг, с чего всё начинается — этап «Знание». ${prompt}`
+    }
+    return `Первый этап формирования навыка — «Знание». ${prompt}`
+  }
+  if (questionIndex === 1) {
+    if (personaId === 'vasily') {
+      return `Логический образ — понимаешь, зачем и как выполняется, своими словами. ${prompt}`
+    }
+    if (personaId === 'arkady') {
+      return `Логический — понимание шагов и смысла, не картинка и не тело. ${prompt}`
+    }
+    return `Логический образ: понимание «почему и как». ${prompt}`
+  }
+  if (questionIndex === 2) {
+    if (personaId === 'vasily') {
+      return `Зрительный — как выглядит правильно: в голове, на видео, у тренера. ${prompt}`
+    }
+    if (personaId === 'arkady') {
+      return `Зрительный — чёткая картинка правильной формы. ${prompt}`
+    }
+    return `Зрительный образ: эталон формы. ${prompt}`
+  }
+  if (personaId === 'vasily') {
+    return `Кинестетика — ощущение в мышцах, прожил в теле. ${prompt}`
+  }
+  if (personaId === 'arkady') {
+    return `Кинестетический — что чувствует тело, свой опыт в мышцах. ${prompt}`
+  }
+  return `Кинестетический образ: прочувствовать в теле. ${prompt}`
+}
+
+/**
+ * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
+ * @param {number} questionIndex
+ * @param {import('../constants/onboardingTheoryQuiz.js').OnboardingTheoryOption} wrongOption
+ */
+function wrongTheoryOptionReply(personaId, questionIndex, wrongOption) {
+  if (questionIndex === 0) {
+    if (personaId === 'vasily') {
+      return `«${wrongOption.label}» — не первый этап. ${formatOnboardingStagesTheoryPrompt(0)}`
+    }
+    if (personaId === 'arkady') {
+      return `Друг, «${wrongOption.label}» — это позже. ${formatOnboardingStagesTheoryPrompt(0)}`
+    }
+    return `Неверно. ${formatOnboardingStagesTheoryPrompt(0)}`
+  }
+  if (questionIndex === 1) return singleImageCorrectionReply(personaId, 'logic')
+  if (questionIndex === 2) return singleImageCorrectionReply(personaId, 'vision')
+  return singleImageCorrectionReply(personaId, 'kinesthesia')
+}
+
 /**
  * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
  * @param {string} userMessage
  * @param {import('../services/portalPersonaAiService.js').PortalChatMessage[]} messages
  */
 export function scriptedOnboardingStagesReply(personaId, userMessage, messages) {
-  const qIndex = stagesQuizQuestionIndex(messages)
+  const criteriaBefore = collectStagesQuizCriteriaFromUserSequential(messages.slice(0, -1))
+  const qIndex = stagesQuizQuestionIndexFromCriteria(criteriaBefore)
+  const passesBefore = countStagesQuizCriteria(criteriaBefore)
   const lower = userMessage.trim().toLowerCase()
 
-  if (/не горит|не актив|кнопк.*не|не могу нажать|не нажима/i.test(lower)) {
-    if (qIndex >= STAGES_QUIZ_QUESTION_COUNT) {
-      if (personaId === 'vasily') return 'Все четыре пункта закрыты — «Дальше» внизу должна быть зелёной. Жми.'
-      if (personaId === 'arkady') return 'Друг, все четыре ответа приняты — жми зелёную «Дальше» внизу.'
-      return 'Четыре пункта засчитаны. Кнопка «Дальше» активна.'
-    }
-    const left = STAGES_QUIZ_QUESTION_COUNT - qIndex
-    if (personaId === 'vasily') {
-      return `«Дальше» загорится после четырёх ответов. Сейчас ${qIndex} из 4 — осталось ${left}. ${qIndex === 0 ? 'Как называется следующий этап?' : nextStagesQuizQuestion(personaId, qIndex)}`
-    }
-    if (personaId === 'arkady') {
-      return `Друг, кнопка откроется после всех четырёх ответов. Сейчас ${qIndex} из 4. ${qIndex === 0 ? 'Как называется этап?' : nextStagesQuizQuestion(personaId, qIndex)}`
-    }
-    return `Принято ${qIndex} из 4. ${qIndex === 0 ? 'Назови следующий этап.' : nextStagesQuizQuestion(personaId, qIndex)}`
+  if (detectOnboardingSkipIntent(userMessage)) {
+    return buildOnboardingSkipAllowReply(personaId)
   }
-
-  const passed = evaluateOnboardingStagesAnswer(userMessage, qIndex)
 
   if (qIndex >= STAGES_QUIZ_QUESTION_COUNT) {
     if (personaId === 'vasily') {
@@ -354,6 +401,28 @@ export function scriptedOnboardingStagesReply(personaId, userMessage, messages) 
     }
     return 'Четыре пункта закрыты. Кнопка «Дальше» внизу.'
   }
+
+  if (isOnboardingStagesUiMetaMessage(userMessage) || /не горит|не актив|кнопк.*не|не могу нажать|не нажима/i.test(lower)) {
+    const left = STAGES_QUIZ_QUESTION_COUNT - passesBefore
+    if (personaId === 'vasily') {
+      return `«Дальше» загорится после четырёх ответов. Сейчас ${passesBefore} из 4 — осталось ${left}. ${formatOnboardingStagesTheoryPrompt(qIndex)}`
+    }
+    if (personaId === 'arkady') {
+      return `Друг, кнопка откроется после всех четырёх ответов. Сейчас ${passesBefore} из 4. ${formatOnboardingStagesTheoryPrompt(qIndex)}`
+    }
+    return `Засчитано ${passesBefore} из 4. ${formatOnboardingStagesTheoryPrompt(qIndex)}`
+  }
+
+  if (isOnboardingStagesHelpMessage(userMessage)) {
+    return buildStagesQuizHelpReply(personaId, qIndex)
+  }
+
+  const chosen = findOnboardingStagesTheoryOption(userMessage, qIndex)
+  if (chosen && !chosen.correct) {
+    return wrongTheoryOptionReply(personaId, qIndex, chosen)
+  }
+
+  const passed = chosen?.correct === true || isOnboardingStagesTheoryAnswerCorrect(userMessage, qIndex)
 
   if (passed) {
     const ack = stagesQuizPassAck(personaId, qIndex)
@@ -367,21 +436,27 @@ export function scriptedOnboardingStagesReply(personaId, userMessage, messages) 
     return buildStagesQuizStuckHint(personaId, qIndex, userMessage, messages)
   }
 
-  if (qIndex === 0) {
-    if (personaId === 'vasily') {
-      return 'Мимо. Следующий этап после схемы — «Знание». Как называется?'
-    }
-    if (personaId === 'arkady') {
-      return 'Почти. Начинаем со «Знания». Как называется этап?'
-    }
-    return 'Неверно. Следующий этап — «Знание». Повтори.'
+  if (qIndex === 1 && (evaluateVisionImageAnswer(userMessage) || evaluateKinesthesiaImageAnswer(userMessage))) {
+    return singleImageCorrectionReply(personaId, 'logic')
+  }
+  if (
+    qIndex === 2 &&
+    ((evaluateLogicImageAnswer(userMessage) && !evaluateVisionImageAnswer(userMessage)) ||
+      evaluateKinesthesiaImageAnswer(userMessage))
+  ) {
+    return singleImageCorrectionReply(personaId, 'vision')
+  }
+  if (qIndex === 3 && evaluateLogicImageAnswer(userMessage) && !evaluateKinesthesiaImageAnswer(userMessage)) {
+    return singleImageCorrectionReply(personaId, 'kinesthesia')
   }
 
-  if (qIndex === 1) return singleImageCorrectionReply(personaId, 'logic')
-  if (qIndex === 2) return singleImageCorrectionReply(personaId, 'vision')
-  if (qIndex === 3) return singleImageCorrectionReply(personaId, 'kinesthesia')
-
-  return singleImageCorrectionReply(personaId, 'logic')
+  if (personaId === 'vasily') {
+    return `Не то. Ответь своими словами или жми вариант. ${formatOnboardingStagesTheoryPrompt(qIndex)}`
+  }
+  if (personaId === 'arkady') {
+    return `Друг, пока не сходится. Напиши или выбери вариант. ${formatOnboardingStagesTheoryPrompt(qIndex)}`
+  }
+  return `Пока неверно. Напишите ответ или выберите вариант. ${formatOnboardingStagesTheoryPrompt(qIndex)}`
 }
 
 /**

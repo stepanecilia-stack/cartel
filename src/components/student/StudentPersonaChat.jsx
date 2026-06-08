@@ -5,8 +5,12 @@ import { sendPortalPersonaChatMessage } from '../../services/portalPersonaAiServ
 import { isPortalPersonaAiRemoteEnabled } from '../../utils/portalPersonaAiConfig.js'
 import { portalPersonaReplySourceLabel } from '../../utils/portalPersonaAiConfig.js'
 import { getGreetingIntakeProgress } from '../../utils/onboardingGreetingChat.js'
-import { deriveStagesQuizPassesFromDialog } from '../../utils/onboardingStagesChat.js'
+import { deriveStagesQuizPassesFromDialog, stagesQuizQuestionIndex } from '../../utils/onboardingStagesChat.js'
 import { deriveProgramAtomQuizPasses } from '../../utils/programAtomChat.js'
+import {
+  getOnboardingStagesTheoryQuestion,
+  ONBOARDING_STAGES_THEORY_QUESTIONS,
+} from '../../constants/onboardingTheoryQuiz.js'
 import { parsePersonaChatMarkers } from '../../utils/personaChatMarkers.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -30,6 +34,7 @@ import { vk } from '../../utils/vkUi.js'
  *   onTrainerSignals?: (signals: {
  *     readyForStages: boolean,
  *     quizPass: boolean,
+ *     onboardingSkip?: boolean,
  *     stagesQuizPassCount?: number,
  *   }) => void,
  *   onIntakeProgress?: (progress: import('../../utils/onboardingGreetingChat.js').GreetingIntakeProgress) => void,
@@ -124,66 +129,83 @@ function StudentPersonaChat(
     }
   }, [messages, context, onTrainerSignals, studyAtom])
 
-  const send = useCallback(async () => {
-    const text = input.trim()
-    if (!text || busy || disabled) return
+  const stagesQuizIndex =
+    context === 'onboarding_stages' ? stagesQuizQuestionIndex(messages) : ONBOARDING_STAGES_THEORY_QUESTIONS.length
+  const stagesQuizComplete = stagesQuizIndex >= ONBOARDING_STAGES_THEORY_QUESTIONS.length
+  const currentTheoryQuestion =
+    context === 'onboarding_stages' && !stagesQuizComplete
+      ? getOnboardingStagesTheoryQuestion(stagesQuizIndex)
+      : null
+  const showTheoryChoices = Boolean(currentTheoryQuestion) && !busy
 
-    setError('')
-    setInput('')
-    const nextHistory = [...messages, { role: 'user', content: text }]
-    setMessages(nextHistory)
-    setBusy(true)
+  const submitUserText = useCallback(
+    async (text) => {
+      const trimmed = text.trim()
+      if (!trimmed || busy || disabled) return
 
-    try {
-      const { reply: rawReply, source } = await sendPortalPersonaChatMessage({
-        personaId: persona.id,
-        messages: nextHistory,
-        context,
-        programHint,
-        personaMemory,
-        trainingGoals,
-        studyAtom,
-      })
-      setReplySource(source)
-      const { displayReply, readyForStages, quizPass } = parsePersonaChatMarkers(rawReply)
-      const withTrainer = [...nextHistory, { role: 'assistant', content: displayReply }]
-      if (context === 'onboarding_stages') {
-        onTrainerSignals?.({
-          readyForStages,
-          quizPass,
-          stagesQuizPassCount: deriveStagesQuizPassesFromDialog(withTrainer),
+      setError('')
+      setInput('')
+      const nextHistory = [...messages, { role: 'user', content: trimmed }]
+      setMessages(nextHistory)
+      setBusy(true)
+
+      try {
+        const { reply: rawReply, source } = await sendPortalPersonaChatMessage({
+          personaId: persona.id,
+          messages: nextHistory,
+          context,
+          programHint,
+          personaMemory,
+          trainingGoals,
+          studyAtom,
         })
-      } else if (context === 'program_atom' && studyAtom) {
-        onTrainerSignals?.({
-          readyForStages,
-          quizPass,
-          stagesQuizPassCount: deriveProgramAtomQuizPasses(withTrainer, studyAtom),
-        })
-      } else {
-        onTrainerSignals?.({ readyForStages, quizPass })
+        setReplySource(source)
+        const { displayReply, readyForStages, quizPass, onboardingSkip } = parsePersonaChatMarkers(rawReply)
+        const withTrainer = [...nextHistory, { role: 'assistant', content: displayReply }]
+        if (context === 'onboarding_stages') {
+          onTrainerSignals?.({
+            readyForStages,
+            quizPass,
+            onboardingSkip,
+            stagesQuizPassCount: deriveStagesQuizPassesFromDialog(withTrainer),
+          })
+        } else if (context === 'program_atom' && studyAtom) {
+          onTrainerSignals?.({
+            readyForStages,
+            quizPass,
+            onboardingSkip,
+            stagesQuizPassCount: deriveProgramAtomQuizPasses(withTrainer, studyAtom),
+          })
+        } else {
+          onTrainerSignals?.({ readyForStages, quizPass, onboardingSkip })
+        }
+        setMessages(withTrainer)
+      } catch (e) {
+        console.error(e)
+        setError('Не удалось получить ответ. Попробуйте ещё раз.')
+        setMessages((prev) => prev.slice(0, -1))
+        setInput(trimmed)
+      } finally {
+        setBusy(false)
       }
-      setMessages(withTrainer)
-    } catch (e) {
-      console.error(e)
-      setError('Не удалось получить ответ. Попробуйте ещё раз.')
-      setMessages((prev) => prev.slice(0, -1))
-      setInput(text)
-    } finally {
-      setBusy(false)
-    }
-  }, [
-    input,
-    busy,
-    disabled,
-    messages,
-    persona.id,
-    context,
-    programHint,
-    personaMemory,
-    trainingGoals,
-    onTrainerSignals,
-    studyAtom,
-  ])
+    },
+    [
+      busy,
+      disabled,
+      messages,
+      persona.id,
+      context,
+      programHint,
+      personaMemory,
+      trainingGoals,
+      studyAtom,
+      onTrainerSignals,
+    ],
+  )
+
+  const send = useCallback(async () => {
+    await submitUserText(input)
+  }, [input, submitUserText])
 
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -200,9 +222,13 @@ function StudentPersonaChat(
             ? 'Скрипты: задайте VITE_FIREBASE_* в .env.local (VITE_PORTAL_PERSONA_AI=0 — принудительно выкл.).'
             : 'Скрипты: в сборке нет Firebase-конфига. Добавьте VITE_FIREBASE_* на Vercel и пересоберите.'}
         </p>
-      ) : replySource && replySource !== 'ai' ? (
+      ) : replySource === 'script-fallback' ? (
         <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
           {portalPersonaReplySourceLabel(replySource)}. Проверьте сеть или войдите в кабинет заново.
+        </p>
+      ) : replySource === 'script' && !isPortalPersonaAiRemoteEnabled() ? (
+        <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
+          {portalPersonaReplySourceLabel(replySource)}
         </p>
       ) : null}
 
@@ -248,12 +274,33 @@ function StudentPersonaChat(
         <div ref={bottomRef} />
       </div>
 
+      {showTheoryChoices && currentTheoryQuestion ? (
+        <div className="space-y-1.5">
+          <p className={`${vk.mutedXs} px-0.5`}>Можно выбрать вариант или написать своими словами:</p>
+          {currentTheoryQuestion.options.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              disabled={disabled || busy}
+              onClick={() => void submitUserText(option.label)}
+              className={`w-full touch-manipulation rounded-xl border border-[#e7e8ec] bg-white px-3 py-2.5 text-left text-[14px] leading-snug text-[#2c2d2e] transition-colors hover:border-[#2d81e0] hover:bg-[#ecf3fc] active:bg-[#e3eef9] disabled:opacity-50`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="flex gap-2">
         <input
           ref={inputRef}
           type="text"
           className={`${vk.input} min-h-10 flex-1`}
-          placeholder="Напишите тренеру…"
+          placeholder={
+            currentTheoryQuestion && !stagesQuizComplete
+              ? 'Или напишите ответ своими словами…'
+              : 'Напишите тренеру…'
+          }
           value={input}
           disabled={disabled || busy}
           onChange={(e) => setInput(e.target.value)}

@@ -10,6 +10,7 @@ import {
   scriptedOnboardingGreetingReply,
 } from '../utils/onboardingGreetingChat.js'
 import { enrichOnboardingStagesReply, scriptedOnboardingStagesReply } from '../utils/onboardingStagesChat.js'
+import { buildOnboardingSkipAllowReply, detectOnboardingSkipIntent } from '../utils/onboardingSkipIntent.js'
 import { deriveProgramAtomQuizPasses, scriptedProgramAtomReply } from '../utils/programAtomChat.js'
 import { MARKER_QUIZ_PASS } from '../utils/personaChatMarkers.js'
 import { aiReplyInventsStudentRank, buildIntakeFactsCorpus } from '../utils/onboardingAiGuard.js'
@@ -314,6 +315,41 @@ export async function sendPortalPersonaChatMessage({
   const userMessage = lastUser?.content ?? ''
 
   const useRemote = isPortalPersonaAiRemoteEnabled()
+
+  if (
+    (context === 'onboarding_greeting' || context === 'onboarding_stages') &&
+    detectOnboardingSkipIntent(userMessage)
+  ) {
+    return { reply: buildOnboardingSkipAllowReply(persona.id), source: 'script' }
+  }
+
+  if (context === 'onboarding_stages') {
+    const graded = scriptedOnboardingStagesReply(persona.id, userMessage, messages)
+
+    if (useRemote) {
+      try {
+        await callPortalPersonaChatFunction({
+          personaId: persona.id,
+          messages,
+          context,
+          programHint,
+          personaMemory,
+          trainingGoals,
+        })
+        return {
+          reply: enrichOnboardingStagesReply(persona.id, userMessage, messages, graded),
+          source: 'ai',
+        }
+      } catch (err) {
+        console.warn('[portalPersonaAi] stages quiz remote failed, using graded reply', err)
+        await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
+        return { reply: graded, source: 'script-fallback' }
+      }
+    }
+
+    await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
+    return { reply: graded, source: 'script' }
+  }
 
   const scriptedIntakeReply = () => {
     if (context === 'onboarding_greeting') {

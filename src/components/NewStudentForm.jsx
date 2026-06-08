@@ -10,12 +10,17 @@ import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { vk } from '../utils/vkUi.js'
 
 const initialForm = {
-  fullName: '',
+  firstName: '',
+  lastName: '',
   birthYear: '',
   gender: 'M',
   height: '',
   reach: '',
   weight: '',
+}
+
+function buildFullName(firstName, lastName) {
+  return [String(firstName ?? '').trim(), String(lastName ?? '').trim()].filter(Boolean).join(' ')
 }
 
 function NewStudentForm({
@@ -30,13 +35,15 @@ function NewStudentForm({
   const [formData, setFormData] = useState(initialForm)
   const [forceCreateDespiteDuplicates, setForceCreateDespiteDuplicates] = useState(false)
 
+  const fullName = buildFullName(formData.firstName, formData.lastName)
+
   const likelyDuplicates = useMemo(
     () =>
       findLikelyDuplicateStudents(existingStudents, {
-        fullName: formData.fullName,
+        fullName,
         birthYear: formData.birthYear,
       }),
-    [existingStudents, formData.fullName, formData.birthYear],
+    [existingStudents, fullName, formData.birthYear],
   )
 
   const showDuplicateWarning = likelyDuplicates.length > 0 && !forceCreateDespiteDuplicates
@@ -48,14 +55,17 @@ function NewStudentForm({
   }
 
   const validate = () => {
-    if (!formData.fullName.trim()) return 'Введите ФИО'
-    const by = normalizeBirthYearNumber(formData.birthYear)
-    if (!by) return 'Укажите год рождения (четыре цифры)'
-    const yNow = new Date().getFullYear()
-    if (by < 1900 || by > yNow) return 'Укажите реалистичный год рождения'
-    if (!formData.height || Number(formData.height) < 100) return 'Укажите корректный рост'
-    if (!formData.reach || Number(formData.reach) < 100) return 'Укажите корректный размах рук'
-    if (!formData.weight || Number(formData.weight) < 20) return 'Укажите корректный вес'
+    if (!formData.firstName.trim()) return 'Введите имя'
+    if (!formData.lastName.trim()) return 'Введите фамилию'
+    if (formData.birthYear.trim()) {
+      const by = normalizeBirthYearNumber(formData.birthYear)
+      if (!by) return 'Год рождения — четыре цифры или оставьте поле пустым'
+      const yNow = new Date().getFullYear()
+      if (by < 1900 || by > yNow) return 'Укажите реалистичный год рождения'
+    }
+    if (formData.height.trim() && Number(formData.height) < 100) return 'Рост — от 100 см или оставьте пустым'
+    if (formData.reach.trim() && Number(formData.reach) < 100) return 'Размах — от 100 см или оставьте пустым'
+    if (formData.weight.trim() && Number(formData.weight) < 20) return 'Вес — от 20 кг или оставьте пустым'
     return ''
   }
 
@@ -67,8 +77,9 @@ function NewStudentForm({
       return
     }
 
+    const name = buildFullName(formData.firstName, formData.lastName)
     const duplicates = findLikelyDuplicateStudents(existingStudents, {
-      fullName: formData.fullName,
+      fullName: name,
       birthYear: formData.birthYear,
     })
     if (duplicates.length > 0 && !forceCreateDespiteDuplicates) {
@@ -79,10 +90,10 @@ function NewStudentForm({
     setError('')
     setIsSaving(true)
     try {
-      const height = Number(formData.height)
-      const reach = Number(formData.reach)
-      const weight = Number(formData.weight)
-      const birthYear = normalizeBirthYearNumber(formData.birthYear)
+      const height = formData.height.trim() ? Number(formData.height) : 0
+      const reach = formData.reach.trim() ? Number(formData.reach) : 0
+      const weight = formData.weight.trim() ? Number(formData.weight) : 0
+      const birthYear = formData.birthYear.trim() ? normalizeBirthYearNumber(formData.birthYear) : 0
       const athlete = {
         height,
         reach,
@@ -100,11 +111,13 @@ function NewStudentForm({
       const effectiveKSR = calculateEffectiveKSR(baseKSR, kd)
 
       await addStudent({
-        name: formData.fullName.trim(),
-        fullName: formData.fullName.trim(),
+        name,
+        fullName: name,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         gender: formData.gender,
         birthYear,
-        birthYearLabel: formatBirthYearRu(birthYear),
+        ...(birthYear ? { birthYearLabel: formatBirthYearRu(birthYear) } : {}),
         height,
         reach,
         weight,
@@ -145,13 +158,36 @@ function NewStudentForm({
 
   return (
     <form className={gridClass} onSubmit={onSubmit}>
-      <label className={span2}>
-        <span className={vk.label}>ФИО</span>
-        <input name="fullName" type="text" value={formData.fullName} onChange={onChange} className={vk.input} />
+      <label>
+        <span className={vk.label}>Имя</span>
+        <input
+          name="firstName"
+          type="text"
+          autoComplete="given-name"
+          value={formData.firstName}
+          onChange={onChange}
+          className={vk.input}
+        />
       </label>
 
+      <label>
+        <span className={vk.label}>Фамилия</span>
+        <input
+          name="lastName"
+          type="text"
+          autoComplete="family-name"
+          value={formData.lastName}
+          onChange={onChange}
+          className={vk.input}
+        />
+      </label>
+
+      <p className={`${vk.mutedXs} ${span2}`}>
+        Антропометрию можно заполнить позже в карточке ученика — для КСР и дистанции боя.
+      </p>
+
       <label className={span2}>
-        <span className={vk.label}>Год рождения</span>
+        <span className={vk.label}>Год рождения (необязательно)</span>
         <div className="flex flex-wrap items-center gap-2">
           <input
             name="birthYear"
@@ -168,7 +204,7 @@ function NewStudentForm({
       </label>
 
       <label>
-        <span className={vk.label}>Пол (для норм тестов)</span>
+        <span className={vk.label}>Пол (необязательно)</span>
         <select name="gender" value={formData.gender} onChange={onChange} className={vk.select}>
           <option value="M">Мужской</option>
           <option value="F">Женский</option>
@@ -176,17 +212,17 @@ function NewStudentForm({
       </label>
 
       <label>
-        <span className={vk.label}>Рост (см)</span>
+        <span className={vk.label}>Рост, см (необязательно)</span>
         <input name="height" type="number" value={formData.height} onChange={onChange} className={vk.input} />
       </label>
 
       <label>
-        <span className={vk.label}>Размах рук (см)</span>
+        <span className={vk.label}>Размах рук, см (необязательно)</span>
         <input name="reach" type="number" value={formData.reach} onChange={onChange} className={vk.input} />
       </label>
 
       <label>
-        <span className={vk.label}>Вес (кг)</span>
+        <span className={vk.label}>Вес, кг (необязательно)</span>
         <input name="weight" type="number" value={formData.weight} onChange={onChange} className={vk.input} />
       </label>
 

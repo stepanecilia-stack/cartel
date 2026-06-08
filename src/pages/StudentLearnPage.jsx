@@ -10,6 +10,7 @@ import {
 } from '../services/studentPortalService.js'
 import { refreshAndSavePortalPersonaMemory } from '../services/portalPersonaMemoryService.js'
 import {
+  applyOnboardingSkippedMemory,
   applyTrainingGoalsToPersonaMemory,
   normalizePortalPersonaMemory,
 } from '../utils/portalPersonaMemory.js'
@@ -273,25 +274,29 @@ export default function StudentLearnPage() {
   )
 
   const handleOnboardingComplete = useCallback(
-    async ({ goals, personaId }) => {
+    async ({ goals, personaId, skipped = false }) => {
       if (!student?.id) return
       setOnboardingBusy(true)
       setOnboardingError('')
       try {
         const memoryWithGoals = applyTrainingGoalsToPersonaMemory(personaMemory, goals)
+        const memoryFinal = skipped ? applyOnboardingSkippedMemory(memoryWithGoals) : memoryWithGoals
         const saved = await saveStudentPortalOnboarding(student.id, {
           goals,
           personaId,
-          personaMemory: memoryWithGoals,
+          personaMemory: memoryFinal,
+          skipped,
         })
+        const now = new Date().toISOString()
         setStudent((prev) =>
           prev
             ? {
                 ...prev,
                 portalTrainingGoals: saved.goals,
                 portalPersonaId: saved.personaId,
-                portalOnboardingCompletedAt: new Date().toISOString(),
-                portalPersonaMemory: saved.personaMemory ?? memoryWithGoals,
+                portalOnboardingCompletedAt: now,
+                ...(skipped ? { portalOnboardingSkippedAt: now } : {}),
+                portalPersonaMemory: saved.personaMemory ?? memoryFinal,
               }
             : prev,
         )

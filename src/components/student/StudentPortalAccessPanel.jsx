@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   clearStudentPortalDeviceBinding,
   ensureStudentPortalAccess,
+  resetStudentPortalContext,
   resetStudentPortalPin,
   revokeStudentPortalAccess,
 } from '../../services/studentPortalService.js'
@@ -13,7 +14,11 @@ import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.j
 import { mapCombinationsToDisplayAtoms } from '../../utils/techniqueCatalog.js'
 import { summarizeStudentPortalProgress } from '../../utils/studentPortalProgress.js'
 import { normalizePortalKnowledgeData } from '../../utils/portalKnowledgeData.js'
-import { isPortalOnboardingComplete, trainingGoalsLabels } from '../../constants/studentPortalOnboarding.js'
+import {
+  isPortalOnboardingComplete,
+  isPortalOnboardingSkipped,
+  trainingGoalsLabels,
+} from '../../constants/studentPortalOnboarding.js'
 import { portalPersonaDisplayName } from '../../constants/studentPortalPersonas.js'
 import { normalizePortalPersonaMemory, getPersonaMemoryMilestonesForCoach, hasPersonaMemoryMilestones } from '../../utils/portalPersonaMemory.js'
 import { vk } from '../../utils/vkUi.js'
@@ -52,6 +57,9 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     personaMemory.conversationSummary ||
     hasPersonaMemoryMilestones(personaMemory)
   const onboardingDone = isPortalOnboardingComplete(student)
+  const onboardingSkipped = isPortalOnboardingSkipped(student)
+  const hasPortalContext =
+    onboardingDone || onboardingSkipped || portalSummary.started || showPersonaMemoryNotes
   const storedPin = normalizePortalPinInput(student?.portalCoachPin)
   const displayPin = freshPin || storedPin
   const portalActive = Boolean(student?.portalEnabled)
@@ -134,6 +142,36 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     }
   }
 
+  const onResetContext = async () => {
+    if (!student?.id) return
+    if (
+      !window.confirm(
+        'Сбросить контекст кабинета? Прогресс «Знание», онбординг и пометки виртуального тренера обнулятся. При следующем входе ученик снова пройдёт инструктаж и элементы с начала. Код, PIN и доступ сохранятся.',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await resetStudentPortalContext(student.id)
+      onPortalChange?.({
+        portalKnowledgeData: undefined,
+        portalOnboardingCompletedAt: undefined,
+        portalOnboardingSkippedAt: undefined,
+        portalPersonaMemory: undefined,
+        portalTrainingGoals: undefined,
+        portalTrainingGoal: undefined,
+        portalPersonaId: undefined,
+        portalLastActivityAt: undefined,
+      })
+    } catch (e) {
+      setError(formatFirestoreErrorMessage(e) || e?.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onRevoke = async () => {
     if (!student?.id || !shortId) return
     if (!window.confirm('Отключить кабинет ученика?')) return
@@ -208,6 +246,11 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
         ) : (
           <p className={`mt-1.5 ${vk.mutedXs}`}>Онбординг в кабинете ещё не пройден.</p>
         )}
+        {onboardingSkipped ? (
+          <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[12px] text-amber-900">
+            Пропустил инструктаж — сразу перешёл к программе (попросил в чате с виртуальным тренером).
+          </p>
+        ) : null}
         {showPersonaMemoryNotes ? (
           <div className="mt-2 space-y-1.5 rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">
@@ -277,6 +320,11 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
             <button type="button" disabled={busy} onClick={() => void onResetPin()} className={vk.btnSecondary}>
               Новый PIN
             </button>
+            {hasPortalContext ? (
+              <button type="button" disabled={busy} onClick={() => void onResetContext()} className={vk.btnSecondary}>
+                Сбросить контекст
+              </button>
+            ) : null}
             <button type="button" disabled={busy} onClick={() => void onRevoke()} className={vk.btnGhost}>
               Отключить
             </button>

@@ -98,6 +98,26 @@ export async function clearStudentPortalDeviceBinding(studentId) {
   })
 }
 
+/**
+ * Обнулить прогресс кабинета и контекст виртуального тренера.
+ * Код, PIN и доступ сохраняются — при следующем входе ученик проходит онбординг и программу заново.
+ */
+export async function resetStudentPortalContext(studentId) {
+  if (!studentId) throw new Error('Не указан ученик')
+  await updateDoc(doc(ensureDb(), 'students', studentId), {
+    portalKnowledgeData: deleteField(),
+    portalOnboardingCompletedAt: deleteField(),
+    portalOnboardingSkippedAt: deleteField(),
+    portalPersonaMemory: deleteField(),
+    portalTrainingGoals: deleteField(),
+    portalTrainingGoal: deleteField(),
+    portalPersonaId: deleteField(),
+    portalLastActivityAt: deleteField(),
+    updatedAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+  })
+}
+
 export async function revokeStudentPortalAccess(studentId, shortId) {
   const sid = normalizePortalShortIdInput(shortId) ?? String(shortId)
   if (sid) {
@@ -285,7 +305,7 @@ export async function saveStudentPortalKnowledge(studentId, portalKnowledgeData)
 }
 
 /** Завершение онбординга кабинета (цели, наставник, отметка прохождения). */
-export async function saveStudentPortalOnboarding(studentId, { goals, personaId, personaMemory = null }) {
+export async function saveStudentPortalOnboarding(studentId, { goals, personaId, personaMemory = null, skipped = false }) {
   await ensureStudentPortalAnonymousUser()
   const normalizedGoals = normalizePortalTrainingGoals(goals)
   const normalizedPersona = normalizePortalPersonaId(personaId)
@@ -298,6 +318,9 @@ export async function saveStudentPortalOnboarding(studentId, { goals, personaId,
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),
   }
+  if (skipped) {
+    patch.portalOnboardingSkippedAt = serverTimestamp()
+  }
   if (personaMemory) {
     patch.portalPersonaMemory = {
       ...normalizePortalPersonaMemory(personaMemory),
@@ -305,7 +328,12 @@ export async function saveStudentPortalOnboarding(studentId, { goals, personaId,
     }
   }
   await updateDoc(doc(ensureDb(), 'students', studentId), patch)
-  return { goals: normalizedGoals, personaId: normalizedPersona, personaMemory: patch.portalPersonaMemory ?? null }
+  return {
+    goals: normalizedGoals,
+    personaId: normalizedPersona,
+    personaMemory: patch.portalPersonaMemory ?? null,
+    skipped,
+  }
 }
 
 /** Крупные пометки тренера об ученике (уровень + резюме общения). */

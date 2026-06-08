@@ -59,6 +59,7 @@ export function inferUpdateSectionFromPayload(payload) {
         'portalTrainingGoals',
         'portalPersonaId',
         'portalOnboardingCompletedAt',
+        'portalOnboardingSkippedAt',
         'portalPersonaMemory',
         'portalLastActivityAt',
         'updatedAt',

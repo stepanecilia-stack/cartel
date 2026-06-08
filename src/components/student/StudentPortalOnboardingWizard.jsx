@@ -23,7 +23,7 @@ import { vk } from '../../utils/vkUi.js'
  *     messages: import('../../services/portalPersonaAiService.js').PortalChatMessage[],
  *     context?: import('../../utils/portalPersonaAiPrompt.js').PortalPersonaChatContext,
  *   ) => void | Promise<void>,
- *   onComplete: (payload: { goals: string[], personaId: string }) => void | Promise<void>,
+ *   onComplete: (payload: { goals: string[], personaId: string, skipped?: boolean }) => void | Promise<void>,
  *   busy?: boolean,
  *   error?: string,
  * }} props
@@ -46,6 +46,7 @@ export default function StudentPortalOnboardingWizard({
   /** @type {import('../../utils/onboardingGreetingChat.js').GreetingIntakeProgress | null} */
   const [greetingIntake, setGreetingIntake] = useState(null)
   const [stagesQuizPasses, setStagesQuizPasses] = useState(0)
+  const [skipOffered, setSkipOffered] = useState(false)
   /** @type {import('../../utils/onboardingStagesMat.js').StagesMatPhase} */
   const [stagesFlowPhase, setStagesFlowPhase] = useState('four-stages')
   const [memoryBusy, setMemoryBusy] = useState(false)
@@ -65,10 +66,12 @@ export default function StudentPortalOnboardingWizard({
     if (stepId === 'trainer-greeting') {
       setReadyForStages(false)
       setGreetingIntake(null)
+      setSkipOffered(false)
     }
     if (stepId === 'path') {
       setStagesQuizPasses(0)
       setStagesFlowPhase('four-stages')
+      setSkipOffered(false)
     }
   }, [stepId, personaId])
 
@@ -76,11 +79,13 @@ export default function StudentPortalOnboardingWizard({
     setGreetingIntake(progress)
   }, [])
 
-  const handleGreetingSignals = useCallback(({ readyForStages: ready }) => {
+  const handleGreetingSignals = useCallback(({ readyForStages: ready, onboardingSkip }) => {
+    if (onboardingSkip) setSkipOffered(true)
     if (ready) setReadyForStages(true)
   }, [])
 
-  const handleStagesSignals = useCallback(({ stagesQuizPassCount, quizPass }) => {
+  const handleStagesSignals = useCallback(({ stagesQuizPassCount, quizPass, onboardingSkip }) => {
+    if (onboardingSkip) setSkipOffered(true)
     if (typeof stagesQuizPassCount === 'number') {
       setStagesQuizPasses(Math.min(4, stagesQuizPassCount))
       return
@@ -167,8 +172,8 @@ export default function StudentPortalOnboardingWizard({
               advanceHint={readyForStages ? null : greetingIntakeHint(greetingIntake ?? { goalsDone: false, sportDone: false, physicalDone: false, complete: false, step: 1 })}
             />
           ),
-          action: 'К инструктажу',
-          canAdvance: readyForStages,
+          action: skipOffered ? 'К тренировкам' : 'К инструктажу',
+          canAdvance: skipOffered || readyForStages,
         }
       case 'path':
         return {
@@ -186,17 +191,47 @@ export default function StudentPortalOnboardingWizard({
               stagesQuizPasses={stagesQuizPasses}
             />
           ),
-          action: 'К программе',
-          canAdvance: stagesFlowPhase === 'quiz' && stagesQuizPasses >= 4,
-          hideAdvance: stagesFlowPhase !== 'quiz',
+          action: skipOffered ? 'К тренировкам' : 'К программе',
+          canAdvance: skipOffered || (stagesFlowPhase === 'quiz' && stagesQuizPasses >= 4),
+          hideAdvance: !skipOffered && stagesFlowPhase !== 'quiz',
         }
       default:
         return { title: '', body: null, action: 'Дальше', canAdvance: true }
     }
-  }, [stepId, goals, personaId, busy, memoryBusy, personaMemory, readyForStages, greetingIntake, stagesQuizPasses, stagesFlowPhase, handlePersonaConfirmed, handleBack, handleGreetingIntakeProgress, handleGreetingSignals, handleStagesSignals, toggleGoal])
+  }, [stepId, goals, personaId, busy, memoryBusy, personaMemory, readyForStages, greetingIntake, stagesQuizPasses, stagesFlowPhase, skipOffered, handlePersonaConfirmed, handleBack, handleGreetingIntakeProgress, handleGreetingSignals, handleStagesSignals, toggleGoal])
 
   const handleAdvance = async () => {
     if (!content.canAdvance || busy || memoryBusy) return
+
+    if (skipOffered) {
+      if (stepId === 'trainer-greeting' && onGreetingChatComplete && greetingChatRef.current) {
+        const userCount = greetingChatRef.current.getUserMessageCount?.() ?? 0
+        if (userCount > 0) {
+          setMemoryBusy(true)
+          try {
+            await onGreetingChatComplete(greetingChatRef.current.getSessionMessages(), 'onboarding_greeting')
+          } catch (e) {
+            console.warn('[onboarding] greeting memory save failed (skip)', e)
+          } finally {
+            setMemoryBusy(false)
+          }
+        }
+      } else if (stepId === 'path' && onGreetingChatComplete && stagesChatRef.current) {
+        const userCount = stagesChatRef.current.getUserMessageCount?.() ?? 0
+        if (userCount > 0) {
+          setMemoryBusy(true)
+          try {
+            await onGreetingChatComplete(stagesChatRef.current.getSessionMessages(), 'onboarding_stages')
+          } catch (e) {
+            console.warn('[onboarding] stages memory save failed (skip)', e)
+          } finally {
+            setMemoryBusy(false)
+          }
+        }
+      }
+      void onComplete({ goals: [...goals], personaId, skipped: true })
+      return
+    }
 
     if (stepId === 'trainer-greeting' && onGreetingChatComplete && greetingChatRef.current) {
       const userCount = greetingChatRef.current.getUserMessageCount?.() ?? 0

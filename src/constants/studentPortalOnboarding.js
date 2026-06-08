@@ -65,6 +65,11 @@ export function isPortalOnboardingComplete(student) {
   return Boolean(student?.portalOnboardingCompletedAt)
 }
 
+/** @param {object | null | undefined} student */
+export function isPortalOnboardingSkipped(student) {
+  return Boolean(student?.portalOnboardingSkippedAt)
+}
+
 /** @param {unknown} goalsRaw */
 export function trainingGoalsLabels(goalsRaw) {
   const ids = normalizePortalTrainingGoals(goalsRaw)

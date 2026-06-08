@@ -1,6 +1,7 @@
 import { trainingGoalsLabels } from '../constants/studentPortalOnboarding.js'
 import { formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
 import { MARKER_READY_FOR_STAGES } from './personaChatMarkers.js'
+import { buildOnboardingSkipAllowReply, detectOnboardingSkipIntent } from './onboardingSkipIntent.js'
 
 /** @typedef {{ goalsDone: boolean, sportDone: boolean, physicalDone: boolean, complete: boolean, step: 1 | 2 | 3 | 4 }} GreetingIntakeProgress */
 
@@ -372,6 +373,10 @@ function intakeIncompleteNudge(personaId, progress) {
 export function scriptedOnboardingGreetingReply(personaId, userMessage, messages) {
   const lower = userMessage.trim().toLowerCase()
   if (!lower) return null
+
+  if (detectOnboardingSkipIntent(userMessage)) {
+    return buildOnboardingSkipAllowReply(personaId)
+  }
 
   const progress = getGreetingIntakeProgress(messages)
   const userCount = messages.filter((m) => m.role === 'user').length
