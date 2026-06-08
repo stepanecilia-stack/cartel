@@ -1,6 +1,10 @@
 import { getPortalPersona, formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
 import { getPortalPersonaVoice } from '../constants/portalPersonaVoice.js'
 import {
+  isPortalPersonaAiRemoteEnabled,
+} from '../utils/portalPersonaAiConfig.js'
+import { callPortalPersonaChatFunction } from './portalPersonaAiRemote.js'
+import {
   scriptedOnboardingGreetingNudge,
   scriptedOnboardingStagesReply,
 } from '../utils/onboardingStagesChat.js'
@@ -249,7 +253,7 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
  *   personaMemory?: import('../utils/portalPersonaMemory.js').PortalPersonaMemory | null,
  *   trainingGoals?: unknown,
  * }} params
- * @returns {Promise<string>}
+ * @returns {Promise<{ reply: string, source: import('../utils/portalPersonaAiConfig.js').PortalPersonaReplySource }>}
  */
 export async function sendPortalPersonaChatMessage({
   personaId,
@@ -263,11 +267,10 @@ export async function sendPortalPersonaChatMessage({
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const userMessage = lastUser?.content ?? ''
 
-  const useRemote = import.meta.env.VITE_PORTAL_PERSONA_AI === '1'
+  const useRemote = isPortalPersonaAiRemoteEnabled()
 
   if (useRemote) {
     try {
-      const { callPortalPersonaChatFunction } = await import('./portalPersonaAiRemote.js')
       const reply = await callPortalPersonaChatFunction({
         personaId: persona.id,
         messages,
@@ -276,16 +279,24 @@ export async function sendPortalPersonaChatMessage({
         personaMemory,
         trainingGoals,
       })
-      if (reply?.trim()) return reply.trim()
+      if (reply?.trim()) return { reply: reply.trim(), source: 'ai' }
     } catch (err) {
       console.warn('[portalPersonaAi] remote failed, using scripted fallback', err)
+      await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
+      return {
+        reply: scriptedPersonaReply(persona, userMessage, context, messages),
+        source: 'script-fallback',
+      }
     }
   }
 
   await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
-  return scriptedPersonaReply(persona, userMessage, context, messages)
+  return {
+    reply: scriptedPersonaReply(persona, userMessage, context, messages),
+    source: 'script',
+  }
 }
 
 export function isPortalPersonaAiRemoteConfigured() {
-  return import.meta.env.VITE_PORTAL_PERSONA_AI === '1'
+  return isPortalPersonaAiRemoteEnabled()
 }

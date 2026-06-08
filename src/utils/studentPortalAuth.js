@@ -4,10 +4,9 @@ const PIN_LEN = 4
 
 export function normalizePortalShortIdInput(raw) {
   const digits = String(raw ?? '').replace(/\D/g, '').slice(0, 6)
-  if (digits.length < 6) return null
-  const n = Number(digits)
-  if (!Number.isFinite(n) || n < 100000 || n > 999999) return null
-  return String(n)
+  if (digits.length !== 6) return null
+  if (digits < '100000' || digits > '999999') return null
+  return digits
 }
 
 export function normalizePortalPinInput(raw) {

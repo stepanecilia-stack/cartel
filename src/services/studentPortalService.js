@@ -116,8 +116,14 @@ export async function loginStudentPortal({ shortIdInput, pinInput, consentAccept
 
   const shortId = normalizePortalShortIdInput(shortIdInput)
   const pin = normalizePortalPinInput(pinInput)
-  if (!shortId || !pin) {
+  if (!shortId && !pin) {
     throw new Error('Введите 6-значный код и 4-значный PIN.')
+  }
+  if (!shortId) {
+    throw new Error('Код — 6 цифр (от 100000 до 999999).')
+  }
+  if (!pin) {
+    throw new Error('PIN — 4 цифры.')
   }
 
   const authRecord = await getStudentPortalAuthRecord(shortId)

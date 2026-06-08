@@ -6,6 +6,7 @@ import {
   mergePersonaMemoryAfterSummarize,
 } from '../utils/portalPersonaMemory.js'
 import { extractOnboardingStagesMilestones } from '../utils/onboardingStagesChat.js'
+import { isPortalPersonaAiRemoteEnabled } from '../utils/portalPersonaAiConfig.js'
 
 /**
  * @param {{
@@ -22,7 +23,7 @@ export async function summarizePortalPersonaMemory({
   context = 'general',
 }) {
   const normalizedExisting = normalizePortalPersonaMemory(existingMemory)
-  const useRemote = import.meta.env.VITE_PORTAL_PERSONA_AI === '1'
+  const useRemote = isPortalPersonaAiRemoteEnabled()
 
   if (useRemote) {
     try {

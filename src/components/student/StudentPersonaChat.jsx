@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 import { sendPortalPersonaChatMessage, isPortalPersonaAiRemoteConfigured } from '../../services/portalPersonaAiService.js'
+import { portalPersonaReplySourceLabel } from '../../utils/portalPersonaAiConfig.js'
 import { parsePersonaChatMarkers } from '../../utils/personaChatMarkers.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -57,6 +58,8 @@ function StudentPersonaChat(
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  /** @type {import('../../utils/portalPersonaAiConfig.js').PortalPersonaReplySource | null} */
+  const [replySource, setReplySource] = useState(null)
   const bottomRef = useRef(null)
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -95,7 +98,7 @@ function StudentPersonaChat(
     setBusy(true)
 
     try {
-      const rawReply = await sendPortalPersonaChatMessage({
+      const { reply: rawReply, source } = await sendPortalPersonaChatMessage({
         personaId: persona.id,
         messages: nextHistory,
         context,
@@ -103,6 +106,7 @@ function StudentPersonaChat(
         personaMemory,
         trainingGoals,
       })
+      setReplySource(source)
       const { displayReply, readyForStages, quizPass } = parsePersonaChatMarkers(rawReply)
       onTrainerSignals?.({ readyForStages, quizPass })
       setMessages((prev) => [...prev, { role: 'assistant', content: displayReply }])
@@ -139,8 +143,12 @@ function StudentPersonaChat(
       {!isPortalPersonaAiRemoteConfigured() ? (
         <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
           {import.meta.env.DEV
-            ? 'Локально: ответы по скриптам. Для Gemini: Cloud Function + VITE_PORTAL_PERSONA_AI=1 в .env.local'
-            : 'Ответы по скриптам — в сборке нет VITE_PORTAL_PERSONA_AI=1. Задайте переменную на Vercel и пересоберите.'}
+            ? 'Скрипты: задайте VITE_FIREBASE_* и VITE_PORTAL_PERSONA_AI=1 в .env.local или соберите production.'
+            : 'Скрипты: в сборке нет Firebase-конфига. Добавьте VITE_FIREBASE_* на Vercel и пересоберите.'}
+        </p>
+      ) : replySource && replySource !== 'ai' ? (
+        <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
+          {portalPersonaReplySourceLabel(replySource)}. Проверьте сеть или войдите в кабинет заново.
         </p>
       ) : null}
 
