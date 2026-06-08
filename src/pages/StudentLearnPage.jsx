@@ -34,6 +34,7 @@ import StudentPortalOnboardingWizard from '../components/student/StudentPortalOn
 import StudentPersonaAvatar from '../components/student/StudentPersonaAvatar.jsx'
 import StudentPersonaBubble from '../components/student/StudentPersonaBubble.jsx'
 import StudentPersonaChatDock from '../components/student/StudentPersonaChatDock.jsx'
+import StudentFirstAtomFlow from '../components/student/StudentFirstAtomFlow.jsx'
 import {
   isPortalOnboardingComplete,
   normalizePortalTrainingGoals,
@@ -181,12 +182,20 @@ export default function StudentLearnPage() {
 
   const programChatHint = useMemo(() => {
     const parts = [`Этап программы: ${tierLabel(tier)}`, `Прогресс: ${leadingDone}/${total || '—'}`]
-    if (viewAtom?.title) parts.push(`Сейчас смотрит: «${viewAtom.title}»`)
+    if (viewAtom?.name) parts.push(`Сейчас смотрит: «${viewAtom.name}»`)
     if (canMark) parts.push('Может нажать «Понял» после трёх образов')
     else if (viewAtomMarked) parts.push('Элемент уже отмечен')
     else if (!tierUnlocked[tier]) parts.push('Следующий этап пока закрыт')
     return parts.join('. ')
-  }, [tier, leadingDone, total, viewAtom?.title, canMark, viewAtomMarked, tierUnlocked])
+  }, [tier, leadingDone, total, viewAtom?.name, canMark, viewAtomMarked, tierUnlocked])
+
+  const isFirstAtomLearning =
+    tier === 1 &&
+    focusAtom &&
+    viewAtom?.id === focusAtom.id &&
+    focusAtom.id === orderedL1[0]?.id &&
+    isViewingCurrentStep &&
+    canMark
 
   useEffect(() => {
     if (!personaMessage) return undefined
@@ -344,8 +353,8 @@ export default function StudentLearnPage() {
 
   if (!onboardingComplete) {
     return (
-      <main className={`${vk.pageWithNav} pb-3 pt-2 sm:px-4`}>
-        <div className="mx-auto w-full max-w-2xl space-y-3 px-2">
+      <main className="bg-[#edeef0] px-2 pb-3 pt-2 text-[#2c2d2e] sm:px-4">
+        <div className="mx-auto w-full max-w-lg space-y-2">
           <StudentPortalOnboardingWizard
             mode="full"
             initialGoals={portalGoals}
@@ -363,8 +372,8 @@ export default function StudentLearnPage() {
 
   if (guideOpen) {
     return (
-      <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
-        <div className="mx-auto w-full max-w-2xl space-y-2">
+      <main className="bg-[#edeef0] px-2 py-3 text-[#2c2d2e] sm:px-4">
+        <div className="mx-auto w-full max-w-lg space-y-2">
           <header className="flex flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1">
               <h1 className={vk.h1Lg}>Как учить</h1>
@@ -476,22 +485,36 @@ export default function StudentLearnPage() {
               </button>
             </div>
 
-            <AtomStudyPanel atom={viewAtom} playing={playing} onPlayingChange={setPlaying} autoPlay />
-
-            {personaMessage ? (
-              <StudentPersonaBubble personaId={portalPersonaId} message={personaMessage} compact />
-            ) : null}
-
-            {canMark ? (
-              <button
-                type="button"
+            {isFirstAtomLearning ? (
+              <StudentFirstAtomFlow
+                atom={viewAtom}
+                personaId={portalPersonaId}
+                personaMemory={personaMemory}
+                trainingGoals={portalGoals}
                 disabled={saving}
-                onClick={() => void handleMark()}
-                className={`w-full ${vk.btnPrimary}`}
-              >
-                {saving ? 'Сохранение…' : 'Понял'}
-              </button>
-            ) : null}
+                saving={saving}
+                onMarkComplete={handleMark}
+              />
+            ) : (
+              <>
+                <AtomStudyPanel atom={viewAtom} playing={playing} onPlayingChange={setPlaying} autoPlay />
+
+                {personaMessage ? (
+                  <StudentPersonaBubble personaId={portalPersonaId} message={personaMessage} compact />
+                ) : null}
+
+                {canMark ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void handleMark()}
+                    className={`w-full ${vk.btnPrimary}`}
+                  >
+                    {saving ? 'Сохранение…' : 'Понял'}
+                  </button>
+                ) : null}
+              </>
+            )}
 
             {saveError ? <p className={vk.error}>{saveError}</p> : null}
           </section>

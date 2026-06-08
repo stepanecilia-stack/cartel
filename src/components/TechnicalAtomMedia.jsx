@@ -169,6 +169,7 @@ function SoundToggleButton({ muted, onToggle, prominent = false }) {
  *   showSoundToggle?: boolean,
  *   showSpeedToggle?: boolean,
  *   carouselSlide?: boolean,
+ *   defaultMuted?: boolean,
  * }} props
  */
 export default function TechnicalAtomMedia({
@@ -184,10 +185,11 @@ export default function TechnicalAtomMedia({
   showSoundToggle = false,
   showSpeedToggle = false,
   carouselSlide = false,
+  defaultMuted = true,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [videoError, setVideoError] = useState(false)
-  const [audioMuted, setAudioMuted] = useState(true)
+  const [audioMuted, setAudioMuted] = useState(defaultMuted)
   const [playbackFast, setPlaybackFast] = useState(false)
   const videoRef = useRef(null)
   const media = resolveTechnicalAtomMedia(atom)
@@ -206,9 +208,9 @@ export default function TechnicalAtomMedia({
 
   useEffect(() => {
     setVideoError(false)
-    setAudioMuted(true)
+    setAudioMuted(defaultMuted)
     setPlaybackFast(false)
-  }, [media.src])
+  }, [media.src, defaultMuted])
 
   useEffect(() => {
     const video = videoRef.current

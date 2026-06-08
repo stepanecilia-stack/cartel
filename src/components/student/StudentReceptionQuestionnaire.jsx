@@ -40,19 +40,19 @@ export default function StudentReceptionQuestionnaire({
 
   return (
     <div className={`overflow-hidden rounded-[10px] border border-[#e7e8ec] ${className}`}>
-      <div className="relative min-h-[320px] bg-[#3d342c] sm:min-h-[360px]">
+      <div className="relative max-h-[min(52vh,420px)] min-h-[220px] bg-[#3d342c] sm:min-h-[260px]">
         <img
           src={sceneSrc}
           alt=""
-          className="absolute inset-0 h-full w-full scale-105 object-cover object-[center_78%] opacity-95"
+          className="absolute inset-0 h-full w-full object-cover object-[center_72%] opacity-95"
           loading="eager"
           decoding="async"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-black/5 to-black/25" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30" />
 
-        <div className="relative flex min-h-[320px] items-end justify-center px-3 pb-4 pt-10 sm:min-h-[360px] sm:px-5 sm:pb-6 sm:pt-12">
+        <div className="relative flex h-full min-h-[inherit] items-center justify-center px-3 py-4 sm:px-4 sm:py-5">
           <div
-            className="w-full max-w-[340px] rotate-[1.2deg] shadow-[0_18px_40px_rgba(0,0,0,0.35),0_2px_0_rgba(255,255,255,0.15)_inset] sm:max-w-[380px]"
+            className="w-full max-w-[320px] rotate-[0.8deg] shadow-[0_12px_28px_rgba(0,0,0,0.32)] sm:max-w-[340px]"
             style={{
               background:
                 'linear-gradient(165deg, #fffef9 0%, #f9f6ee 45%, #f3efe4 100%)',

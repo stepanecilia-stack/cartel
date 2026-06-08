@@ -11,7 +11,7 @@ export default function StudentReceptionMonologue({ message, compact = false, ch
   return (
     <div className={`overflow-hidden rounded-[10px] border border-[#e7e8ec] bg-white ${className}`}>
       {!compact ? (
-        <div className="relative aspect-[4/3] w-full bg-[#1a1f24] sm:aspect-[16/10]">
+        <div className="relative aspect-[4/3] max-h-[min(38vh,280px)] w-full bg-[#1a1f24] sm:max-h-[min(42vh,320px)]">
           <img
             src={sceneSrc}
             alt=""
@@ -39,7 +39,7 @@ export default function StudentReceptionMonologue({ message, compact = false, ch
             <p className="text-[11px] font-semibold text-[#2d81e0] sm:text-[12px]">
               {adminName} · {adminRole}
             </p>
-            <p className="mt-1.5 text-[14px] leading-snug text-[#2c2d2e] sm:text-[15px] sm:leading-relaxed">
+            <p className="mt-1.5 whitespace-pre-line text-[14px] leading-snug text-[#2c2d2e] sm:text-[15px] sm:leading-relaxed">
               {monologue}
             </p>
           </div>

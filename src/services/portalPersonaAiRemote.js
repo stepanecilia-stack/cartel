@@ -70,6 +70,7 @@ export async function callPortalPersonaChatFunction({
     systemPrompt: getPortalPersonaSystemPrompt(personaId, context, programHint, {
       personaMemory,
       trainingGoals,
+      intakeMessages: context === 'onboarding_greeting' ? messages : null,
     }),
   })
 

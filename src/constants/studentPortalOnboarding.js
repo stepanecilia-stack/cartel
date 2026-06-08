@@ -32,7 +32,7 @@ export const KNOWLEDGE_THREE_IMAGES = [
   },
 ]
 
-/** @typedef {'welcome' | 'goal' | 'persona' | 'trainer-greeting' | 'path' | 'knowledge-what' | 'logic' | 'vision' | 'kinesthesia' | 'knowledge-rule'} OnboardingStepId */
+/** @typedef {'welcome' | 'goal' | 'persona' | 'trainer-greeting' | 'path'} OnboardingStepId */
 
 /** @type {OnboardingStepId[]} */
 export const ONBOARDING_STEP_ORDER = [
@@ -41,11 +41,6 @@ export const ONBOARDING_STEP_ORDER = [
   'persona',
   'trainer-greeting',
   'path',
-  'knowledge-what',
-  'logic',
-  'vision',
-  'kinesthesia',
-  'knowledge-rule',
 ]
 
 export const KNOWLEDGE_GUIDE_STEP_ORDER = ONBOARDING_STEP_ORDER.filter(

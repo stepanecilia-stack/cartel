@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { STUDENT_PORTAL_RECEPTION } from '../../constants/studentPortalReception.js'
+import { STUDENT_PORTAL_RECEPTION, trainerReceptionIntro } from '../../constants/studentPortalReception.js'
 import {
   formatPortalPersonaName,
   PORTAL_PERSONAS,
 } from '../../constants/studentPortalPersonas.js'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
-import StudentPersonaGymStory from './StudentPersonaGymStory.jsx'
+import StudentPersonaGymHero from './StudentPersonaGymHero.jsx'
 import StudentReceptionMonologue from './StudentReceptionMonologue.jsx'
 import { vk } from '../../utils/vkUi.js'
 
@@ -52,8 +52,15 @@ export default function StudentPersonaIntroFlow({
 
   if (phase === 'detail' && focusPersona) {
     return (
-      <div className="space-y-3">
-        <StudentPersonaGymStory persona={focusPersona} />
+      <div className="space-y-2">
+        <div className="overflow-hidden rounded-[10px] border border-[#e7e8ec] bg-white">
+          <StudentPersonaGymHero persona={focusPersona} />
+          <StudentReceptionMonologue
+            compact
+            message={trainerReceptionIntro(focusPersona.id)}
+            className="border-0 rounded-none"
+          />
+        </div>
         <div className="flex flex-col gap-2">
           <button type="button" disabled={disabled} onClick={() => choose(focusPersona.id)} className={btnPrimary}>
             Выбрать {focusName}

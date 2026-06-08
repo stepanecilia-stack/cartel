@@ -27,7 +27,9 @@ function atomToForm(atom) {
     detailEmbedUrl: atom.media?.detailEmbedUrl ?? '',
     detailVideoLink: atom.media?.detailVideoLink ?? '',
     howTo: atom.howTo ?? '',
+    whyHowTo: atom.whyHowTo ?? '',
     mistakes: atom.mistakes ?? '',
+    whyMistakes: atom.whyMistakes ?? '',
   }
 }
 
@@ -134,8 +136,9 @@ export default function TechnicalElementsPage() {
         <header>
           <h1 className={vk.h1Lg}>Технические элементы</h1>
           <p className={vk.mutedXs}>
-            WebM — по play на карточке. Обложка уровня — общая картинка для всех приёмов этого уровня (пока нет
-            своего видео и как фон под play).
+            Здесь задаётся всё, что видит ученик на этапе «Знание»: два ролика карусели, тексты под роликами и
+            материал для проверки тренером после «Понял». Сохранение — в Firestore (
+            <span className="font-mono">technical_program_atoms</span>).
           </p>
         </header>
 
@@ -268,8 +271,15 @@ export default function TechnicalElementsPage() {
                 previewable
               />
             </div>
+            <p className={`${vk.mutedXs} rounded-lg bg-[#f0f7ff] px-2.5 py-2`}>
+              На портале ученика: тренер хвалит за тесты → карусель из 2 роликов → «Понял» → короткая проверка в
+              чате → совет отработать перед зеркалом. Ниже — куда попадает каждое поле.
+            </p>
             <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
-              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">1. Демонстрация</legend>
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">
+                1. Зрительный образ — первый ролик карусели
+              </legend>
+              <p className={vk.mutedXs}>Ученик смотрит форму без спешки. Достаточно одного поля (WebM или embed).</p>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
               <input className={vk.input} value={form.webmSrc} onChange={(e) => updateField('webmSrc', e.target.value)} placeholder="https://…webm" />
@@ -284,9 +294,12 @@ export default function TechnicalElementsPage() {
             </label>
             </fieldset>
             <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
-              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">2. Подробное объяснение (слайд карусели)</legend>
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">
+                2. Зрительный + логический — второй ролик (со звуком)
+              </legend>
               <p className={vk.mutedXs}>
-                Ученик смахивает влево после демонстрации. Можно задать позже — карусель появится, когда будет хотя бы одно поле.
+                Второй слайд карусели. Если видео не задано — повторится первый ролик, логику тренер озвучит текстом из
+                блока 3. Карусель из двух слайдов появляется, когда заполнен хотя бы один ролик.
               </p>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
@@ -302,29 +315,74 @@ export default function TechnicalElementsPage() {
             </label>
             </fieldset>
             <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
-              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">3. Книжный лист для ученика</legend>
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">
+                3. Тексты для ученика и тренера
+              </legend>
               <p className={vk.mutedXs}>
-                Короткое описание под каруселью на странице обучения. Отображается как открытая книга с названием приёма.
+                Идут в «книжный лист» под роликами, в реплики тренера на 2-м слайде и в вопросы после «Понял».
               </p>
               <label className="block">
-                <span className={vk.label}>Текст описания</span>
+                <span className={vk.label}>Как выполнять (howTo)</span>
                 <textarea
-                  className={`${vk.input} min-h-[7rem] resize-y font-serif leading-relaxed`}
+                  className={`${vk.input} min-h-[6rem] resize-y font-serif leading-relaxed`}
                   value={form.howTo}
                   onChange={(e) => updateField('howTo', e.target.value)}
-                  placeholder="Кратко: что делать, на что обратить внимание…"
+                  placeholder="Пошагово: что делать, на что смотреть ученику…"
+                />
+                <span className={`mt-1 block ${vk.mutedXs}`}>
+                  Книжный лист + второй вопрос тренера («суть своими словами»).
+                </span>
+              </label>
+              <label className="block">
+                <span className={vk.label}>Зачем / логика (whyHowTo)</span>
+                <textarea
+                  className={`${vk.input} min-h-[5rem] resize-y leading-relaxed`}
+                  value={form.whyHowTo}
+                  onChange={(e) => updateField('whyHowTo', e.target.value)}
+                  placeholder="Почему элемент важен, из чего состоит логика приёма…"
+                />
+                <span className={`mt-1 block ${vk.mutedXs}`}>
+                  Реплика тренера на слайде «Зрительный + логический».
+                </span>
+              </label>
+              <label className="block">
+                <span className={vk.label}>Типичные ошибки (mistakes)</span>
+                <textarea
+                  className={`${vk.input} min-h-[4rem] resize-y leading-relaxed`}
+                  value={form.mistakes}
+                  onChange={(e) => updateField('mistakes', e.target.value)}
+                  placeholder="Чего избегать при выполнении…"
+                />
+                <span className={`mt-1 block ${vk.mutedXs}`}>
+                  Пока для справки тренера; позже — в подсказки квиза.
+                </span>
+              </label>
+              <label className="block">
+                <span className={vk.label}>Почему это ошибки (whyMistakes)</span>
+                <textarea
+                  className={`${vk.input} min-h-[3rem] resize-y leading-relaxed`}
+                  value={form.whyMistakes}
+                  onChange={(e) => updateField('whyMistakes', e.target.value)}
+                  placeholder="К чему приводят ошибки…"
                 />
               </label>
               <div className="rounded-lg bg-[#f5f6f8] p-2">
-                <p className="mb-2 text-[11px] font-medium text-[#818c99]">Предпросмотр</p>
+                <p className="mb-2 text-[11px] font-medium text-[#818c99]">Предпросмотр книжного листа</p>
                 <AtomBookSheet
                   number={editingAtom.number}
                   name={editingAtom.name}
-                  description={form.howTo}
+                  description={form.howTo || form.whyHowTo}
                   chainPreview={editingAtom.chainPreview}
                   compact
                 />
               </div>
+            </fieldset>
+            <fieldset className="space-y-1 rounded-lg border border-dashed border-[#d3d9de] bg-[#fafbfc] p-2.5">
+              <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">4. Проверка после «Понял»</legend>
+              <p className={vk.mutedXs}>
+                Отдельных полей нет: тренер спрашивает название приёма и суть по текстам из блока 3. Первый вопрос —
+                «{editingAtom.name}». Второй — по полю «Как выполнять», если оно заполнено.
+              </p>
             </fieldset>
             <div className="flex flex-wrap gap-1.5">
               <button type="submit" disabled={saving} className={vk.btnPrimary}>
@@ -371,7 +429,9 @@ export default function TechnicalElementsPage() {
                             ? 'Обложка уровня'
                             : 'Без медиа'}
                     {atomHasDetailMediaSlide(atom) ? ' · + подробное' : ''}
-                    {atom.howTo?.trim() ? ' · книжный лист' : ''}
+                    {atom.howTo?.trim() ? ' · как' : ''}
+                    {atom.whyHowTo?.trim() ? ' · логика' : ''}
+                    {atom.mistakes?.trim() ? ' · ошибки' : ''}
                   </p>
                 </div>
                 <TechnicalAtomMedia atom={atom} className="h-12 w-[4rem]" previewable />

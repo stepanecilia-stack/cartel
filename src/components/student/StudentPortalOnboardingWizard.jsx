@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  KNOWLEDGE_THREE_IMAGES,
   ONBOARDING_STEP_ORDER,
   KNOWLEDGE_GUIDE_STEP_ORDER,
   normalizePortalTrainingGoals,
 } from '../../constants/studentPortalOnboarding.js'
 import { getPortalPersona, normalizePortalPersonaId } from '../../constants/studentPortalPersonas.js'
-import { buildOnboardingStagesOpener } from '../../utils/onboardingStagesChat.js'
+import { buildOnboardingGreetingOpener, greetingIntakeHint } from '../../utils/onboardingGreetingChat.js'
+import StudentOnboardingStagesFlow from './StudentOnboardingStagesFlow.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
 import StudentPersonaIntroFlow from './StudentPersonaIntroFlow.jsx'
 import StudentReceptionMonologue from './StudentReceptionMonologue.jsx'
 import StudentReceptionQuestionnaire from './StudentReceptionQuestionnaire.jsx'
 import { vk } from '../../utils/vkUi.js'
-
-const highlight = 'font-semibold text-[#2d81e0]'
 
 /**
  * @param {{
@@ -44,9 +42,12 @@ export default function StudentPortalOnboardingWizard({
   const [stepIndex, setStepIndex] = useState(0)
   const [goals, setGoals] = useState(() => new Set(normalizePortalTrainingGoals(initialGoals)))
   const [personaId, setPersonaId] = useState(() => normalizePortalPersonaId(initialPersonaId))
-  const [greetingChatReady, setGreetingChatReady] = useState(false)
   const [readyForStages, setReadyForStages] = useState(false)
+  /** @type {import('../../utils/onboardingGreetingChat.js').GreetingIntakeProgress | null} */
+  const [greetingIntake, setGreetingIntake] = useState(null)
   const [stagesQuizPasses, setStagesQuizPasses] = useState(0)
+  /** @type {import('../../utils/onboardingStagesMat.js').StagesMatPhase} */
+  const [stagesFlowPhase, setStagesFlowPhase] = useState('four-stages')
   const [memoryBusy, setMemoryBusy] = useState(false)
   /** @type {import('react').RefObject<import('./StudentPersonaChat.jsx').default>} */
   const greetingChatRef = useRef(null)
@@ -62,24 +63,29 @@ export default function StudentPortalOnboardingWizard({
 
   useEffect(() => {
     if (stepId === 'trainer-greeting') {
-      setGreetingChatReady(false)
       setReadyForStages(false)
+      setGreetingIntake(null)
     }
     if (stepId === 'path') {
       setStagesQuizPasses(0)
+      setStagesFlowPhase('four-stages')
     }
   }, [stepId, personaId])
 
-  const handleGreetingChatReady = useCallback(() => {
-    setGreetingChatReady(true)
+  const handleGreetingIntakeProgress = useCallback((progress) => {
+    setGreetingIntake(progress)
   }, [])
 
   const handleGreetingSignals = useCallback(({ readyForStages: ready }) => {
     if (ready) setReadyForStages(true)
   }, [])
 
-  const handleStagesSignals = useCallback(({ quizPass }) => {
-    if (quizPass) setStagesQuizPasses((n) => Math.min(2, n + 1))
+  const handleStagesSignals = useCallback(({ stagesQuizPassCount, quizPass }) => {
+    if (typeof stagesQuizPassCount === 'number') {
+      setStagesQuizPasses(Math.min(4, stagesQuizPassCount))
+      return
+    }
+    if (quizPass) setStagesQuizPasses((n) => Math.min(4, n + 1))
   }, [])
 
   const toggleGoal = (id) => {
@@ -148,99 +154,46 @@ export default function StudentPortalOnboardingWizard({
           body: (
             <StudentPersonaChat
               ref={greetingChatRef}
+              key={`greeting-${personaId}`}
               personaId={personaId}
               context="onboarding_greeting"
+              openingTrainerText={buildOnboardingGreetingOpener(getPortalPersona(personaId), [...goals])}
               trainingGoals={[...goals]}
               personaMemory={personaMemory}
-              minUserMessages={1}
+              minUserMessages={3}
               disabled={busy || memoryBusy}
-              onMinMessagesReached={handleGreetingChatReady}
+              onIntakeProgress={handleGreetingIntakeProgress}
               onTrainerSignals={handleGreetingSignals}
-              advanceHint={
-                readyForStages
-                  ? null
-                  : 'Поговорите с тренером — он подведёт вас к инструктажу про этапы навыка. Кнопка «Дальше» откроется, когда тренер даст добро.'
-              }
+              advanceHint={readyForStages ? null : greetingIntakeHint(greetingIntake ?? { goalsDone: false, sportDone: false, physicalDone: false, complete: false, step: 1 })}
             />
           ),
           action: 'К инструктажу',
-          canAdvance: greetingChatReady && readyForStages,
+          canAdvance: readyForStages,
         }
       case 'path':
         return {
           title: '',
           body: (
-            <StudentPersonaChat
-              ref={stagesChatRef}
+            <StudentOnboardingStagesFlow
               key={`stages-${personaId}`}
+              chatRef={stagesChatRef}
               personaId={personaId}
-              context="onboarding_stages"
-              openingTrainerText={buildOnboardingStagesOpener(getPortalPersona(personaId))}
               trainingGoals={[...goals]}
               personaMemory={personaMemory}
-              minUserMessages={1}
               disabled={busy || memoryBusy}
+              onPhaseChange={setStagesFlowPhase}
               onTrainerSignals={handleStagesSignals}
-              advanceHint={
-                stagesQuizPasses >= 2
-                  ? null
-                  : `Ответьте на вопросы тренера в чате. Засчитано: ${stagesQuizPasses}/2. «Дальше» откроется после двух верных ответов.`
-              }
+              stagesQuizPasses={stagesQuizPasses}
             />
           ),
-          action: 'Дальше',
-          canAdvance: stagesQuizPasses >= 2,
-        }
-      case 'knowledge-what':
-        return {
-          title: 'Что такое «Знание»',
-          body: (
-            <p className={`${vk.muted} leading-snug`}>
-              Технический элемент освоен на уровне «Знание», если сформированы три образа:{' '}
-              <span className={highlight}>логический</span>, <span className={highlight}>зрительный</span> и{' '}
-              <span className={highlight}>кинестетический</span>.
-            </p>
-          ),
-          action: 'Дальше',
-          canAdvance: true,
-        }
-      case 'logic':
-        return {
-          title: KNOWLEDGE_THREE_IMAGES[0].title,
-          body: <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[0].text}</p>,
-          action: 'Понял',
-          canAdvance: true,
-        }
-      case 'vision':
-        return {
-          title: KNOWLEDGE_THREE_IMAGES[1].title,
-          body: <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[1].text}</p>,
-          action: 'Понял',
-          canAdvance: true,
-        }
-      case 'kinesthesia':
-        return {
-          title: KNOWLEDGE_THREE_IMAGES[2].title,
-          body: <p className={`${vk.muted} leading-snug`}>{KNOWLEDGE_THREE_IMAGES[2].text}</p>,
-          action: 'Понял',
-          canAdvance: true,
-        }
-      case 'knowledge-rule':
-        return {
-          title: 'Когда жать «Понял»',
-          body: (
-            <p className={`${vk.muted} leading-snug`}>
-              Только когда есть все три образа — логический, зрительный и кинестетический. Иначе «Знание» ещё
-              не сформировано.
-            </p>
-          ),
           action: 'К программе',
-          canAdvance: true,
+          canAdvance: stagesFlowPhase === 'quiz' && stagesQuizPasses >= 4,
+          hideAdvance: stagesFlowPhase !== 'quiz',
         }
       default:
         return { title: '', body: null, action: 'Дальше', canAdvance: true }
     }
-  }, [stepId, goals, personaId, busy, memoryBusy, personaMemory, readyForStages, stagesQuizPasses, handlePersonaConfirmed, handleBack, handleGreetingChatReady, handleGreetingSignals, handleStagesSignals, greetingChatReady, toggleGoal])
+  }, [stepId, goals, personaId, busy, memoryBusy, personaMemory, readyForStages, greetingIntake, stagesQuizPasses, stagesFlowPhase, handlePersonaConfirmed, handleBack, handleGreetingIntakeProgress, handleGreetingSignals, handleStagesSignals, toggleGoal])
 
   const handleAdvance = async () => {
     if (!content.canAdvance || busy || memoryBusy) return
@@ -280,45 +233,32 @@ export default function StudentPortalOnboardingWizard({
     setStepIndex((i) => Math.min(i + 1, steps.length - 1))
   }
 
-  const progressBar = (
-    <div className="flex items-center justify-between gap-2">
-      <p className={`${vk.mutedXs} tabular-nums`}>
-        {stepIndex + 1} / {steps.length}
-      </p>
-      <div className="flex gap-1">
-        {steps.map((id, i) => (
-          <span
-            key={id}
-            className={`h-1.5 w-1.5 rounded-full ${i <= stepIndex ? 'bg-[#2d81e0]' : 'bg-[#dce1e6]'}`}
-            aria-hidden
-          />
-        ))}
-      </div>
-    </div>
-  )
+  const isAdvanceReady = content.canAdvance && !busy && !memoryBusy
+  const advanceWidth = stepIndex > 0 ? 'flex-1' : 'w-full'
 
   const actions = (
-    <div className={`flex gap-2 ${isImmersive ? 'pt-1' : ''}`}>
+    <div className={`flex gap-2 ${isImmersive ? 'pt-0.5' : ''}`}>
       {stepIndex > 0 ? (
-        <button type="button" disabled={busy} onClick={handleBack} className={`flex-1 ${vk.btnSecondary}`}>
+        <button type="button" disabled={busy} onClick={handleBack} className={`${isAdvanceReady ? '' : 'flex-1'} ${vk.btnSecondary}`}>
           Назад
         </button>
       ) : null}
-      <button
-        type="button"
-        disabled={busy || memoryBusy || !content.canAdvance}
-        onClick={() => void handleAdvance()}
-        className={`${stepIndex > 0 ? 'flex-1' : 'w-full'} ${vk.btnPrimary}`}
-      >
-        {busy || memoryBusy ? 'Сохранение…' : content.action}
-      </button>
+      {content.hideAdvance || (stepId === 'trainer-greeting' && !content.canAdvance) ? null : (
+        <button
+          type="button"
+          disabled={busy || memoryBusy || !content.canAdvance}
+          onClick={() => void handleAdvance()}
+          className={`${advanceWidth} ${isAdvanceReady ? vk.btnAdvancePulse : vk.btnPrimary}`}
+        >
+          {busy || memoryBusy ? 'Сохранение…' : content.action}
+        </button>
+      )}
     </div>
   )
 
   if (isImmersive) {
     return (
-      <div className="space-y-3">
-        {progressBar}
+      <div className="space-y-2">
         {content.body}
         {error ? <p className={vk.error}>{error}</p> : null}
         {content.hideActions ? null : actions}
@@ -327,8 +267,7 @@ export default function StudentPortalOnboardingWizard({
   }
 
   return (
-    <section className={`${vk.cardPadded} space-y-3`}>
-      {progressBar}
+    <section className={`${vk.cardPadded} space-y-2`}>
       <div>
         {content.title ? <h2 className={vk.h2}>{content.title}</h2> : null}
         <div className={content.title ? 'mt-2' : ''}>{content.body}</div>

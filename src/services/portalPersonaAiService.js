@@ -5,9 +5,14 @@ import {
 } from '../utils/portalPersonaAiConfig.js'
 import { callPortalPersonaChatFunction } from './portalPersonaAiRemote.js'
 import {
-  scriptedOnboardingGreetingNudge,
-  scriptedOnboardingStagesReply,
-} from '../utils/onboardingStagesChat.js'
+  getGreetingIntakeProgress,
+  intakeCompleteRedirectReply,
+  scriptedOnboardingGreetingReply,
+} from '../utils/onboardingGreetingChat.js'
+import { enrichOnboardingStagesReply, scriptedOnboardingStagesReply } from '../utils/onboardingStagesChat.js'
+import { deriveProgramAtomQuizPasses, scriptedProgramAtomReply } from '../utils/programAtomChat.js'
+import { MARKER_QUIZ_PASS } from '../utils/personaChatMarkers.js'
+import { aiReplyInventsStudentRank, buildIntakeFactsCorpus } from '../utils/onboardingAiGuard.js'
 import { assessThreeImagesAnswer, threeImagesCorrectionReply } from '../utils/portalKnowledgeThreeImages.js'
 
 /** @typedef {{ role: 'user' | 'assistant', content: string }} PortalChatMessage */
@@ -23,7 +28,19 @@ function pickRandom(items) {
  * @param {import('./portalPersonaAiPrompt.js').PortalPersonaChatContext} context
  * @param {PortalChatMessage[]} messages
  */
-function scriptedPersonaReply(persona, userMessage, context, messages = []) {
+function enrichProgramAtomReply(userMessage, messages, rawReply, atom) {
+  const before = deriveProgramAtomQuizPasses(messages.slice(0, -1), atom)
+  const withReply = [...messages, { role: 'assistant', content: String(rawReply ?? '').trim() }]
+  const after = deriveProgramAtomQuizPasses(withReply, atom)
+  let reply = String(rawReply ?? '').trim()
+  if (!reply) return reply
+  if (after > before && !reply.includes(MARKER_QUIZ_PASS)) {
+    reply = `${reply} ${MARKER_QUIZ_PASS}`
+  }
+  return reply
+}
+
+function scriptedPersonaReply(persona, userMessage, context, messages = [], studyAtom = null) {
   const text = userMessage.trim()
   const lower = text.toLowerCase()
   const voice = getPortalPersonaVoice(persona.id)
@@ -36,9 +53,18 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
   }
 
   if (!text) {
+    if (context === 'onboarding_greeting' && getGreetingIntakeProgress(messages).complete) {
+      return intakeCompleteRedirectReply(persona.id, recentAssistant)
+    }
     if (persona.id === 'vasily') return 'Молчишь? Напиши — я не телепат. Спроси про программу или просто поздоровайся.'
     if (persona.id === 'arkady') return 'Я здесь, друг. Напиши что угодно — разберём вместе.'
-    return 'Ожидаю сообщение. Формулируйте вопрос.'
+    return 'Жду сообщение. Сформулируй вопрос.'
+  }
+
+  if (context === 'onboarding_greeting' && getGreetingIntakeProgress(messages).complete) {
+    const completeReply = scriptedOnboardingGreetingReply(persona.id, text, messages)
+    if (completeReply) return completeReply
+    return intakeCompleteRedirectReply(persona.id, recentAssistant)
   }
 
   if (/пережива|волну|тревож|страш|боюсь|не увер/i.test(lower)) {
@@ -55,8 +81,8 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
       ])
     }
     return pickUnique([
-      'Тревога зафиксирована. Критерий работы не меняется: элемент, три образа, «Понял». Эмоции — после выполнения.',
-      'Переживания не входят в протокол. Входит последовательность обучения. Продолжайте по программе.',
+      'Тревога зафиксирована. Критерий не меняется: элемент, три образа, «Понял». Эмоции — после выполнения.',
+      'Переживания не входят в протокол. Входит последовательность обучения. Продолжай по программе.',
     ])
   }
 
@@ -98,23 +124,26 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
     ])
   }
 
-  if (/бух|пья|пробит|дура|туп|чмо|идиот|ты норм|с дуб|какаш/i.test(lower)) {
+  if (/бух|пья|пробит|дура|туп|чмо|идиот|ты норм|с дуб|какаш|хам|груб|пошел|пошёл|иди на|заткн/i.test(lower)) {
     if (persona.id === 'vasily') {
       return pickUnique([
-        'Остро. Молодец. Теперь так же остро — про программу. Или это предел?',
-        'Бухой я только от ваших отговорок. Переходи к делу — спроси нормально, отвечу.',
-        'Пробитый? 58 боёв — и ты живой. Давай, удиви вопросом по делу.',
+        voice.whenDisrespected,
+        'Остро. Молодец. Но со мной так не разговаривают — уважение, потом вопрос по делу.',
+        'Бухой я только от твоих отговорок. Переходи к делу — спроси нормально, отвечу.',
+        'Пробитый? 58 боёв — и ты живой. Уважай тренера — и удиви вопросом по делу.',
       ])
     }
     if (persona.id === 'arkady') {
       return pickUnique([
-        'Эй, я на твоей стороне. Подкалывать можно — я не обижаюсь. Только потом давай по-взрослому, ок?',
-        'Слышу, что ты напряжён — иногда это выходит шутками. Я здесь. Спроси по-честному.',
+        voice.whenDisrespected,
+        'Эй, я на твоей стороне. Подкалывать можно — но уважение базовое. Спроси по-честному.',
+        'Слышу напряжение — иногда это выходит шутками. Давай по-нормальному, друг.',
       ])
     }
     return pickUnique([
-      'Оценка личности не запрашивалась. Запрос по программе — принимается.',
-      'Комментарий зафиксирован. Вернёмся к обучению.',
+      voice.whenDisrespected,
+      'Оценка личности не запрашивалась. Запрос по программе — на уважительном тоне.',
+      'Комментарий зафиксирован. Переформулируй — без оскорблений.',
     ])
   }
 
@@ -148,37 +177,24 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
   }
 
   if (context === 'onboarding_greeting') {
-    const nudge = scriptedOnboardingGreetingNudge(persona.id, text)
-    if (nudge) return nudge
+    const greetingReply = scriptedOnboardingGreetingReply(persona.id, text, messages)
+    if (greetingReply) return greetingReply
 
     if (/^(привет|здрав|добр|хай|hello)/i.test(lower)) {
-      if (persona.id === 'vasily') {
-        return pickRandom([
-          'Ну здравствуй. Я на связи. Можешь спросить что угодно — отвечу без сахара.',
-          'Здорово. Кабан Петрович здесь. Не тяни — говори, что на душе.',
-        ])
+      const progress = getGreetingIntakeProgress(messages)
+      if (!progress.goalsDone) {
+        if (persona.id === 'vasily') return 'Здорово. Сначала цели — своими словами.'
+        if (persona.id === 'arkady') return 'Привет ещё раз, друг. Напомни цели — как ты сам их видишь.'
+        return 'Приветствие принято. Подтверди цели.'
       }
-      if (persona.id === 'arkady') {
-        return pickRandom([
-          'Привет! Рад тебя видеть. Спрашивай — я рядом, не тороплю.',
-          'Здравствуй, друг. Давай познакомимся по-нормальному — что хочешь узнать?',
-        ])
-      }
-      return pickRandom([
-        'Приветствие принято. Можете задать вопрос до перехода к этапам.',
-        'Здравствуйте. Готов ответить по программе.',
-      ])
-    }
-
-    if (/готов|поехали|давай|начн|инструкт|этап|ступен|слушаю/i.test(lower)) {
-      const nudgeReady = scriptedOnboardingGreetingNudge(persona.id, text)
-      if (nudgeReady) return nudgeReady
-      if (persona.id === 'vasily') return '«Готов» — это когда сделал, а не когда сказал. Сейчас расскажу про четыре ступени — жми «Дальше», когда скажу. ||READY_FOR_STAGES||'
-      if (persona.id === 'arkady') return 'Отлично. Дальше — инструктаж про этапы. ||READY_FOR_STAGES||'
-      return 'Принято. «Дальше» — инструктаж по этапам. ||READY_FOR_STAGES||'
+      const greetingReply = scriptedOnboardingGreetingReply(persona.id, userMessage, messages)
+      if (greetingReply) return greetingReply
     }
 
     if (/кто ты|как зовут|расскаж|ты кто/i.test(lower)) {
+      if (getGreetingIntakeProgress(messages).complete) {
+        return intakeCompleteRedirectReply(persona.id, recentAssistant)
+      }
       const name = formatPortalPersonaName(persona)
       if (persona.id === 'vasily') return `Я ${name}. ${persona.teaser} Спроси — не кусаюсь. Почти.`
       if (persona.id === 'arkady') return `Я ${name}. ${persona.teaser} Расскажу сколько нужно.`
@@ -188,6 +204,10 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
 
   if (context === 'onboarding_stages') {
     return scriptedOnboardingStagesReply(persona.id, text, messages)
+  }
+
+  if (context === 'program_atom' && studyAtom) {
+    return scriptedProgramAtomReply(persona.id, text, messages, studyAtom)
   }
 
   if (context === 'program') {
@@ -215,13 +235,37 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
   if (/спасиб|благодар/i.test(lower)) {
     if (persona.id === 'vasily') return 'Не за что. Лучший спасибо — «Понял» на следующем элементе.'
     if (persona.id === 'arkady') return 'Всегда, друг. Главное — не бросай.'
-    return 'Благодарность не входит в протокол. Продолжайте работу.'
+    return 'Благодарность не входит в протокол. Продолжай работу.'
   }
 
   if (/скуч|устал|лень|не хоч/i.test(lower)) {
     if (persona.id === 'vasily') return `${pickRandom(voice.speechTics)} Лень — тоже выбор. Мой — дожать элемент. Твой?`
     if (persona.id === 'arkady') return 'Понимаю. Сделай один маленький шаг — и решишь, продолжать или нет. Я подожду.'
-    return 'Усталость фиксирую. Критерий элемента не меняется. Пауза — ваше решение.'
+    return 'Усталость фиксирую. Критерий элемента не меняется. Пауза — твоё решение.'
+  }
+
+  if (context === 'onboarding_greeting') {
+    const progress = getGreetingIntakeProgress(messages)
+    const next = scriptedOnboardingGreetingReply(persona.id, userMessage, messages)
+    if (next) return next
+    if (progress.complete) {
+      return intakeCompleteRedirectReply(persona.id, recentAssistant)
+    }
+    if (!progress.goalsDone) {
+      if (persona.id === 'vasily') return 'Услышал. Сначала цели — одним ответом.'
+      if (persona.id === 'arkady') return 'Слышу тебя, друг. Начнём с целей — своими словами.'
+      return 'Сначала цели — своими словами, одним предложением.'
+    }
+    if (!progress.sportDone) {
+      if (persona.id === 'vasily') return 'Ок. Теперь только про спорт — чем занимался?'
+      if (persona.id === 'arkady') return 'Хорошо. Расскажи про спортивный опыт.'
+      return 'Спортивный опыт: разряд, виды, сколько лет — конкретно, без общих слов.'
+    }
+    if (!progress.physicalDone) {
+      if (persona.id === 'vasily') return 'Понял. И отжимания с подтягиваниями — примерно?'
+      if (persona.id === 'arkady') return 'Спасибо. Отжимания и подтягивания — сколько примерно?'
+      return 'Отжимания от пола и подтягивания за подход — цифры, честно.'
+    }
   }
 
   if (persona.id === 'vasily') {
@@ -239,7 +283,7 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
     ])
   }
   return pickUnique([
-    `Уточните запрос: программа, элемент или сроки. ${persona.sampleQuote}`,
+    `Уточни запрос: программа, элемент или сроки. ${persona.sampleQuote}`,
     `${pickRandom(voice.speechTics)} Нужна конкретика — отвечу по критерию «Знание».`,
   ])
 }
@@ -252,6 +296,7 @@ function scriptedPersonaReply(persona, userMessage, context, messages = []) {
  *   programHint?: string | null,
  *   personaMemory?: import('../utils/portalPersonaMemory.js').PortalPersonaMemory | null,
  *   trainingGoals?: unknown,
+ *   studyAtom?: object | null,
  * }} params
  * @returns {Promise<{ reply: string, source: import('../utils/portalPersonaAiConfig.js').PortalPersonaReplySource }>}
  */
@@ -262,12 +307,26 @@ export async function sendPortalPersonaChatMessage({
   programHint = null,
   personaMemory = null,
   trainingGoals = null,
+  studyAtom = null,
 }) {
   const persona = getPortalPersona(personaId)
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const userMessage = lastUser?.content ?? ''
 
   const useRemote = isPortalPersonaAiRemoteEnabled()
+
+  const scriptedIntakeReply = () => {
+    if (context === 'onboarding_greeting') {
+      return scriptedOnboardingGreetingReply(persona.id, userMessage, messages)
+    }
+    if (context === 'onboarding_stages') {
+      return scriptedOnboardingStagesReply(persona.id, userMessage, messages)
+    }
+    if (context === 'program_atom' && studyAtom) {
+      return scriptedProgramAtomReply(persona.id, userMessage, messages, studyAtom)
+    }
+    return null
+  }
 
   if (useRemote) {
     try {
@@ -279,12 +338,34 @@ export async function sendPortalPersonaChatMessage({
         personaMemory,
         trainingGoals,
       })
-      if (reply?.trim()) return { reply: reply.trim(), source: 'ai' }
+      const trimmed = reply?.trim()
+      if (trimmed) {
+        if (context === 'onboarding_greeting' && aiReplyInventsStudentRank(trimmed, buildIntakeFactsCorpus(messages, trainingGoals))) {
+          const fallback = scriptedIntakeReply()
+          if (fallback) {
+            console.warn('[portalPersonaAi] intake reply invented facts, using script')
+            return { reply: fallback, source: 'script-fallback' }
+          }
+        }
+        if (context === 'onboarding_stages') {
+          return {
+            reply: enrichOnboardingStagesReply(persona.id, userMessage, messages, trimmed),
+            source: 'ai',
+          }
+        }
+        if (context === 'program_atom' && studyAtom) {
+          return {
+            reply: enrichProgramAtomReply(userMessage, messages, trimmed, studyAtom),
+            source: 'ai',
+          }
+        }
+        return { reply: trimmed, source: 'ai' }
+      }
     } catch (err) {
       console.warn('[portalPersonaAi] remote failed, using scripted fallback', err)
       await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
       return {
-        reply: scriptedPersonaReply(persona, userMessage, context, messages),
+        reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom),
         source: 'script-fallback',
       }
     }
@@ -292,7 +373,7 @@ export async function sendPortalPersonaChatMessage({
 
   await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
   return {
-    reply: scriptedPersonaReply(persona, userMessage, context, messages),
+    reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom),
     source: 'script',
   }
 }

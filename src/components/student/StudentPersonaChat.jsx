@@ -1,8 +1,12 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
-import { sendPortalPersonaChatMessage, isPortalPersonaAiRemoteConfigured } from '../../services/portalPersonaAiService.js'
+import { sendPortalPersonaChatMessage } from '../../services/portalPersonaAiService.js'
+import { isPortalPersonaAiRemoteEnabled } from '../../utils/portalPersonaAiConfig.js'
 import { portalPersonaReplySourceLabel } from '../../utils/portalPersonaAiConfig.js'
+import { getGreetingIntakeProgress } from '../../utils/onboardingGreetingChat.js'
+import { deriveStagesQuizPassesFromDialog } from '../../utils/onboardingStagesChat.js'
+import { deriveProgramAtomQuizPasses } from '../../utils/programAtomChat.js'
 import { parsePersonaChatMarkers } from '../../utils/personaChatMarkers.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -23,8 +27,14 @@ import { vk } from '../../utils/vkUi.js'
  *   trainingGoals?: unknown,
  *   minUserMessages?: number,
  *   onMinMessagesReached?: () => void,
- *   onTrainerSignals?: (signals: { readyForStages: boolean, quizPass: boolean }) => void,
+ *   onTrainerSignals?: (signals: {
+ *     readyForStages: boolean,
+ *     quizPass: boolean,
+ *     stagesQuizPassCount?: number,
+ *   }) => void,
+ *   onIntakeProgress?: (progress: import('../../utils/onboardingGreetingChat.js').GreetingIntakeProgress) => void,
  *   advanceHint?: string | null,
+ *   studyAtom?: object | null,
  *   disabled?: boolean,
  *   inputRef?: import('react').RefObject<HTMLInputElement | null>,
  * }} props
@@ -41,7 +51,9 @@ function StudentPersonaChat(
     minUserMessages = 1,
     onMinMessagesReached,
     onTrainerSignals,
+    onIntakeProgress,
     advanceHint = null,
+    studyAtom = null,
     disabled = false,
     inputRef = null,
   },
@@ -87,6 +99,31 @@ function StudentPersonaChat(
     }
   }, [userCount, minUserMessages, onMinMessagesReached])
 
+  useEffect(() => {
+    if (context === 'onboarding_greeting') {
+      onIntakeProgress?.(getGreetingIntakeProgress(messages))
+    }
+  }, [messages, context, onIntakeProgress])
+
+  useEffect(() => {
+    if (!onTrainerSignals) return
+    if (context === 'onboarding_stages') {
+      onTrainerSignals({
+        readyForStages: false,
+        quizPass: false,
+        stagesQuizPassCount: deriveStagesQuizPassesFromDialog(messages),
+      })
+      return
+    }
+    if (context === 'program_atom' && studyAtom) {
+      onTrainerSignals({
+        readyForStages: false,
+        quizPass: false,
+        stagesQuizPassCount: deriveProgramAtomQuizPasses(messages, studyAtom),
+      })
+    }
+  }, [messages, context, onTrainerSignals, studyAtom])
+
   const send = useCallback(async () => {
     const text = input.trim()
     if (!text || busy || disabled) return
@@ -105,11 +142,27 @@ function StudentPersonaChat(
         programHint,
         personaMemory,
         trainingGoals,
+        studyAtom,
       })
       setReplySource(source)
       const { displayReply, readyForStages, quizPass } = parsePersonaChatMarkers(rawReply)
-      onTrainerSignals?.({ readyForStages, quizPass })
-      setMessages((prev) => [...prev, { role: 'assistant', content: displayReply }])
+      const withTrainer = [...nextHistory, { role: 'assistant', content: displayReply }]
+      if (context === 'onboarding_stages') {
+        onTrainerSignals?.({
+          readyForStages,
+          quizPass,
+          stagesQuizPassCount: deriveStagesQuizPassesFromDialog(withTrainer),
+        })
+      } else if (context === 'program_atom' && studyAtom) {
+        onTrainerSignals?.({
+          readyForStages,
+          quizPass,
+          stagesQuizPassCount: deriveProgramAtomQuizPasses(withTrainer, studyAtom),
+        })
+      } else {
+        onTrainerSignals?.({ readyForStages, quizPass })
+      }
+      setMessages(withTrainer)
     } catch (e) {
       console.error(e)
       setError('Не удалось получить ответ. Попробуйте ещё раз.')
@@ -129,6 +182,7 @@ function StudentPersonaChat(
     personaMemory,
     trainingGoals,
     onTrainerSignals,
+    studyAtom,
   ])
 
   const onKeyDown = (e) => {
@@ -140,10 +194,10 @@ function StudentPersonaChat(
 
   return (
     <div className="space-y-2">
-      {!isPortalPersonaAiRemoteConfigured() ? (
+      {!isPortalPersonaAiRemoteEnabled() ? (
         <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
           {import.meta.env.DEV
-            ? 'Скрипты: задайте VITE_FIREBASE_* и VITE_PORTAL_PERSONA_AI=1 в .env.local или соберите production.'
+            ? 'Скрипты: задайте VITE_FIREBASE_* в .env.local (VITE_PORTAL_PERSONA_AI=0 — принудительно выкл.).'
             : 'Скрипты: в сборке нет Firebase-конфига. Добавьте VITE_FIREBASE_* на Vercel и пересоберите.'}
         </p>
       ) : replySource && replySource !== 'ai' ? (

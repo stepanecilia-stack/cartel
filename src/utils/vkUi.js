@@ -34,6 +34,8 @@ export const vk = {
 
   btnPrimary:
     'inline-flex h-9 touch-manipulation items-center justify-center rounded-lg bg-[#2d81e0] px-4 text-[14px] font-medium text-white active:bg-[#2875cc] disabled:opacity-50',
+  btnAdvancePulse:
+    'inline-flex touch-manipulation items-center justify-center rounded-xl bg-emerald-500 px-4 py-3.5 text-[16px] font-semibold text-white shadow-lg shadow-emerald-500/35 animate-pulse hover:bg-emerald-600 active:bg-emerald-600 disabled:animate-none disabled:opacity-50',
   btnStudentPortal:
     'inline-flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl bg-[#4bb34b] px-5 text-[16px] font-semibold leading-5 text-white shadow-[0_4px_14px_rgba(75,179,75,0.45)] ring-2 ring-[#4bb34b]/30 active:bg-[#43a043] sm:min-h-[3.25rem] sm:text-[17px]',
   btnSecondary:

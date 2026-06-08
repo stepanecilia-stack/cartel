@@ -29,6 +29,16 @@ function CarouselNavButton({ direction, disabled, onClick, label }) {
  *   onPlayingChange?: (playing: boolean) => void,
  *   previewable?: boolean,
  *   autoPlay?: boolean,
+ *   slides?: Array<{
+ *     key: string,
+ *     label: string,
+ *     atom: object,
+ *     media?: object,
+ *     defaultMuted?: boolean,
+ *     showSoundToggle?: boolean,
+ *     showSpeedToggle?: boolean,
+ *   }>,
+ *   onSlideChange?: (index: number) => void,
  * }} props
  */
 export default function TechnicalAtomMediaCarousel({
@@ -38,8 +48,13 @@ export default function TechnicalAtomMediaCarousel({
   onPlayingChange,
   previewable = true,
   autoPlay = false,
+  slides: slidesProp = null,
+  onSlideChange,
 }) {
-  const slides = useMemo(() => resolveTechnicalAtomMediaSlides(atom), [atom])
+  const slides = useMemo(
+    () => slidesProp ?? resolveTechnicalAtomMediaSlides(atom),
+    [atom, slidesProp],
+  )
   const onPlayingChangeRef = useRef(onPlayingChange)
   const touchStartXRef = useRef(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -69,8 +84,9 @@ export default function TechnicalAtomMediaCarousel({
       const next = Math.max(0, Math.min(index, slides.length - 1))
       setActiveIndex(next)
       syncPlaybackForIndex(next)
+      onSlideChange?.(next)
     },
-    [slides.length, syncPlaybackForIndex],
+    [slides.length, syncPlaybackForIndex, onSlideChange],
   )
 
   const handleTouchStart = useCallback((event) => {
@@ -144,8 +160,9 @@ export default function TechnicalAtomMediaCarousel({
                 previewable={previewable}
                 title={slide.label}
                 videoFit="contain"
-                showSoundToggle={slide.key === 'detail'}
-                showSpeedToggle={slide.key === 'detail'}
+                showSoundToggle={slide.showSoundToggle ?? slide.key === 'detail'}
+                showSpeedToggle={slide.showSpeedToggle ?? slide.key === 'detail'}
+                defaultMuted={slide.defaultMuted ?? true}
                 carouselSlide
               />
             </div>
