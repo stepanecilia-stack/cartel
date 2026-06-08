@@ -14,6 +14,7 @@ import { summarizeStudentPortalProgress } from '../../utils/studentPortalProgres
 import { normalizePortalKnowledgeData } from '../../utils/portalKnowledgeData.js'
 import { isPortalOnboardingComplete, trainingGoalsLabels } from '../../constants/studentPortalOnboarding.js'
 import { portalPersonaDisplayName } from '../../constants/studentPortalPersonas.js'
+import { normalizePortalPersonaMemory, getPersonaMemoryMilestonesForCoach, hasPersonaMemoryMilestones } from '../../utils/portalPersonaMemory.js'
 import { vk } from '../../utils/vkUi.js'
 
 /**
@@ -40,6 +41,15 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
 
   const goalLabels = trainingGoalsLabels(student?.portalTrainingGoals ?? student?.portalTrainingGoal)
   const personaLabel = portalPersonaDisplayName(student?.portalPersonaId)
+  const personaMemory = normalizePortalPersonaMemory(student?.portalPersonaMemory)
+  const personaMilestones = useMemo(
+    () => getPersonaMemoryMilestonesForCoach(personaMemory),
+    [personaMemory],
+  )
+  const showPersonaMemoryNotes =
+    personaMemory.levelNotes ||
+    personaMemory.conversationSummary ||
+    hasPersonaMemoryMilestones(personaMemory)
   const onboardingDone = isPortalOnboardingComplete(student)
 
   const runEnable = useCallback(async () => {
@@ -179,6 +189,38 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
         ) : (
           <p className={`mt-1.5 ${vk.mutedXs}`}>Онбординг в кабинете ещё не пройден.</p>
         )}
+        {showPersonaMemoryNotes ? (
+          <div className="mt-2 space-y-1.5 rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#818c99]">
+              Пометки виртуального тренера
+            </p>
+            {personaMilestones.length > 0 ? (
+              <ul className="space-y-1">
+                {personaMilestones.map((item) => (
+                  <li key={item.label} className={vk.mutedXs}>
+                    <span className="font-medium text-[#2d81e0]">✓ </span>
+                    <span className="font-medium text-[#2c2d2e]">{item.label}</span>
+                    {item.detail ? (
+                      <span className="mt-0.5 block whitespace-pre-line text-[#818c99]">{item.detail}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {personaMemory.levelNotes ? (
+              <p className={`${vk.mutedXs} whitespace-pre-line`}>
+                <span className="font-medium text-[#2c2d2e]">Уровень: </span>
+                {personaMemory.levelNotes}
+              </p>
+            ) : null}
+            {personaMemory.conversationSummary ? (
+              <p className={`${vk.mutedXs} whitespace-pre-line`}>
+                <span className="font-medium text-[#2c2d2e]">Общение: </span>
+                {personaMemory.conversationSummary}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {pin ? (

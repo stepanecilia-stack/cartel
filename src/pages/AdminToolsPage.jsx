@@ -19,6 +19,7 @@ import {
   formatShortIdDisplay,
   isStudentAttachedToCoach,
 } from '../utils/studentModel.js'
+import AdminPortalAiUsagePanel from '../components/admin/AdminPortalAiUsagePanel.jsx'
 import { vk } from '../utils/vkUi.js'
 
 function normalizeSearch(value) {
@@ -462,6 +463,9 @@ export default function AdminToolsPage({ coachId, onOpenStudent }) {
             <button type="button" className={segmentClass(tab === 'access')} onClick={() => setTab('access')}>
               Доступ тренеров
             </button>
+            <button type="button" className={segmentClass(tab === 'ai')} onClick={() => setTab('ai')}>
+              AI тренеры
+            </button>
           </div>
 
           {loadError ? <p className={`mt-3 ${vk.error}`}>{loadError}</p> : null}
@@ -471,8 +475,10 @@ export default function AdminToolsPage({ coachId, onOpenStudent }) {
             <div className="mt-4">
               {tab === 'merge' ? (
                 <AdminMergePanel students={students} coachId={coachId} onOpenStudent={onOpenStudent} />
-              ) : (
+              ) : tab === 'access' ? (
                 <AdminCoachAccessPanel students={students} coachId={coachId} />
+              ) : (
+                <AdminPortalAiUsagePanel />
               )}
             </div>
           ) : null}

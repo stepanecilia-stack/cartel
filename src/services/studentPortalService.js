@@ -19,6 +19,7 @@ import {
 import { normalizePortalKnowledgeDataForSave } from '../utils/portalKnowledgeData.js'
 import { normalizePortalTrainingGoals } from '../constants/studentPortalOnboarding.js'
 import { normalizePortalPersonaId } from '../constants/studentPortalPersonas.js'
+import { normalizePortalPersonaMemory } from '../utils/portalPersonaMemory.js'
 import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
 import { ensureAuth, ensureDb } from './firebaseService.js'
 
@@ -272,17 +273,41 @@ export async function saveStudentPortalKnowledge(studentId, portalKnowledgeData)
 }
 
 /** Завершение онбординга кабинета (цели, наставник, отметка прохождения). */
-export async function saveStudentPortalOnboarding(studentId, { goals, personaId }) {
+export async function saveStudentPortalOnboarding(studentId, { goals, personaId, personaMemory = null }) {
   await ensureStudentPortalAnonymousUser()
   const normalizedGoals = normalizePortalTrainingGoals(goals)
   const normalizedPersona = normalizePortalPersonaId(personaId)
-  await updateDoc(doc(ensureDb(), 'students', studentId), {
+  /** @type {Record<string, unknown>} */
+  const patch = {
     portalTrainingGoals: normalizedGoals,
     portalPersonaId: normalizedPersona,
     portalOnboardingCompletedAt: serverTimestamp(),
     portalLastActivityAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),
+  }
+  if (personaMemory) {
+    patch.portalPersonaMemory = {
+      ...normalizePortalPersonaMemory(personaMemory),
+      updatedAt: new Date().toISOString(),
+    }
+  }
+  await updateDoc(doc(ensureDb(), 'students', studentId), patch)
+  return { goals: normalizedGoals, personaId: normalizedPersona, personaMemory: patch.portalPersonaMemory ?? null }
+}
+
+/** Крупные пометки тренера об ученике (уровень + резюме общения). */
+export async function saveStudentPortalPersonaMemory(studentId, personaMemory) {
+  await ensureStudentPortalAnonymousUser()
+  const normalized = {
+    ...normalizePortalPersonaMemory(personaMemory),
+    updatedAt: new Date().toISOString(),
+  }
+  await updateDoc(doc(ensureDb(), 'students', studentId), {
+    portalPersonaMemory: normalized,
+    portalLastActivityAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+    updatedAt: serverTimestamp(),
   })
-  return { goals: normalizedGoals, personaId: normalizedPersona }
+  return normalized
 }

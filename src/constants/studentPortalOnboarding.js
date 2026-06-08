@@ -32,13 +32,14 @@ export const KNOWLEDGE_THREE_IMAGES = [
   },
 ]
 
-/** @typedef {'welcome' | 'goal' | 'persona' | 'path' | 'knowledge-what' | 'logic' | 'vision' | 'kinesthesia' | 'knowledge-rule'} OnboardingStepId */
+/** @typedef {'welcome' | 'goal' | 'persona' | 'trainer-greeting' | 'path' | 'knowledge-what' | 'logic' | 'vision' | 'kinesthesia' | 'knowledge-rule'} OnboardingStepId */
 
 /** @type {OnboardingStepId[]} */
 export const ONBOARDING_STEP_ORDER = [
   'welcome',
   'goal',
   'persona',
+  'trainer-greeting',
   'path',
   'knowledge-what',
   'logic',
@@ -48,7 +49,7 @@ export const ONBOARDING_STEP_ORDER = [
 ]
 
 export const KNOWLEDGE_GUIDE_STEP_ORDER = ONBOARDING_STEP_ORDER.filter(
-  (id) => id !== 'welcome' && id !== 'goal' && id !== 'persona',
+  (id) => id !== 'welcome' && id !== 'goal' && id !== 'persona' && id !== 'trainer-greeting',
 )
 
 const GOAL_IDS = new Set(TRAINING_GOAL_OPTIONS.map((o) => o.id))

@@ -8,6 +8,11 @@ import {
   saveStudentPortalKnowledge,
   saveStudentPortalOnboarding,
 } from '../services/studentPortalService.js'
+import { refreshAndSavePortalPersonaMemory } from '../services/portalPersonaMemoryService.js'
+import {
+  applyTrainingGoalsToPersonaMemory,
+  normalizePortalPersonaMemory,
+} from '../utils/portalPersonaMemory.js'
 import { displayNameFromStudent } from '../utils/studentModel.js'
 import {
   applyStudentKnowledgeMark,
@@ -28,6 +33,7 @@ import { vk } from '../utils/vkUi.js'
 import StudentPortalOnboardingWizard from '../components/student/StudentPortalOnboardingWizard.jsx'
 import StudentPersonaAvatar from '../components/student/StudentPersonaAvatar.jsx'
 import StudentPersonaBubble from '../components/student/StudentPersonaBubble.jsx'
+import StudentPersonaChatDock from '../components/student/StudentPersonaChatDock.jsx'
 import {
   isPortalOnboardingComplete,
   normalizePortalTrainingGoals,
@@ -56,6 +62,7 @@ export default function StudentLearnPage() {
   const [guideOpen, setGuideOpen] = useState(false)
   const [personaMessage, setPersonaMessage] = useState('')
   const [resumeReady, setResumeReady] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
 
   useEffect(() => {
     if (!session?.studentId) {
@@ -164,6 +171,22 @@ export default function StudentLearnPage() {
 
   const portalPersonaId = normalizePortalPersonaId(student?.portalPersonaId)
   const persona = getPortalPersona(portalPersonaId)
+  const personaMemory = useMemo(
+    () => normalizePortalPersonaMemory(student?.portalPersonaMemory),
+    [student?.portalPersonaMemory],
+  )
+  const portalGoals = normalizePortalTrainingGoals(
+    student?.portalTrainingGoals ?? student?.portalTrainingGoal,
+  )
+
+  const programChatHint = useMemo(() => {
+    const parts = [`Этап программы: ${tierLabel(tier)}`, `Прогресс: ${leadingDone}/${total || '—'}`]
+    if (viewAtom?.title) parts.push(`Сейчас смотрит: «${viewAtom.title}»`)
+    if (canMark) parts.push('Может нажать «Понял» после трёх образов')
+    else if (viewAtomMarked) parts.push('Элемент уже отмечен')
+    else if (!tierUnlocked[tier]) parts.push('Следующий этап пока закрыт')
+    return parts.join('. ')
+  }, [tier, leadingDone, total, viewAtom?.title, canMark, viewAtomMarked, tierUnlocked])
 
   useEffect(() => {
     if (!personaMessage) return undefined
@@ -202,13 +225,56 @@ export default function StudentLearnPage() {
     navigate('/student-login', { replace: true })
   }
 
+  const handleRefreshPersonaMemory = useCallback(
+    async (messages, context) => {
+      if (!student?.id) return personaMemory
+      const userCount = messages.filter((m) => m.role === 'user' && m.content?.trim()).length
+      if (userCount === 0) return personaMemory
+
+      try {
+        const updated = await refreshAndSavePortalPersonaMemory({
+          studentId: student.id,
+          messages,
+          existingMemory: personaMemory,
+          trainingGoals: portalGoals,
+          context,
+        })
+        setStudent((prev) => (prev ? { ...prev, portalPersonaMemory: updated } : prev))
+        return updated
+      } catch (e) {
+        console.warn('[learn] persona memory refresh failed', e)
+        return personaMemory
+      }
+    },
+    [student?.id, personaMemory, portalGoals],
+  )
+
+  const handleGreetingChatComplete = useCallback(
+    async (messages, context = 'onboarding_greeting') => {
+      await handleRefreshPersonaMemory(messages, context)
+    },
+    [handleRefreshPersonaMemory],
+  )
+
+  const handleChatSessionClose = useCallback(
+    async (messages) => {
+      await handleRefreshPersonaMemory(messages, 'program')
+    },
+    [handleRefreshPersonaMemory],
+  )
+
   const handleOnboardingComplete = useCallback(
     async ({ goals, personaId }) => {
       if (!student?.id) return
       setOnboardingBusy(true)
       setOnboardingError('')
       try {
-        const saved = await saveStudentPortalOnboarding(student.id, { goals, personaId })
+        const memoryWithGoals = applyTrainingGoalsToPersonaMemory(personaMemory, goals)
+        const saved = await saveStudentPortalOnboarding(student.id, {
+          goals,
+          personaId,
+          personaMemory: memoryWithGoals,
+        })
         setStudent((prev) =>
           prev
             ? {
@@ -216,6 +282,7 @@ export default function StudentLearnPage() {
                 portalTrainingGoals: saved.goals,
                 portalPersonaId: saved.personaId,
                 portalOnboardingCompletedAt: new Date().toISOString(),
+                portalPersonaMemory: saved.personaMemory ?? memoryWithGoals,
               }
             : prev,
         )
@@ -229,7 +296,7 @@ export default function StudentLearnPage() {
         setOnboardingBusy(false)
       }
     },
-    [student?.id],
+    [student?.id, personaMemory],
   )
 
   const handleGuideComplete = useCallback(async () => {
@@ -237,9 +304,6 @@ export default function StudentLearnPage() {
   }, [])
 
   const onboardingComplete = isPortalOnboardingComplete(student)
-  const portalGoals = normalizePortalTrainingGoals(
-    student?.portalTrainingGoals ?? student?.portalTrainingGoal,
-  )
 
   if (!session?.studentId) return null
 
@@ -286,8 +350,10 @@ export default function StudentLearnPage() {
             mode="full"
             initialGoals={portalGoals}
             initialPersonaId={student?.portalPersonaId}
+            personaMemory={personaMemory}
             busy={onboardingBusy}
             error={onboardingError}
+            onGreetingChatComplete={handleGreetingChatComplete}
             onComplete={handleOnboardingComplete}
           />
         </div>
@@ -315,7 +381,7 @@ export default function StudentLearnPage() {
   }
 
   return (
-    <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
+    <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4 ${chatOpen ? '' : 'pb-[4.5rem]'}`}>
       <div className="mx-auto w-full max-w-2xl space-y-2">
         <header className="flex flex-wrap items-center gap-2">
           <StudentPersonaAvatar personaId={portalPersonaId} size="lg" />
@@ -431,6 +497,16 @@ export default function StudentLearnPage() {
           </section>
         ) : null}
       </div>
+
+      <StudentPersonaChatDock
+        personaId={portalPersonaId}
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        programHint={programChatHint}
+        personaMemory={personaMemory}
+        trainingGoals={portalGoals}
+        onSessionClose={handleChatSessionClose}
+      />
     </main>
   )
 }

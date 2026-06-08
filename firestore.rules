@@ -63,8 +63,14 @@ service cloud.firestore {
 
     function studentPortalOnboardingOnly() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        'portalTrainingGoals', 'portalPersonaId', 'portalOnboardingCompletedAt', 'portalLastActivityAt',
-        'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+        'portalTrainingGoals', 'portalPersonaId', 'portalOnboardingCompletedAt', 'portalPersonaMemory',
+        'portalLastActivityAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+      ]);
+    }
+
+    function studentPortalPersonaMemoryOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'portalPersonaMemory', 'portalLastActivityAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
       ]);
     }
 
@@ -104,7 +110,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         coachCanAccessStudent()
         || coachJoinStudentByCodeOk()
-        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalOnboardingOnly() || studentPortalLoginFieldsOnly()))
+        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalOnboardingOnly() || studentPortalPersonaMemoryOnly() || studentPortalLoginFieldsOnly()))
         || (studentPortalBindOk() && studentPortalLoginFieldsOnly())
         || studentPortalLoginRebind()
       );
@@ -210,6 +216,12 @@ service cloud.firestore {
         && request.resource.data.coachId == request.auth.uid;
       allow update, delete: if request.auth != null
         && resource.data.coachId == request.auth.uid;
+    }
+
+    // Счётчики Vertex AI для виртуальных тренеров (пишет только Cloud Functions).
+    match /portal_ai_usage/{docId} {
+      allow read: if isProgramAdmin();
+      allow write: if false;
     }
   }
 }

@@ -59,6 +59,7 @@ export function inferUpdateSectionFromPayload(payload) {
         'portalTrainingGoals',
         'portalPersonaId',
         'portalOnboardingCompletedAt',
+        'portalPersonaMemory',
         'portalLastActivityAt',
         'updatedAt',
         'lastUpdatedSection',
@@ -66,6 +67,21 @@ export function inferUpdateSectionFromPayload(payload) {
       ].includes(k),
     ) &&
     payload.portalOnboardingCompletedAt != null
+  ) {
+    return STUDENT_UPDATE_SECTION.studentPortal
+  }
+
+  if (
+    keys.every((k) =>
+      [
+        'portalPersonaMemory',
+        'portalLastActivityAt',
+        'updatedAt',
+        'lastUpdatedSection',
+        'lastUpdatedAt',
+      ].includes(k),
+    ) &&
+    payload.portalPersonaMemory != null
   ) {
     return STUDENT_UPDATE_SECTION.studentPortal
   }
