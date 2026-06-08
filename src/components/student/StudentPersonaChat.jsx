@@ -136,9 +136,11 @@ function StudentPersonaChat(
 
   return (
     <div className="space-y-2">
-      {!isPortalPersonaAiRemoteConfigured() && import.meta.env.DEV ? (
-        <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>
-          Локально: ответы в манере тренера (без нейросети). Для Gemini: Cloud Function + VITE_PORTAL_PERSONA_AI=1
+      {!isPortalPersonaAiRemoteConfigured() ? (
+        <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
+          {import.meta.env.DEV
+            ? 'Локально: ответы по скриптам. Для Gemini: Cloud Function + VITE_PORTAL_PERSONA_AI=1 в .env.local'
+            : 'Ответы по скриптам — в сборке нет VITE_PORTAL_PERSONA_AI=1. Задайте переменную на Vercel и пересоберите.'}
         </p>
       ) : null}
 

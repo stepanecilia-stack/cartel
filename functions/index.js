@@ -24,6 +24,7 @@ const ALLOWED_ORIGINS = [
   /^http:\/\/172\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
   /^https:\/\/cartel-academy\.web\.app$/,
   /^https:\/\/cartel-academy\.firebaseapp\.com$/,
+  /^https:\/\/[\w-]+\.vercel\.app$/,
 ]
 
 /**
