@@ -5,6 +5,7 @@ import {
   resetStudentPortalPin,
   revokeStudentPortalAccess,
 } from '../../services/studentPortalService.js'
+import { normalizePortalPinInput } from '../../utils/studentPortalAuth.js'
 import { isValidSixDigitShortId } from '../../services/firebaseService.js'
 import { useTechnicalProgramAtoms } from '../../hooks/useTechnicalProgramAtoms.js'
 import { formatShortIdDisplay } from '../../utils/studentModel.js'
@@ -21,10 +22,10 @@ import { vk } from '../../utils/vkUi.js'
  * @param {{ student: object, onPortalChange?: (patch: Record<string, unknown>) => void }} props
  */
 export default function StudentPortalAccessPanel({ student, onPortalChange }) {
-  const [pin, setPin] = useState(null)
+  const [freshPin, setFreshPin] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [enabled, setEnabled] = useState(false)
+  const [pinCopied, setPinCopied] = useState(false)
   const { orderedLevel1, orderedLevel2, orderedLevel3 } = useTechnicalProgramAtoms()
 
   const shortId = isValidSixDigitShortId(student?.short_id) ? String(student.short_id) : null
@@ -51,6 +52,20 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     personaMemory.conversationSummary ||
     hasPersonaMemoryMilestones(personaMemory)
   const onboardingDone = isPortalOnboardingComplete(student)
+  const storedPin = normalizePortalPinInput(student?.portalCoachPin)
+  const displayPin = freshPin || storedPin
+  const portalActive = Boolean(student?.portalEnabled)
+
+  const copyPin = useCallback(async () => {
+    if (!displayPin) return
+    try {
+      await navigator.clipboard.writeText(displayPin)
+      setPinCopied(true)
+      window.setTimeout(() => setPinCopied(false), 2000)
+    } catch {
+      setError('Не удалось скопировать PIN.')
+    }
+  }, [displayPin])
 
   const runEnable = useCallback(async () => {
     if (!student?.id || !shortId) {
@@ -61,9 +76,11 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     setError('')
     try {
       const res = await ensureStudentPortalAccess(student.id, shortId)
-      setPin(res.pin)
-      setEnabled(true)
-      onPortalChange?.({ portalEnabled: true })
+      if (res.pin) setFreshPin(res.pin)
+      onPortalChange?.({
+        portalEnabled: true,
+        ...(res.pin ? { portalCoachPin: res.pin } : {}),
+      })
     } catch (e) {
       setError(formatFirestoreErrorMessage(e) || e?.message)
     } finally {
@@ -72,8 +89,9 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
   }, [student?.id, shortId, onPortalChange])
 
   useEffect(() => {
-    setPin(null)
+    setFreshPin(null)
     setError('')
+    setPinCopied(false)
   }, [student?.id])
 
   const onResetPin = async () => {
@@ -83,9 +101,11 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     setError('')
     try {
       const res = await resetStudentPortalPin(student.id, shortId)
-      setPin(res.pin)
-      setEnabled(true)
-      onPortalChange?.({ portalEnabled: true })
+      if (res.pin) setFreshPin(res.pin)
+      onPortalChange?.({
+        portalEnabled: true,
+        portalCoachPin: res.pin ?? undefined,
+      })
     } catch (e) {
       setError(formatFirestoreErrorMessage(e) || e?.message)
     } finally {
@@ -121,9 +141,8 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     setError('')
     try {
       await revokeStudentPortalAccess(student.id, shortId)
-      setPin(null)
-      setEnabled(false)
-      onPortalChange?.({ portalAuthUid: undefined, portalEnabled: false })
+      setFreshPin(null)
+      onPortalChange?.({ portalAuthUid: undefined, portalEnabled: false, portalCoachPin: undefined })
     } catch (e) {
       setError(formatFirestoreErrorMessage(e) || e?.message)
     } finally {
@@ -223,9 +242,19 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
         ) : null}
       </div>
 
-      {pin ? (
-        <p className="rounded-lg bg-[#ecf3fc] px-2 py-1.5 text-[14px] font-semibold tabular-nums text-[#2d81e0]">
-          PIN: {pin}
+      {portalActive && displayPin ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[#ecf3fc] px-2.5 py-2">
+          <p className="text-[14px] font-semibold tabular-nums text-[#2d81e0]">
+            PIN: <span className="tracking-widest">{displayPin}</span>
+          </p>
+          <button type="button" className={vk.btnGhost} onClick={() => void copyPin()}>
+            {pinCopied ? 'Скопировано' : 'Копировать'}
+          </button>
+        </div>
+      ) : portalActive ? (
+        <p className={`${vk.noticeWarn} text-[12px]`}>
+          PIN выдан ранее, но не сохранён в карточке. Нажмите «Новый PIN» — ученику придётся войти с новым
+          кодом, зато цифра будет видна здесь всегда.
         </p>
       ) : null}
       {student?.portalAuthUid ? (
@@ -236,9 +265,9 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
       {error ? <p className={vk.error}>{error}</p> : null}
       <div className="flex flex-wrap gap-1.5">
         <button type="button" disabled={busy} onClick={() => void runEnable()} className={vk.btnPrimary}>
-          {busy ? '…' : pin ? 'Обновить доступ' : 'Включить кабинет'}
+          {busy ? '…' : portalActive ? 'Обновить доступ' : 'Включить кабинет'}
         </button>
-        {pin || enabled || student?.portalEnabled ? (
+        {portalActive || displayPin ? (
           <>
             {(student?.portalAuthUid || student?.portalEnabled) && (
               <button type="button" disabled={busy} onClick={() => void onUnbindDevice()} className={vk.btnSecondary}>

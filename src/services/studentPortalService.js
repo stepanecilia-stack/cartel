@@ -58,7 +58,9 @@ export async function ensureStudentPortalAccess(studentId, shortId, options = {}
   const existing = await getStudentPortalAuthRecord(sid)
   let pin = options.pin ? normalizePortalPinInput(options.pin) : null
   if (!pin && existing?.pinHash) {
-    return { shortId: sid, pin: null, regenerated: false, existing: true }
+    const studentSnap = await getDoc(doc(ensureDb(), 'students', studentId))
+    const storedPin = normalizePortalPinInput(studentSnap.data()?.portalCoachPin)
+    return { shortId: sid, pin: storedPin, regenerated: false, existing: true }
   }
   if (!pin) pin = generatePortalPin()
 
@@ -75,7 +77,9 @@ export async function ensureStudentPortalAccess(studentId, shortId, options = {}
   )
   await updateDoc(doc(ensureDb(), 'students', studentId), {
     portalEnabled: true,
+    portalCoachPin: pin,
     updatedAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
   })
   return { shortId: sid, pin, regenerated: Boolean(existing?.pinHash), existing: false }
 }
@@ -102,7 +106,9 @@ export async function revokeStudentPortalAccess(studentId, shortId) {
   await updateDoc(doc(ensureDb(), 'students', studentId), {
     portalEnabled: false,
     portalAuthUid: deleteField(),
+    portalCoachPin: deleteField(),
     updatedAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
   })
 }
 
