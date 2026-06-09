@@ -1,12 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import StudentKnowledgeImageRow from './StudentKnowledgeImageRow.jsx'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
-import StudentTechniqueMirrorScene from './StudentTechniqueMirrorScene.jsx'
 import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
-import { getTechniqueActiveKnowledgeKeys } from '../../utils/techniqueAtomInstruction.js'
 import {
   buildFirstAtomWelcome,
   buildLogicSlideTrainerLine,
@@ -104,8 +101,6 @@ export default function StudentFirstAtomFlow({
   if (phase === 'study') {
     const slide = knowledgeSlides[slideIndex]
     const isLastVideo = slideIndex >= knowledgeSlides.length - 1
-    const knowledgeStep = slideIndex === 0 ? 'video1' : 'video2'
-    const activeKnowledgeKeys = getTechniqueActiveKnowledgeKeys(knowledgeStep)
 
     return (
       <div className="space-y-3">
@@ -126,8 +121,6 @@ export default function StudentFirstAtomFlow({
           autoPlayWebm={false}
           showLabel={false}
         />
-
-        <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
 
         {isLastVideo ? (
           <button
@@ -187,10 +180,6 @@ export default function StudentFirstAtomFlow({
 
   return (
     <div className="space-y-3">
-      <StudentKnowledgeImageRow activeKeys={['kinesthesia']} />
-
-      <StudentTechniqueMirrorScene />
-
       <div className="flex gap-2.5">
         <StudentPersonaAvatar personaId={persona.id} size="md" />
         <div className="min-w-0 flex-1">

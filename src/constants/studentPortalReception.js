@@ -6,6 +6,8 @@ export const STUDENT_PORTAL_RECEPTION = {
   gymTechniqueBgSrc: '/student-portal/gym-hub-main.png',
   /** Зона зеркала в зале Cartel */
   gymMirrorSrc: '/student-portal/gym-mirror-wall.png',
+  /** Зона сдачи нормативов — синие маты, секундомер и блокнот */
+  gymNormsStationSrc: '/student-portal/gym-norms-station.png',
   sceneSrc: '/student-portal/reception-scene.png',
   bunnySrc: '/student-portal/reception-bunny.png',
   adminName: 'Администратор',

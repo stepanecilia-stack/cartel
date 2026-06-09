@@ -11,6 +11,7 @@ export const KNOWLEDGE_IMAGE_ROW_ITEMS = [
     indicatorClass: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.95)]',
     iconClass: 'text-emerald-600',
     labelClass: 'text-emerald-800',
+    text: 'Видишь правильное выполнение — на видео, у тренера или в голове.',
   },
   {
     key: 'logic',
@@ -23,6 +24,7 @@ export const KNOWLEDGE_IMAGE_ROW_ITEMS = [
     indicatorClass: 'bg-[#2d81e0] shadow-[0_0_8px_rgba(45,129,224,0.9)]',
     iconClass: 'text-[#2d81e0]',
     labelClass: 'text-[#1e5a9e]',
+    text: 'Понимаешь, почему элемент выполняется именно так — можешь объяснить своими словами.',
   },
   {
     key: 'kinesthesia',
@@ -35,31 +37,7 @@ export const KNOWLEDGE_IMAGE_ROW_ITEMS = [
     indicatorClass: 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.95)]',
     iconClass: 'text-red-500',
     labelClass: 'text-red-900',
-  },
-]
-
-/** @type {Array<{ key: string, title: string, text: string, imageSrc: string, ringClass: string }>} */
-export const KNOWLEDGE_IMAGE_CARDS = [
-  {
-    key: 'logic',
-    title: 'Логический образ',
-    text: 'Понимаешь, почему элемент выполняется именно так — можешь объяснить своими словами.',
-    imageSrc: '/student-portal/knowledge-logic.png',
-    ringClass: 'ring-[#2d81e0]/30',
-  },
-  {
-    key: 'vision',
-    title: 'Зрительный образ',
-    text: 'Видишь правильное выполнение — на видео, у тренера или в голове.',
-    imageSrc: '/student-portal/knowledge-vision.png',
-    ringClass: 'ring-emerald-500/30',
-  },
-  {
-    key: 'kinesthesia',
-    title: 'Кинестетика',
-    text: 'Прочувствовал элемент в теле — знаешь ощущения в мышцах.',
-    imageSrc: '/student-portal/knowledge-kinesthesia.png',
-    ringClass: 'ring-red-400/35',
+    text: 'Ощущение в мышцах — выполнил элемент сам, знаешь, как это чувствуется в теле.',
   },
 ]
 

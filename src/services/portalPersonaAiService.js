@@ -16,6 +16,9 @@ import {
   aiReplyUsesExternalBoxingKnowledge,
   scriptedProgramElementReply,
 } from '../utils/portalAtomKnowledge.js'
+import { scriptedPortalNormsReply, isSelfReportedNormData } from '../utils/portalNormsChat.js'
+import { isNormExecutionQuestion } from '../data/portalNormExecutionRules.js'
+import { advanceNormSubmitFlow } from '../utils/portalNormsSubmitFlow.js'
 import { MARKER_QUIZ_PASS } from '../utils/personaChatMarkers.js'
 import { aiReplyInventsStudentRank, buildIntakeFactsCorpus } from '../utils/onboardingAiGuard.js'
 import { assessThreeImagesAnswer, threeImagesCorrectionReply } from '../utils/portalKnowledgeThreeImages.js'
@@ -45,7 +48,7 @@ function enrichProgramAtomReply(userMessage, messages, rawReply, atom) {
   return reply
 }
 
-function scriptedPersonaReply(persona, userMessage, context, messages = [], studyAtom = null) {
+function scriptedPersonaReply(persona, userMessage, context, messages = [], studyAtom = null, normsSnapshot = null) {
   const text = userMessage.trim()
   const lower = text.toLowerCase()
   const voice = getPortalPersonaVoice(persona.id)
@@ -211,6 +214,10 @@ function scriptedPersonaReply(persona, userMessage, context, messages = [], stud
     return scriptedOnboardingStagesReply(persona.id, text, messages)
   }
 
+  if (context === 'norms' && normsSnapshot) {
+    return scriptedPortalNormsReply(persona.id, text, messages, normsSnapshot)
+  }
+
   if (context === 'program' && studyAtom) {
     return scriptedProgramElementReply(persona.id, text, messages, studyAtom)
   }
@@ -311,8 +318,15 @@ function scriptedPersonaReply(persona, userMessage, context, messages = [], stud
  *   personaMemory?: import('../utils/portalPersonaMemory.js').PortalPersonaMemory | null,
  *   trainingGoals?: unknown,
  *   studyAtom?: object | null,
+ *   normsSnapshot?: import('../utils/portalNormsChat.js').PortalNormsSnapshot | null,
+ *   normSubmitFlow?: import('../utils/portalNormsSubmitFlow.js').PortalNormSubmitFlow | null,
  * }} params
- * @returns {Promise<{ reply: string, source: import('../utils/portalPersonaAiConfig.js').PortalPersonaReplySource }>}
+ * @returns {Promise<{
+ *   reply: string,
+ *   source: import('../utils/portalPersonaAiConfig.js').PortalPersonaReplySource,
+ *   normSubmitFlow?: import('../utils/portalNormsSubmitFlow.js').PortalNormSubmitFlow | null,
+ *   normSavePayload?: { testName: string, testId: string, resultRaw: string } | null,
+ * }>}
  */
 export async function sendPortalPersonaChatMessage({
   personaId,
@@ -322,6 +336,8 @@ export async function sendPortalPersonaChatMessage({
   personaMemory = null,
   trainingGoals = null,
   studyAtom = null,
+  normsSnapshot = null,
+  normSubmitFlow = null,
 }) {
   const persona = getPortalPersona(personaId)
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
@@ -334,6 +350,36 @@ export async function sendPortalPersonaChatMessage({
     detectOnboardingSkipIntent(userMessage)
   ) {
     return { reply: buildOnboardingSkipAllowReply(persona.id), source: 'script' }
+  }
+
+  if (context === 'norms' && normSubmitFlow) {
+    const flowResult = advanceNormSubmitFlow({
+      flow: normSubmitFlow,
+      personaId: persona.id,
+      userMessage,
+    })
+    await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
+    return {
+      reply:
+        flowResult.reply ??
+        scriptedPortalNormsReply(persona.id, userMessage, messages, normsSnapshot ?? { items: [], total: 0, passed: 0, gold: 0, silver: 0, bronze: 0, red: 0, empty: 0, passedItems: [], belowItems: [], pendingItems: [], filled: 0 }),
+      source: 'script',
+      normSubmitFlow: flowResult.nextFlow,
+      normSavePayload: flowResult.savePayload,
+    }
+  }
+
+  if (
+    context === 'norms' &&
+    normsSnapshot &&
+    isSelfReportedNormData(userMessage) &&
+    !isNormExecutionQuestion(userMessage)
+  ) {
+    await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
+    return {
+      reply: scriptedPortalNormsReply(persona.id, userMessage, messages, normsSnapshot),
+      source: 'script',
+    }
   }
 
   if (context === 'onboarding_stages') {
@@ -433,7 +479,7 @@ export async function sendPortalPersonaChatMessage({
       console.warn('[portalPersonaAi] remote failed, using scripted fallback', err)
       await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
       return {
-        reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom),
+        reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom, normsSnapshot),
         source: 'script-fallback',
       }
     }
@@ -441,7 +487,7 @@ export async function sendPortalPersonaChatMessage({
 
   await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
   return {
-    reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom),
+    reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom, normsSnapshot),
     source: 'script',
   }
 }

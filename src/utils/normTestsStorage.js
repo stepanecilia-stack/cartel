@@ -16,6 +16,71 @@ export function normalizeLegacyTestId(id) {
     .trim()
 }
 
+export function isCoachAcceptedNormRow(row) {
+  return Boolean(row?.acceptedAt || row?.acceptedByCoachId)
+}
+
+/** Результат внесён тренером (не «со слов ученика»). */
+export function isCoachOwnedNormRow(row) {
+  if (!row || !Number.isFinite(Number(row.result))) return false
+  return !isStudentSelfReportNormRow(row)
+}
+
+export function isStudentSelfReportNormRow(row) {
+  return row?.studentSelfReport === true && !isCoachAcceptedNormRow(row)
+}
+
+/** Запись норматива в tests.physical по самоотчёту ученика («со слов ученика»). */
+export function buildStudentSelfReportPhysicalRow(norm, resultRaw, reportedAtIso) {
+  const parsed = applyNormRawInput(norm, resultRaw)
+  if (!parsed || !Number.isFinite(parsed.result)) return null
+  return {
+    ...parsed,
+    studentSelfReport: true,
+    studentSelfReportAt: reportedAtIso,
+  }
+}
+
+export function getPendingStudentSelfReport(row) {
+  const pending = row?.pendingStudentSelfReport
+  if (!pending || typeof pending !== 'object') return null
+  if (!Number.isFinite(Number(pending.result))) return null
+  return pending
+}
+
+export function hasPendingStudentSelfReport(row) {
+  return getPendingStudentSelfReport(row) != null
+}
+
+/**
+ * Самоотчёт ученика: первая сдача / обновление черновика / пересдача поверх зачёта тренера.
+ * @returns {Record<string, unknown> | null}
+ */
+export function mergeStudentSelfReportIntoPhysicalRow(existingRow, norm, resultRaw, reportedAtIso) {
+  const parsed = buildStudentSelfReportPhysicalRow(norm, resultRaw, reportedAtIso)
+  if (!parsed) return null
+
+  if (!existingRow || isStudentSelfReportNormRow(existingRow)) {
+    return parsed
+  }
+
+  if (isCoachOwnedNormRow(existingRow)) {
+    return {
+      ...existingRow,
+      pendingStudentSelfReport: {
+        result: parsed.result,
+        resultRaw: parsed.resultRaw ?? String(parsed.result),
+        normalizedScore: parsed.normalizedScore,
+        status: parsed.status,
+        date: parsed.date,
+        studentSelfReportAt: reportedAtIso,
+      },
+    }
+  }
+
+  return parsed
+}
+
 export function getNormValueByTestId(values, testId) {
   if (!values || typeof values !== 'object') return undefined
   if (values[testId]) return values[testId]
@@ -179,7 +244,7 @@ export function applyNormRawInput(norm, rawValue) {
     const numericRaw = trimmed.replace(',', '.')
     const result = Number(numericRaw)
     if (!Number.isFinite(result)) return null
-    return { ...evaluateLegacyTest(result, norm), result, date }
+    return { ...evaluateLegacyTest(result, norm), result, resultRaw: trimmed, date }
   }
 
   const minuteSecond = parseMinuteSecondToMinutes(trimmed)
@@ -189,7 +254,7 @@ export function applyNormRawInput(norm, rawValue) {
   return {
     ...evaluateLegacyTest(result, norm),
     result,
-    resultRaw: minuteSecond?.display,
+    resultRaw: minuteSecond?.display ?? trimmed,
     date,
   }
 }
@@ -226,6 +291,10 @@ export function summarizeNormsForValues(norms, values) {
 
   for (const norm of list) {
     const row = getNormValueByTestId(values, norm.testId)
+    if (isStudentSelfReportNormRow(row)) {
+      empty += 1
+      continue
+    }
     const status = resolveNormRowStatus(norm, row)
     if (status === 'empty') {
       empty += 1

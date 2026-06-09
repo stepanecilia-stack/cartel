@@ -1,8 +1,12 @@
 import { memo } from 'react'
 import { NormGoldGoalIcon, NormMedalChip } from '../NormMedals'
 import { normCardToneByStatus, normScoreToneByStatus } from '../../utils/normCardTone'
-import { formatNormAcceptedMeta } from '../../utils/normAcceptanceHistory'
-import { isMinuteSecondNorm } from '../../utils/normTestsStorage.js'
+import { formatNormAcceptedMeta, formatPendingStudentSelfReportMeta, formatStudentSelfReportMeta } from '../../utils/normAcceptanceHistory'
+import {
+  getPendingStudentSelfReport,
+  isMinuteSecondNorm,
+  isStudentSelfReportNormRow,
+} from '../../utils/normTestsStorage.js'
 import { vk } from '../../utils/vkUi.js'
 
 /** @param {string} category @param {string} testId */
@@ -16,6 +20,7 @@ export function normCardDomId(category, testId) {
  *   category: string,
  *   norm: object,
  *   row: object | undefined,
+ *   displayRow?: object | undefined,
  *   displayVal: string,
  *   inputType: string,
  *   goalLabel: string,
@@ -30,6 +35,7 @@ function StudentNormCard({
   category,
   norm,
   row,
+  displayRow = row,
   displayVal,
   inputType,
   goalLabel,
@@ -39,9 +45,13 @@ function StudentNormCard({
   onResultChange,
   onSave,
 }) {
-  const cardTone = normCardToneByStatus(row?.status)
+  const isSelfReport = isStudentSelfReportNormRow(row)
+  const pendingRetake = getPendingStudentSelfReport(row)
+  const cardTone = isSelfReport ? 'bg-sky-50' : pendingRetake ? 'bg-sky-50/60' : normCardToneByStatus(row?.status)
   const scoreTone = normScoreToneByStatus(row?.status)
   const acceptedMeta = formatNormAcceptedMeta(row)
+  const selfReportMeta = formatStudentSelfReportMeta(row)
+  const pendingRetakeMeta = formatPendingStudentSelfReportMeta(row)
   const minuteSecond = isMinuteSecondNorm(norm)
 
   return (
@@ -77,15 +87,15 @@ function StudentNormCard({
             value={displayVal}
             onChange={(e) => onResultChange(e.target.value)}
           />
-          {row && Number.isFinite(row.result) ? (
+          {displayRow && Number.isFinite(displayRow.result) ? (
             <span className={`flex items-center gap-1 text-[12px] tabular-nums ${scoreTone}`}>
-              <span className="font-semibold">{row.normalizedScore}</span>
-              <NormMedalChip status={row.status} size="sm" />
+              <span className="font-semibold">{displayRow.normalizedScore}</span>
+              <NormMedalChip status={displayRow.status} size="sm" />
             </span>
           ) : null}
           <button
             type="button"
-            disabled={!canSave || normBusy || !row || !Number.isFinite(row.result)}
+            disabled={!canSave || normBusy || !displayRow || !Number.isFinite(displayRow.result)}
             onClick={onSave}
             className={`${vk.btnCompact} ml-auto disabled:opacity-45`}
           >
@@ -93,6 +103,12 @@ function StudentNormCard({
           </button>
         </div>
 
+        {pendingRetakeMeta ? (
+          <p className={`mt-1 truncate text-[11px] font-medium text-sky-800`}>{pendingRetakeMeta}</p>
+        ) : null}
+        {selfReportMeta ? (
+          <p className={`mt-1 truncate text-[11px] font-medium text-sky-800`}>{selfReportMeta}</p>
+        ) : null}
         {acceptedMeta ? <p className={`mt-1 truncate ${vk.mutedXs}`}>{acceptedMeta}</p> : null}
       </div>
     </li>

@@ -22,7 +22,7 @@ import {
   mergeWithRequiredLevel3Combinations,
   isRequiredLevel3ComboId,
 } from '../utils/techniqueCatalog.js'
-import { applyNormRawInput } from '../utils/normTestsStorage.js'
+import { applyNormRawInput, getPendingStudentSelfReport, isCoachOwnedNormRow } from '../utils/normTestsStorage.js'
 import {
   anthropometryFieldToInputString,
   birthDateMatchesBirthYear,
@@ -859,12 +859,25 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       set((prev) => removeNormValueByTestId(prev, norm.testId))
       return
     }
-    const row = applyNormRawInput(norm, rawValue)
-    if (!row) return
-    set((prev) => ({
-      ...removeNormValueByTestId(prev, norm.testId),
-      [norm.testId]: row,
-    }))
+    const parsed = applyNormRawInput(norm, rawValue)
+    if (!parsed) return
+    set((prev) => {
+      const existing = getNormValueByTestId(prev, norm.testId)
+      if (isCoachOwnedNormRow(existing)) {
+        return {
+          ...prev,
+          [norm.testId]: {
+            ...existing,
+            ...parsed,
+            pendingStudentSelfReport: undefined,
+          },
+        }
+      }
+      return {
+        ...removeNormValueByTestId(prev, norm.testId),
+        [norm.testId]: parsed,
+      }
+    })
   }, [])
 
   const buildStudentUpdatePayload = (
@@ -1031,7 +1044,12 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       return
     }
     const localRow = getNormValueByTestId(physicalResults, norm.testId)
-    if (!localRow || !Number.isFinite(localRow.result)) {
+    const pendingRetake = getPendingStudentSelfReport(localRow)
+    const effectiveRow =
+      pendingRetake && isCoachOwnedNormRow(localRow)
+        ? { ...localRow, ...pendingRetake }
+        : localRow
+    if (!effectiveRow || !Number.isFinite(effectiveRow.result)) {
       setSaveError('Введите результат норматива перед сохранением.')
       return
     }
@@ -1049,10 +1067,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       const serverRow = getNormValueByTestId(physicalMerged, norm.testId)
       const coachName = await resolveCoachDisplayName(coachId)
       const evaluated = {
-        result: localRow.result,
-        resultRaw: localRow.resultRaw,
-        normalizedScore: localRow.normalizedScore,
-        status: localRow.status,
+        result: effectiveRow.result,
+        resultRaw: effectiveRow.resultRaw,
+        normalizedScore: effectiveRow.normalizedScore,
+        status: effectiveRow.status,
       }
       const entry = buildNormAcceptanceHistoryEntry({
         norm,
@@ -1062,12 +1080,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         evaluated,
       })
       const mergedRow = {
-        ...localRow,
+        ...effectiveRow,
         acceptedAt: entry.recordedAt,
         acceptedByCoachId: coachId,
         acceptedByCoachName: coachName,
         acceptanceHistory: mergeNormAcceptanceHistory(serverRow?.acceptanceHistory, entry),
       }
+      delete mergedRow.studentSelfReport
+      delete mergedRow.studentSelfReportAt
+      delete mergedRow.pendingStudentSelfReport
       physicalMerged[norm.testId] = mergedRow
 
       const weight = Number(anthropometry.weight) || 0

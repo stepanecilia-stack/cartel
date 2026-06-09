@@ -316,7 +316,7 @@ export const updateStudent = async (studentId, studentPayload) => {
 }
 
 /** Firestore не допускает undefined ни на одном уровне вложенности. */
-const deepOmitUndefined = (value) => {
+export const deepOmitUndefined = (value) => {
   if (value === undefined) return undefined
   if (value === null || typeof value !== 'object') return value
   if (Array.isArray(value)) {

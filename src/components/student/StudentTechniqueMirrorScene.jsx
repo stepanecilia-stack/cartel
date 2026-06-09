@@ -16,7 +16,7 @@ export default function StudentTechniqueMirrorScene({ className = '' }) {
         decoding="async"
       />
       <figcaption className="border-t border-white/10 bg-black/50 px-3 py-2 text-center text-[12px] leading-snug text-white/85 backdrop-blur-sm">
-        Встань здесь перед зеркалом и проживи элемент в теле
+        Встань перед зеркалом и попробуй самостоятельно
       </figcaption>
     </figure>
   )

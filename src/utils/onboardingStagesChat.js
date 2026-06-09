@@ -349,7 +349,7 @@ function buildStagesQuizHelpReply(personaId, questionIndex) {
     return `Зрительный образ: эталон формы. ${prompt}`
   }
   if (personaId === 'vasily') {
-    return `Кинестетика — ощущение в мышцах, прожил в теле. ${prompt}`
+    return `Кинестетика — ощущение в мышцах, выполнил элемент сам. ${prompt}`
   }
   if (personaId === 'arkady') {
     return `Кинестетический — что чувствует тело, свой опыт в мышцах. ${prompt}`

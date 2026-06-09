@@ -7,7 +7,7 @@ export function assessThreeImagesAnswer(text) {
   const lower = text.trim().toLowerCase()
   const hasLogic = /логик|понима|шаг|последов|почему|как\s+дел|объясн/i.test(lower)
   const hasVision = /зрен|вид|картин|наблюд|выгляд|эталон/i.test(lower)
-  const hasKinesthesia = /кинест|киниспет|ощущ|мышц|прочув|прож|чувств|тел(о|а|ом)?\b|телес/i.test(lower)
+  const hasKinesthesia = /кинест|киниспет|ощущ|мышц|прочув|прож|чувств|тел(о|а|ом)?\b|телес|выполн|самостоят|сам\b/i.test(lower)
 
   /** @type {ThreeImagePart[]} */
   const missing = []

@@ -9,8 +9,9 @@ import {
   formatAtomKnowledgeBlockForPrompt,
   getAtomKnowledgeCopy,
 } from './portalAtomKnowledge.js'
+import { formatNormExecutionRulesForPrompt } from '../data/portalNormExecutionRules.js'
 
-/** @typedef {'onboarding_greeting' | 'onboarding_stages' | 'program' | 'program_atom' | 'general'} PortalPersonaChatContext */
+/** @typedef {'onboarding_greeting' | 'onboarding_stages' | 'program' | 'program_atom' | 'norms' | 'general'} PortalPersonaChatContext */
 
 /**
  * @param {import('../constants/studentPortalPersonas.js').typeof PORTAL_PERSONAS[number]} persona
@@ -63,7 +64,17 @@ export function buildPortalPersonaSystemPrompt(
     scene = studyAtom
       ? `Сцена: проверка «Знания» по элементу «${atomName}». Только факты из карточки элемента. После верного ответа — ||QUIZ_PASS||. Один вопрос в сообщении.`
       : 'Сцена: ученик нажал «Понял» после роликов по первому атому. Проверь знание по описанию атома в контексте: название и суть своими словами. После каждого верного ответа — ||QUIZ_PASS||. Когда все вопросы закрыты — скажи попробовать приём перед зеркалом. Один вопрос в сообщении.'
+  } else if (context === 'norms') {
+    scene =
+      'Сцена: зона нормативов Cartel. Официальный зачёт фиксирует очный тренер в карточке — ты НЕ принимаешь норматив в протокол. Ученик пишет норматив и цифру; дату и время программа проставляет сама («со слов ученика»). Принимай такие сообщения, уточняй, объясняй физподготовку в контексте бокса и рекомендации к индивидуальной программе. Чем точнее цифры — тем качественнее анализ. На «как сдать» — регламент Cartel ниже. Не вываливай простынёй все нормативы — коротко, 2–5 предложений. НЕ здоровайся заново.'
   }
+
+  const normsExecutionPrompt =
+    context === 'norms'
+      ? ['', '# Регламент сдачи нормативов Cartel (единственный источник для «как сдать»)', formatNormExecutionRulesForPrompt()].join(
+          '\n',
+        )
+      : ''
 
   const atomKnowledgePrompt =
     studyAtom && (context === 'program' || context === 'program_atom')
@@ -78,6 +89,7 @@ export function buildPortalPersonaSystemPrompt(
   return [
     scene,
     atomKnowledgePrompt,
+    normsExecutionPrompt,
     programHint && !atomKnowledgeBlock ? `Контекст ученика сейчас: ${programHint}` : '',
     programHint && atomKnowledgeBlock ? `Доп. контекст сессии: ${programHint}` : '',
     memoryBlock ? `\n# Что ты уже знаешь об этом ученике\n${memoryBlock}` : '',

@@ -60,6 +60,41 @@ function instantToMs(value) {
   return null
 }
 
+/** Подпись для самоотчёта ученика в блоке «Физика». */
+export function formatStudentSelfReportMeta(row) {
+  if (!row?.studentSelfReport) return null
+  const ms = instantToMs(row.studentSelfReportAt ?? row.date)
+  const when =
+    ms != null
+      ? new Date(ms).toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null
+  return when ? `Со слов ученика · ${when}` : 'Со слов ученика'
+}
+
+/** Подпись пересдачи поверх зачёта тренера. */
+export function formatPendingStudentSelfReportMeta(row) {
+  const pending = row?.pendingStudentSelfReport
+  if (!pending || typeof pending !== 'object') return null
+  const ms = instantToMs(pending.studentSelfReportAt ?? pending.date)
+  const when =
+    ms != null
+      ? new Date(ms).toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null
+  return when ? `Пересдача со слов ученика · ${when}` : 'Пересдача со слов ученика'
+}
+
 /** Короткая подпись для UI: кто и когда принял норматив. */
 export function formatNormAcceptedMeta(row) {
   if (!row?.acceptedAt && !row?.acceptedByCoachName) return null

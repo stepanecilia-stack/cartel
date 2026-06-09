@@ -1,10 +1,6 @@
 import { useMemo } from 'react'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
-import StudentKnowledgeImageRow from './StudentKnowledgeImageRow.jsx'
 import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
-
-/** Все три образа подсвечены при повторном просмотре пройденного материала. */
-const REVIEW_KNOWLEDGE_KEYS = ['vision', 'logic', 'kinesthesia']
 
 /**
  * Оба ролика «Знания» — тот же портретный плеер, что в пошаговом инструктораже.
@@ -23,7 +19,6 @@ export default function StudentAtomStudyVideos({ atom }) {
           showLabel={slides.length > 1}
         />
       ))}
-      <StudentKnowledgeImageRow activeKeys={REVIEW_KNOWLEDGE_KEYS} />
     </div>
   )
 }

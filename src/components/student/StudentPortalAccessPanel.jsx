@@ -21,6 +21,7 @@ import {
 } from '../../constants/studentPortalOnboarding.js'
 import { portalPersonaDisplayName } from '../../constants/studentPortalPersonas.js'
 import { normalizePortalPersonaMemory, getPersonaMemoryMilestonesForCoach, hasPersonaMemoryMilestones } from '../../utils/portalPersonaMemory.js'
+import { formatPortalNormSelfReportsForCoach } from '../../utils/portalNormSelfReports.js'
 import { vk } from '../../utils/vkUi.js'
 
 /**
@@ -52,10 +53,15 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
     () => getPersonaMemoryMilestonesForCoach(personaMemory),
     [personaMemory],
   )
+  const normSelfReports = useMemo(
+    () => formatPortalNormSelfReportsForCoach(student?.portalNormSelfReports),
+    [student?.portalNormSelfReports],
+  )
   const showPersonaMemoryNotes =
     personaMemory.levelNotes ||
     personaMemory.conversationSummary ||
-    hasPersonaMemoryMilestones(personaMemory)
+    hasPersonaMemoryMilestones(personaMemory) ||
+    normSelfReports.length > 0
   const onboardingDone = isPortalOnboardingComplete(student)
   const onboardingSkipped = isPortalOnboardingSkipped(student)
   const hasPortalContext =
@@ -261,6 +267,18 @@ export default function StudentPortalAccessPanel({ student, onPortalChange }) {
                 {personaMilestones.map((item) => (
                   <li key={item.label} className={vk.mutedXs}>
                     <span className="font-medium text-[#2d81e0]">✓ </span>
+                    <span className="font-medium text-[#2c2d2e]">{item.label}</span>
+                    {item.detail ? (
+                      <span className="mt-0.5 block whitespace-pre-line text-[#818c99]">{item.detail}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {normSelfReports.length > 0 ? (
+              <ul className="space-y-1">
+                {normSelfReports.map((item, index) => (
+                  <li key={`${item.detail}-${index}`} className={vk.mutedXs}>
                     <span className="font-medium text-[#2c2d2e]">{item.label}</span>
                     {item.detail ? (
                       <span className="mt-0.5 block whitespace-pre-line text-[#818c99]">{item.detail}</span>

@@ -20,8 +20,19 @@ import { normalizePortalKnowledgeDataForSave } from '../utils/portalKnowledgeDat
 import { normalizePortalTrainingGoals } from '../constants/studentPortalOnboarding.js'
 import { normalizePortalPersonaId } from '../constants/studentPortalPersonas.js'
 import { normalizePortalPersonaMemory } from '../utils/portalPersonaMemory.js'
+import {
+  appendPortalNormSelfReport,
+  appendStructuredPortalNormSelfReport,
+  findNormByPortalTestId,
+  normStorageKey,
+} from '../utils/portalNormSelfReports.js'
+import { migrateStudentTests } from '../utils/normsCategory.js'
+import {
+  getNormValueByTestId,
+  mergeStudentSelfReportIntoPhysicalRow,
+} from '../utils/normTestsStorage.js'
 import { STUDENT_UPDATE_SECTION } from '../utils/studentUpdateSections.js'
-import { ensureAuth, ensureDb } from './firebaseService.js'
+import { ensureAuth, ensureDb, deepOmitUndefined } from './firebaseService.js'
 
 const PORTAL_AUTH_COLLECTION = 'student_portal_auth'
 
@@ -109,6 +120,7 @@ export async function resetStudentPortalContext(studentId) {
     portalOnboardingCompletedAt: deleteField(),
     portalOnboardingSkippedAt: deleteField(),
     portalPersonaMemory: deleteField(),
+    portalNormSelfReports: deleteField(),
     portalTrainingGoals: deleteField(),
     portalTrainingGoal: deleteField(),
     portalPersonaId: deleteField(),
@@ -231,12 +243,13 @@ async function rebindPortalAuthUid(studentId) {
 async function updateStudentPortalDoc(studentId, patch) {
   await ensureStudentPortalAnonymousUser()
   const studentRef = doc(ensureDb(), 'students', studentId)
+  const safePatch = deepOmitUndefined(patch)
   try {
-    await updateDoc(studentRef, patch)
+    await updateDoc(studentRef, safePatch)
   } catch (e) {
     if (e?.code !== 'permission-denied') throw e
     await rebindPortalAuthUid(studentId)
-    await updateDoc(studentRef, patch)
+    await updateDoc(studentRef, safePatch)
   }
 }
 
@@ -366,4 +379,91 @@ export async function saveStudentPortalPersonaMemory(studentId, personaMemory) {
     lastUpdatedAt: serverTimestamp(),
   })
   return normalized
+}
+
+function portalNormSaveError(err) {
+  if (err?.code === 'permission-denied') {
+    return new Error(
+      'Не удалось сохранить в базу: нет прав доступа. Попросите тренера опубликовать firestore.rules в Firebase Console → Firestore → Rules → «Опубликовать».',
+    )
+  }
+  if (err instanceof Error && err.message) return err
+  return new Error('Не удалось сохранить результат. Проверьте интернет и войдите в кабинет заново.')
+}
+
+/** Самоотчёт ученика по нормативам — в tests.physical с пометкой «со слов ученика». */
+export async function saveStudentPortalNormSelfReport(studentId, payload, options = null) {
+  await ensureStudentPortalAnonymousUser()
+  const opts =
+    options == null || Array.isArray(options)
+      ? { existingReports: options ?? null }
+      : options
+  const { existingReports = null, student = null, norms = [] } = opts
+
+  const reportedAt = new Date()
+  const reportedAtIso = reportedAt.toISOString()
+  const portalNormSelfReports =
+    typeof payload === 'string'
+      ? appendPortalNormSelfReport(existingReports, payload, reportedAt)
+      : appendStructuredPortalNormSelfReport(existingReports, payload, reportedAt)
+
+  const studentSnap = student ?? (await fetchStudentForPortalSession(studentId))
+  const migrated = migrateStudentTests(studentSnap.tests)
+  const physical = { ...migrated.physical }
+  const functional =
+    studentSnap.tests?.functional && typeof studentSnap.tests.functional === 'object'
+      ? { ...studentSnap.tests.functional }
+      : {}
+
+  let physicalUpdated = false
+  if (typeof payload === 'object' && payload?.testId && payload?.resultRaw) {
+    const testId = String(payload.testId).trim()
+    const norm = findNormByPortalTestId(norms, testId)
+    if (!norm) {
+      throw new Error('Норматив не найден в таблице. Обновите страницу и попробуйте снова.')
+    }
+    const storageKey = normStorageKey(norm, testId)
+    const existingRow = getNormValueByTestId(physical, storageKey)
+    const merged = mergeStudentSelfReportIntoPhysicalRow(
+      existingRow,
+      norm,
+      payload.resultRaw,
+      reportedAtIso,
+    )
+    if (!merged) {
+      throw new Error('Не удалось разобрать результат. Проверьте формат числа или времени.')
+    }
+    physical[storageKey] = merged
+    physicalUpdated = true
+  }
+
+  const tests = { physical, functional }
+  const metaPatch = {
+    portalNormSelfReports,
+    portalLastActivityAt: serverTimestamp(),
+    lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+    updatedAt: serverTimestamp(),
+    lastUpdatedAt: serverTimestamp(),
+  }
+
+  try {
+    await updateStudentPortalDoc(studentId, physicalUpdated ? { ...metaPatch, tests } : metaPatch)
+  } catch (err) {
+    if (err?.code === 'permission-denied' && physicalUpdated) {
+      try {
+        await updateStudentPortalDoc(studentId, metaPatch)
+      } catch (fallbackErr) {
+        throw portalNormSaveError(fallbackErr)
+      }
+      throw portalNormSaveError(err)
+    }
+    throw portalNormSaveError(err)
+  }
+
+  const fresh = await fetchStudentForPortalSession(studentId)
+  return {
+    portalNormSelfReports: fresh.portalNormSelfReports ?? portalNormSelfReports,
+    reportedAt: reportedAtIso,
+    tests: fresh.tests ?? tests,
+  }
 }

@@ -1,8 +1,5 @@
 import { useCallback, useState } from 'react'
-import {
-  KNOWLEDGE_IMAGE_CARDS,
-  MOTOR_SKILL_STAGES_ILLUSTRATION,
-} from '../../constants/studentPortalIllustrations.js'
+import { KNOWLEDGE_IMAGE_ROW_ITEMS } from '../../constants/studentPortalIllustrations.js'
 import { getPortalPersona } from '../../constants/studentPortalPersonas.js'
 import {
   buildOnboardingStagesQuizOpener,
@@ -10,10 +7,39 @@ import {
   stagesMatContinueLabel,
   STAGES_MAT_PHASE_ORDER,
 } from '../../utils/onboardingStagesMat.js'
-import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
+import StudentMotorStagesHighlight from './StudentMotorStagesHighlight.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
+import StudentPortalTrainerBubble from './StudentPortalTrainerBubble.jsx'
+import StudentTechniqueMirrorScene from './StudentTechniqueMirrorScene.jsx'
 import { formatPortalPersonaName } from '../../constants/studentPortalPersonas.js'
 import { vk } from '../../utils/vkUi.js'
+
+/** @param {import('../../utils/onboardingStagesMat.js').StagesMatPhase} phase */
+function knowledgeKeyForPhase(phase) {
+  if (phase === 'logic' || phase === 'vision' || phase === 'kinesthesia') return phase
+  return null
+}
+
+/** @param {'logic' | 'vision' | 'kinesthesia'} key */
+function GuideKnowledgeFigure({ phaseKey }) {
+  const item = KNOWLEDGE_IMAGE_ROW_ITEMS.find((entry) => entry.key === phaseKey)
+  if (!item) return null
+
+  return (
+    <figure className="overflow-hidden rounded-xl border border-[#e7e8ec] bg-white">
+      <img
+        src={item.imageSrc}
+        alt={item.title}
+        className="w-full object-contain"
+        loading="eager"
+        decoding="async"
+      />
+      <figcaption className={`border-t border-[#e7e8ec] px-3 py-2 ${vk.mutedXs}`}>
+        <span className="font-semibold text-slate-900">{item.title}.</span> {item.text}
+      </figcaption>
+    </figure>
+  )
+}
 
 /**
  * @param {{
@@ -45,6 +71,7 @@ export default function StudentOnboardingStagesFlow({
 
   const phaseIndex = STAGES_MAT_PHASE_ORDER.indexOf(phase)
   const isQuiz = phase === 'quiz'
+  const knowledgeKey = knowledgeKeyForPhase(phase)
 
   const advanceMat = useCallback(() => {
     const next = STAGES_MAT_PHASE_ORDER[phaseIndex + 1]
@@ -70,57 +97,27 @@ export default function StudentOnboardingStagesFlow({
         advanceHint={
           stagesQuizPasses >= 4
             ? null
-            : `Принято ${stagesQuizPasses} из 4: этап «Знание» + три образа. Ответь на все вопросы тренера — тогда загорится «Дальше».`
+            : `Принято ${stagesQuizPasses} из 4: этап «Знание» + три образа. Ответь на все вопросы ${name} — тогда загорится «Дальше».`
         }
       />
     )
   }
 
-  const knowledgeCard =
-    phase === 'logic'
-      ? KNOWLEDGE_IMAGE_CARDS[0]
-      : phase === 'vision'
-        ? KNOWLEDGE_IMAGE_CARDS[1]
-        : phase === 'kinesthesia'
-          ? KNOWLEDGE_IMAGE_CARDS[2]
-          : null
-
-  const illustrationSrc = phase === 'four-stages' ? MOTOR_SKILL_STAGES_ILLUSTRATION : knowledgeCard?.imageSrc
-  const illustrationAlt =
-    phase === 'four-stages' ? 'Четыре этапа: Знание, Умение, Навык, Автоматизация' : knowledgeCard?.title
-
   return (
     <div className="space-y-2">
       <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>
-        Шаг {phaseIndex + 1} из {STAGES_MAT_PHASE_ORDER.length}: матчасть
+        Шаг {phaseIndex + 1} из {STAGES_MAT_PHASE_ORDER.length}: {name} объясняет
       </p>
 
-      <div className="flex gap-2.5">
-        <StudentPersonaAvatar personaId={persona.id} size="md" />
-        <div className="min-w-0 flex-1">
-          <p className="mb-0.5 text-[11px] font-semibold text-[#2d81e0]">{name}</p>
-          <div className="rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
-            {buildStagesMatTrainerLine(persona.id, phase)}
-          </div>
-        </div>
-      </div>
+      <StudentPortalTrainerBubble personaId={persona.id}>
+        {buildStagesMatTrainerLine(persona.id, phase)}
+      </StudentPortalTrainerBubble>
 
-      {illustrationSrc ? (
-        <figure className="overflow-hidden rounded-xl border border-[#e7e8ec] bg-white">
-          <img
-            src={illustrationSrc}
-            alt={illustrationAlt ?? ''}
-            className="w-full object-contain"
-            loading="eager"
-            decoding="async"
-          />
-          {knowledgeCard ? (
-            <figcaption className={`border-t border-[#e7e8ec] px-3 py-2 ${vk.mutedXs}`}>
-              <span className="font-semibold text-slate-900">{knowledgeCard.title}.</span> {knowledgeCard.text}
-            </figcaption>
-          ) : null}
-        </figure>
-      ) : null}
+      {phase === 'four-stages' ? <StudentMotorStagesHighlight /> : null}
+
+      {knowledgeKey ? <GuideKnowledgeFigure phaseKey={knowledgeKey} /> : null}
+
+      {phase === 'kinesthesia' ? <StudentTechniqueMirrorScene /> : null}
 
       <button
         type="button"

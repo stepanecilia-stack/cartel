@@ -40,7 +40,7 @@ import StudentFirstAtomFlow from '../components/student/StudentFirstAtomFlow.jsx
 import StudentTechniquePageShell from '../components/student/StudentTechniquePageShell.jsx'
 import StudentTechniqueAtomFlow from '../components/student/StudentTechniqueAtomFlow.jsx'
 import StudentPortalGymHub from '../components/student/StudentPortalGymHub.jsx'
-import StudentPortalGymPlaceholder from '../components/student/StudentPortalGymPlaceholder.jsx'
+import StudentPortalNormsPanel from '../components/student/StudentPortalNormsPanel.jsx'
 import {
   isPortalOnboardingComplete,
   normalizePortalTrainingGoals,
@@ -190,7 +190,7 @@ export default function StudentLearnPage() {
   const programSectionTitle =
     resolvedHubSection === 'program' ? 'Индивидуальная программа' : 'Техника бокса'
 
-  const showPersonaChatDock = resolvedHubSection !== 'technique'
+  const showPersonaChatDock = resolvedHubSection !== 'technique' && resolvedHubSection !== 'norms'
   const isTechniqueSection = resolvedHubSection === 'technique'
 
   const programChatHint = useMemo(() => {
@@ -399,13 +399,21 @@ export default function StudentLearnPage() {
           <header className="flex flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1">
               <h1 className={vk.h1Lg}>Как учить</h1>
-              <p className={vk.mutedXs}>{name}</p>
+              <p className={vk.mutedXs}>
+                {formatPortalPersonaName(persona)} · {name}
+              </p>
             </div>
             <button type="button" onClick={() => setGuideOpen(false)} className={vk.btnSecondary}>
               В зал
             </button>
           </header>
-          <StudentPortalOnboardingWizard mode="guide" onComplete={handleGuideComplete} />
+          <StudentPortalOnboardingWizard
+            mode="guide"
+            initialPersonaId={portalPersonaId}
+            initialGoals={portalGoals}
+            personaMemory={personaMemory}
+            onComplete={handleGuideComplete}
+          />
         </div>
       </main>
     )
@@ -438,15 +446,24 @@ export default function StudentLearnPage() {
 
   if (resolvedHubSection === 'norms') {
     return (
-      <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
-        <div className="mx-auto w-full max-w-2xl">
-          <StudentPortalGymPlaceholder
-            title="Нормативы"
-            body="Здесь будет сводка физических нормативов и зачётов. Пока тренер фиксирует их в карточке ученика — скоро откроем и в кабинете."
-            onBack={() => setHubSection('hub')}
-          />
-        </div>
-      </main>
+      <StudentPortalNormsPanel
+        student={student}
+        personaId={portalPersonaId}
+        personaMemory={personaMemory}
+        trainingGoals={portalGoals}
+        onNormSelfReportsChange={(saved) =>
+          setStudent((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  portalNormSelfReports: saved.portalNormSelfReports,
+                  tests: saved.tests ?? prev.tests,
+                }
+              : prev,
+          )
+        }
+        onBack={() => setHubSection('hub')}
+      />
     )
   }
 
@@ -463,11 +480,15 @@ export default function StudentLearnPage() {
               : ''
           }`}
         >
-          <StudentPersonaAvatar personaId={portalPersonaId} size="lg" />
+          {!gymAtmosphere ? <StudentPersonaAvatar personaId={portalPersonaId} size="lg" /> : null}
           <div className="min-w-0 flex-1">
             <h1 className={vk.h1Lg}>{programSectionTitle}</h1>
-            <p className="text-[13px] font-bold leading-tight text-[#2c2d2e]">{formatPortalPersonaName(persona)}</p>
-            <p className={vk.mutedXs}>{persona.roleLabel}</p>
+            {!gymAtmosphere ? (
+              <>
+                <p className="text-[13px] font-bold leading-tight text-[#2c2d2e]">{formatPortalPersonaName(persona)}</p>
+                <p className={vk.mutedXs}>{persona.roleLabel}</p>
+              </>
+            ) : null}
           </div>
           <div className="flex shrink-0 gap-1.5">
             <button type="button" onClick={() => setHubSection('hub')} className={vk.btnSecondary}>

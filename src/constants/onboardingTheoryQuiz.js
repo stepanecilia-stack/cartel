@@ -41,7 +41,7 @@ export const ONBOARDING_STAGES_THEORY_QUESTIONS = [
     id: 'kinesthesia_image',
     question: 'Кинестетический образ — это…',
     options: [
-      { id: 'kinesthesia', label: 'Ощущение в мышцах, прожил в теле', correct: true },
+      { id: 'kinesthesia', label: 'Ощущение в мышцах, выполнил элемент сам', correct: true },
       { id: 'vision', label: 'Вижу форму у тренера', correct: false },
       { id: 'logic', label: 'Понимаю, зачем каждый шаг', correct: false },
     ],

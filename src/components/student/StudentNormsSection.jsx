@@ -4,6 +4,8 @@ import StudentNormCard from './StudentNormCard.jsx'
 import {
   formatMinutesToMinuteSecond,
   getNormValueByTestId,
+  getPendingStudentSelfReport,
+  isCoachOwnedNormRow,
   isMinuteSecondNorm,
 } from '../../utils/normTestsStorage.js'
 import { vk } from '../../utils/vkUi.js'
@@ -33,15 +35,26 @@ function StudentNormsSection({
   const rows = useMemo(
     () =>
       norms.map((norm) => {
-        const row = getNormValueByTestId(values, norm.testId)
+        const rawRow = getNormValueByTestId(values, norm.testId)
+        const pending = getPendingStudentSelfReport(rawRow)
+        const row =
+          pending && isCoachOwnedNormRow(rawRow)
+            ? { ...rawRow, ...pending }
+            : rawRow
         const displayVal =
-          row?.resultRaw != null && row.resultRaw !== ''
-            ? String(row.resultRaw)
-            : row?.result !== undefined && row?.result !== null
-              ? isMinuteSecondNorm(norm)
-                ? formatMinutesToMinuteSecond(row.result)
-                : String(row.result)
-              : ''
+          pending?.resultRaw != null && pending.resultRaw !== ''
+            ? String(pending.resultRaw)
+            : row?.resultRaw != null && row.resultRaw !== ''
+              ? String(row.resultRaw)
+              : pending?.result !== undefined && pending?.result !== null
+                ? isMinuteSecondNorm(norm)
+                  ? formatMinutesToMinuteSecond(pending.result)
+                  : String(pending.result)
+                : row?.result !== undefined && row?.result !== null
+                  ? isMinuteSecondNorm(norm)
+                    ? formatMinutesToMinuteSecond(row.result)
+                    : String(row.result)
+                  : ''
         const goalLabel =
           Number.isFinite(norm.gold)
             ? isMinuteSecondNorm(norm)
@@ -50,7 +63,8 @@ function StudentNormsSection({
             : '—'
         return {
           norm,
-          row,
+          row: rawRow,
+          displayRow: row,
           displayVal,
           inputType: isMinuteSecondNorm(norm) ? 'text' : 'number',
           goalLabel,
@@ -79,12 +93,13 @@ function StudentNormsSection({
       ) : null}
 
       <ul className={vk.list}>
-      {rows.map(({ norm, row, displayVal, inputType, goalLabel, inputPlaceholder, normBusy }) => (
+      {rows.map(({ norm, row, displayRow, displayVal, inputType, goalLabel, inputPlaceholder, normBusy }) => (
         <StudentNormCard
           key={norm.testId}
           category={category}
           norm={norm}
           row={row}
+          displayRow={displayRow}
           displayVal={displayVal}
           inputType={inputType}
           goalLabel={goalLabel}

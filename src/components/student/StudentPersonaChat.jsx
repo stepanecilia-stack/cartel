@@ -12,12 +12,18 @@ import {
   ONBOARDING_STAGES_THEORY_QUESTIONS,
 } from '../../constants/onboardingTheoryQuiz.js'
 import { parsePersonaChatMarkers } from '../../utils/personaChatMarkers.js'
+import { isSelfReportedNormData } from '../../utils/portalNormsChat.js'
+import {
+  buildNormSubmitOfferReply,
+  createNormSubmitFlow,
+} from '../../utils/portalNormsSubmitFlow.js'
 import { vk } from '../../utils/vkUi.js'
 
 /**
  * @typedef {{
  *   getSessionMessages: () => import('../../services/portalPersonaAiService.js').PortalChatMessage[],
  *   getUserMessageCount: () => number,
+ *   beginNormSubmit: (item: import('../../utils/portalNormsChat.js').PortalNormsItemSnapshot) => void,
  * }} StudentPersonaChatHandle
  */
 
@@ -40,8 +46,15 @@ import { vk } from '../../utils/vkUi.js'
  *   onIntakeProgress?: (progress: import('../../utils/onboardingGreetingChat.js').GreetingIntakeProgress) => void,
  *   advanceHint?: string | null,
  *   studyAtom?: object | null,
+ *   normsSnapshot?: import('../../utils/portalNormsChat.js').PortalNormsSnapshot | null,
+ *   onNormSelfReport?: (
+ *     payload: string | { testName: string, testId: string, resultRaw: string },
+ *   ) => void | Promise<void>,
+ *   onNormSubmitFlowChange?: (testId: string | null) => void,
  *   disabled?: boolean,
  *   onGymScene?: boolean,
+ *   showTrainerIdentity?: boolean,
+ *   expanded?: boolean,
  *   inputRef?: import('react').RefObject<HTMLInputElement | null>,
  * }} props
  * @param {import('react').Ref<StudentPersonaChatHandle>} ref
@@ -60,19 +73,27 @@ function StudentPersonaChat(
     onIntakeProgress,
     advanceHint = null,
     studyAtom = null,
+    normsSnapshot = null,
+    onNormSelfReport = null,
+    onNormSubmitFlowChange = null,
     disabled = false,
     onGymScene = false,
+    showTrainerIdentity = false,
+    expanded = false,
     inputRef = null,
   },
   ref,
 ) {
   const persona = getPortalPersona(personaId)
   const name = formatPortalPersonaName(persona)
+  const showIdentity = showTrainerIdentity || !onGymScene
   const opener =
     openingTrainerText ??
     (context === 'program' || context === 'program_atom'
       ? persona.phrases.welcomeBack
-      : context === 'onboarding_greeting' || context === 'onboarding_stages'
+      : context === 'norms'
+        ? null
+        : context === 'onboarding_greeting' || context === 'onboarding_stages'
         ? null
         : persona.phrases.greetingDialog?.find((line) => line.from === 'trainer')?.text) ??
     (context === 'onboarding_greeting' || context === 'onboarding_stages'
@@ -85,6 +106,8 @@ function StudentPersonaChat(
   const [error, setError] = useState('')
   /** @type {import('../../utils/portalPersonaAiConfig.js').PortalPersonaReplySource | null} */
   const [replySource, setReplySource] = useState(null)
+  /** @type {import('../../utils/portalNormsSubmitFlow.js').PortalNormSubmitFlow | null} */
+  const [normSubmitFlow, setNormSubmitFlow] = useState(null)
   const bottomRef = useRef(null)
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -99,6 +122,13 @@ function StudentPersonaChat(
       })),
     getUserMessageCount: () =>
       messagesRef.current.filter((m) => m.role === 'user' && m.content?.trim()).length,
+    beginNormSubmit: (item) => {
+      const flow = createNormSubmitFlow(item)
+      setNormSubmitFlow(flow)
+      onNormSubmitFlowChange?.(item.testId)
+      const offer = buildNormSubmitOfferReply(persona.id, item)
+      setMessages((prev) => [...prev, { role: 'assistant', content: offer }])
+    },
   }))
 
   useEffect(() => {
@@ -158,7 +188,12 @@ function StudentPersonaChat(
       setBusy(true)
 
       try {
-        const { reply: rawReply, source } = await sendPortalPersonaChatMessage({
+        const {
+          reply: rawReply,
+          source,
+          normSubmitFlow: nextFlow,
+          normSavePayload,
+        } = await sendPortalPersonaChatMessage({
           personaId: persona.id,
           messages: nextHistory,
           context,
@@ -166,10 +201,28 @@ function StudentPersonaChat(
           personaMemory,
           trainingGoals,
           studyAtom,
+          normsSnapshot,
+          normSubmitFlow,
         })
         setReplySource(source)
+        setNormSubmitFlow(nextFlow ?? null)
+        onNormSubmitFlowChange?.(nextFlow?.testId ?? null)
         const { displayReply, readyForStages, quizPass, onboardingSkip } = parsePersonaChatMarkers(rawReply)
-        const withTrainer = [...nextHistory, { role: 'assistant', content: displayReply }]
+        let assistantReply = displayReply
+        if (context === 'norms' && normSavePayload && onNormSelfReport) {
+          try {
+            await onNormSelfReport(normSavePayload)
+          } catch (saveErr) {
+            console.error('[normSelfReport]', saveErr)
+            const msg =
+              saveErr instanceof Error && saveErr.message
+                ? saveErr.message
+                : 'Не удалось сохранить результат.'
+            setError(msg)
+            assistantReply = `Не получилось сохранить в карточку: ${msg}`
+          }
+        }
+        const withTrainer = [...nextHistory, { role: 'assistant', content: assistantReply }]
         if (context === 'onboarding_stages') {
           onTrainerSignals?.({
             readyForStages,
@@ -188,6 +241,22 @@ function StudentPersonaChat(
           onTrainerSignals?.({ readyForStages, quizPass, onboardingSkip })
         }
         setMessages(withTrainer)
+        if (
+          context === 'norms' &&
+          onNormSelfReport &&
+          !normSavePayload &&
+          !normSubmitFlow &&
+          !nextFlow &&
+          isSelfReportedNormData(trimmed) &&
+          !/как\s|техник|правил|исходн|ошибк|засчит/i.test(trimmed.toLowerCase())
+        ) {
+          try {
+            await onNormSelfReport(trimmed)
+          } catch (saveErr) {
+            console.error('[normSelfReport]', saveErr)
+            setError(saveErr instanceof Error ? saveErr.message : 'Не удалось сохранить.')
+          }
+        }
       } catch (e) {
         console.error(e)
         setError('Не удалось получить ответ. Попробуйте ещё раз.')
@@ -207,6 +276,10 @@ function StudentPersonaChat(
       personaMemory,
       trainingGoals,
       studyAtom,
+      normsSnapshot,
+      normSubmitFlow,
+      onNormSelfReport,
+      onNormSubmitFlowChange,
       onTrainerSignals,
     ],
   )
@@ -222,8 +295,17 @@ function StudentPersonaChat(
     }
   }
 
+  const normsFlowPlaceholder =
+    normSubmitFlow?.step === 'confirm_start'
+      ? 'Да или нет…'
+      : normSubmitFlow?.step === 'await_value'
+        ? 'Напиши результат…'
+        : normSubmitFlow?.step === 'confirm_save'
+          ? 'Да — сохранить, нет — изменить…'
+          : `Нажми норматив в списке или напиши ${name}…`
+
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${expanded ? 'flex min-h-0 flex-1 flex-col' : ''}`}>
       {!isPortalPersonaAiRemoteEnabled() ? (
         <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
           {import.meta.env.DEV
@@ -251,9 +333,13 @@ function StudentPersonaChat(
       ) : null}
 
       <div
-        className={`max-h-[min(360px,50vh)] space-y-2.5 overflow-y-auto rounded-lg border p-2.5 sm:p-3 ${
+        className={`space-y-2.5 overflow-y-auto rounded-lg border p-2.5 sm:p-3 ${
+          expanded
+            ? 'min-h-[min(420px,52dvh)] max-h-[min(560px,68dvh)] flex-1'
+            : 'max-h-[min(360px,50vh)]'
+        } ${
           onGymScene
-            ? 'max-h-[min(280px,38vh)] border-white/70 bg-white/90 shadow-sm backdrop-blur-md'
+            ? `${expanded ? '' : 'max-h-[min(280px,38vh)]'} border-white/70 bg-white/90 shadow-sm backdrop-blur-md`
             : 'border-[#e7e8ec] bg-[#fafbfc]'
         }`}
       >
@@ -269,10 +355,10 @@ function StudentPersonaChat(
           }
 
           return (
-            <div key={`${index}-a`} className={`flex gap-2.5 ${onGymScene ? 'justify-start' : ''}`}>
-              {onGymScene ? null : <StudentPersonaAvatar personaId={persona.id} size="md" />}
-              <div className={`min-w-0 ${onGymScene ? 'max-w-[92%]' : 'max-w-[calc(100%-3.5rem)]'}`}>
-                {!onGymScene && index === 0 ? (
+            <div key={`${index}-a`} className="flex gap-2.5">
+              {showIdentity ? <StudentPersonaAvatar personaId={persona.id} size="md" /> : null}
+              <div className={`min-w-0 ${showIdentity ? 'max-w-[calc(100%-3.5rem)]' : 'max-w-[92%]'}`}>
+                {showIdentity && index === 0 ? (
                   <p className="mb-0.5 text-[11px] font-semibold text-[#2d81e0]">{name}</p>
                 ) : null}
                 <div
@@ -289,7 +375,7 @@ function StudentPersonaChat(
 
         {busy ? (
           <div className="flex gap-2.5">
-            {onGymScene ? null : <StudentPersonaAvatar personaId={persona.id} size="md" />}
+            {showIdentity ? <StudentPersonaAvatar personaId={persona.id} size="md" /> : null}
             <div
               className={`rounded-2xl rounded-tl-md border px-3 py-2 text-[14px] text-[#818c99] ${
                 onGymScene ? 'border-white/80 bg-white/95' : 'border-[#e7e8ec] bg-white'
@@ -327,7 +413,9 @@ function StudentPersonaChat(
           placeholder={
             currentTheoryQuestion && !stagesQuizComplete
               ? 'Или напишите ответ своими словами…'
-              : 'Напишите тренеру…'
+              : context === 'norms'
+                ? normsFlowPlaceholder
+                : 'Напишите тренеру…'
           }
           value={input}
           disabled={disabled || busy}
