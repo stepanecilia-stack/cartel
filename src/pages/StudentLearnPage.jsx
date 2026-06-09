@@ -36,10 +36,14 @@ import StudentPersonaAvatar from '../components/student/StudentPersonaAvatar.jsx
 import StudentPersonaBubble from '../components/student/StudentPersonaBubble.jsx'
 import StudentPersonaChatDock from '../components/student/StudentPersonaChatDock.jsx'
 import StudentFirstAtomFlow from '../components/student/StudentFirstAtomFlow.jsx'
+import StudentTechniqueAtomFlow from '../components/student/StudentTechniqueAtomFlow.jsx'
+import StudentPortalGymHub from '../components/student/StudentPortalGymHub.jsx'
+import StudentPortalGymPlaceholder from '../components/student/StudentPortalGymPlaceholder.jsx'
 import {
   isPortalOnboardingComplete,
   normalizePortalTrainingGoals,
 } from '../constants/studentPortalOnboarding.js'
+import { isGymHubPremiumSection, isPortalPremiumActive } from '../constants/studentPortalPremium.js'
 import { getPortalPersona, normalizePortalPersonaId, formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
 
 function tierLabel(tier) {
@@ -65,6 +69,9 @@ export default function StudentLearnPage() {
   const [personaMessage, setPersonaMessage] = useState('')
   const [resumeReady, setResumeReady] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  const [hubSection, setHubSection] = useState(
+    /** @type {'hub' | 'technique' | 'norms' | 'program' | 'competition'} */ ('hub'),
+  )
 
   useEffect(() => {
     if (!session?.studentId) {
@@ -180,6 +187,20 @@ export default function StudentLearnPage() {
   const portalGoals = normalizePortalTrainingGoals(
     student?.portalTrainingGoals ?? student?.portalTrainingGoal,
   )
+  const portalPremiumActive = isPortalPremiumActive(student)
+  const resolvedHubSection =
+    !portalPremiumActive && isGymHubPremiumSection(hubSection) ? 'hub' : hubSection
+
+  const overallProgramProgress = useMemo(
+    () => ({
+      done: tierProgress[1].done + tierProgress[2].done + tierProgress[3].done,
+      total: tierProgress[1].total + tierProgress[2].total + tierProgress[3].total,
+    }),
+    [tierProgress],
+  )
+
+  const programSectionTitle =
+    resolvedHubSection === 'program' ? 'Индивидуальная программа' : 'Техника бокса'
 
   const programChatHint = useMemo(() => {
     const parts = [`Этап программы: ${tierLabel(tier)}`, `Прогресс: ${leadingDone}/${total || '—'}`]
@@ -191,12 +212,17 @@ export default function StudentLearnPage() {
   }, [tier, leadingDone, total, viewAtom?.name, canMark, viewAtomMarked, tierUnlocked])
 
   const isFirstAtomLearning =
+    resolvedHubSection !== 'technique' &&
     tier === 1 &&
     focusAtom &&
     viewAtom?.id === focusAtom.id &&
     focusAtom.id === orderedL1[0]?.id &&
     isViewingCurrentStep &&
     canMark
+
+  const isTechniqueGuidedLearning =
+    resolvedHubSection === 'technique' && isViewingCurrentStep && canMark && viewAtom
+  const isFirstTechniqueAtom = tier === 1 && viewAtom?.id === orderedL1[0]?.id
 
   useEffect(() => {
     if (!personaMessage) return undefined
@@ -385,10 +411,51 @@ export default function StudentLearnPage() {
               <p className={vk.mutedXs}>{name}</p>
             </div>
             <button type="button" onClick={() => setGuideOpen(false)} className={vk.btnSecondary}>
-              К программе
+              В зал
             </button>
           </header>
           <StudentPortalOnboardingWizard mode="guide" onComplete={handleGuideComplete} />
+        </div>
+      </main>
+    )
+  }
+
+  if (resolvedHubSection === 'hub') {
+    return (
+      <main className={`bg-[#edeef0] px-2 py-3 sm:px-4 ${chatOpen ? '' : 'pb-[4.5rem]'}`}>
+        <div className="mx-auto w-full max-w-lg">
+          <StudentPortalGymHub
+            studentName={name}
+            personaId={portalPersonaId}
+            programProgress={overallProgramProgress}
+            premiumActive={portalPremiumActive}
+            onSelectSection={setHubSection}
+            onOpenGuide={() => setGuideOpen(true)}
+            onLogout={() => void handleLogout()}
+          />
+        </div>
+        <StudentPersonaChatDock
+          personaId={portalPersonaId}
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          programHint="Главная зала Cartel. Выбери раздел или спроси наставника."
+          personaMemory={personaMemory}
+          trainingGoals={portalGoals}
+          onSessionClose={handleChatSessionClose}
+        />
+      </main>
+    )
+  }
+
+  if (resolvedHubSection === 'norms') {
+    return (
+      <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4`}>
+        <div className="mx-auto w-full max-w-2xl">
+          <StudentPortalGymPlaceholder
+            title="Нормативы"
+            body="Здесь будет сводка физических нормативов и зачётов. Пока тренер фиксирует их в карточке ученика — скоро откроем и в кабинете."
+            onBack={() => setHubSection('hub')}
+          />
         </div>
       </main>
     )
@@ -400,20 +467,20 @@ export default function StudentLearnPage() {
         <header className="flex flex-wrap items-center gap-2">
           <StudentPersonaAvatar personaId={portalPersonaId} size="lg" />
           <div className="min-w-0 flex-1">
-            <h1 className={vk.h1Lg}>Моя программа</h1>
+            <h1 className={vk.h1Lg}>{programSectionTitle}</h1>
             <p className="text-[13px] font-bold leading-tight text-[#2c2d2e]">{formatPortalPersonaName(persona)}</p>
             <p className={vk.mutedXs}>{persona.roleLabel}</p>
           </div>
           <div className="flex shrink-0 gap-1.5">
+            <button type="button" onClick={() => setHubSection('hub')} className={vk.btnSecondary}>
+              В зал
+            </button>
             <button
               type="button"
               onClick={() => setGuideOpen(true)}
               className={`${vk.btnSecondary} text-[12px]`}
             >
               Как учить
-            </button>
-            <button type="button" onClick={() => void handleLogout()} className={vk.btnSecondary}>
-              Выйти
             </button>
           </div>
         </header>
@@ -490,7 +557,19 @@ export default function StudentLearnPage() {
               </button>
             </div>
 
-            {isFirstAtomLearning ? (
+            {isTechniqueGuidedLearning ? (
+              <StudentTechniqueAtomFlow
+                key={`technique-flow-${viewAtom.id}`}
+                atom={viewAtom}
+                personaId={portalPersonaId}
+                personaMemory={personaMemory}
+                trainingGoals={portalGoals}
+                isFirstAtom={isFirstTechniqueAtom}
+                disabled={saving}
+                saving={saving}
+                onMarkComplete={handleMark}
+              />
+            ) : isFirstAtomLearning ? (
               <StudentFirstAtomFlow
                 atom={viewAtom}
                 personaId={portalPersonaId}
@@ -502,7 +581,7 @@ export default function StudentLearnPage() {
               />
             ) : (
               <>
-                <AtomStudyPanel atom={viewAtom} playing={playing} onPlayingChange={setPlaying} autoPlay />
+                <AtomStudyPanel atom={viewAtom} />
 
                 {personaMessage ? (
                   <StudentPersonaBubble personaId={portalPersonaId} message={personaMessage} compact />

@@ -53,6 +53,7 @@ async function postPortalFunction(path, body) {
  *   programHint?: string | null,
  *   personaMemory?: import('../utils/portalPersonaMemory.js').PortalPersonaMemory | null,
  *   trainingGoals?: unknown,
+ *   studyAtom?: object | null,
  * }} params
  */
 export async function callPortalPersonaChatFunction({
@@ -62,6 +63,7 @@ export async function callPortalPersonaChatFunction({
   programHint = null,
   personaMemory = null,
   trainingGoals = null,
+  studyAtom = null,
 }) {
   const data = await postPortalFunction('portalPersonaChat', {
     personaId,
@@ -70,6 +72,7 @@ export async function callPortalPersonaChatFunction({
     systemPrompt: getPortalPersonaSystemPrompt(personaId, context, programHint, {
       personaMemory,
       trainingGoals,
+      studyAtom,
       intakeMessages: context === 'onboarding_greeting' ? messages : null,
     }),
   })

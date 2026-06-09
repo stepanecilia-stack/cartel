@@ -41,6 +41,7 @@ import { vk } from '../../utils/vkUi.js'
  *   advanceHint?: string | null,
  *   studyAtom?: object | null,
  *   disabled?: boolean,
+ *   onGymScene?: boolean,
  *   inputRef?: import('react').RefObject<HTMLInputElement | null>,
  * }} props
  * @param {import('react').Ref<StudentPersonaChatHandle>} ref
@@ -60,6 +61,7 @@ function StudentPersonaChat(
     advanceHint = null,
     studyAtom = null,
     disabled = false,
+    onGymScene = false,
     inputRef = null,
   },
   ref,
@@ -68,8 +70,14 @@ function StudentPersonaChat(
   const name = formatPortalPersonaName(persona)
   const opener =
     openingTrainerText ??
-    persona.phrases.greetingDialog?.find((line) => line.from === 'trainer')?.text ??
-    `Привет. Я ${name} — твой наставник на платформе.`
+    (context === 'program' || context === 'program_atom'
+      ? persona.phrases.welcomeBack
+      : context === 'onboarding_greeting' || context === 'onboarding_stages'
+        ? null
+        : persona.phrases.greetingDialog?.find((line) => line.from === 'trainer')?.text) ??
+    (context === 'onboarding_greeting' || context === 'onboarding_stages'
+      ? `Привет. Я ${name} — твой наставник на платформе.`
+      : persona.phrases.welcomeBack)
 
   const [messages, setMessages] = useState(() => [{ role: 'assistant', content: opener }])
   const [input, setInput] = useState('')
@@ -233,10 +241,22 @@ function StudentPersonaChat(
       ) : null}
 
       {advanceHint ? (
-        <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>{advanceHint}</p>
+        <p
+          className={`${vk.mutedXs} rounded-lg px-2.5 py-1.5 ${
+            onGymScene ? 'border border-white/70 bg-white/90 backdrop-blur-sm' : 'bg-[#fafbfc]'
+          }`}
+        >
+          {advanceHint}
+        </p>
       ) : null}
 
-      <div className="max-h-[min(360px,50vh)] space-y-2.5 overflow-y-auto rounded-lg border border-[#e7e8ec] bg-[#fafbfc] p-2.5 sm:p-3">
+      <div
+        className={`max-h-[min(360px,50vh)] space-y-2.5 overflow-y-auto rounded-lg border p-2.5 sm:p-3 ${
+          onGymScene
+            ? 'max-h-[min(280px,38vh)] border-white/70 bg-white/90 shadow-sm backdrop-blur-md'
+            : 'border-[#e7e8ec] bg-[#fafbfc]'
+        }`}
+      >
         {messages.map((msg, index) => {
           if (msg.role === 'user') {
             return (
@@ -249,13 +269,17 @@ function StudentPersonaChat(
           }
 
           return (
-            <div key={`${index}-a`} className="flex gap-2.5">
-              <StudentPersonaAvatar personaId={persona.id} size="md" />
-              <div className="min-w-0 max-w-[calc(100%-3.5rem)]">
-                {index === 0 ? (
+            <div key={`${index}-a`} className={`flex gap-2.5 ${onGymScene ? 'justify-start' : ''}`}>
+              {onGymScene ? null : <StudentPersonaAvatar personaId={persona.id} size="md" />}
+              <div className={`min-w-0 ${onGymScene ? 'max-w-[92%]' : 'max-w-[calc(100%-3.5rem)]'}`}>
+                {!onGymScene && index === 0 ? (
                   <p className="mb-0.5 text-[11px] font-semibold text-[#2d81e0]">{name}</p>
                 ) : null}
-                <div className="rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
+                <div
+                  className={`rounded-2xl rounded-tl-md border px-3 py-2 text-[14px] leading-snug text-[#2c2d2e] ${
+                    onGymScene ? 'border-white/80 bg-white/95 shadow-sm' : 'border-[#e7e8ec] bg-white'
+                  }`}
+                >
                   {msg.content}
                 </div>
               </div>
@@ -265,8 +289,12 @@ function StudentPersonaChat(
 
         {busy ? (
           <div className="flex gap-2.5">
-            <StudentPersonaAvatar personaId={persona.id} size="md" />
-            <div className="rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] text-[#818c99]">
+            {onGymScene ? null : <StudentPersonaAvatar personaId={persona.id} size="md" />}
+            <div
+              className={`rounded-2xl rounded-tl-md border px-3 py-2 text-[14px] text-[#818c99] ${
+                onGymScene ? 'border-white/80 bg-white/95' : 'border-[#e7e8ec] bg-white'
+              }`}
+            >
               печатает…
             </div>
           </div>

@@ -4,6 +4,11 @@ import { getPortalPersonaVoice } from '../constants/portalPersonaVoice.js'
 import { formatPortalPersonaMemoryForPrompt } from './portalPersonaMemory.js'
 import { formatIntakeKnownFactsBlock } from './onboardingAiGuard.js'
 import { KNOWLEDGE_PONYAL_PEDAGOGY_BLOCK, THREE_IMAGES_PROMPT_BLOCK } from './portalKnowledgeThreeImages.js'
+import {
+  ATOM_KNOWLEDGE_ONLY_PROMPT_BLOCK,
+  formatAtomKnowledgeBlockForPrompt,
+  getAtomKnowledgeCopy,
+} from './portalAtomKnowledge.js'
 
 /** @typedef {'onboarding_greeting' | 'onboarding_stages' | 'program' | 'program_atom' | 'general'} PortalPersonaChatContext */
 
@@ -11,7 +16,7 @@ import { KNOWLEDGE_PONYAL_PEDAGOGY_BLOCK, THREE_IMAGES_PROMPT_BLOCK } from './po
  * @param {import('../constants/studentPortalPersonas.js').typeof PORTAL_PERSONAS[number]} persona
  * @param {PortalPersonaChatContext} context
  * @param {string | null | undefined} programHint
- * @param {{ personaMemory?: import('./portalPersonaMemory.js').PortalPersonaMemory | null, trainingGoals?: unknown }} studentContext
+ * @param {{ personaMemory?: import('./portalPersonaMemory.js').PortalPersonaMemory | null, trainingGoals?: unknown, studyAtom?: object | null }} studentContext
  */
 export function buildPortalPersonaSystemPrompt(
   persona,
@@ -19,6 +24,9 @@ export function buildPortalPersonaSystemPrompt(
   programHint = null,
   studentContext = {},
 ) {
+  const studyAtom = studentContext.studyAtom ?? null
+  const atomKnowledgeBlock = studyAtom ? formatAtomKnowledgeBlockForPrompt(studyAtom) : ''
+  const atomName = studyAtom ? getAtomKnowledgeCopy(studyAtom).name : ''
   const name = formatPortalPersonaName(persona)
   const voice = getPortalPersonaVoice(persona.id)
   const about = persona.aboutTrainer?.join(' ') ?? persona.teaser
@@ -36,34 +44,47 @@ export function buildPortalPersonaSystemPrompt(
         : ''
     const glebGreetingBlock =
       persona.id === 'gleb'
-        ? ' СОКОЛ: вдумчив и проницателен, но СТРОГО один вопрос в сообщении — не два и не три. Можно короткое наблюдение без вопросительного знака, затем один конкретный вопрос. Никогда «принято» без смысла. Примеры одного вопроса: после «КМС» → «Отжимания и подтягивания за подход — сколько?» (наблюдение про разрыв с последним боем — текстом, не вторым вопросом).'
+        ? ' СОКОЛ: вдумчив и проницателен, но СТРОГО один вопрос в сообщении — не два и не три. Можно короткое наблюдение без вопросительного знака, затем один конкретный вопрос. Никогда «принято» без смысла. Примеры: после «КМС» → «Отжимания от пола за подход — сколько?»; после ответа про отжимания → «Подтягивания за подход — сколько?».'
         : ''
     const intakeFacts =
       Array.isArray(studentContext.intakeMessages) && studentContext.intakeMessages.length > 0
         ? ` ${formatIntakeKnownFactsBlock(studentContext.intakeMessages, studentContext.trainingGoals)}`
         : ''
     scene =
-      `Сцена: посадка — знакомство до инструктажа.${goalsBlock}${intakeFacts}${glebGreetingBlock} Первое сообщение уже было. СТРОГО ОДИН ВОПРОС В СООБЩЕНИИ — у всех тренеров, особенно у Сокола. Последовательность: (1) цели; (2) спортивный опыт; (3) отжимания и подтягивания; (4) итог и ||READY_FOR_STAGES||. ЗАПРЕЩЕНО объяснять четыре этапа на этом экране.`
+      `Сцена: посадка — знакомство перед залом.${goalsBlock}${intakeFacts}${glebGreetingBlock} Первое сообщение уже было. СТРОГО ОДИН ВОПРОС В СООБЩЕНИИ — у всех тренеров, особенно у Сокола. Последовательность: (1) цели; (2) спортивный опыт; (3) отжимания от пола; (4) подтягивания; (5) итог и ||READY_FOR_STAGES|| — после этого ученик сразу идёт в зал. Не спрашивай отжимания и подтягивания в одном сообщении. ЗАПРЕЩЕНО объяснять четыре этапа на этом экране.`
   } else if (context === 'onboarding_stages') {
     scene =
       'Сцена: проверка после матчасти. Ученик видел схему четырёх этапов и три карточки. РОВНО ЧЕТЫРЕ вопроса с вариантами ответа: (1) как называется первый этап формирования навыка — «Знание»; (2) логический образ; (3) зрительный образ; (4) кинестетический образ. После каждого верного ответа — ||QUIZ_PASS|| и следующий вопрос. Только после четвёртого ||QUIZ_PASS|| говори жать «Дальше». Ученик выбирает варианты кнопками, не придумывай свои формулировки вопросов.'
   } else if (context === 'program') {
-    scene =
-      'Сцена: ученик на платформе, этап «Знание». Знание = три образа (логика, зрение, кинестетика). «Понял» — кнопка, когда Знание сформировано. Не отделяй «Понял» от «Знания» как будто это разное содержание. Требуй честности про кинестетику.'
+    scene = studyAtom
+      ? `Сцена: окно технического элемента «${atomName}». Ученик прошёл ролики, описание и зеркало — сейчас уточняет вопросы в чате. Отвечай живо, как в мессенджере: на конкретные слова ученика, без лекции и без копипаста карточки. Только «${atomName}». НЕ здоровайся заново.`
+      : 'Сцена: ученик уже в зале, посадка и знакомство пройдены. Сейчас этап «Знание» по элементу программы: два ролика, описание и зеркало уже сделаны или в процессе. Знание = три образа (логика, зрение, кинестетика). «Понял» — когда Знание сформировано. НЕ здоровайся заново и не представляйся — ученик тебя уже выбрал и слышал инструктаж. Отвечай в контексте текущего элемента.'
   } else if (context === 'program_atom') {
-    scene =
-      'Сцена: ученик нажал «Понял» после роликов по первому атому. Проверь знание по описанию атома в контексте: название и суть своими словами. После каждого верного ответа — ||QUIZ_PASS||. Когда все вопросы закрыты — скажи попробовать приём перед зеркалом. Один вопрос в сообщении.'
+    scene = studyAtom
+      ? `Сцена: проверка «Знания» по элементу «${atomName}». Только факты из карточки элемента. После верного ответа — ||QUIZ_PASS||. Один вопрос в сообщении.`
+      : 'Сцена: ученик нажал «Понял» после роликов по первому атому. Проверь знание по описанию атома в контексте: название и суть своими словами. После каждого верного ответа — ||QUIZ_PASS||. Когда все вопросы закрыты — скажи попробовать приём перед зеркалом. Один вопрос в сообщении.'
   }
+
+  const atomKnowledgePrompt =
+    studyAtom && (context === 'program' || context === 'program_atom')
+      ? [
+          ATOM_KNOWLEDGE_ONLY_PROMPT_BLOCK.replace(/\{name\}/g, atomName),
+          '',
+          '# Технический элемент (единственный источник фактов)',
+          atomKnowledgeBlock,
+        ].join('\n')
+      : ''
 
   return [
     scene,
-    programHint ? `Контекст ученика сейчас: ${programHint}` : '',
+    atomKnowledgePrompt,
+    programHint && !atomKnowledgeBlock ? `Контекст ученика сейчас: ${programHint}` : '',
+    programHint && atomKnowledgeBlock ? `Доп. контекст сессии: ${programHint}` : '',
     memoryBlock ? `\n# Что ты уже знаешь об этом ученике\n${memoryBlock}` : '',
     '',
     `# Кто ты`,
     `Имя: ${name}. ${persona.roleLabel}.`,
     `Образ живого человека: ${voice.humanArchetype}`,
-    `Манера: ${persona.teachingManner.replace(/^Манера:\s*/i, '')}.`,
     `Характер: ${persona.tagline}.`,
     about ? `О себе: ${about}` : '',
     bio ? `Биография (намёками, не лекция): ${bio}` : '',
@@ -109,10 +130,16 @@ export function buildPortalPersonaSystemPrompt(
       ? '- Служебные теги ||READY_FOR_STAGES|| и ||QUIZ_PASS|| — только в самом конце сообщения, ученик их не видит.'
       : '',
     context === 'onboarding_greeting'
-      ? '- Этап посадки: после трёх ответов ученика не вываливай теорию — только «жми К инструктажу». Любой новый вопрос — полфразы ответа и снова к кнопке.'
+      ? '- Этап посадки: после четырёх ответов ученика не вываливай теорию — короткий итог и ||READY_FOR_STAGES||, дальше зал. Любой новый вопрос — полфразы ответа и снова к залу.'
       : '',
     context === 'onboarding_greeting'
       ? '- ЗАПРЕЩЕНО выдумывать факты об ученике (разряд, КМС, бои, опыт), которых нет в анкете, памяти или в его сообщениях. Если не знаешь — спроси, не додумывай.'
+      : '',
+    studyAtom && (context === 'program' || context === 'program_atom')
+      ? '- Технический элемент: факты только из карточки Cartel выше (включая транскрипт подробного ролика) — подавай своими словами, коротко. Транскрипт = что происходит на 2-м WebM со звуком. Не дублируй текст целиком. Никаких открытых источников.'
+      : '',
+    studyAtom && context === 'program'
+      ? '- На короткие реплики ученика («ок», «да», «понятно») — ответь в 1–2 фразах: принять и спросить, что ещё неясно, или предложить «Понял».'
       : '',
   ]
     .filter(Boolean)
@@ -123,7 +150,7 @@ export function buildPortalPersonaSystemPrompt(
  * @param {unknown} personaId
  * @param {PortalPersonaChatContext} context
  * @param {string | null | undefined} programHint
- * @param {{ personaMemory?: import('./portalPersonaMemory.js').PortalPersonaMemory | null, trainingGoals?: unknown }} studentContext
+ * @param {{ personaMemory?: import('./portalPersonaMemory.js').PortalPersonaMemory | null, trainingGoals?: unknown, studyAtom?: object | null }} studentContext
  */
 export function getPortalPersonaSystemPrompt(
   personaId,

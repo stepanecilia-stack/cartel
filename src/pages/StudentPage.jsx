@@ -1210,7 +1210,6 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
         id: combo.id,
         number: 'III',
         name: combo.name,
-        embedUrl: '',
         howTo: '',
         whyHowTo: '',
         mistakes: '',

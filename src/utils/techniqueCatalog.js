@@ -41,9 +41,7 @@ export function mapCombinationsToDisplayAtoms(combinations, catalogLevel3, level
       name: c.name ?? cat?.name ?? `Комбо ${index + 1}`,
       steps,
       chainPreview: buildComboChainPreview(steps, stepLookup),
-      embedUrl: cat?.embedUrl ?? '',
-      videoLink: cat?.videoLink ?? '',
-      media: cat?.media ?? { posterSrc: null, webmSrc: null },
+      media: cat?.media ?? { posterSrc: null, webmSrc: null, detailPosterSrc: null, detailWebmSrc: null },
       howTo: cat?.howTo ?? '',
       mistakes: cat?.mistakes ?? '',
     }

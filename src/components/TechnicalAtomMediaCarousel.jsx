@@ -39,6 +39,9 @@ function CarouselNavButton({ direction, disabled, onClick, label }) {
  *     showSpeedToggle?: boolean,
  *   }>,
  *   onSlideChange?: (index: number) => void,
+ *   forcedSlideIndex?: number | null,
+ *   lockSlides?: boolean,
+ *   emphasizeNav?: boolean,
  * }} props
  */
 export default function TechnicalAtomMediaCarousel({
@@ -50,6 +53,9 @@ export default function TechnicalAtomMediaCarousel({
   autoPlay = false,
   slides: slidesProp = null,
   onSlideChange,
+  forcedSlideIndex = null,
+  lockSlides = false,
+  emphasizeNav = false,
 }) {
   const slides = useMemo(
     () => slidesProp ?? resolveTechnicalAtomMediaSlides(atom),
@@ -79,14 +85,23 @@ export default function TechnicalAtomMediaCarousel({
     }
   }, [atom?.id, autoPlay, slides])
 
+  useEffect(() => {
+    if (forcedSlideIndex == null || !lockSlides) return
+    const next = Math.max(0, Math.min(forcedSlideIndex, slides.length - 1))
+    setActiveIndex(next)
+    syncPlaybackForIndex(next)
+    onSlideChange?.(next)
+  }, [forcedSlideIndex, lockSlides, slides.length, syncPlaybackForIndex, onSlideChange])
+
   const goToIndex = useCallback(
     (index) => {
+      if (lockSlides && forcedSlideIndex != null) return
       const next = Math.max(0, Math.min(index, slides.length - 1))
       setActiveIndex(next)
       syncPlaybackForIndex(next)
       onSlideChange?.(next)
     },
-    [slides.length, syncPlaybackForIndex, onSlideChange],
+    [slides.length, syncPlaybackForIndex, onSlideChange, lockSlides, forcedSlideIndex],
   )
 
   const handleTouchStart = useCallback((event) => {
@@ -101,11 +116,12 @@ export default function TechnicalAtomMediaCarousel({
       const endX = event.changedTouches[0]?.clientX
       if (endX == null) return
       const delta = endX - startX
+      if (lockSlides && forcedSlideIndex != null) return
       if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return
       if (delta < 0) goToIndex(activeIndex + 1)
       else goToIndex(activeIndex - 1)
     },
-    [activeIndex, goToIndex],
+    [activeIndex, goToIndex, lockSlides, forcedSlideIndex],
   )
 
   if (slides.length <= 1) {
@@ -193,7 +209,11 @@ export default function TechnicalAtomMediaCarousel({
         </button>
       </div>
 
-      <div className="rounded-xl border border-[#e7e8ec] bg-white px-3 py-2.5 shadow-sm">
+      <div
+        className={`rounded-xl border bg-white px-3 py-2.5 shadow-sm ${
+          emphasizeNav ? 'border-[#2d81e0] ring-2 ring-[#2d81e0]/35' : 'border-[#e7e8ec]'
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <CarouselNavButton
             direction="prev"

@@ -3,7 +3,7 @@ import { formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
 import { MARKER_READY_FOR_STAGES } from './personaChatMarkers.js'
 import { buildOnboardingSkipAllowReply, detectOnboardingSkipIntent } from './onboardingSkipIntent.js'
 
-/** @typedef {{ goalsDone: boolean, sportDone: boolean, physicalDone: boolean, complete: boolean, step: 1 | 2 | 3 | 4 }} GreetingIntakeProgress */
+/** @typedef {{ goalsDone: boolean, sportDone: boolean, pushUpsDone: boolean, physicalDone: boolean, complete: boolean, step: 1 | 2 | 3 | 4 | 5 }} GreetingIntakeProgress */
 
 export const PHYSICAL_CLAIM_LIMITS = { pushUps: 60, pullUps: 30 }
 
@@ -122,12 +122,12 @@ export function buildOnboardingGreetingOpener(persona, goalsRaw) {
       : 'Ты прошёл анкету — давай уточним цели.'
 
   if (persona.id === 'vasily') {
-    return `Ну здравствуй. Я ${name} — раз ты меня выбрал, не для красоты. ${goalsLine} Подтверди своими словами: это правда твои цели или красивые слова?`
+    return `Ну здравствуй. Я ${name}. ${goalsLine} Это правда твои цели или красивые слова?`
   }
   if (persona.id === 'arkady') {
     return `Привет, друг! Я ${name} — рад, что ты со мной, правда. ${goalsLine} Это то, ради чего ты пришёл? Скажи своими словами — я выслушаю.`
   }
-  return `Я ${name}. ${goalsLine} Своими словами — что здесь главное?`
+  return `Я ${name}. ${goalsLine} Своими словами: чего ты хочешь добиться на тренировках?`
 }
 
 /**
@@ -165,18 +165,18 @@ function glebSportToPhysical(sportAnswer) {
   }
 
   if (/кмс|кандидат|мс\b|мастер спорта|\b1\s*разряд|\b2\s*разряд|\b3\s*разряд|разрядник/.test(lower)) {
-    return 'КМС — уровень в прошлом; разрыв с последним боем отделяет «был в форме» от «есть форма сейчас». Отжимания и подтягивания за один подход — сколько?'
+    return 'КМС — уровень в прошлом; разрыв с последним боем отделяет «был в форме» от «есть форма сейчас». Отжимания от пола за один подход — сколько?'
   }
   if (/бокс/.test(lower)) {
-    return 'Бокс в анамнезе — хорошо; важен не стаж, а когда последний раз был ринг или жёсткий спарринг. Отжимания и подтягивания за подход — сколько?'
+    return 'Бокс в анамнезе — хорошо; важен не стаж, а когда последний раз был ринг или жёсткий спарринг. Отжимания от пола за подход — сколько?'
   }
   if (/ничем|не заним|диван|с нуля|нович|первый раз|никогда|нет опыта/.test(lower)) {
-    return 'С нуля — честная стартовая точка. Отжимания и подтягивания за подход — сколько?'
+    return 'С нуля — честная стартовая точка. Отжимания от пола за подход — сколько?'
   }
   if (/зал|фитнес|кроссфит|силов|качал/.test(lower)) {
-    return 'Зал без боевого опыта — другая база. Отжимания и подтягивания за подход — сколько?'
+    return 'Зал без боевого опыта — другая база. Отжимания от пола за подход — сколько?'
   }
-  return 'Опыт зафиксирован. Отжимания и подтягивания за подход — сколько?'
+  return 'Опыт зафиксирован. Отжимания от пола за подход — сколько?'
 }
 
 /**
@@ -192,7 +192,23 @@ function glebIntakeComplete(physicalAnswer, claim) {
     ? 'Слабая или нулевая база — не приговор, это стартовая точка. Картина ясна. '
     : 'Цифры сходятся с картиной. От этого и оттолкнёмся. '
 
-  return `${skepticism}${insight}База собрана. «К инструктажу» — зелёная кнопка внизу. ${MARKER_READY_FOR_STAGES}`
+  return `${skepticism}${insight}База собрана. Сейчас веду в зал. ${MARKER_READY_FOR_STAGES}`
+}
+
+/**
+ * @param {import('../services/portalPersonaAiService.js').PortalChatMessage[]} messages
+ */
+export function getGreetingPhysicalCombinedText(messages) {
+  const userLines = messages
+    .filter((m) => m.role === 'user' && typeof m.content === 'string')
+    .map((m) => m.content.trim())
+    .filter(Boolean)
+
+  const pushAnswer = userLines[2] ?? ''
+  const pullAnswer = userLines[3] ?? ''
+  if (!pushAnswer && !pullAnswer) return ''
+
+  return `отжимания ${pushAnswer} подтягивания ${pullAnswer}`.trim()
 }
 
 /**
@@ -207,13 +223,14 @@ export function getGreetingIntakeProgress(messages) {
 
   const goalsDone = userLines.length >= 1
   const sportDone = userLines.length >= 2
-  const physicalDone = userLines.length >= 3
-  const complete = goalsDone && sportDone && physicalDone
+  const pushUpsDone = userLines.length >= 3
+  const physicalDone = userLines.length >= 4
+  const complete = goalsDone && sportDone && pushUpsDone && physicalDone
 
-  /** @type {1 | 2 | 3 | 4} */
-  const step = !goalsDone ? 1 : !sportDone ? 2 : !physicalDone ? 3 : 4
+  /** @type {1 | 2 | 3 | 4 | 5} */
+  const step = !goalsDone ? 1 : !sportDone ? 2 : !pushUpsDone ? 3 : !physicalDone ? 4 : 5
 
-  return { goalsDone, sportDone, physicalDone, complete, step }
+  return { goalsDone, sportDone, pushUpsDone, physicalDone, complete, step }
 }
 
 /**
@@ -228,9 +245,10 @@ export function greetingIntakeLooksComplete(messages) {
  */
 export function greetingIntakeHint(progress) {
   if (progress.complete) return null
-  if (progress.step === 1) return 'Шаг 1 из 3: подтверди цели — одним сообщением.'
-  if (progress.step === 2) return 'Шаг 2 из 3: чем занимался в спорте.'
-  return 'Шаг 3 из 3: примерно — отжимания и подтягивания (можно с раскачкой).'
+  if (progress.step === 1) return 'Шаг 1 из 4: своими словами — чего ждёшь от занятий.'
+  if (progress.step === 2) return 'Шаг 2 из 4: чем занимался в спорте.'
+  if (progress.step === 3) return 'Шаг 3 из 4: отжимания от пола за подход (можно с раскачкой).'
+  return 'Шаг 4 из 4: подтягивания за подход — честно, примерно.'
 }
 
 /**
@@ -249,14 +267,27 @@ function sportQuestion(personaId) {
 /**
  * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
  */
-function physicalQuestion(personaId) {
+function pushUpsQuestion(personaId) {
   if (personaId === 'vasily') {
-    return 'Ок. Последнее — и без героизма: отжимания и подтягивания, примерно. С раскачкой, без — мне всё равно, только честно.'
+    return 'Ок. Сначала отжимания от пола — примерно за подход. С раскачкой, без — мне всё равно, только честно.'
   }
   if (personaId === 'arkady') {
-    return 'Спасибо. И последний вопрос: отжимания и подтягивания — сколько примерно выходит? Со слов нормально.'
+    return 'Спасибо. Сначала отжимания от пола — сколько примерно за подход? Со слов нормально.'
   }
-  return 'Опыт зафиксирован. Отжимания от пола и подтягивания за один подход — цифры, честно.'
+  return 'Опыт зафиксирован. Отжимания от пола за один подход — цифра, честно.'
+}
+
+/**
+ * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
+ */
+function pullUpsQuestion(personaId) {
+  if (personaId === 'vasily') {
+    return 'Понял. Теперь подтягивания за подход — примерно, как есть.'
+  }
+  if (personaId === 'arkady') {
+    return 'Хорошо. И подтягивания — сколько за подход выходит?'
+  }
+  return 'Подтягивания за один подход — сколько?'
 }
 
 /**
@@ -304,15 +335,15 @@ function intakeCompleteReply(personaId, physicalAnswer = '') {
   const skepticism = claim.inflated ? `${physicalSkepticismLine(personaId, claim)} ` : ''
 
   if (personaId === 'vasily') {
-    return `${skepticism}Базу зафиксировал — картина ясна. Теорию пока не грузим: жми зелёную кнопку «К инструктажу» внизу. ${MARKER_READY_FOR_STAGES}`
+    return `${skepticism}Базу зафиксировал — картина ясна. Поехали в зал. ${MARKER_READY_FOR_STAGES}`
   }
   if (personaId === 'arkady') {
-    return `${skepticism}Отлично, друг — всё записал. Сейчас без лекций: жми «К инструктажу» внизу, там начнём разбираться. ${MARKER_READY_FOR_STAGES}`
+    return `${skepticism}Отлично, друг — всё записал. Сейчас в зал, без лекций. ${MARKER_READY_FOR_STAGES}`
   }
   if (personaId === 'gleb') {
     return glebIntakeComplete(physicalAnswer, claim)
   }
-  return `${skepticism}Базу зафиксировал. Жми зелёную кнопку «К инструктажу» — инструктаж на следующем шаге. ${MARKER_READY_FOR_STAGES}`
+  return `${skepticism}Базу зафиксировал. Веду в зал. ${MARKER_READY_FOR_STAGES}`
 }
 
 /**
@@ -328,24 +359,24 @@ export function intakeCompleteRedirectReply(personaId, recentAssistant = []) {
 
   if (personaId === 'vasily') {
     return pickFresh([
-      'Уже всё спросил. Не размазываем — зелёная кнопка «К инструктажу» внизу.',
-      'Теорию потом. Сейчас жми «К инструктажу» — там и начнём.',
-      'Вопрос услышал, но мы на посадке. Кнопка внизу — и поехали к инструктажу.',
-      'База есть. Дальше — только через «К инструктажу», не в чате.',
+      'Уже всё спросил. Не размазываем — сейчас в зал.',
+      'Теорию потом. Сейчас тренировка.',
+      'Вопрос услышал, но посадка закрыта. Идём в зал.',
+      'База есть. Дальше — только в зале, не в чате.',
     ])
   }
   if (personaId === 'arkady') {
     return pickFresh([
-      'Друг, всё зафиксировал. Жми «К инструктажу» внизу — там продолжим.',
-      'Сейчас не время для теории в чате. Кнопка «К инструктажу» — и пойдём дальше.',
-      'Понял тебя. Но сначала инструктаж — зелёная кнопка внизу.',
-      'На посадке хватит. «К инструктажу» — и разберём всё по полочкам там.',
+      'Друг, всё зафиксировал. Сейчас в зал — там продолжим.',
+      'Сейчас не время для теории в чате. Идём тренироваться.',
+      'Понял тебя. Сейчас в зал.',
+      'На посадке хватит. В зал — и по делу.',
     ])
   }
   return pickFresh([
-    'Интейк завершён. Жми «К инструктажу» внизу.',
-    'Теория — на следующем шаге. Кнопка «К инструктажу».',
-    'Переход к инструктажу — через кнопку внизу.',
+    'Интейк завершён. Переход в зал.',
+    'Теорию доберём по ходу. Сейчас зал.',
+    'Дальше — тренировка в зале.',
   ])
 }
 
@@ -357,12 +388,15 @@ function intakeIncompleteNudge(personaId, progress) {
   if (!progress.goalsDone) {
     if (personaId === 'vasily') return 'Сначала цели — своими словами. Один ответ.'
     if (personaId === 'arkady') return 'Друг, сначала цели — как ты сам их видишь.'
-    return 'Сначала подтверди цели.'
+    return 'Сначала своими словами: чего хочешь добиться на тренировках?'
   }
   if (!progress.sportDone) {
     return sportQuestion(personaId)
   }
-  return physicalQuestion(personaId)
+  if (!progress.pushUpsDone) {
+    return pushUpsQuestion(personaId)
+  }
+  return pullUpsQuestion(personaId)
 }
 
 /**
@@ -386,8 +420,8 @@ export function scriptedOnboardingGreetingReply(personaId, userMessage, messages
   }
 
   if (progress.complete) {
-    if (userCount === 3) {
-      return intakeCompleteReply(personaId, userMessage)
+    if (userCount === 4) {
+      return intakeCompleteReply(personaId, getGreetingPhysicalCombinedText(messages))
     }
     const recentAssistant = messages
       .filter((m) => m.role === 'assistant')
@@ -402,7 +436,10 @@ export function scriptedOnboardingGreetingReply(personaId, userMessage, messages
   }
   if (userCount === 2) {
     if (personaId === 'gleb') return glebSportToPhysical(userMessage)
-    return physicalQuestion(personaId)
+    return pushUpsQuestion(personaId)
+  }
+  if (userCount === 3) {
+    return pullUpsQuestion(personaId)
   }
 
   return null

@@ -48,9 +48,7 @@ export function getDefaultTechnicalLevel3Atoms(level1Atoms) {
     whyHowTo: '',
     mistakes: '',
     whyMistakes: '',
-    videoLink: '',
-    embedUrl: '',
-    media: { posterSrc: null, webmSrc: null, detailPosterSrc: null, detailWebmSrc: null, detailEmbedUrl: null, detailVideoLink: null },
+    media: { posterSrc: null, webmSrc: null, detailPosterSrc: null, detailWebmSrc: null },
   }))
 }
 

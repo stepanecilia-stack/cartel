@@ -90,27 +90,10 @@ export default function MediaLightbox({ open, onClose, media, title = '' }) {
         <LightboxSoundToggle muted={audioMuted} onToggle={() => setAudioMuted((m) => !m)} />
       </div>
     )
-  } else if (media.kind === 'embed') {
-    body = (
-      <div className="w-[min(96vw,960px)] overflow-hidden rounded-lg bg-black shadow-lg">
-        <div className="relative aspect-video w-full">
-          <iframe
-            src={media.src}
-            title={label}
-            className="absolute inset-0 h-full w-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      </div>
-    )
   } else {
     body = (
       <div className={`${vk.cardPadded} max-w-sm text-center`}>
-        <p className={vk.muted}>Внешняя ссылка на видео</p>
-        <a href={media.src} target="_blank" rel="noopener noreferrer" className={`mt-2 inline-block ${vk.link}`}>
-          Открыть в новой вкладке
-        </a>
+        <p className={vk.muted}>Медиа недоступно</p>
       </div>
     )
   }

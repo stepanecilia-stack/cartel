@@ -4,7 +4,7 @@
 
 /** @typedef {{ markOk: string, markBlocked: string, markSaveFail: string, tierLocked: string, welcomeBack: string, stagesIntro: string, greetingDialog: PortalPersonaGreetingLine[] }} PortalPersonaPhrases */
 
-/** @type {Array<{ id: PortalPersonaId, animal: string, patronymic: string, roleLabel: string, accentRing: string, tagline: string, teaser: string, teachingManner: string, biography?: string, aboutTrainer?: string[], gymStory?: string[], sampleQuote: string, portraitSrc: string, gymSceneSrc: string, note?: string, phrases: PortalPersonaPhrases }>} */
+/** @type {Array<{ id: PortalPersonaId, animal: string, patronymic: string, roleLabel: string, accentRing: string, tagline: string, teaser: string, biography?: string, aboutTrainer?: string[], gymStory?: string[], sampleQuote: string, portraitSrc: string, gymSceneSrc: string, note?: string, phrases: PortalPersonaPhrases }>} */
 export const PORTAL_PERSONAS = [
   {
     id: 'vasily',
@@ -13,8 +13,7 @@ export const PORTAL_PERSONAS = [
     roleLabel: 'Виртуальный тренер',
     accentRing: 'ring-[#c44b3f] bg-[#fff5f4]',
     tagline: 'Кабаньий типаж — сарказм, укол, ноль сюсюканья',
-    teaser: 'Жёсткий и прямой. Не объясняет дважды. Похвала звучит как «Уже лучше» — и это максимум.',
-    teachingManner: 'Манера: давление, повторение, сарказм',
+    teaser: 'Жёсткий и прямой. Похвала звучит редко.',
     biography:
       'Родился в спортивном костюме. По крайней мере, сам так говорит. 58 боёв. 44 победы. 14 поражений до сих пор не признаёт. Тренирует 18 лет. За это время сменил 4 свистка, износил 11 пар кроссовок и довёл до слёз примерно 340 учеников. Все потом говорили спасибо.',
     aboutTrainer: [
@@ -47,8 +46,7 @@ export const PORTAL_PERSONAS = [
     roleLabel: 'Виртуальный тренер',
     accentRing: 'ring-[#9a6b45] bg-[#fff9f2]',
     tagline: 'Медвежий типаж — тепло, терпение, вера в тебя',
-    teaser: 'Объяснит столько раз, сколько нужно. Не давит — но расслабляться не даст.',
-    teachingManner: 'Манера: поддержка, терпение, пошаговость',
+    teaser: 'Поддержит и объяснит столько раз, сколько нужно.',
     biography:
       'В секцию пришёл в 8 лет — и остался на 30. 44 боя. 31 победа. После каждого поражения разбирал бой по косточкам и возвращался сильнее. Тренирует 14 лет. Говорит, что его главная победа — не в ринге, а когда ученик, который три раза хотел бросить, остался и дошёл до конца. Таких у него больше двухсот.',
     aboutTrainer: [
@@ -80,8 +78,7 @@ export const PORTAL_PERSONAS = [
     roleLabel: 'Виртуальный тренер',
     accentRing: 'ring-[#2d81e0] bg-[#f0f6ff]',
     tagline: 'Соколиный типаж — протокол, критерий, ноль лирики',
-    teaser: 'Не уговаривает — даёт критерий. Элемент выполнен правильно или нет. Третьего нет.',
-    teachingManner: 'Манера: протокол, критерии, контроль',
+    teaser: 'Четкий прагматик, конкретика, критерии.',
     biography:
       'В бокс пришёл не за адреналином — за системой. 39 боёв. 34 победы. Проигрывал только тем, кто готовился лучше. Обиды не держал — разбирал, исправлял, выигрывал. Тренирует 12 лет. Ведёт записи по каждому ученику с первого занятия. Не потому что требуют — потому что без данных это не тренировка, а прогулка.',
     aboutTrainer: [

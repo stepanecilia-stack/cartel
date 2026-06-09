@@ -3,7 +3,7 @@ import { resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
 import StaticEmbedThumb from './training/StaticEmbedThumb.jsx'
 import MediaLightbox from './MediaLightbox.jsx'
 
-const PREVIEWABLE_KINDS = new Set(['webm', 'embed', 'link', 'poster'])
+const PREVIEWABLE_KINDS = new Set(['webm', 'poster'])
 const PLAYBACK_RATE_NORMAL = 1
 const PLAYBACK_RATE_FAST = 1.25
 

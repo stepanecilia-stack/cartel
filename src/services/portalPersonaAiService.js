@@ -12,6 +12,10 @@ import {
 import { enrichOnboardingStagesReply, scriptedOnboardingStagesReply } from '../utils/onboardingStagesChat.js'
 import { buildOnboardingSkipAllowReply, detectOnboardingSkipIntent } from '../utils/onboardingSkipIntent.js'
 import { deriveProgramAtomQuizPasses, scriptedProgramAtomReply } from '../utils/programAtomChat.js'
+import {
+  aiReplyUsesExternalBoxingKnowledge,
+  scriptedProgramElementReply,
+} from '../utils/portalAtomKnowledge.js'
 import { MARKER_QUIZ_PASS } from '../utils/personaChatMarkers.js'
 import { aiReplyInventsStudentRank, buildIntakeFactsCorpus } from '../utils/onboardingAiGuard.js'
 import { assessThreeImagesAnswer, threeImagesCorrectionReply } from '../utils/portalKnowledgeThreeImages.js'
@@ -207,6 +211,10 @@ function scriptedPersonaReply(persona, userMessage, context, messages = [], stud
     return scriptedOnboardingStagesReply(persona.id, text, messages)
   }
 
+  if (context === 'program' && studyAtom) {
+    return scriptedProgramElementReply(persona.id, text, messages, studyAtom)
+  }
+
   if (context === 'program_atom' && studyAtom) {
     return scriptedProgramAtomReply(persona.id, text, messages, studyAtom)
   }
@@ -262,10 +270,15 @@ function scriptedPersonaReply(persona, userMessage, context, messages = [], stud
       if (persona.id === 'arkady') return 'Хорошо. Расскажи про спортивный опыт.'
       return 'Спортивный опыт: разряд, виды, сколько лет — конкретно, без общих слов.'
     }
+    if (!progress.pushUpsDone) {
+      if (persona.id === 'vasily') return 'Ок. Сначала отжимания от пола — примерно за подход.'
+      if (persona.id === 'arkady') return 'Спасибо. Сначала отжимания от пола — сколько за подход?'
+      return 'Отжимания от пола за один подход — цифра, честно.'
+    }
     if (!progress.physicalDone) {
-      if (persona.id === 'vasily') return 'Понял. И отжимания с подтягиваниями — примерно?'
-      if (persona.id === 'arkady') return 'Спасибо. Отжимания и подтягивания — сколько примерно?'
-      return 'Отжимания от пола и подтягивания за подход — цифры, честно.'
+      if (persona.id === 'vasily') return 'Понял. Теперь подтягивания за подход — примерно.'
+      if (persona.id === 'arkady') return 'Хорошо. И подтягивания — сколько за подход?'
+      return 'Подтягивания за один подход — сколько?'
     }
   }
 
@@ -351,6 +364,16 @@ export async function sendPortalPersonaChatMessage({
     return { reply: graded, source: 'script' }
   }
 
+  const scriptedAtomFallback = () => {
+    if (context === 'program' && studyAtom) {
+      return scriptedProgramElementReply(persona.id, userMessage, messages, studyAtom)
+    }
+    if (context === 'program_atom' && studyAtom) {
+      return scriptedProgramAtomReply(persona.id, userMessage, messages, studyAtom)
+    }
+    return null
+  }
+
   const scriptedIntakeReply = () => {
     if (context === 'onboarding_greeting') {
       return scriptedOnboardingGreetingReply(persona.id, userMessage, messages)
@@ -358,10 +381,7 @@ export async function sendPortalPersonaChatMessage({
     if (context === 'onboarding_stages') {
       return scriptedOnboardingStagesReply(persona.id, userMessage, messages)
     }
-    if (context === 'program_atom' && studyAtom) {
-      return scriptedProgramAtomReply(persona.id, userMessage, messages, studyAtom)
-    }
-    return null
+    return scriptedAtomFallback()
   }
 
   if (useRemote) {
@@ -373,6 +393,7 @@ export async function sendPortalPersonaChatMessage({
         programHint,
         personaMemory,
         trainingGoals,
+        studyAtom,
       })
       const trimmed = reply?.trim()
       if (trimmed) {
@@ -387,6 +408,17 @@ export async function sendPortalPersonaChatMessage({
           return {
             reply: enrichOnboardingStagesReply(persona.id, userMessage, messages, trimmed),
             source: 'ai',
+          }
+        }
+        if (
+          (context === 'program' || context === 'program_atom') &&
+          studyAtom &&
+          aiReplyUsesExternalBoxingKnowledge(trimmed)
+        ) {
+          const fallback = scriptedAtomFallback()
+          if (fallback) {
+            console.warn('[portalPersonaAi] atom reply used external knowledge, using script fallback')
+            return { reply: fallback, source: 'script-fallback' }
           }
         }
         if (context === 'program_atom' && studyAtom) {

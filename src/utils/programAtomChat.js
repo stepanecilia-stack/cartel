@@ -1,4 +1,8 @@
 import { MARKER_QUIZ_PASS } from './personaChatMarkers.js'
+import {
+  excerptDetailVideoTranscript,
+  getAtomDetailVideoTranscript,
+} from '../data/technicalProgramAtomVideoTranscripts.js'
 
 /** Заглушки, пока в каталоге нет полных описаний атомов. */
 export const ATOM_TEACHING_FALLBACKS = {
@@ -49,7 +53,7 @@ export function buildFirstAtomWelcome(personaId) {
 export function buildVisualSlideTrainerLine(personaId, atom) {
   const { name } = getAtomTeachingCopy(atom)
   if (personaId === 'vasily') {
-    return `Слайд 1 — зрительный образ. Смотри «${name}» и запомни форму. Без картинки в голове дальше не лезем.`
+    return `Первое видео — зрительный образ. Смотри «${name}» и запомни форму. Без картинки в голове дальше не лезем.`
   }
   if (personaId === 'arkady') {
     return `Первый ролик — чисто зрительный образ «${name}». Спокойно смотри, зафиксируй, как это выглядит.`
@@ -63,14 +67,15 @@ export function buildVisualSlideTrainerLine(personaId, atom) {
  */
 export function buildLogicSlideTrainerLine(personaId, atom) {
   const { name, howTo, logicHint, whyHowTo } = getAtomTeachingCopy(atom)
-  const logic = logicHint || whyHowTo || howTo
+  const fromVideo = excerptDetailVideoTranscript(getAtomDetailVideoTranscript(atom), 220)
+  const logic = fromVideo || logicHint || whyHowTo || howTo
   if (personaId === 'vasily') {
-    return `Слайд 2 — зрительный плюс логический. «${name}»: ${logic}`
+    return `Второе видео — зрительный плюс логический. «${name}»: ${logic}`
   }
   if (personaId === 'arkady') {
     return `Второй ролик — со звуком и логикой. «${name}»: ${logic}`
   }
-  return `«${name}» — логика: ${logic}`
+  return `«${name}» — на видео: ${logic}`
 }
 
 /**
@@ -234,9 +239,15 @@ export function scriptedProgramAtomReply(personaId, userMessage, messages, atom)
  */
 export function buildProgramAtomHint(atom) {
   const copy = getAtomTeachingCopy(atom)
+  const mistakes = typeof atom?.mistakes === 'string' ? atom.mistakes.trim() : ''
+  const whyMistakes = typeof atom?.whyMistakes === 'string' ? atom.whyMistakes.trim() : ''
   const parts = [`Первый атом: «${copy.name}»`]
   if (copy.howTo) parts.push(`Как: ${copy.howTo}`)
   if (copy.whyHowTo) parts.push(`Зачем: ${copy.whyHowTo}`)
+  if (mistakes) parts.push(`Ошибки: ${mistakes}`)
+  if (whyMistakes) parts.push(`Почему ошибки: ${whyMistakes}`)
+  const videoBrief = excerptDetailVideoTranscript(getAtomDetailVideoTranscript(atom), 180)
+  if (videoBrief) parts.push(`Подробный ролик: ${videoBrief}`)
   parts.push(`Квиз: ${getAtomQuizQuestionCount(atom)} вопроса после «Понял»`)
   return parts.join('. ')
 }

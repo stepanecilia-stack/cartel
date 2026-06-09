@@ -7,7 +7,7 @@ import {
 import { getPortalPersona, normalizePortalPersonaId } from '../../constants/studentPortalPersonas.js'
 import { buildOnboardingGreetingOpener, greetingIntakeHint } from '../../utils/onboardingGreetingChat.js'
 import StudentOnboardingStagesFlow from './StudentOnboardingStagesFlow.jsx'
-import StudentPersonaChat from './StudentPersonaChat.jsx'
+import StudentPersonaGymChat from './StudentPersonaGymChat.jsx'
 import StudentPersonaIntroFlow from './StudentPersonaIntroFlow.jsx'
 import StudentReceptionMonologue from './StudentReceptionMonologue.jsx'
 import StudentReceptionQuestionnaire from './StudentReceptionQuestionnaire.jsx'
@@ -54,19 +54,23 @@ export default function StudentPortalOnboardingWizard({
   const greetingChatRef = useRef(null)
   /** @type {import('react').RefObject<import('./StudentPersonaChat.jsx').default>} */
   const stagesChatRef = useRef(null)
+  const greetingAutoCompleteRef = useRef(false)
+  const handleAdvanceRef = useRef(/** @type {() => void | Promise<void>} */ () => {})
 
   const stepId = steps[stepIndex] ?? steps[0]
   const isLast = stepIndex >= steps.length - 1
   const isWelcome = stepId === 'welcome'
   const isGoal = stepId === 'goal'
   const isPersona = stepId === 'persona'
-  const isImmersive = isWelcome || isGoal || isPersona
+  const isTrainerGreeting = stepId === 'trainer-greeting'
+  const isImmersive = isWelcome || isGoal || isPersona || isTrainerGreeting
 
   useEffect(() => {
     if (stepId === 'trainer-greeting') {
       setReadyForStages(false)
       setGreetingIntake(null)
       setSkipOffered(false)
+      greetingAutoCompleteRef.current = false
     }
     if (stepId === 'path') {
       setStagesQuizPasses(0)
@@ -157,7 +161,7 @@ export default function StudentPortalOnboardingWizard({
         return {
           title: '',
           body: (
-            <StudentPersonaChat
+            <StudentPersonaGymChat
               ref={greetingChatRef}
               key={`greeting-${personaId}`}
               personaId={personaId}
@@ -165,15 +169,17 @@ export default function StudentPortalOnboardingWizard({
               openingTrainerText={buildOnboardingGreetingOpener(getPortalPersona(personaId), [...goals])}
               trainingGoals={[...goals]}
               personaMemory={personaMemory}
-              minUserMessages={3}
+              minUserMessages={4}
               disabled={busy || memoryBusy}
               onIntakeProgress={handleGreetingIntakeProgress}
               onTrainerSignals={handleGreetingSignals}
               advanceHint={readyForStages ? null : greetingIntakeHint(greetingIntake ?? { goalsDone: false, sportDone: false, physicalDone: false, complete: false, step: 1 })}
             />
           ),
-          action: skipOffered ? 'К тренировкам' : 'К инструктажу',
+          action: skipOffered ? 'К тренировкам' : 'В зал',
           canAdvance: skipOffered || readyForStages,
+          hideAdvance:
+            mode === 'full' && readyForStages && !skipOffered,
         }
       case 'path':
         return {
@@ -198,7 +204,7 @@ export default function StudentPortalOnboardingWizard({
       default:
         return { title: '', body: null, action: 'Дальше', canAdvance: true }
     }
-  }, [stepId, goals, personaId, busy, memoryBusy, personaMemory, readyForStages, greetingIntake, stagesQuizPasses, stagesFlowPhase, skipOffered, handlePersonaConfirmed, handleBack, handleGreetingIntakeProgress, handleGreetingSignals, handleStagesSignals, toggleGoal])
+  }, [mode, stepId, goals, personaId, busy, memoryBusy, personaMemory, readyForStages, greetingIntake, stagesQuizPasses, stagesFlowPhase, skipOffered, handlePersonaConfirmed, handleBack, handleGreetingIntakeProgress, handleGreetingSignals, handleStagesSignals, toggleGoal])
 
   const handleAdvance = async () => {
     if (!content.canAdvance || busy || memoryBusy) return
@@ -268,6 +274,19 @@ export default function StudentPortalOnboardingWizard({
     setStepIndex((i) => Math.min(i + 1, steps.length - 1))
   }
 
+  handleAdvanceRef.current = handleAdvance
+
+  useEffect(() => {
+    if (mode !== 'full' || stepId !== 'trainer-greeting' || !readyForStages || skipOffered) return
+    if (busy || memoryBusy || greetingAutoCompleteRef.current || !isLast) return
+
+    greetingAutoCompleteRef.current = true
+    const timer = window.setTimeout(() => {
+      void handleAdvanceRef.current()
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [mode, stepId, readyForStages, skipOffered, busy, memoryBusy, isLast])
+
   const isAdvanceReady = content.canAdvance && !busy && !memoryBusy
   const advanceWidth = stepIndex > 0 ? 'flex-1' : 'w-full'
 
@@ -278,14 +297,16 @@ export default function StudentPortalOnboardingWizard({
           Назад
         </button>
       ) : null}
-      {content.hideAdvance || (stepId === 'trainer-greeting' && !content.canAdvance) ? null : (
+      {content.hideAdvance ||
+      (stepId === 'trainer-greeting' && !content.canAdvance) ||
+      (stepId === 'trainer-greeting' && memoryBusy) ? null : (
         <button
           type="button"
           disabled={busy || memoryBusy || !content.canAdvance}
           onClick={() => void handleAdvance()}
           className={`${advanceWidth} ${isAdvanceReady ? vk.btnAdvancePulse : vk.btnPrimary}`}
         >
-          {busy || memoryBusy ? 'Сохранение…' : content.action}
+          {busy || memoryBusy ? (stepId === 'trainer-greeting' && readyForStages ? 'В зал…' : 'Сохранение…') : content.action}
         </button>
       )}
     </div>
@@ -295,6 +316,9 @@ export default function StudentPortalOnboardingWizard({
     return (
       <div className="space-y-2">
         {content.body}
+        {stepId === 'trainer-greeting' && readyForStages && !skipOffered && mode === 'full' ? (
+          <p className={`text-center ${vk.mutedXs}`}>{memoryBusy ? 'В зал…' : 'Секунду — веду в зал.'}</p>
+        ) : null}
         {error ? <p className={vk.error}>{error}</p> : null}
         {content.hideActions ? null : actions}
       </div>

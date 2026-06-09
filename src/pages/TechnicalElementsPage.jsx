@@ -3,6 +3,7 @@ import { BackToHomeBar } from '../components/layout/BackToHomeLink.jsx'
 import TechnicalAtomMediaCarousel from '../components/TechnicalAtomMediaCarousel.jsx'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
 import AtomBookSheet from '../components/student/AtomBookSheet.jsx'
+import { getAtomDetailVideoTranscript } from '../data/technicalProgramAtomVideoTranscripts.js'
 import { atomHasDetailMediaSlide } from '../utils/technicalAtomMediaSlides.js'
 import { useTechnicalProgramAtoms } from '../hooks/useTechnicalProgramAtoms.js'
 import {
@@ -21,11 +22,7 @@ const TIER_TABS = [
 function atomToForm(atom) {
   return {
     webmSrc: atom.media?.webmSrc ?? '',
-    embedUrl: atom.embedUrl ?? '',
-    videoLink: atom.videoLink ?? '',
     detailWebmSrc: atom.media?.detailWebmSrc ?? '',
-    detailEmbedUrl: atom.media?.detailEmbedUrl ?? '',
-    detailVideoLink: atom.media?.detailVideoLink ?? '',
     howTo: atom.howTo ?? '',
     whyHowTo: atom.whyHowTo ?? '',
     mistakes: atom.mistakes ?? '',
@@ -36,14 +33,10 @@ function atomToForm(atom) {
 function formToPreviewAtom(atom, form) {
   return {
     ...atom,
-    embedUrl: form.embedUrl,
-    videoLink: form.videoLink,
     media: {
       ...atom.media,
       webmSrc: form.webmSrc,
       detailWebmSrc: form.detailWebmSrc,
-      detailEmbedUrl: form.detailEmbedUrl,
-      detailVideoLink: form.detailVideoLink,
     },
   }
 }
@@ -279,18 +272,10 @@ export default function TechnicalElementsPage() {
               <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">
                 1. Зрительный образ — первый ролик карусели
               </legend>
-              <p className={vk.mutedXs}>Ученик смотрит форму без спешки. Достаточно одного поля (WebM или embed).</p>
+              <p className={vk.mutedXs}>Ученик смотрит форму без спешки — без звука.</p>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
               <input className={vk.input} value={form.webmSrc} onChange={(e) => updateField('webmSrc', e.target.value)} placeholder="https://…webm" />
-            </label>
-            <label className="block">
-              <span className={vk.label}>Встраивание (Kinescope embed)</span>
-              <input className={vk.input} value={form.embedUrl} onChange={(e) => updateField('embedUrl', e.target.value)} placeholder="https://kinescope.io/embed/…" />
-            </label>
-            <label className="block">
-              <span className={vk.label}>Ссылка на видео</span>
-              <input className={vk.input} value={form.videoLink} onChange={(e) => updateField('videoLink', e.target.value)} />
             </label>
             </fieldset>
             <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
@@ -299,20 +284,21 @@ export default function TechnicalElementsPage() {
               </legend>
               <p className={vk.mutedXs}>
                 Второй слайд карусели. Если видео не задано — повторится первый ролик, логику тренер озвучит текстом из
-                блока 3. Карусель из двух слайдов появляется, когда заполнен хотя бы один ролик.
+                блока 3. Карусель из двух слайдов появляется, когда заполнен хотя бы один ролик. Транскрипт озвучки
+                подтягивается в базу знаний виртуальных тренеров автоматически.
               </p>
             <label className="block">
               <span className={vk.label}>WebM (URL)</span>
               <input className={vk.input} value={form.detailWebmSrc} onChange={(e) => updateField('detailWebmSrc', e.target.value)} placeholder="https://…webm" />
             </label>
-            <label className="block">
-              <span className={vk.label}>Встраивание (Kinescope embed)</span>
-              <input className={vk.input} value={form.detailEmbedUrl} onChange={(e) => updateField('detailEmbedUrl', e.target.value)} placeholder="https://kinescope.io/embed/…" />
-            </label>
-            <label className="block">
-              <span className={vk.label}>Ссылка на видео</span>
-              <input className={vk.input} value={form.detailVideoLink} onChange={(e) => updateField('detailVideoLink', e.target.value)} />
-            </label>
+            {editingAtom && getAtomDetailVideoTranscript(editingAtom) ? (
+              <div className="rounded-lg bg-[#f5f6f8] p-2">
+                <p className="mb-1 text-[11px] font-medium text-[#818c99]">Транскрипт ролика (для тренеров)</p>
+                <p className="text-[12px] leading-relaxed text-[#2c2d2e]">
+                  {getAtomDetailVideoTranscript(editingAtom)}
+                </p>
+              </div>
+            ) : null}
             </fieldset>
             <fieldset className="space-y-2 rounded-lg border border-[#e7e8ec] p-2.5">
               <legend className="px-1 text-[13px] font-semibold text-[#2c2d2e]">
@@ -419,15 +405,11 @@ export default function TechnicalElementsPage() {
                     <p className={`${vk.mutedXs} truncate`}>{atom.chainPreview}</p>
                   ) : null}
                   <p className={vk.mutedXs}>
-                    {atom.media?.webmSrc
+                    {atom.media?.webmSrc || atom.media?.detailWebmSrc
                       ? 'WebM'
-                      : atom.embedUrl
-                        ? 'Embed'
-                        : atom.videoLink
-                          ? 'Ссылка'
-                          : activeTierCover
-                            ? 'Обложка уровня'
-                            : 'Без медиа'}
+                      : activeTierCover
+                        ? 'Обложка уровня'
+                        : 'Без медиа'}
                     {atomHasDetailMediaSlide(atom) ? ' · + подробное' : ''}
                     {atom.howTo?.trim() ? ' · как' : ''}
                     {atom.whyHowTo?.trim() ? ' · логика' : ''}

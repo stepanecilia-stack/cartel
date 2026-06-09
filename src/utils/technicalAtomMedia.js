@@ -1,22 +1,46 @@
 import { getProgramTierCoverSrcForAtom } from './technicalProgramTierCovers.js'
 
+/** @param {unknown} value */
+export function trimAtomWebmSrc(value) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
 /**
- * @param {{ media?: { webmSrc?: string | null }; embedUrl?: string; videoLink?: string }} atom
+ * @param {object | null | undefined} atom
+ */
+export function atomMainWebmSrc(atom) {
+  return trimAtomWebmSrc(atom?.media?.webmSrc)
+}
+
+/**
+ * @param {object | null | undefined} atom
+ */
+export function atomDetailWebmSrc(atom) {
+  return trimAtomWebmSrc(atom?.media?.detailWebmSrc)
+}
+
+/**
+ * @param {object | null | undefined} atom
+ */
+export function atomHasAnyWebm(atom) {
+  return Boolean(atomMainWebmSrc(atom) || atomDetailWebmSrc(atom))
+}
+
+/**
+ * @param {{ media?: { webmSrc?: string | null, posterSrc?: string | null } }} atom
  * @param {{ tierCoverSrc?: string | null }} [options]
  */
 export function resolveTechnicalAtomMedia(atom, options = {}) {
   const media = atom?.media && typeof atom.media === 'object' ? atom.media : {}
-  const webm = typeof media.webmSrc === 'string' ? media.webmSrc.trim() : ''
-  const embed = typeof atom.embedUrl === 'string' ? atom.embedUrl.trim() : ''
-  const link = typeof atom.videoLink === 'string' ? atom.videoLink.trim() : ''
+  const webm = trimAtomWebmSrc(media.webmSrc)
+  const poster = trimAtomWebmSrc(media.posterSrc)
   const tierCover =
     (typeof options.tierCoverSrc === 'string' ? options.tierCoverSrc.trim() : '') ||
     getProgramTierCoverSrcForAtom(atom) ||
     ''
 
   if (webm) return { kind: 'webm', src: webm, tierCoverSrc: tierCover || null }
-  if (embed) return { kind: 'embed', src: embed }
-  if (link) return { kind: 'link', src: link }
+  if (poster) return { kind: 'poster', src: poster }
   if (tierCover) return { kind: 'poster', src: tierCover }
   return { kind: 'none', src: '' }
 }

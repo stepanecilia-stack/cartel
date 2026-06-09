@@ -18,9 +18,6 @@ export default function StudentPersonaGymHero({ persona }) {
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3 pb-3 pt-14 sm:px-4 sm:pb-4 sm:pt-16">
         <p className="text-[15px] font-bold leading-tight text-white drop-shadow sm:text-[17px]">{name}</p>
-        <p className="mt-0.5 text-[11px] font-medium text-white/90 drop-shadow sm:text-[12px]">
-          {persona.teachingManner.replace(/^Манера:\s*/i, '')}
-        </p>
       </div>
     </div>
   )

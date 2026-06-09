@@ -32,8 +32,7 @@ import {
   studentPhotoUrl,
 } from '../utils/studentModel'
 import TechnicalAtomMedia from '../components/TechnicalAtomMedia.jsx'
-import StaticEmbedThumb from '../components/training/StaticEmbedThumb.jsx'
-import { hasLoopingPreviewMedia, resolveTechnicalAtomMedia } from '../utils/technicalAtomMedia.js'
+import { hasLoopingPreviewMedia } from '../utils/technicalAtomMedia.js'
 import { buildCoachPracticeCatalogByTier } from '../utils/groupTrainingPractice.js'
 import { practiceGridThumbFrameClass } from '../utils/trainingAtomThumb.js'
 import AtomStudyModal from '../components/AtomStudyModal.jsx'
@@ -63,10 +62,6 @@ function AtomCompactPreviewVisual({ atom, dense = false, playing = false, onTogg
         title={atom.name}
       />
     )
-  }
-  const kind = resolveTechnicalAtomMedia(atom).kind
-  if (kind === 'embed' || kind === 'link') {
-    return <StaticEmbedThumb />
   }
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#f0f2f5] p-0.5 text-[#818c99]">

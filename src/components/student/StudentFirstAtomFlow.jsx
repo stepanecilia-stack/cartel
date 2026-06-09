@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import TechnicalAtomMediaCarousel from '../TechnicalAtomMediaCarousel.jsx'
-import AtomBookSheet from './AtomBookSheet.jsx'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
+import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
+import { StudentTechniqueKnowledgeVisual } from './StudentTechniqueKnowledgeVisual.jsx'
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
+import { getTechniqueKnowledgeVisual } from '../../utils/techniqueAtomInstruction.js'
 import {
   buildFirstAtomWelcome,
   buildLogicSlideTrainerLine,
@@ -13,7 +14,6 @@ import {
   buildProgramAtomQuizOpener,
   buildVisualSlideTrainerLine,
   getAtomQuizQuestionCount,
-  getAtomTeachingCopy,
 } from '../../utils/programAtomChat.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -41,7 +41,6 @@ export default function StudentFirstAtomFlow({
 }) {
   const persona = getPortalPersona(personaId)
   const name = formatPortalPersonaName(persona)
-  const teaching = useMemo(() => getAtomTeachingCopy(atom), [atom])
   const knowledgeSlides = useMemo(() => resolveKnowledgeLearningSlides(atom), [atom])
   const quizTotal = getAtomQuizQuestionCount(atom)
 
@@ -102,10 +101,16 @@ export default function StudentFirstAtomFlow({
   }
 
   if (phase === 'study') {
+    const slide = knowledgeSlides[slideIndex]
+    const isLastVideo = slideIndex >= knowledgeSlides.length - 1
+    const knowledgeVisual = getTechniqueKnowledgeVisual(slideIndex === 0 ? 'video1' : 'video2', true)
+
     return (
       <div className="space-y-3">
         <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>
-          Элемент #{atom.number}: два ролика — зрительный, затем зрительный + логический
+          {slideIndex === 0
+            ? 'Шаг 1 из 2: первый ролик — зрительный образ.'
+            : 'Шаг 2 из 2: второй ролик — зрительный + логический (со звуком).'}
         </p>
 
         <div className="flex gap-2.5">
@@ -118,35 +123,43 @@ export default function StudentFirstAtomFlow({
           </div>
         </div>
 
-        <div className="w-full overflow-hidden rounded-lg bg-[#0f0f0f]">
-          <TechnicalAtomMediaCarousel
-            atom={atom}
-            slides={knowledgeSlides}
-            className="h-[min(60dvh,520px)] w-full"
-            playing={playing}
-            onPlayingChange={setPlaying}
-            previewable
-            autoPlay
-            onSlideChange={setSlideIndex}
+        {knowledgeVisual ? (
+          <StudentTechniqueKnowledgeVisual
+            imageKeys={knowledgeVisual.keys}
+            caption={knowledgeVisual.caption}
           />
-        </div>
+        ) : null}
 
-        <AtomBookSheet
-          number={atom.number}
-          name={teaching.name}
-          description={
-            [teaching.howTo, teaching.whyHowTo].filter(Boolean).join('\n\n') || undefined
-          }
+        <StudentTechniqueVideoBlock
+          slide={slide}
+          playing={playing}
+          onPlayingChange={setPlaying}
+          className="h-[min(60dvh,520px)] w-full"
+          autoPlayWebm={false}
         />
 
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setPhase('quiz')}
-          className={`w-full ${vk.btnPrimary}`}
-        >
-          Понял
-        </button>
+        {isLastVideo ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setPhase('quiz')}
+            className={`w-full ${vk.btnPrimary}`}
+          >
+            Понял
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setSlideIndex(1)
+              setPlaying(false)
+            }}
+            className={`w-full ${vk.btnPrimary}`}
+          >
+            Дальше — второй ролик
+          </button>
+        )}
       </div>
     )
   }

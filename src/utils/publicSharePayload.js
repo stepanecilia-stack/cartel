@@ -201,7 +201,7 @@ export function buildPublicSharePayload({
       levelKey: k,
       levelLabel,
       levelPercent,
-      videoLink: typeof atom.videoLink === 'string' ? atom.videoLink : '',
+      webmSrc: typeof atom.media?.webmSrc === 'string' ? atom.media.webmSrc : '',
       comment: typeof row.comment === 'string' ? row.comment : '',
       howTo: String(atom.howTo ?? ''),
       whyHowTo: String(atom.whyHowTo ?? ''),

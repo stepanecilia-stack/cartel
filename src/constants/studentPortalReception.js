@@ -1,5 +1,7 @@
 export const STUDENT_PORTAL_RECEPTION = {
   gymHallSrc: '/student-portal/gym-hall.jpg',
+  /** Главная ученика — тот же зал Cartel, вид без ресепшена */
+  gymHubSrc: '/student-portal/gym-hub-main.png',
   sceneSrc: '/student-portal/reception-scene.png',
   bunnySrc: '/student-portal/reception-bunny.png',
   adminName: 'Администратор',
@@ -12,7 +14,7 @@ export const STUDENT_PORTAL_RECEPTION = {
   questionnaireSubtitle: 'Цель занятий — отметь одну или несколько',
   questionnaireHint: 'Нажми на строку, чтобы поставить галочку',
   trainersIntroMonologue:
-    'Анкета принята! Выбери виртуального наставника. У каждого свой стиль преподавания:\n1. Строгость\n2. Поддержка\n3. Прагматизм\nМогу рассказать про каждого.',
+    'Анкета принята! Выбери виртуального наставника. У каждого свой стиль преподавания',
 }
 
 /** @type {Record<import('./studentPortalPersonas.js').PortalPersonaId, string>} */

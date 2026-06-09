@@ -77,8 +77,6 @@ function mergeAtom(defaultAtom, override) {
         webmSrc: defaultAtom.media?.webmSrc ?? null,
         detailPosterSrc: defaultAtom.media?.detailPosterSrc ?? null,
         detailWebmSrc: defaultAtom.media?.detailWebmSrc ?? null,
-        detailEmbedUrl: defaultAtom.media?.detailEmbedUrl ?? null,
-        detailVideoLink: defaultAtom.media?.detailVideoLink ?? null,
       },
     }
   }
@@ -89,15 +87,11 @@ function mergeAtom(defaultAtom, override) {
     whyHowTo: pickOverrideField(override, 'whyHowTo', defaultAtom.whyHowTo),
     mistakes: pickOverrideField(override, 'mistakes', defaultAtom.mistakes),
     whyMistakes: pickOverrideField(override, 'whyMistakes', defaultAtom.whyMistakes),
-    videoLink: pickOverrideField(override, 'videoLink', defaultAtom.videoLink),
-    embedUrl: pickOverrideField(override, 'embedUrl', defaultAtom.embedUrl),
     media: {
       posterSrc: pickOverrideMedia(override, 'posterSrc', defaultAtom.media?.posterSrc),
       webmSrc: pickOverrideMedia(override, 'webmSrc', defaultAtom.media?.webmSrc),
       detailPosterSrc: pickOverrideMedia(override, 'detailPosterSrc', defaultAtom.media?.detailPosterSrc),
       detailWebmSrc: pickOverrideMedia(override, 'detailWebmSrc', defaultAtom.media?.detailWebmSrc),
-      detailEmbedUrl: pickOverrideMedia(override, 'detailEmbedUrl', defaultAtom.media?.detailEmbedUrl),
-      detailVideoLink: pickOverrideMedia(override, 'detailVideoLink', defaultAtom.media?.detailVideoLink),
     },
   }
 }
@@ -259,16 +253,11 @@ export async function saveTechnicalProgramAtomMedia(atomId, tier, payload) {
     whyHowTo: trimOrNull(payload?.whyHowTo) ?? base.whyHowTo,
     mistakes: trimOrNull(payload?.mistakes) ?? base.mistakes,
     whyMistakes: trimOrNull(payload?.whyMistakes) ?? base.whyMistakes,
-    // Пустая строка в форме = явное удаление ссылки (не подставляем дефолт из программы).
-    videoLink: trimOrNull(payload?.videoLink),
-    embedUrl: trimOrNull(payload?.embedUrl),
     media: {
       posterSrc: trimOrNull(payload?.posterSrc),
       webmSrc: trimOrNull(payload?.webmSrc),
       detailPosterSrc: trimOrNull(payload?.detailPosterSrc),
       detailWebmSrc: trimOrNull(payload?.detailWebmSrc),
-      detailEmbedUrl: trimOrNull(payload?.detailEmbedUrl),
-      detailVideoLink: trimOrNull(payload?.detailVideoLink),
     },
     updatedAt: serverTimestamp(),
   }

@@ -1,4 +1,4 @@
-import { resolveTechnicalAtomMedia } from './technicalAtomMedia.js'
+import { atomDetailWebmSrc, resolveTechnicalAtomMedia } from './technicalAtomMedia.js'
 import { buildAtomDetailMediaSlice } from './technicalAtomMediaSlides.js'
 
 export const KNOWLEDGE_SLIDE_LABELS = {
@@ -12,9 +12,7 @@ export const KNOWLEDGE_SLIDE_LABELS = {
  */
 export function resolveKnowledgeLearningSlides(atom) {
   const visualAtom = atom
-  const detailSlice = buildAtomDetailMediaSlice(atom)
-  const logicAtom =
-    resolveTechnicalAtomMedia(detailSlice).kind !== 'none' ? detailSlice : atom
+  const logicAtom = atomDetailWebmSrc(atom) ? buildAtomDetailMediaSlice(atom) : atom
 
   return [
     {

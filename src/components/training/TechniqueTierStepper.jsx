@@ -172,7 +172,7 @@ function AtomPreviewFrame({
 
   if (enlargeable) {
     const media = resolveTechnicalAtomMedia(atom)
-    if (media.kind === 'embed' || media.kind === 'link') {
+    if (media.kind === 'webm') {
       return (
         <div className={`${frameClass} ${borderClass}`} title={title}>
           <TechnicalAtomMedia atom={atom} className="h-full w-full" previewable title={atom?.name} />

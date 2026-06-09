@@ -173,8 +173,8 @@ function ShareTechRow({ atom }) {
         <p className="min-w-0 flex-1 text-[14px] font-medium leading-5 text-[#2c2d2e]">
           <span className="tabular-nums text-[#818c99]">#{atom.number}</span> {atom.name}
         </p>
-        {atom.videoLink ? (
-          <a href={atom.videoLink} target="_blank" rel="noreferrer" className={`shrink-0 ${vk.link}`}>
+        {atom.webmSrc ? (
+          <a href={atom.webmSrc} target="_blank" rel="noreferrer" className={`shrink-0 ${vk.link}`}>
             Видео
           </a>
         ) : null}

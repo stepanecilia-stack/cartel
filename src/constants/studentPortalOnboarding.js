@@ -35,17 +35,10 @@ export const KNOWLEDGE_THREE_IMAGES = [
 /** @typedef {'welcome' | 'goal' | 'persona' | 'trainer-greeting' | 'path'} OnboardingStepId */
 
 /** @type {OnboardingStepId[]} */
-export const ONBOARDING_STEP_ORDER = [
-  'welcome',
-  'goal',
-  'persona',
-  'trainer-greeting',
-  'path',
-]
+export const ONBOARDING_STEP_ORDER = ['welcome', 'goal', 'persona', 'trainer-greeting']
 
-export const KNOWLEDGE_GUIDE_STEP_ORDER = ONBOARDING_STEP_ORDER.filter(
-  (id) => id !== 'welcome' && id !== 'goal' && id !== 'persona' && id !== 'trainer-greeting',
-)
+/** Инструктаж по четырём этапам — отдельный гайд «Как учить», не часть первого входа. */
+export const KNOWLEDGE_GUIDE_STEP_ORDER = ['path']
 
 const GOAL_IDS = new Set(TRAINING_GOAL_OPTIONS.map((o) => o.id))
 
