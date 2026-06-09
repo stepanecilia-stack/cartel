@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react'
 import TechnicalAtomMedia from '../TechnicalAtomMedia.jsx'
-import KnowledgeVideoCornerBadges, {
-  resolveKnowledgeBadgeKeysForSlide,
-} from './KnowledgeVideoCornerBadges.jsx'
 
 /** Портретный ролик — без фиксированной высоты карусели. */
 export const STUDENT_TECHNIQUE_VIDEO_CLASS = 'aspect-[9/16] w-full'
@@ -26,9 +23,7 @@ export const STUDENT_TECHNIQUE_MEDIA_WIDTH_CLASS = 'mx-auto w-full max-w-[min(10
  *   onPlayingChange?: (playing: boolean) => void,
  *   className?: string,
  *   autoPlayWebm?: boolean,
- *   badgeKeys?: string[],
  *   showLabel?: boolean,
- *   showCornerBadges?: boolean,
  * }} props
  */
 export default function StudentTechniqueVideoBlock({
@@ -37,9 +32,7 @@ export default function StudentTechniqueVideoBlock({
   onPlayingChange: onPlayingChangeProp,
   className = STUDENT_TECHNIQUE_VIDEO_CLASS,
   autoPlayWebm = true,
-  badgeKeys: badgeKeysProp,
   showLabel = true,
-  showCornerBadges = true,
 }) {
   const [playingInternal, setPlayingInternal] = useState(false)
   const controlled = typeof onPlayingChangeProp === 'function'
@@ -55,15 +48,12 @@ export default function StudentTechniqueVideoBlock({
     }
   }, [slide?.key, slide?.media?.kind, autoPlayWebm, controlled, onPlayingChange])
 
-  const badgeKeys = badgeKeysProp ?? (slide ? resolveKnowledgeBadgeKeysForSlide(slide.key) : [])
-
   if (!slide) return null
 
   return (
     <div className={showLabel ? 'space-y-2' : undefined}>
       {showLabel ? <p className="text-[13px] font-semibold text-[#2c2d2e]">{slide.label}</p> : null}
       <div className={`relative overflow-hidden rounded-xl ${STUDENT_TECHNIQUE_MEDIA_WIDTH_CLASS}`}>
-        {showCornerBadges ? <KnowledgeVideoCornerBadges imageKeys={badgeKeys} /> : null}
         <TechnicalAtomMedia
           atom={slide.atom}
           className={className}

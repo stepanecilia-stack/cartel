@@ -1,22 +1,3 @@
-/** Метаданные бейджей образов на роликах (иконки + цвет карточки). */
-export const KNOWLEDGE_VIDEO_BADGES = {
-  vision: {
-    title: 'Зрительный образ',
-    chipClass: 'border-emerald-500/40 bg-emerald-50 text-emerald-800',
-    iconClass: 'text-emerald-600',
-  },
-  logic: {
-    title: 'Логический образ',
-    chipClass: 'border-[#2d81e0]/35 bg-[#ecf3fc] text-[#1e5a9e]',
-    iconClass: 'text-[#2d81e0]',
-  },
-  kinesthesia: {
-    title: 'Кинестетический образ',
-    chipClass: 'border-red-400/40 bg-red-50 text-red-900',
-    iconClass: 'text-red-500',
-  },
-}
-
 /** Три квадрата в ряд — зрительный / логический / кинестетический. */
 export const KNOWLEDGE_IMAGE_ROW_ITEMS = [
   {

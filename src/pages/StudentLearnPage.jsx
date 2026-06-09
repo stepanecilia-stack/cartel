@@ -37,6 +37,7 @@ import StudentPersonaAvatar from '../components/student/StudentPersonaAvatar.jsx
 import StudentPersonaBubble from '../components/student/StudentPersonaBubble.jsx'
 import StudentPersonaChatDock from '../components/student/StudentPersonaChatDock.jsx'
 import StudentFirstAtomFlow from '../components/student/StudentFirstAtomFlow.jsx'
+import StudentTechniquePageShell from '../components/student/StudentTechniquePageShell.jsx'
 import StudentTechniqueAtomFlow from '../components/student/StudentTechniqueAtomFlow.jsx'
 import StudentPortalGymHub from '../components/student/StudentPortalGymHub.jsx'
 import StudentPortalGymPlaceholder from '../components/student/StudentPortalGymPlaceholder.jsx'
@@ -186,16 +187,11 @@ export default function StudentLearnPage() {
   const resolvedHubSection =
     !portalPremiumActive && isGymHubPremiumSection(hubSection) ? 'hub' : hubSection
 
-  const overallProgramProgress = useMemo(
-    () => ({
-      done: tierProgress[1].done + tierProgress[2].done + tierProgress[3].done,
-      total: tierProgress[1].total + tierProgress[2].total + tierProgress[3].total,
-    }),
-    [tierProgress],
-  )
-
   const programSectionTitle =
     resolvedHubSection === 'program' ? 'Индивидуальная программа' : 'Техника бокса'
+
+  const showPersonaChatDock = resolvedHubSection !== 'technique'
+  const isTechniqueSection = resolvedHubSection === 'technique'
 
   const programChatHint = useMemo(() => {
     const parts = [`Этап программы: ${studentPortalTierLabel(tier)}`, `Прогресс: ${leadingDone}/${total || '—'}`]
@@ -421,8 +417,6 @@ export default function StudentLearnPage() {
         <div className="mx-auto w-full max-w-lg">
           <StudentPortalGymHub
             studentName={name}
-            personaId={portalPersonaId}
-            programProgress={overallProgramProgress}
             premiumActive={portalPremiumActive}
             onSelectSection={setHubSection}
             onOpenGuide={() => setGuideOpen(true)}
@@ -456,10 +450,19 @@ export default function StudentLearnPage() {
     )
   }
 
-  return (
-    <main className={`${vk.pageWithNav} px-2 py-3 sm:px-4 ${chatOpen ? '' : 'pb-[4.5rem]'}`}>
+  const gymAtmosphere = isTechniqueSection
+  const programPage = (
+    <main
+      className={`${gymAtmosphere ? '' : vk.pageWithNav} px-2 py-3 sm:px-4 ${showPersonaChatDock && !chatOpen ? 'pb-[4.5rem]' : ''}`}
+    >
       <div className="mx-auto w-full max-w-2xl space-y-2">
-        <header className="flex flex-wrap items-center gap-2">
+        <header
+          className={`flex flex-wrap items-center gap-2 ${
+            gymAtmosphere
+              ? 'rounded-[10px] border border-white/30 bg-white/90 p-2.5 shadow-sm backdrop-blur-md sm:p-3'
+              : ''
+          }`}
+        >
           <StudentPersonaAvatar personaId={portalPersonaId} size="lg" />
           <div className="min-w-0 flex-1">
             <h1 className={vk.h1Lg}>{programSectionTitle}</h1>
@@ -480,7 +483,12 @@ export default function StudentLearnPage() {
           </div>
         </header>
 
-        <nav className={`${vk.segmentBar} p-0.5`} aria-label="Этап программы">
+        <nav
+          className={`${vk.segmentBar} p-0.5 ${
+            gymAtmosphere ? 'border border-white/25 bg-white/85 shadow-sm backdrop-blur-md' : ''
+          }`}
+          aria-label="Этап программы"
+        >
           {[1, 2, 3].map((t) => {
             const disabled = !tierUnlocked[t]
             const active = tier === t
@@ -515,7 +523,13 @@ export default function StudentLearnPage() {
         ) : total === 0 ? (
           <p className={vk.mutedXs}>На этом этапе пока нет элементов.</p>
         ) : viewAtom ? (
-          <section className="space-y-2 rounded-[10px] bg-white p-2 sm:p-3">
+          <section
+            className={`space-y-2 rounded-[10px] p-2 sm:p-3 ${
+              gymAtmosphere
+                ? 'border border-white/30 bg-white/92 shadow-sm backdrop-blur-md'
+                : 'bg-white'
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <span className="text-[12px] font-semibold tabular-nums text-[#2d81e0]">
                 По порядку: {leadingDone} / {total}
@@ -600,15 +614,23 @@ export default function StudentLearnPage() {
         ) : null}
       </div>
 
-      <StudentPersonaChatDock
-        personaId={portalPersonaId}
-        open={chatOpen}
-        onOpenChange={setChatOpen}
-        programHint={programChatHint}
-        personaMemory={personaMemory}
-        trainingGoals={portalGoals}
-        onSessionClose={handleChatSessionClose}
-      />
+      {showPersonaChatDock ? (
+        <StudentPersonaChatDock
+          personaId={portalPersonaId}
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          programHint={programChatHint}
+          personaMemory={personaMemory}
+          trainingGoals={portalGoals}
+          onSessionClose={handleChatSessionClose}
+        />
+      ) : null}
     </main>
   )
+
+  if (gymAtmosphere) {
+    return <StudentTechniquePageShell>{programPage}</StudentTechniquePageShell>
+  }
+
+  return programPage
 }

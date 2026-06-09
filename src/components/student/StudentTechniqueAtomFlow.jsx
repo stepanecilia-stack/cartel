@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import StudentKnowledgeImageRow from './StudentKnowledgeImageRow.jsx'
 import StudentMotorStagesHighlight from './StudentMotorStagesHighlight.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
+import StudentTechniqueMirrorScene from './StudentTechniqueMirrorScene.jsx'
 import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
 import { buildAtomProgramHint } from '../../utils/portalAtomKnowledge.js'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
@@ -72,11 +73,12 @@ export default function StudentTechniqueAtomFlow({
           onPlayingChange={setPlaying}
           autoPlayWebm={false}
           showLabel={false}
-          showCornerBadges={false}
         />
       ) : null}
 
       <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
+
+      {step === 'mirror' ? <StudentTechniqueMirrorScene /> : null}
 
       {step === 'motorStages' ? <StudentMotorStagesHighlight /> : null}
 

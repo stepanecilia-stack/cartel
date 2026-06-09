@@ -1,26 +1,29 @@
 import { useMemo } from 'react'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
-import StudentTechniqueVideoBlock, {
-  STUDENT_TECHNIQUE_VIDEO_CLASS,
-} from './StudentTechniqueVideoBlock.jsx'
+import StudentKnowledgeImageRow from './StudentKnowledgeImageRow.jsx'
+import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
+
+/** Все три образа подсвечены при повторном просмотре пройденного материала. */
+const REVIEW_KNOWLEDGE_KEYS = ['vision', 'logic', 'kinesthesia']
 
 /**
- * Оба ролика «Знания» друг под другом — без карусели.
- * @param {{ atom: object, className?: string }} props
+ * Оба ролика «Знания» — тот же портретный плеер, что в пошаговом инструктораже.
+ * @param {{ atom: object }} props
  */
-export default function StudentAtomStudyVideos({ atom, className = STUDENT_TECHNIQUE_VIDEO_CLASS }) {
+export default function StudentAtomStudyVideos({ atom }) {
   const slides = useMemo(() => resolveKnowledgeLearningSlides(atom), [atom])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {slides.map((slide) => (
         <StudentTechniqueVideoBlock
           key={slide.key}
           slide={slide}
-          className={className}
           autoPlayWebm={false}
+          showLabel={slides.length > 1}
         />
       ))}
+      <StudentKnowledgeImageRow activeKeys={REVIEW_KNOWLEDGE_KEYS} />
     </div>
   )
 }

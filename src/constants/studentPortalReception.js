@@ -2,6 +2,10 @@ export const STUDENT_PORTAL_RECEPTION = {
   gymHallSrc: '/student-portal/gym-hall.jpg',
   /** Главная ученика — тот же зал Cartel, вид без ресепшена */
   gymHubSrc: '/student-portal/gym-hub-main.png',
+  /** Фон страницы техники — тот же зал */
+  gymTechniqueBgSrc: '/student-portal/gym-hub-main.png',
+  /** Зона зеркала в зале Cartel */
+  gymMirrorSrc: '/student-portal/gym-mirror-wall.png',
   sceneSrc: '/student-portal/reception-scene.png',
   bunnySrc: '/student-portal/reception-bunny.png',
   adminName: 'Администратор',

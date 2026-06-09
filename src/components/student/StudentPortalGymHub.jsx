@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { isGymHubPremiumSection } from '../../constants/studentPortalPremium.js'
-import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 import { STUDENT_PORTAL_RECEPTION } from '../../constants/studentPortalReception.js'
-import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import StudentPortalPremiumPaywall from './StudentPortalPremiumPaywall.jsx'
 /** @typedef {'technique' | 'norms' | 'program' | 'competition'} GymHubSectionId */
 
@@ -45,8 +43,6 @@ export const GYM_HUB_SECTIONS = [
 /**
  * @param {{
  *   studentName: string,
- *   personaId?: unknown,
- *   programProgress?: { done: number, total: number } | null,
  *   premiumActive?: boolean,
  *   onSelectSection: (id: GymHubSectionId) => void,
  *   onOpenGuide?: () => void,
@@ -55,8 +51,6 @@ export const GYM_HUB_SECTIONS = [
  */
 export default function StudentPortalGymHub({
   studentName,
-  personaId,
-  programProgress = null,
   premiumActive = false,
   onSelectSection,
   onOpenGuide,
@@ -65,8 +59,6 @@ export default function StudentPortalGymHub({
   const [paywallSection, setPaywallSection] = useState(
     /** @type {import('../../constants/studentPortalPremium.js').PortalPremiumGymSectionId | null} */ (null),
   )
-  const persona = getPortalPersona(personaId)
-  const trainerName = formatPortalPersonaName(persona)
   const sceneSrc = STUDENT_PORTAL_RECEPTION.gymHubSrc
 
   return (
@@ -85,14 +77,10 @@ export default function StudentPortalGymHub({
 
       <div className="relative z-10 flex min-h-[min(100dvh,920px)] flex-col p-3 sm:p-4">
         <header className="flex items-start gap-2.5">
-          <StudentPersonaAvatar personaId={persona.id} size="lg" className="ring-2 ring-white/30" />
           <div className="min-w-0 flex-1 pt-0.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-white/75">Cartel Boxing</p>
             <h1 className="text-[18px] font-bold leading-tight text-white sm:text-[22px]">Зал</h1>
             <p className="mt-0.5 truncate text-[13px] text-white/90">{studentName}</p>
-            <p className="truncate text-[12px] text-white/70">
-              {trainerName} · {persona.roleLabel}
-            </p>
           </div>
           <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
             {onOpenGuide ? (
@@ -116,18 +104,7 @@ export default function StudentPortalGymHub({
           </div>
         </header>
 
-        <div className="mt-4 max-w-md">
-          <p className="text-[15px] font-semibold leading-snug text-white sm:text-[17px]">
-            Выбери раздел — работаем по делу.
-          </p>
-          {programProgress && programProgress.total > 0 ? (
-            <p className="mt-1 text-[12px] text-white/75">
-              Программа: {programProgress.done} / {programProgress.total} элементов на «Знании»
-            </p>
-          ) : null}
-        </div>
-
-        <nav className="mt-4 flex flex-1 flex-col justify-end gap-2 pb-1 sm:mt-6 sm:gap-2.5" aria-label="Разделы зала">
+        <nav className="mt-auto flex flex-1 flex-col justify-end gap-2 pb-1 sm:gap-2.5" aria-label="Разделы зала">
           {GYM_HUB_SECTIONS.map((section) => {
             const locked = isGymHubPremiumSection(section.id) && !premiumActive
             return (
