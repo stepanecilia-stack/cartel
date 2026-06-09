@@ -65,8 +65,6 @@ export default function StudentTechniqueAtomFlow({
 
   return (
     <div className="space-y-3">
-      <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
-
       {showVideo && activeSlide ? (
         <StudentTechniqueVideoBlock
           slide={activeSlide}
@@ -77,6 +75,8 @@ export default function StudentTechniqueAtomFlow({
           showCornerBadges={false}
         />
       ) : null}
+
+      <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
 
       {step === 'motorStages' ? <StudentMotorStagesHighlight /> : null}
 

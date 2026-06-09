@@ -94,12 +94,24 @@ export function applyStudentKnowledgeMark(portalKnowledgeData, atomId, orderedAt
   }
 }
 
+/** Подписи этапов программы в кабинете ученика. */
+export const STUDENT_PORTAL_TIER_LABELS = {
+  1: 'Ур.1 База',
+  2: 'Ур.2 Снизу / Сбоку',
+  3: 'Ур.3 Двойки',
+}
+
+/** @param {1 | 2 | 3} tier */
+export function studentPortalTierLabel(tier) {
+  return STUDENT_PORTAL_TIER_LABELS[tier] ?? STUDENT_PORTAL_TIER_LABELS[1]
+}
+
 /** Сводка для панели тренера. */
 export function summarizeStudentPortalProgress(orderedL1, orderedL2, orderedL3, portalKnowledgeData) {
   const tiers = [
-    { id: 1, label: 'Программа', atoms: orderedL1 },
-    { id: 2, label: 'Ур. 2', atoms: orderedL2 },
-    { id: 3, label: 'Комбо', atoms: orderedL3 },
+    { id: 1, label: STUDENT_PORTAL_TIER_LABELS[1], atoms: orderedL1 },
+    { id: 2, label: STUDENT_PORTAL_TIER_LABELS[2], atoms: orderedL2 },
+    { id: 3, label: STUDENT_PORTAL_TIER_LABELS[3], atoms: orderedL3 },
   ].filter((t) => t.atoms.length > 0)
 
   const items = tiers.map((t) => ({

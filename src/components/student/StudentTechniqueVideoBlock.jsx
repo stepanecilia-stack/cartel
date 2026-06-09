@@ -7,6 +7,9 @@ import KnowledgeVideoCornerBadges, {
 /** Портретный ролик — без фиксированной высоты карусели. */
 export const STUDENT_TECHNIQUE_VIDEO_CLASS = 'aspect-[9/16] w-full'
 
+/** Общая ширина колонки: ряд образов + видео. */
+export const STUDENT_TECHNIQUE_MEDIA_WIDTH_CLASS = 'mx-auto w-full max-w-[min(100%,17.5rem)] sm:max-w-xs'
+
 /**
  * Один ролик — без карусели и перелистывания.
  * @param {{
@@ -59,7 +62,7 @@ export default function StudentTechniqueVideoBlock({
   return (
     <div className={showLabel ? 'space-y-2' : undefined}>
       {showLabel ? <p className="text-[13px] font-semibold text-[#2c2d2e]">{slide.label}</p> : null}
-      <div className="relative mx-auto w-full max-w-[min(100%,17.5rem)] overflow-hidden rounded-xl sm:max-w-xs">
+      <div className={`relative overflow-hidden rounded-xl ${STUDENT_TECHNIQUE_MEDIA_WIDTH_CLASS}`}>
         {showCornerBadges ? <KnowledgeVideoCornerBadges imageKeys={badgeKeys} /> : null}
         <TechnicalAtomMedia
           atom={slide.atom}

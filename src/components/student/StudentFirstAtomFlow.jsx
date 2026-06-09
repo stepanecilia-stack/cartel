@@ -108,8 +108,6 @@ export default function StudentFirstAtomFlow({
 
     return (
       <div className="space-y-3">
-        <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
-
         <div className="flex gap-2.5">
           <StudentPersonaAvatar personaId={persona.id} size="md" />
           <div className="min-w-0 flex-1">
@@ -128,6 +126,8 @@ export default function StudentFirstAtomFlow({
           showLabel={false}
           showCornerBadges={false}
         />
+
+        <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
 
         {isLastVideo ? (
           <button

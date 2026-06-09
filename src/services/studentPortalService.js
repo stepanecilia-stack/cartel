@@ -222,8 +222,22 @@ async function rebindPortalAuthUid(studentId) {
     portalLastLoginAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
+    lastUpdatedAt: serverTimestamp(),
   })
   return user.uid
+}
+
+/** Запись кабинета ученика: при рассинхроне uid — перепривязка и повтор. */
+async function updateStudentPortalDoc(studentId, patch) {
+  await ensureStudentPortalAnonymousUser()
+  const studentRef = doc(ensureDb(), 'students', studentId)
+  try {
+    await updateDoc(studentRef, patch)
+  } catch (e) {
+    if (e?.code !== 'permission-denied') throw e
+    await rebindPortalAuthUid(studentId)
+    await updateDoc(studentRef, patch)
+  }
 }
 
 export async function logoutStudentPortal() {
@@ -293,13 +307,13 @@ export async function resumeStudentPortalSession() {
 }
 
 export async function saveStudentPortalKnowledge(studentId, portalKnowledgeData) {
-  await ensureStudentPortalAnonymousUser()
   const normalized = normalizePortalKnowledgeDataForSave(portalKnowledgeData)
-  await updateDoc(doc(ensureDb(), 'students', studentId), {
+  await updateStudentPortalDoc(studentId, {
     portalKnowledgeData: normalized,
     portalLastActivityAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),
+    lastUpdatedAt: serverTimestamp(),
   })
   return normalized
 }
@@ -317,6 +331,7 @@ export async function saveStudentPortalOnboarding(studentId, { goals, personaId,
     portalLastActivityAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),
+    lastUpdatedAt: serverTimestamp(),
   }
   if (skipped) {
     patch.portalOnboardingSkippedAt = serverTimestamp()
@@ -327,7 +342,7 @@ export async function saveStudentPortalOnboarding(studentId, { goals, personaId,
       updatedAt: new Date().toISOString(),
     }
   }
-  await updateDoc(doc(ensureDb(), 'students', studentId), patch)
+  await updateStudentPortalDoc(studentId, patch)
   return {
     goals: normalizedGoals,
     personaId: normalizedPersona,
@@ -343,11 +358,12 @@ export async function saveStudentPortalPersonaMemory(studentId, personaMemory) {
     ...normalizePortalPersonaMemory(personaMemory),
     updatedAt: new Date().toISOString(),
   }
-  await updateDoc(doc(ensureDb(), 'students', studentId), {
+  await updateStudentPortalDoc(studentId, {
     portalPersonaMemory: normalized,
     portalLastActivityAt: serverTimestamp(),
     lastUpdatedSection: STUDENT_UPDATE_SECTION.studentPortal,
     updatedAt: serverTimestamp(),
+    lastUpdatedAt: serverTimestamp(),
   })
   return normalized
 }

@@ -25,6 +25,7 @@ import {
   resolveStudentPortalResumeTier,
   isAtomMarkedKnowledge,
   isTierCompleteForStudentPortal,
+  studentPortalTierLabel,
 } from '../utils/studentPortalProgress.js'
 import { normalizePortalKnowledgeData } from '../utils/portalKnowledgeData.js'
 import { mapCombinationsToDisplayAtoms } from '../utils/techniqueCatalog.js'
@@ -45,12 +46,6 @@ import {
 } from '../constants/studentPortalOnboarding.js'
 import { isGymHubPremiumSection, isPortalPremiumActive } from '../constants/studentPortalPremium.js'
 import { getPortalPersona, normalizePortalPersonaId, formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
-
-function tierLabel(tier) {
-  if (tier === 2) return 'Ур. 2'
-  if (tier === 3) return 'Комбо'
-  return 'Программа'
-}
 
 export default function StudentLearnPage() {
   const navigate = useNavigate()
@@ -203,7 +198,7 @@ export default function StudentLearnPage() {
     resolvedHubSection === 'program' ? 'Индивидуальная программа' : 'Техника бокса'
 
   const programChatHint = useMemo(() => {
-    const parts = [`Этап программы: ${tierLabel(tier)}`, `Прогресс: ${leadingDone}/${total || '—'}`]
+    const parts = [`Этап программы: ${studentPortalTierLabel(tier)}`, `Прогресс: ${leadingDone}/${total || '—'}`]
     if (viewAtom?.name) parts.push(`Сейчас смотрит: «${viewAtom.name}»`)
     if (canMark) parts.push('Может нажать «Понял» после трёх образов')
     else if (viewAtomMarked) parts.push('Элемент уже отмечен')
@@ -504,7 +499,7 @@ export default function StudentLearnPage() {
                   active ? vk.segmentBtnActive : disabled ? 'opacity-40' : vk.segmentBtnInactive
                 }`}
               >
-                <span className="block truncate">{tierLabel(t)}</span>
+                <span className="block truncate">{studentPortalTierLabel(t)}</span>
                 {prog.total > 0 ? (
                   <span className="block tabular-nums text-[10px] opacity-80">
                     {prog.done}/{prog.total}
@@ -525,7 +520,7 @@ export default function StudentLearnPage() {
               <span className="text-[12px] font-semibold tabular-nums text-[#2d81e0]">
                 По порядку: {leadingDone} / {total}
               </span>
-              <span className={vk.mutedXs}>{tierLabel(tier)}</span>
+              <span className={vk.mutedXs}>{studentPortalTierLabel(tier)}</span>
             </div>
 
             <div className="flex items-center justify-between gap-2">
