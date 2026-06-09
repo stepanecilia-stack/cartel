@@ -22,21 +22,21 @@ export function getTechniqueInstructionSteps(isFirstAtom) {
 
 /**
  * @param {TechniqueInstructionStep} step
- * @param {boolean} isFirstAtom
- * @returns {{ keys: string[], caption: string } | null}
+ * @returns {('vision' | 'logic' | 'kinesthesia')[]}
  */
+export function getTechniqueActiveKnowledgeKeys(step) {
+  if (step === 'video1') return ['vision']
+  if (step === 'video2') return ['vision', 'logic']
+  if (step === 'mirror') return ['kinesthesia']
+  return []
+}
+
+/** @deprecated Используйте getTechniqueActiveKnowledgeKeys */
 export function getTechniqueKnowledgeVisual(step, isFirstAtom) {
-  if (!isFirstAtom) return null
-  if (step === 'video1') {
-    return { keys: ['vision'], caption: 'Зрительный образ' }
-  }
-  if (step === 'video2') {
-    return { keys: ['vision', 'logic'], caption: 'Зрительный + логический образ' }
-  }
-  if (step === 'mirror') {
-    return { keys: ['kinesthesia'], caption: 'Кинестетический образ — попробуй сам перед зеркалом' }
-  }
-  return null
+  void isFirstAtom
+  const keys = getTechniqueActiveKnowledgeKeys(step)
+  if (keys.length === 0) return null
+  return { keys, caption: '' }
 }
 
 /**
@@ -161,15 +161,15 @@ export function techniqueInstructionStepHint(step, isFirstAtom = false) {
 export function buildTechniqueQuestionsOpener(personaId, atom) {
   const { name } = getAtomTeachingCopy(atom)
   if (personaId === 'vasily') {
-    return `По «${name}» ролики просмотрены, зеркало тоже. Спрашивай только про этот элемент — отвечу по нашей карточке.`
+    return `Вопросы по «${name}» — пиши сюда. Нет вопросов — жми «Понял» и идём дальше.`
   }
   if (personaId === 'arkady') {
-    return `Друг, мы с «${name}» уже прошли видео и зеркало. Вопросы только по этому приёму — из материала Cartel.`
+    return `Друг, если что неясно по «${name}» — спроси. Всё понятно — жми «Понял».`
   }
   if (personaId === 'gleb') {
-    return `«${name}»: видео и зеркало зафиксированы. Диалог только по этому элементу — по карточке программы.`
+    return `Если есть вопросы по «${name}» — спрашивай. Если нет — жми «Понял».`
   }
-  return `По «${name}» обучение пройдено. Вопросы только по этому элементу — по карточке Cartel.`
+  return `Если есть вопросы по «${name}» — спрашивай. Если нет — жми «Понял».`
 }
 
 /**

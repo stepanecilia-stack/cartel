@@ -169,6 +169,7 @@ function SoundToggleButton({ muted, onToggle, prominent = false }) {
  *   showSoundToggle?: boolean,
  *   showSpeedToggle?: boolean,
  *   carouselSlide?: boolean,
+ *   inlinePlayer?: boolean,
  *   defaultMuted?: boolean,
  * }} props
  */
@@ -185,6 +186,7 @@ export default function TechnicalAtomMedia({
   showSoundToggle = false,
   showSpeedToggle = false,
   carouselSlide = false,
+  inlinePlayer = false,
   defaultMuted = true,
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -197,6 +199,7 @@ export default function TechnicalAtomMedia({
   const isWebm = media.kind === 'webm'
   const tierCoverSrc = isWebm ? media.tierCoverSrc : null
   const letterbox = videoFit === 'contain'
+  const embeddedPlayer = inlinePlayer || carouselSlide
 
   const canPreview = previewable && PREVIEWABLE_KINDS.has(media.kind)
   const tapToPlayWebm = isWebm && typeof onTogglePlay === 'function'
@@ -323,24 +326,26 @@ export default function TechnicalAtomMedia({
   const frameClass = letterbox
     ? `relative overflow-hidden bg-[#0f0f0f] ${className}`
     : `relative overflow-hidden ${className}`
-  const isClickable = !carouselSlide && (tapToPlayWebm || canPreview)
-  const carouselPlayHandler =
-    carouselSlide && tapToPlayWebm && !playing ? () => onTogglePlay?.() : null
+  const isClickable = !embeddedPlayer && (tapToPlayWebm || canPreview)
+  const embeddedPlayHandler =
+    embeddedPlayer && tapToPlayWebm && !playing ? () => onTogglePlay?.() : null
 
   const frameInner = (
     <>
       {thumb}
       {showPlayOverlay ? (
-        <PlayOverlay compact={compactThumb} onClick={carouselPlayHandler} />
+        <PlayOverlay compact={compactThumb} onClick={embeddedPlayHandler} />
       ) : null}
-      {carouselSlide && tapToPlayWebm && playing ? (
+      {embeddedPlayer && tapToPlayWebm && playing ? (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
             onTogglePlay?.()
           }}
-          className="absolute left-3 top-3 z-[4] rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm sm:text-xs"
+          className={`absolute z-[4] rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm sm:text-xs ${
+            showSpeedControl ? 'bottom-3 left-1/2 -translate-x-1/2' : 'bottom-3 left-3'
+          }`}
         >
           Пауза
         </button>
@@ -364,14 +369,14 @@ export default function TechnicalAtomMedia({
           Без звука
         </span>
       ) : null}
-      {carouselSlide && canPreview ? (
+      {embeddedPlayer && canPreview ? (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
             setLightboxOpen(true)
           }}
-          className="pointer-events-auto absolute right-3 top-3 z-[4] rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm sm:text-xs"
+          className="pointer-events-auto absolute right-2 top-2 z-[4] rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm sm:right-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-xs"
         >
           На весь экран
         </button>

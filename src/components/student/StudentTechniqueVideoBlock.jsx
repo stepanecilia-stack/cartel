@@ -4,8 +4,11 @@ import KnowledgeVideoCornerBadges, {
   resolveKnowledgeBadgeKeysForSlide,
 } from './KnowledgeVideoCornerBadges.jsx'
 
+/** Портретный ролик — без фиксированной высоты карусели. */
+export const STUDENT_TECHNIQUE_VIDEO_CLASS = 'aspect-[9/16] w-full'
+
 /**
- * Один ролик с подписью — без карусели и перелистывания.
+ * Один ролик — без карусели и перелистывания.
  * @param {{
  *   slide: {
  *     key: string,
@@ -21,15 +24,19 @@ import KnowledgeVideoCornerBadges, {
  *   className?: string,
  *   autoPlayWebm?: boolean,
  *   badgeKeys?: string[],
+ *   showLabel?: boolean,
+ *   showCornerBadges?: boolean,
  * }} props
  */
 export default function StudentTechniqueVideoBlock({
   slide,
   playing: playingProp,
   onPlayingChange: onPlayingChangeProp,
-  className = 'h-[min(52dvh,440px)] w-full',
+  className = STUDENT_TECHNIQUE_VIDEO_CLASS,
   autoPlayWebm = true,
   badgeKeys: badgeKeysProp,
+  showLabel = true,
+  showCornerBadges = true,
 }) {
   const [playingInternal, setPlayingInternal] = useState(false)
   const controlled = typeof onPlayingChangeProp === 'function'
@@ -50,21 +57,21 @@ export default function StudentTechniqueVideoBlock({
   if (!slide) return null
 
   return (
-    <div className="space-y-2">
-      <p className="text-[13px] font-semibold text-[#2c2d2e]">{slide.label}</p>
-      <div className="relative w-full overflow-hidden rounded-lg bg-[#0f0f0f]">
-        <KnowledgeVideoCornerBadges imageKeys={badgeKeys} />
+    <div className={showLabel ? 'space-y-2' : undefined}>
+      {showLabel ? <p className="text-[13px] font-semibold text-[#2c2d2e]">{slide.label}</p> : null}
+      <div className="relative mx-auto w-full max-w-[min(100%,17.5rem)] overflow-hidden rounded-xl sm:max-w-xs">
+        {showCornerBadges ? <KnowledgeVideoCornerBadges imageKeys={badgeKeys} /> : null}
         <TechnicalAtomMedia
           atom={slide.atom}
           className={className}
           playing={playing}
           onTogglePlay={() => onPlayingChange(!playing)}
           previewable
-          videoFit="contain"
+          videoFit="cover"
           showSoundToggle={slide.showSoundToggle ?? false}
           showSpeedToggle={slide.showSpeedToggle ?? false}
           defaultMuted={slide.defaultMuted ?? true}
-          carouselSlide
+          inlinePlayer
           title={slide.label}
         />
       </div>

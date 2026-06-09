@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import StudentKnowledgeImageRow from './StudentKnowledgeImageRow.jsx'
 import StudentPersonaAvatar from './StudentPersonaAvatar.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
 import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
-import { StudentTechniqueKnowledgeVisual } from './StudentTechniqueKnowledgeVisual.jsx'
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
-import { getTechniqueKnowledgeVisual } from '../../utils/techniqueAtomInstruction.js'
+import { getTechniqueActiveKnowledgeKeys } from '../../utils/techniqueAtomInstruction.js'
 import {
   buildFirstAtomWelcome,
   buildLogicSlideTrainerLine,
@@ -103,15 +103,12 @@ export default function StudentFirstAtomFlow({
   if (phase === 'study') {
     const slide = knowledgeSlides[slideIndex]
     const isLastVideo = slideIndex >= knowledgeSlides.length - 1
-    const knowledgeVisual = getTechniqueKnowledgeVisual(slideIndex === 0 ? 'video1' : 'video2', true)
+    const knowledgeStep = slideIndex === 0 ? 'video1' : 'video2'
+    const activeKnowledgeKeys = getTechniqueActiveKnowledgeKeys(knowledgeStep)
 
     return (
       <div className="space-y-3">
-        <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>
-          {slideIndex === 0
-            ? 'Шаг 1 из 2: первый ролик — зрительный образ.'
-            : 'Шаг 2 из 2: второй ролик — зрительный + логический (со звуком).'}
-        </p>
+        <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
 
         <div className="flex gap-2.5">
           <StudentPersonaAvatar personaId={persona.id} size="md" />
@@ -123,19 +120,13 @@ export default function StudentFirstAtomFlow({
           </div>
         </div>
 
-        {knowledgeVisual ? (
-          <StudentTechniqueKnowledgeVisual
-            imageKeys={knowledgeVisual.keys}
-            caption={knowledgeVisual.caption}
-          />
-        ) : null}
-
         <StudentTechniqueVideoBlock
           slide={slide}
           playing={playing}
           onPlayingChange={setPlaying}
-          className="h-[min(60dvh,520px)] w-full"
           autoPlayWebm={false}
+          showLabel={false}
+          showCornerBadges={false}
         />
 
         {isLastVideo ? (

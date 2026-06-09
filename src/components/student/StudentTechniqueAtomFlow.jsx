@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import StudentKnowledgeImageRow from './StudentKnowledgeImageRow.jsx'
 import StudentMotorStagesHighlight from './StudentMotorStagesHighlight.jsx'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
 import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
-import { StudentTechniqueKnowledgeVisual } from './StudentTechniqueKnowledgeVisual.jsx'
 import { buildAtomProgramHint } from '../../utils/portalAtomKnowledge.js'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
 import {
   buildTechniqueQuestionsOpener,
+  getTechniqueActiveKnowledgeKeys,
   getTechniqueInstructionSteps,
-  getTechniqueKnowledgeVisual,
   techniqueInstructionAdvanceLabel,
-  techniqueInstructionStepHint,
 } from '../../utils/techniqueAtomInstruction.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -42,17 +41,13 @@ export default function StudentTechniqueAtomFlow({
   const [stepIndex, setStepIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
   const step = instructionSteps[stepIndex] ?? 'questions'
-  const hint = techniqueInstructionStepHint(step, isFirstAtom)
   const advanceLabel = techniqueInstructionAdvanceLabel(step)
-  const knowledgeVisual = getTechniqueKnowledgeVisual(step, isFirstAtom)
+  const activeKnowledgeKeys = getTechniqueActiveKnowledgeKeys(step)
 
   const showVideo = step === 'video1' || step === 'video2'
   const activeSlide = step === 'video1' ? knowledgeSlides[0] : step === 'video2' ? knowledgeSlides[1] : null
 
-  const programHint = useMemo(() => {
-    const base = buildAtomProgramHint(atom)
-    return `${base}. Шаг инструктажа: ${stepIndex + 1} из ${instructionSteps.length}.`
-  }, [atom, stepIndex, instructionSteps.length])
+  const programHint = useMemo(() => buildAtomProgramHint(atom), [atom])
 
   const handleAdvance = useCallback(() => {
     if (stepIndex >= instructionSteps.length - 1) return
@@ -70,14 +65,7 @@ export default function StudentTechniqueAtomFlow({
 
   return (
     <div className="space-y-3">
-      <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>{hint}</p>
-
-      {knowledgeVisual ? (
-        <StudentTechniqueKnowledgeVisual
-          imageKeys={knowledgeVisual.keys}
-          caption={knowledgeVisual.caption}
-        />
-      ) : null}
+      <StudentKnowledgeImageRow activeKeys={activeKnowledgeKeys} />
 
       {showVideo && activeSlide ? (
         <StudentTechniqueVideoBlock
@@ -85,6 +73,8 @@ export default function StudentTechniqueAtomFlow({
           playing={playing}
           onPlayingChange={setPlaying}
           autoPlayWebm={false}
+          showLabel={false}
+          showCornerBadges={false}
         />
       ) : null}
 
