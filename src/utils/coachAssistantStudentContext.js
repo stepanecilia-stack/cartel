@@ -19,6 +19,7 @@ import {
 import { normalizePortalKnowledgeData } from './portalKnowledgeData.js'
 import { getPersonaMemoryMilestonesForCoach, normalizePortalPersonaMemory } from './portalPersonaMemory.js'
 import { formatStudentSensitivePeriodsBrief } from './coachAssistantSensitivePeriods.js'
+import { formatStudentSuggestionLine } from './studentNameSearch.js'
 import { displayNameFromStudent, formatShortIdDisplay, studentAthleteShape } from './studentModel.js'
 
 /**
@@ -313,6 +314,30 @@ export function formatStudentLookupReply(student, personaId, allNorms, programAt
     return `Краткая сводка по ${name}:\n${summary}\nУточните, что разобрать подробнее.`
   }
   return `Коллега, вот сводка:\n${summary}\nСпроси детали: нормативы, техника, сенситив.`
+}
+
+/**
+ * @param {object[]} suggestions
+ * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
+ * @param {boolean} [includeCode]
+ */
+export function formatStudentSuggestionsReply(suggestions, personaId, includeCode = false) {
+  const list = (Array.isArray(suggestions) ? suggestions : [])
+    .slice(0, 5)
+    .map((s) => `• ${formatStudentSuggestionLine(s, { includeCode })}`)
+    .join('\n')
+  if (!list) {
+    return personaId === 'gleb'
+      ? 'Не нашёл такого ученика. Уточните имя, фамилию или код.'
+      : 'Коллега, такого ученика не вижу. Назови имя, фамилию или код.'
+  }
+  if (personaId === 'vasily') {
+    return `Точного совпадения нет. Похожие в базе:\n${list}\nУточни имя, фамилию или год рождения.`
+  }
+  if (personaId === 'gleb') {
+    return `Похожие ученики:\n${list}\nУточните, кого имеете в виду.`
+  }
+  return `Коллега, похоже, имелись в виду:\n${list}\nНазови точнее — имя или фамилию.`
 }
 
 /**

@@ -1,15 +1,12 @@
 import { formatPortalPersonaName, getPortalPersona } from '../constants/studentPortalPersonas.js'
-import {
-  findStudentByNameQuery,
-  formatStudentSuggestionLine,
-  resolveStudentNameQuery,
-} from './studentNameSearch.js'
+import { findStudentByNameQuery, resolveStudentNameQuery } from './studentNameSearch.js'
 import {
   formatStudentCoachBrief,
   formatStudentLookupReply,
-  isStudentLookupQuery,
+  formatStudentSuggestionsReply,
   isStudentTopicSpecificQuery,
 } from './coachAssistantStudentContext.js'
+import { isNormConversationThread } from './coachAssistantNormEvaluate.js'
 import {
   formatNormEvaluationReply,
   shouldUseDeterministicNormReply,
@@ -83,8 +80,9 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
     : resolveStudentNameQuery(students, text)
 
   const found = resolved.match ?? findStudentByNameQuery(students, text) ?? answerStudent
-  if (found) {
-    if (isStudentLookupQuery(text)) {
+  const normThread = isNormConversationThread(coachContext.conversationMessages ?? [], text)
+  if (found && !normThread && !coachContext.normEvaluation) {
+    if (!isStudentTopicSpecificQuery(text)) {
       return formatStudentLookupReply(found, persona.id, norms, programAtoms)
     }
     if (/техник|кабинет|этап|атом|уровен|умение|знание|навык/.test(lower)) {
@@ -99,9 +97,6 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
     if (/сенситив|чувствител|окн[ао].*развит|моторн|качеств.*возраст/.test(lower)) {
       return `По сенситивным периодам:\n${brief(found, true)}`
     }
-    if (!isStudentTopicSpecificQuery(text)) {
-      return formatStudentLookupReply(found, persona.id, norms, programAtoms)
-    }
     return `По карточке:\n${brief(found, true)}\nСпроси конкретнее: нормативы, техника, сенситив.`
   }
 
@@ -111,18 +106,11 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
 
   const suggestions = coachContext.queryStudentSuggestions ?? resolved.suggestions ?? []
   if (suggestions.length > 0) {
-    const includeCode = coachContext.includeCodeInSuggestions === true
-    const list = suggestions
-      .slice(0, 5)
-      .map((s) => `• ${formatStudentSuggestionLine(s, { includeCode })}`)
-      .join('\n')
-    if (persona.id === 'vasily') {
-      return `Точного совпадения нет. Похожие в базе:\n${list}\nУточни имя или фамилию — открою нужную карточку.`
-    }
-    if (persona.id === 'gleb') {
-      return `Точного совпадения нет. Похожие ученики:\n${list}\nУточните, кого имеете в виду (имя или фамилия).`
-    }
-    return `Коллега, похоже, имелись в виду:\n${list}\nНазови точнее — имя или фамилию.`
+    return formatStudentSuggestionsReply(
+      suggestions,
+      persona.id,
+      coachContext.includeCodeInSuggestions === true,
+    )
   }
 
   if (persona.id === 'vasily') {

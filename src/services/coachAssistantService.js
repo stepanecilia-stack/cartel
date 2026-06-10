@@ -16,8 +16,11 @@ import { isStudentCodeExplicitQuery } from '../utils/studentNameSearch.js'
 import { isNormSaveConfirmation } from '../utils/coachAssistantConfirmText.js'
 import {
   formatStudentLookupReply,
-  isStudentLookupQuery,
+  formatStudentSuggestionsReply,
+  isStudentTopicSpecificQuery,
 } from '../utils/coachAssistantStudentContext.js'
+import { isNormConversationThread } from '../utils/coachAssistantNormEvaluate.js'
+import { resolveStudentNameQuery } from '../utils/studentNameSearch.js'
 import {
   buildNormEvaluationHint,
   formatNormConfirmAckReply,
@@ -187,16 +190,40 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     }
   }
 
-  const lookupStudent = enrichedContext.queryResolvedStudent ?? enrichedContext.focusStudent
-  if (isStudentLookupQuery(userMessage) && lookupStudent?.id) {
+  const students = enrichedContext.students ?? []
+  const nameQuery = resolveStudentNameQuery(students, userMessage)
+  const normThread = isNormConversationThread(messages, userMessage)
+  const canAutoStudentReply =
+    !isStudentTopicSpecificQuery(userMessage) &&
+    !isNormSaveConfirmation(userMessage) &&
+    !normThread &&
+    !normEvaluation?.student?.id
+
+  if (canAutoStudentReply && nameQuery.match?.id && !nameQuery.ambiguous) {
     return {
       reply: formatStudentLookupReply(
-        lookupStudent,
+        nameQuery.match,
         id,
         enrichedContext.allNorms ?? [],
         enrichedContext.programAtoms ?? null,
       ),
       source: 'student-lookup',
+    }
+  }
+
+  if (
+    canAutoStudentReply &&
+    !nameQuery.match &&
+    nameQuery.suggestions.length > 0 &&
+    (nameQuery.significantTokens?.length ?? 0) >= 1
+  ) {
+    return {
+      reply: formatStudentSuggestionsReply(
+        nameQuery.suggestions,
+        id,
+        enrichedContext.includeCodeInSuggestions === true,
+      ),
+      source: 'student-suggest',
     }
   }
 

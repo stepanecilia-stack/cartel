@@ -77,6 +77,26 @@ const QUERY_STOP_WORDS = new Set([
   'отжались',
   'отжим',
   'отжиманий',
+  'окей',
+  'оке',
+  'okay',
+  'ладно',
+  'ну',
+  'эм',
+  'э',
+  'алло',
+  'слушай',
+  'коллега',
+  'хорошо',
+  'существует',
+  'системе',
+  'базе',
+  'нашей',
+  'точно',
+  'уверен',
+  'уверена',
+  'люди',
+  'человек',
   'какой',
   'какая',
   'какие',
@@ -93,6 +113,10 @@ const STEM_ENDINGS = [
   'ого',
   'ему',
   'ому',
+  'ова',
+  'ева',
+  'ина',
+  'ына',
   'ыми',
   'ими',
   'ах',
@@ -298,17 +322,59 @@ export function rankStudentNameMatches(students, query, limit = 6) {
  * @param {string} query
  * @returns {StudentNameQueryResult}
  */
+function uniqueStudents(rows) {
+  return rows
+    .map((row) => row.student)
+    .filter((student, index, arr) => arr.findIndex((s) => s.id === student.id) === index)
+}
+
 export function resolveStudentNameQuery(students, query) {
   const ranked = rankStudentNameMatches(students, query, 8)
   const queryTokens = extractQueryNameTokens(query)
+  const significant = queryTokens.filter(isSignificantNameToken)
 
   if (!ranked.length) {
-    return { match: null, suggestions: [], ambiguous: false, queryTokens }
+    return { match: null, suggestions: [], ambiguous: false, queryTokens, significantTokens: significant }
+  }
+
+  if (significant.length >= 2) {
+    const fullMatches = ranked.filter((row) => allSignificantNameTokensMatch(row.student, queryTokens))
+    if (fullMatches.length === 1) {
+      return {
+        match: fullMatches[0].student,
+        suggestions: uniqueStudents(ranked)
+          .filter((s) => s.id !== fullMatches[0].student.id)
+          .slice(0, 6),
+        ambiguous: false,
+        queryTokens,
+        significantTokens: significant,
+      }
+    }
+    if (fullMatches.length > 1) {
+      if (fullMatches[0].score > fullMatches[1].score) {
+        return {
+          match: fullMatches[0].student,
+          suggestions: uniqueStudents(fullMatches)
+            .filter((s) => s.id !== fullMatches[0].student.id)
+            .slice(0, 6),
+          ambiguous: false,
+          queryTokens,
+          significantTokens: significant,
+        }
+      }
+      return {
+        match: null,
+        suggestions: uniqueStudents(fullMatches).slice(0, 6),
+        ambiguous: true,
+        queryTokens,
+        significantTokens: significant,
+      }
+    }
   }
 
   const topScore = ranked[0].score
   const leaders = ranked.filter((row) => row.score === topScore)
-  const minScore = queryTokens.length <= 1 ? 2 : queryTokens.length * 2
+  const minScore = significant.length <= 1 ? 2 : Math.max(4, significant.length * 2)
 
   let match = null
   let ambiguous = false
@@ -316,29 +382,28 @@ export function resolveStudentNameQuery(students, query) {
   if (topScore >= minScore) {
     if (leaders.length === 1) {
       match = leaders[0].student
-    } else if (queryTokens.length >= 2 && ranked.length > 1 && topScore > ranked[1].score) {
+    } else if (significant.length >= 2 && ranked.length > 1 && topScore > ranked[1].score) {
       match = ranked[0].student
     } else {
       ambiguous = true
     }
   }
 
-  const suggestions = ranked
-    .map((row) => row.student)
-    .filter((student, index, arr) => arr.findIndex((s) => s.id === student.id) === index)
+  const suggestions = uniqueStudents(ranked)
     .filter((student) => !match || student.id !== match.id)
     .slice(0, 6)
 
   if (!match) {
     return {
       match: null,
-      suggestions: ranked.map((row) => row.student).slice(0, 6),
+      suggestions: uniqueStudents(ranked).slice(0, 6),
       ambiguous: ambiguous || ranked.length > 1,
       queryTokens,
+      significantTokens: significant,
     }
   }
 
-  return { match, suggestions, ambiguous: false, queryTokens }
+  return { match, suggestions, ambiguous: false, queryTokens, significantTokens: significant }
 }
 
 /** @param {object} student */
