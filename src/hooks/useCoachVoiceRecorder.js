@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const MAX_RECORD_MS = 90_000
 const MIN_SEND_MS = 350
 const CANCEL_SLIDE_PX = 72
+const LOCK_SLIDE_PX = 72
 
 /**
  * @returns {typeof SpeechRecognition | null}
@@ -51,6 +52,8 @@ export function useCoachVoiceRecorder() {
   )
   const [elapsedMs, setElapsedMs] = useState(0)
   const [slidePx, setSlidePx] = useState(0)
+  const [slideUpPx, setSlideUpPx] = useState(0)
+  const [isLocked, setIsLocked] = useState(false)
   const [levels, setLevels] = useState(() => [0.2, 0.35, 0.5, 0.35, 0.2])
   const [error, setError] = useState('')
   const [draft, setDraft] = useState(
@@ -69,7 +72,10 @@ export function useCoachVoiceRecorder() {
   const startedAtRef = useRef(0)
   const holdActiveRef = useRef(false)
   const cancelOnReleaseRef = useRef(false)
+  const lockedRef = useRef(false)
+  const lockPendingRef = useRef(false)
   const originXRef = useRef(0)
+  const originYRef = useRef(0)
   /** @type {import('react').MutableRefObject<((value: unknown) => void) | null>} */
   const stopResolveRef = useRef(null)
   const armingTokenRef = useRef(0)
@@ -115,11 +121,25 @@ export function useCoachVoiceRecorder() {
     releaseActiveStream()
   }, [releaseActiveStream, stopMeter])
 
+  const activateLock = useCallback(() => {
+    lockedRef.current = true
+    lockPendingRef.current = false
+    holdActiveRef.current = false
+    cancelOnReleaseRef.current = false
+    setIsLocked(true)
+    setSlidePx(0)
+    setSlideUpPx(LOCK_SLIDE_PX)
+  }, [])
+
   const resetRecordingUi = useCallback(() => {
     setSlidePx(0)
+    setSlideUpPx(0)
+    setIsLocked(false)
     setLevels([0.2, 0.35, 0.5, 0.35, 0.2])
     holdActiveRef.current = false
     cancelOnReleaseRef.current = false
+    lockedRef.current = false
+    lockPendingRef.current = false
     recordingActiveRef.current = false
   }, [])
 
@@ -261,6 +281,7 @@ export function useCoachVoiceRecorder() {
       recordingActiveRef.current = true
       setElapsedMs(0)
       setPhase('recording')
+      if (lockPendingRef.current) activateLock()
       recorder.start(120)
       startMeter(stream)
 
@@ -274,17 +295,22 @@ export function useCoachVoiceRecorder() {
 
       return true
     },
-    [discardDraft, finishStopToPreview, startMeter, stopToPreview],
+    [activateLock, discardDraft, finishStopToPreview, startMeter, stopToPreview],
   )
 
   const holdStart = useCallback(
-    async (clientX) => {
+    async (clientX, clientY) => {
       if (phase !== 'idle' || !isCoachVoiceInputSupported()) return
       setError('')
       holdActiveRef.current = true
       cancelOnReleaseRef.current = false
+      lockedRef.current = false
+      lockPendingRef.current = false
       originXRef.current = clientX
+      originYRef.current = clientY
       setSlidePx(0)
+      setSlideUpPx(0)
+      setIsLocked(false)
       setPhase('arming')
 
       const token = ++armingTokenRef.current
@@ -301,15 +327,36 @@ export function useCoachVoiceRecorder() {
     [phase, acquireStream, beginRecordingWithStream, cancelRecording],
   )
 
-  const holdMove = useCallback((clientX) => {
-    if (!holdActiveRef.current) return
-    if (phase !== 'arming' && phase !== 'recording') return
-    const delta = Math.min(0, clientX - originXRef.current)
-    setSlidePx(delta)
-    cancelOnReleaseRef.current = delta < -CANCEL_SLIDE_PX
-  }, [phase])
+  const holdMove = useCallback(
+    (clientX, clientY) => {
+      if (lockedRef.current) return
+      if (!holdActiveRef.current) return
+      if (phase !== 'arming' && phase !== 'recording') return
+
+      const deltaX = Math.min(0, clientX - originXRef.current)
+      setSlidePx(deltaX)
+      cancelOnReleaseRef.current = deltaX < -CANCEL_SLIDE_PX
+
+      const deltaY = Math.max(0, originYRef.current - clientY)
+      setSlideUpPx(Math.min(LOCK_SLIDE_PX, deltaY))
+
+      if (deltaY >= LOCK_SLIDE_PX) {
+        if (recordingActiveRef.current) {
+          activateLock()
+        } else {
+          lockPendingRef.current = true
+        }
+      }
+    },
+    [activateLock, phase],
+  )
 
   const holdEnd = useCallback(async () => {
+    if (lockedRef.current) {
+      holdActiveRef.current = false
+      return null
+    }
+
     holdActiveRef.current = false
 
     if (cancelOnReleaseRef.current) {
@@ -324,6 +371,8 @@ export function useCoachVoiceRecorder() {
 
     return stopToPreview()
   }, [cancelRecording, stopToPreview])
+
+  const finishRecording = useCallback(() => stopToPreview(), [stopToPreview])
 
   const beginSend = useCallback(() => {
     if (phase !== 'preview' || !draft) return null
@@ -367,6 +416,9 @@ export function useCoachVoiceRecorder() {
     elapsedLabel: formatRecordTimer(elapsedMs),
     previewDurationLabel,
     slidePx,
+    slideUpPx,
+    isLocked,
+    lockPending: slideUpPx >= LOCK_SLIDE_PX * 0.55 && !isLocked,
     levels,
     cancelPending: slidePx < -CANCEL_SLIDE_PX * 0.55,
     error,
@@ -374,6 +426,7 @@ export function useCoachVoiceRecorder() {
     holdStart,
     holdMove,
     holdEnd,
+    finishRecording,
     beginSend,
     completeSend,
     cancelRecording,

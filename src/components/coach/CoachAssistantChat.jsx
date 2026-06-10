@@ -249,8 +249,17 @@ export default function CoachAssistantChat({
     const v = voiceRef.current
     if (!v) return
     if (v.phase !== 'arming' && v.phase !== 'recording') return
+    if (v.isLocked) {
+      holdPointerIdRef.current = null
+      return
+    }
     holdPointerIdRef.current = null
     await v.holdEnd()
+  }, [])
+
+  const finishLockedRecording = useCallback(async () => {
+    holdPointerIdRef.current = null
+    await voiceRef.current?.finishRecording()
   }, [])
 
   const sendVoiceDraft = useCallback(async () => {
@@ -273,12 +282,16 @@ export default function CoachAssistantChat({
     const onMove = (event) => {
       if (holdPointerIdRef.current === null || event.pointerId !== holdPointerIdRef.current) return
       event.preventDefault()
-      voiceRef.current?.holdMove(event.clientX)
+      voiceRef.current?.holdMove(event.clientX, event.clientY)
     }
 
     const onEnd = (event) => {
       if (holdPointerIdRef.current === null || event.pointerId !== holdPointerIdRef.current) return
       event.preventDefault()
+      if (voiceRef.current?.isLocked) {
+        holdPointerIdRef.current = null
+        return
+      }
       void endHoldRecording()
     }
 
@@ -301,18 +314,22 @@ export default function CoachAssistantChat({
     } catch {
       /* ignore */
     }
-    void voice.holdStart(event.clientX)
+    void voice.holdStart(event.clientX, event.clientY)
   }
 
   const handleMicPointerMove = (event) => {
     if (holdPointerIdRef.current !== event.pointerId) return
     event.preventDefault()
-    voice.holdMove(event.clientX)
+    voice.holdMove(event.clientX, event.clientY)
   }
 
   const handleMicPointerUp = (event) => {
     if (holdPointerIdRef.current !== event.pointerId) return
     event.preventDefault()
+    if (voice.isLocked) {
+      holdPointerIdRef.current = null
+      return
+    }
     void endHoldRecording()
   }
 
@@ -425,7 +442,11 @@ export default function CoachAssistantChat({
             previewDurationLabel={voice.previewDurationLabel}
             audioUrl={voice.draft?.audioUrl ?? ''}
             levels={voice.levels}
+            locked={voice.isLocked}
+            slideUpPx={voice.slideUpPx}
+            lockPending={voice.lockPending}
             cancelPending={voice.cancelPending}
+            onStop={() => void finishLockedRecording()}
             onCancel={() => {
               holdPointerIdRef.current = null
               if (voice.phase === 'preview' || voice.phase === 'processing') {
@@ -466,7 +487,7 @@ export default function CoachAssistantChat({
                 className="flex h-10 w-10 shrink-0 touch-none items-center justify-center rounded-full bg-[#5181b8] text-white transition-transform active:scale-95 disabled:opacity-45"
                 style={{ touchAction: 'none' }}
                 aria-label="Удержите для голосового"
-                title="Удерживайте — запись, отпустите — прослушать"
+                title="Удерживайте — запись · ↑ — без удержания · отпустите — прослушать"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
                   <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
@@ -489,7 +510,9 @@ export default function CoachAssistantChat({
       {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
       {error ? <p className={vk.error}>{error}</p> : null}
       {voice.isSupported && !voicePanelOpen ? (
-        <p className={vk.mutedXs}>Голосовое: удерживайте микрофон · отпустите · прослушайте · → отправить</p>
+        <p className={vk.mutedXs}>
+          Голосовое: удерживайте · ↑ заблокировать · отпустите · прослушайте · → отправить
+        </p>
       ) : null}
     </div>
   )
