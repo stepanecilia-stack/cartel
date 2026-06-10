@@ -28,6 +28,7 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
   const lower = text.toLowerCase()
   const students = coachContext.students ?? []
   const focus = coachContext.focusStudent ?? null
+  const answerStudent = focus ?? coachContext.queryResolvedStudent ?? null
   const norms = coachContext.allNorms ?? []
   const programAtoms = coachContext.programAtoms ?? null
 
@@ -76,7 +77,7 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
       }
     : resolveStudentNameQuery(students, text)
 
-  const found = resolved.match ?? findStudentByNameQuery(students, text)
+  const found = resolved.match ?? findStudentByNameQuery(students, text) ?? answerStudent
   if (found) {
     if (/техник|кабинет|этап|атом|уровен|умение|знание|навык/.test(lower)) {
       return `По технике:\n${brief(found, true)}`

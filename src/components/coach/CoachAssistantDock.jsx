@@ -3,6 +3,7 @@ import {
   getCoachStudentsCache,
   subscribeCoachStudentsCache,
 } from '../../data/coachStudentsCache.js'
+import { hydrateCoachAssistantFocusStudent } from '../../utils/coachAssistantStudentSources.js'
 import { saveCoachAssistantPersona } from '../../services/coachAssistantService.js'
 import { resolveCoachAssistantPersonaId } from '../../utils/coachAssistantPersona.js'
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
@@ -117,7 +118,7 @@ export default function CoachAssistantDock({
               coachId={coachId}
               coachName={coachName}
               students={students}
-              focusStudent={focusStudent}
+              focusStudent={hydrateCoachAssistantFocusStudent(focusStudent)}
               disabled={!open}
               onStudentPatched={onStudentPatched}
             />

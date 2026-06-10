@@ -9,10 +9,10 @@ import { normalizeCoachAssistantPersonaId, writeCoachAssistantPersonaLocal } fro
 import { mergeStudentCardLiveSnapshot } from '../data/studentCardLiveCache.js'
 import {
   mergeStudentIntoList,
-  preferFreshStudent,
+  resolveCoachAssistantStudentTargets,
 } from '../utils/coachAssistantStudentSources.js'
 import { COACH_ASSISTANT_CHAT_MAX_MESSAGES } from '../utils/coachAssistantChatHistory.js'
-import { isStudentCodeExplicitQuery, resolveStudentNameQuery } from '../utils/studentNameSearch.js'
+import { isStudentCodeExplicitQuery } from '../utils/studentNameSearch.js'
 import {
   buildNormEvaluationHint,
   formatNormEvaluationReply,
@@ -47,23 +47,22 @@ export async function prepareCoachAssistantContext(coachContext = {}, userMessag
     level2: cache.level2,
     level3: cache.level3,
   }
-  const focusStudent = coachContext.focusStudent ?? null
-  const students = mergeStudentIntoList(coachContext.students, focusStudent).map((student) =>
-    mergeStudentCardLiveSnapshot(student),
-  )
-  const resolved =
-    coachContext.queryResolvedStudent != null
-      ? {
-          match: preferFreshStudent(coachContext.queryResolvedStudent, focusStudent),
-          suggestions: coachContext.queryStudentSuggestions ?? [],
-          ambiguous: false,
-        }
-      : resolveStudentNameQuery(students, conversationText || userMessage)
+  const students = mergeStudentIntoList(
+    coachContext.students,
+    coachContext.focusStudent,
+  ).map((student) => mergeStudentCardLiveSnapshot(student))
 
-  const queryResolvedStudent = preferFreshStudent(resolved.match, focusStudent)
-  const queryStudentSuggestions = (resolved.suggestions ?? []).map((student) =>
-    preferFreshStudent(student, focusStudent),
-  )
+  const targets = resolveCoachAssistantStudentTargets({
+    students,
+    focusStudent: coachContext.focusStudent,
+    userMessage,
+    conversationText,
+    presetResolvedStudent: coachContext.queryResolvedStudent,
+    presetSuggestions: coachContext.queryStudentSuggestions,
+  })
+  const focusStudent = targets.focusStudent
+  const queryResolvedStudent = targets.queryResolvedStudent
+  const queryStudentSuggestions = targets.queryStudentSuggestions
 
   return {
     ...coachContext,

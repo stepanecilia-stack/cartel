@@ -96,15 +96,27 @@ function mergeStudentWithRoster(student, coachContext) {
 }
 
 export function resolveStudentFromCoachMessages(messages, coachContext = {}) {
+  const students = Array.isArray(coachContext.students) ? coachContext.students : []
+  const list = Array.isArray(messages) ? messages : []
+  const focus = coachContext.focusStudent
+
+  const lastUser = [...list].reverse().find((m) => m?.role === 'user')
+  if (lastUser?.content) {
+    const current = findStudentByNameQuery(students, lastUser.content)
+    if (current?.id) {
+      if (!focus?.id || String(current.id) !== String(focus.id)) {
+        return mergeStudentWithRoster(current, coachContext)
+      }
+    }
+  }
+
+  if (focus?.id) {
+    return mergeStudentWithRoster(focus, coachContext)
+  }
+
   if (coachContext.queryResolvedStudent?.id) {
     return mergeStudentWithRoster(coachContext.queryResolvedStudent, coachContext)
   }
-  if (coachContext.focusStudent?.id) {
-    return mergeStudentWithRoster(coachContext.focusStudent, coachContext)
-  }
-
-  const students = Array.isArray(coachContext.students) ? coachContext.students : []
-  const list = Array.isArray(messages) ? messages : []
 
   const allUserText = list
     .filter((m) => m?.role === 'user')

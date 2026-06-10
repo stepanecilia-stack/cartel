@@ -1,9 +1,79 @@
 import { mergeStudentCardLiveSnapshot } from '../data/studentCardLiveCache.js'
+import { resolveStudentNameQuery } from './studentNameSearch.js'
 
 /**
  * Слияние свежих данных ученика для контекста помощника-тренера.
  * Открытая карточка и недавние сохранения важнее устаревшего списка.
  */
+
+/**
+ * Снимок открытой карточки (форма на экране) поверх списка учеников.
+ * @param {object | null | undefined} focusStudent
+ */
+export function hydrateCoachAssistantFocusStudent(focusStudent) {
+  if (!focusStudent?.id) return null
+  return mergeStudentCardLiveSnapshot(focusStudent)
+}
+
+/**
+ * Кого считать учеником запроса: открытая карточка важнее старой переписки.
+ * Другой ученик — только если его явно назвали в текущем сообщении.
+ * @param {{
+ *   students: object[],
+ *   focusStudent?: object | null,
+ *   userMessage?: string,
+ *   conversationText?: string,
+ *   presetResolvedStudent?: object | null,
+ *   presetSuggestions?: object[],
+ * }} params
+ */
+export function resolveCoachAssistantStudentTargets({
+  students,
+  focusStudent = null,
+  userMessage = '',
+  conversationText = '',
+  presetResolvedStudent = null,
+  presetSuggestions = null,
+}) {
+  const list = Array.isArray(students) ? students : []
+  const hydratedFocus = hydrateCoachAssistantFocusStudent(focusStudent)
+
+  if (presetResolvedStudent?.id) {
+    return {
+      focusStudent: hydratedFocus,
+      queryResolvedStudent: preferFreshStudent(presetResolvedStudent, hydratedFocus),
+      queryStudentSuggestions: Array.isArray(presetSuggestions) ? presetSuggestions : [],
+    }
+  }
+
+  const currentQuery = resolveStudentNameQuery(list, userMessage)
+
+  if (hydratedFocus?.id) {
+    const explicitOther =
+      currentQuery.match?.id && String(currentQuery.match.id) !== String(hydratedFocus.id)
+    if (explicitOther) {
+      return {
+        focusStudent: hydratedFocus,
+        queryResolvedStudent: preferFreshStudent(currentQuery.match, hydratedFocus),
+        queryStudentSuggestions: currentQuery.suggestions ?? [],
+      }
+    }
+    return {
+      focusStudent: hydratedFocus,
+      queryResolvedStudent: preferFreshStudent(hydratedFocus, hydratedFocus),
+      queryStudentSuggestions: (currentQuery.suggestions ?? []).filter(
+        (s) => String(s.id) !== String(hydratedFocus.id),
+      ),
+    }
+  }
+
+  const conversationQuery = resolveStudentNameQuery(list, conversationText || userMessage)
+  return {
+    focusStudent: null,
+    queryResolvedStudent: preferFreshStudent(conversationQuery.match, null),
+    queryStudentSuggestions: conversationQuery.suggestions ?? [],
+  }
+}
 
 /**
  * @param {object[] | null | undefined} students
