@@ -247,9 +247,8 @@ export default function CoachAssistantChat({
 
   const endHoldRecording = useCallback(async () => {
     const v = voiceRef.current
-    if (!v) return
-    if (v.phase !== 'arming' && v.phase !== 'recording') return
-    if (v.isLocked) {
+    if (!v || v.phase !== 'recording') return
+    if (v.isLockedActive()) {
       holdPointerIdRef.current = null
       return
     }
@@ -276,61 +275,56 @@ export default function CoachAssistantChat({
     }
   }, [processVoiceRecording])
 
-  useEffect(() => {
-    if (voice.phase !== 'arming' && voice.phase !== 'recording') return undefined
+  const detachHoldListenersRef = useRef(/** @type {(() => void) | null} */ (null))
 
-    const onMove = (event) => {
-      if (holdPointerIdRef.current === null || event.pointerId !== holdPointerIdRef.current) return
-      event.preventDefault()
-      voiceRef.current?.holdMove(event.clientX, event.clientY)
-    }
+  const detachHoldListeners = useCallback(() => {
+    detachHoldListenersRef.current?.()
+    detachHoldListenersRef.current = null
+  }, [])
 
-    const onEnd = (event) => {
-      if (holdPointerIdRef.current === null || event.pointerId !== holdPointerIdRef.current) return
-      event.preventDefault()
-      if (voiceRef.current?.isLocked) {
-        holdPointerIdRef.current = null
-        return
+  const attachHoldListeners = useCallback(
+    (pointerId) => {
+      detachHoldListeners()
+
+      const onMove = (event) => {
+        if (event.pointerId !== pointerId) return
+        event.preventDefault()
+        voiceRef.current?.holdMove(event.clientX, event.clientY)
       }
-      void endHoldRecording()
-    }
 
-    window.addEventListener('pointermove', onMove, { passive: false })
-    window.addEventListener('pointerup', onEnd)
-    window.addEventListener('pointercancel', onEnd)
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onEnd)
-      window.removeEventListener('pointercancel', onEnd)
-    }
-  }, [voice.phase, endHoldRecording])
+      const onEnd = (event) => {
+        if (event.pointerId !== pointerId) return
+        event.preventDefault()
+        detachHoldListeners()
+        if (voiceRef.current?.isLockedActive()) {
+          holdPointerIdRef.current = null
+          return
+        }
+        void endHoldRecording()
+      }
+
+      window.addEventListener('pointermove', onMove, { passive: false })
+      window.addEventListener('pointerup', onEnd)
+      window.addEventListener('pointercancel', onEnd)
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onEnd)
+        window.removeEventListener('pointercancel', onEnd)
+      }
+      detachHoldListenersRef.current = cleanup
+    },
+    [detachHoldListeners, endHoldRecording],
+  )
+
+  useEffect(() => () => detachHoldListeners(), [detachHoldListeners])
 
   const handleMicPointerDown = (event) => {
     if (disabled || busy || input.trim() || voice.phase !== 'idle') return
     event.preventDefault()
     holdPointerIdRef.current = event.pointerId
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId)
-    } catch {
-      /* ignore */
-    }
-    void voice.holdStart(event.clientX, event.clientY)
-  }
-
-  const handleMicPointerMove = (event) => {
-    if (holdPointerIdRef.current !== event.pointerId) return
-    event.preventDefault()
-    voice.holdMove(event.clientX, event.clientY)
-  }
-
-  const handleMicPointerUp = (event) => {
-    if (holdPointerIdRef.current !== event.pointerId) return
-    event.preventDefault()
-    if (voice.isLocked) {
-      holdPointerIdRef.current = null
-      return
-    }
-    void endHoldRecording()
+    attachHoldListeners(event.pointerId)
+    void voiceRef.current?.holdStart(event.clientX, event.clientY)
   }
 
   const resetChat = useCallback(() => {
@@ -352,23 +346,17 @@ export default function CoachAssistantChat({
   }, [busy, disabled, coachId, persona.id, name, opener, voice])
 
   const showConfirmCard = pendingNorm?.evaluation && !busy
-  const voicePanelOpen =
-    voice.phase === 'arming' ||
-    voice.phase === 'recording' ||
-    voice.phase === 'preview' ||
-    voice.phase === 'processing'
+  const voiceActive = voice.phase !== 'idle'
   const voiceRecorderMode =
-    voice.phase === 'preview' || voice.phase === 'processing'
-      ? voice.phase
-      : 'recording'
-  const showMicButton = !input.trim() && voice.isSupported && voice.phase === 'idle' && !busy
+    voice.phase === 'preview' || voice.phase === 'processing' ? voice.phase : 'recording'
+  const showMicButton = !input.trim() && voice.isSupported && !voiceActive && !busy
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex justify-end">
         <button
           type="button"
-          disabled={disabled || busy || voicePanelOpen}
+          disabled={disabled || busy || voiceActive}
           onClick={resetChat}
           className={`${vk.btnSecondary} px-2.5 py-1 text-[12px]`}
         >
@@ -412,7 +400,7 @@ export default function CoachAssistantChat({
           ),
         )}
 
-        {busy && !voicePanelOpen ? (
+        {busy && !voiceActive ? (
           <div className="flex gap-2.5">
             <StudentPersonaAvatar personaId={persona.id} size="md" />
             <div className="rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] text-[#818c99]">
@@ -434,85 +422,88 @@ export default function CoachAssistantChat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="w-full min-w-0 touch-none select-none pb-[max(0px,env(safe-area-inset-bottom))]">
-        {voicePanelOpen ? (
-          <CoachAssistantVoiceRecorder
-            mode={voiceRecorderMode}
-            elapsedLabel={voice.phase === 'arming' ? '0:00' : voice.elapsedLabel}
-            previewDurationLabel={voice.previewDurationLabel}
-            audioUrl={voice.draft?.audioUrl ?? ''}
-            levels={voice.levels}
-            locked={voice.isLocked}
-            slideUpPx={voice.slideUpPx}
-            lockPending={voice.lockPending}
-            cancelPending={voice.cancelPending}
-            onStop={() => void finishLockedRecording()}
-            onCancel={() => {
-              holdPointerIdRef.current = null
-              if (voice.phase === 'preview' || voice.phase === 'processing') {
-                voice.discardPreview()
-              } else {
-                voice.cancelRecording()
+      <div className="relative w-full min-w-0 touch-none select-none pb-[max(0px,env(safe-area-inset-bottom))]">
+        <div
+          className={`flex min-w-0 gap-2 transition-opacity duration-150 ${
+            voiceActive ? 'pointer-events-none opacity-0' : 'opacity-100'
+          }`}
+          aria-hidden={voiceActive}
+        >
+          <input
+            type="text"
+            className={`${vk.input} min-h-[52px] flex-1 rounded-full`}
+            placeholder={`Спросите ${name}…`}
+            value={input}
+            disabled={disabled || busy}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send()
               }
             }}
-            onSend={() => void sendVoiceDraft()}
+            maxLength={500}
           />
-        ) : (
-          <div className="flex min-w-0 gap-2">
-            <input
-              type="text"
-              className={`${vk.input} min-h-10 flex-1`}
-              placeholder={`Спросите ${name}…`}
-              value={input}
+          {showMicButton ? (
+            <button
+              type="button"
               disabled={disabled || busy}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  send()
+              onPointerDown={handleMicPointerDown}
+              className="flex h-[52px] w-[52px] shrink-0 touch-none items-center justify-center rounded-full bg-[#5181b8] text-white transition-transform duration-100 active:scale-90 disabled:opacity-45"
+              style={{ touchAction: 'none' }}
+              aria-label="Удержите для голосового"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+                <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled || busy || !input.trim()}
+              onClick={send}
+              className={`h-[52px] shrink-0 rounded-full px-4 ${vk.btnPrimary}`}
+            >
+              →
+            </button>
+          )}
+        </div>
+
+        {voiceActive ? (
+          <div className="absolute inset-x-0 bottom-0 z-10">
+            <CoachAssistantVoiceRecorder
+              mode={voiceRecorderMode}
+              elapsedLabel={voice.elapsedLabel}
+              previewDurationLabel={voice.previewDurationLabel}
+              audioUrl={voice.draft?.audioUrl ?? ''}
+              levels={voice.levels}
+              locked={voice.isLocked}
+              slidePx={voice.slidePx}
+              slideUpPx={voice.slideUpPx}
+              pointerX={voice.gesture.pointerX}
+              pointerY={voice.gesture.pointerY}
+              lockPending={voice.lockPending}
+              cancelPending={voice.cancelPending}
+              onCancel={() => {
+                holdPointerIdRef.current = null
+                detachHoldListeners()
+                if (voice.phase === 'preview' || voice.phase === 'processing') {
+                  voice.discardPreview()
+                } else {
+                  voice.cancelRecording()
                 }
               }}
-              maxLength={500}
+              onStop={() => void finishLockedRecording()}
+              onSend={() => void sendVoiceDraft()}
             />
-            {showMicButton ? (
-              <button
-                type="button"
-                disabled={disabled || busy}
-                onPointerDown={handleMicPointerDown}
-                onPointerMove={handleMicPointerMove}
-                onPointerUp={handleMicPointerUp}
-                onPointerCancel={() => {
-                  void endHoldRecording()
-                }}
-                className="flex h-10 w-10 shrink-0 touch-none items-center justify-center rounded-full bg-[#5181b8] text-white transition-transform active:scale-95 disabled:opacity-45"
-                style={{ touchAction: 'none' }}
-                aria-label="Удержите для голосового"
-                title="Удерживайте — запись · ↑ — без удержания · отпустите — прослушать"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-                  <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={disabled || busy || !input.trim()}
-                onClick={send}
-                className={`shrink-0 ${vk.btnPrimary} px-3`}
-              >
-                →
-              </button>
-            )}
           </div>
-        )}
+        ) : null}
       </div>
 
       {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
       {error ? <p className={vk.error}>{error}</p> : null}
-      {voice.isSupported && !voicePanelOpen ? (
-        <p className={vk.mutedXs}>
-          Голосовое: удерживайте · ↑ заблокировать · отпустите · прослушайте · → отправить
-        </p>
+      {voice.isSupported && !voiceActive ? (
+        <p className={vk.mutedXs}>Удержите микрофон · ↑ без удержания · ← отмена</p>
       ) : null}
     </div>
   )

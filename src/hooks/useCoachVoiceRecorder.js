@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 
 const MAX_RECORD_MS = 90_000
-const MIN_SEND_MS = 350
-const CANCEL_SLIDE_PX = 72
-const LOCK_SLIDE_PX = 72
+const MIN_SEND_MS = 300
+export const CANCEL_SLIDE_PX = 80
+export const LOCK_SLIDE_PX = 80
 
 /**
  * @returns {typeof SpeechRecognition | null}
@@ -44,21 +44,29 @@ function revokeDraftUrl(draft) {
 }
 
 /**
- * Telegram-style: удержание → запись, отпускание → превью, прослушать → отправить.
+ * Telegram-style voice: hold → record, slide ↑ lock, slide ← cancel,
+ * release → preview, play → send.
  */
 export function useCoachVoiceRecorder() {
   const [phase, setPhase] = useState(
-    /** @type {'idle' | 'arming' | 'recording' | 'preview' | 'processing'} */ ('idle'),
+    /** @type {'idle' | 'recording' | 'preview' | 'processing'} */ ('idle'),
   )
   const [elapsedMs, setElapsedMs] = useState(0)
-  const [slidePx, setSlidePx] = useState(0)
-  const [slideUpPx, setSlideUpPx] = useState(0)
   const [isLocked, setIsLocked] = useState(false)
-  const [levels, setLevels] = useState(() => [0.2, 0.35, 0.5, 0.35, 0.2])
+  const [levels, setLevels] = useState(() => Array.from({ length: 28 }, () => 0.18))
   const [error, setError] = useState('')
   const [draft, setDraft] = useState(
     /** @type {{ blob: Blob, durationSec: number, audioUrl: string, browserTranscript: string } | null} */ (null),
   )
+  const [, bumpGesture] = useReducer((n) => n + 1, 0)
+
+  const gestureRef = useRef({
+    slideX: 0,
+    slideY: 0,
+    pointerX: 0,
+    pointerY: 0,
+  })
+  const gestureRafRef = useRef(/** @type {number | null} */ (null))
 
   const warmStreamRef = useRef(/** @type {MediaStream | null} */ (null))
   const mediaRecorderRef = useRef(/** @type {MediaRecorder | null} */ (null))
@@ -80,6 +88,14 @@ export function useCoachVoiceRecorder() {
   const stopResolveRef = useRef(null)
   const armingTokenRef = useRef(0)
   const recordingActiveRef = useRef(false)
+
+  const scheduleGestureRender = useCallback(() => {
+    if (gestureRafRef.current != null) return
+    gestureRafRef.current = requestAnimationFrame(() => {
+      gestureRafRef.current = null
+      bumpGesture()
+    })
+  }, [])
 
   const stopMeter = useCallback(() => {
     if (rafRef.current != null) {
@@ -121,27 +137,36 @@ export function useCoachVoiceRecorder() {
     releaseActiveStream()
   }, [releaseActiveStream, stopMeter])
 
+  const resetGesture = useCallback(() => {
+    gestureRef.current = { slideX: 0, slideY: 0, pointerX: 0, pointerY: 0 }
+    scheduleGestureRender()
+  }, [scheduleGestureRender])
+
   const activateLock = useCallback(() => {
+    if (lockedRef.current) return
     lockedRef.current = true
     lockPendingRef.current = false
     holdActiveRef.current = false
     cancelOnReleaseRef.current = false
     setIsLocked(true)
-    setSlidePx(0)
-    setSlideUpPx(LOCK_SLIDE_PX)
-  }, [])
+    gestureRef.current = {
+      ...gestureRef.current,
+      slideX: 0,
+      slideY: LOCK_SLIDE_PX,
+    }
+    scheduleGestureRender()
+  }, [scheduleGestureRender])
 
   const resetRecordingUi = useCallback(() => {
-    setSlidePx(0)
-    setSlideUpPx(0)
-    setIsLocked(false)
-    setLevels([0.2, 0.35, 0.5, 0.35, 0.2])
+    resetGesture()
     holdActiveRef.current = false
     cancelOnReleaseRef.current = false
     lockedRef.current = false
     lockPendingRef.current = false
     recordingActiveRef.current = false
-  }, [])
+    setIsLocked(false)
+    setLevels(Array.from({ length: 28 }, () => 0.18))
+  }, [resetGesture])
 
   const discardDraft = useCallback(() => {
     setDraft((prev) => {
@@ -184,21 +209,21 @@ export function useCoachVoiceRecorder() {
       const ctx = new AudioContext()
       const source = ctx.createMediaStreamSource(stream)
       const analyser = ctx.createAnalyser()
-      analyser.fftSize = 32
+      analyser.fftSize = 64
       source.connect(analyser)
       audioCtxRef.current = ctx
       analyserRef.current = analyser
       const bins = new Uint8Array(analyser.frequencyBinCount)
+      const barCount = 28
 
       const tick = () => {
         if (!analyserRef.current) return
         analyserRef.current.getByteFrequencyData(bins)
-        const slice = 5
         const next = []
-        for (let i = 0; i < slice; i += 1) {
-          const idx = Math.floor((i / slice) * bins.length)
+        for (let i = 0; i < barCount; i += 1) {
+          const idx = Math.floor((i / barCount) * bins.length)
           const v = bins[idx] / 255
-          next.push(0.15 + v * 0.85)
+          next.push(0.12 + v * 0.88)
         }
         setLevels(next)
         rafRef.current = requestAnimationFrame(tick)
@@ -259,7 +284,7 @@ export function useCoachVoiceRecorder() {
   const beginRecordingWithStream = useCallback(
     (stream, token) => {
       if (token !== armingTokenRef.current) return false
-      if (!holdActiveRef.current) return false
+      if (!holdActiveRef.current && !lockedRef.current && !lockPendingRef.current) return false
 
       discardDraft()
       activeStreamRef.current = stream
@@ -282,12 +307,12 @@ export function useCoachVoiceRecorder() {
       setElapsedMs(0)
       setPhase('recording')
       if (lockPendingRef.current) activateLock()
-      recorder.start(120)
+      recorder.start(100)
       startMeter(stream)
 
       timerRef.current = setInterval(() => {
         setElapsedMs(Date.now() - startedAtRef.current)
-      }, 100)
+      }, 50)
 
       maxTimerRef.current = setTimeout(() => {
         void stopToPreview()
@@ -306,17 +331,18 @@ export function useCoachVoiceRecorder() {
       cancelOnReleaseRef.current = false
       lockedRef.current = false
       lockPendingRef.current = false
+      setIsLocked(false)
       originXRef.current = clientX
       originYRef.current = clientY
-      setSlidePx(0)
-      setSlideUpPx(0)
-      setIsLocked(false)
-      setPhase('arming')
+      gestureRef.current = { slideX: 0, slideY: 0, pointerX: clientX, pointerY: clientY }
+      scheduleGestureRender()
+      setPhase('recording')
+      setElapsedMs(0)
 
       const token = ++armingTokenRef.current
       try {
         const stream = await acquireStream()
-        if (!holdActiveRef.current) return
+        if (!holdActiveRef.current && !lockPendingRef.current) return
         beginRecordingWithStream(stream, token)
       } catch (err) {
         console.error(err)
@@ -324,21 +350,25 @@ export function useCoachVoiceRecorder() {
         setError('Нет доступа к микрофону. Разрешите запись в настройках браузера.')
       }
     },
-    [phase, acquireStream, beginRecordingWithStream, cancelRecording],
+    [phase, acquireStream, beginRecordingWithStream, cancelRecording, scheduleGestureRender],
   )
 
   const holdMove = useCallback(
     (clientX, clientY) => {
       if (lockedRef.current) return
       if (!holdActiveRef.current) return
-      if (phase !== 'arming' && phase !== 'recording') return
+      if (phase !== 'recording') return
 
       const deltaX = Math.min(0, clientX - originXRef.current)
-      setSlidePx(deltaX)
-      cancelOnReleaseRef.current = deltaX < -CANCEL_SLIDE_PX
-
       const deltaY = Math.max(0, originYRef.current - clientY)
-      setSlideUpPx(Math.min(LOCK_SLIDE_PX, deltaY))
+      gestureRef.current = {
+        slideX: deltaX,
+        slideY: Math.min(LOCK_SLIDE_PX, deltaY),
+        pointerX: clientX,
+        pointerY: clientY,
+      }
+      cancelOnReleaseRef.current = deltaX <= -CANCEL_SLIDE_PX
+      scheduleGestureRender()
 
       if (deltaY >= LOCK_SLIDE_PX) {
         if (recordingActiveRef.current) {
@@ -348,7 +378,7 @@ export function useCoachVoiceRecorder() {
         }
       }
     },
-    [activateLock, phase],
+    [activateLock, phase, scheduleGestureRender],
   )
 
   const holdEnd = useCallback(async () => {
@@ -406,21 +436,22 @@ export function useCoachVoiceRecorder() {
     }
   }, [acquireStream, cleanupRecorder])
 
-  const previewDurationLabel = draft
-    ? `${draft.durationSec} сек`
-    : formatRecordTimer(elapsedMs)
+  const gesture = gestureRef.current
+  const previewDurationLabel = draft ? `${draft.durationSec} сек` : formatRecordTimer(elapsedMs)
 
   return {
     phase,
     draft,
     elapsedLabel: formatRecordTimer(elapsedMs),
     previewDurationLabel,
-    slidePx,
-    slideUpPx,
+    gesture,
+    slidePx: gesture.slideX,
+    slideUpPx: gesture.slideY,
     isLocked,
-    lockPending: slideUpPx >= LOCK_SLIDE_PX * 0.55 && !isLocked,
+    isLockedActive: () => lockedRef.current,
+    lockPending: gesture.slideY >= LOCK_SLIDE_PX * 0.65 && !lockedRef.current,
+    cancelPending: gesture.slideX <= -CANCEL_SLIDE_PX * 0.55,
     levels,
-    cancelPending: slidePx < -CANCEL_SLIDE_PX * 0.55,
     error,
     isSupported: isCoachVoiceInputSupported(),
     holdStart,
