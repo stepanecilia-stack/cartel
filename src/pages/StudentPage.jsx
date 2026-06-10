@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   calculateEffectiveKSR,
   calculateKD,
@@ -90,6 +90,7 @@ import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
 import { normalizeAtomReinforcement } from '../utils/atomReinforcement.js'
 import { daysUntilCompetition } from '../utils/competitionDate.js'
 import { getTechnicalProgramAtomsCache, subscribeTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
+import { clearStudentCardLiveSnapshot, setStudentCardLiveSnapshot } from '../data/studentCardLiveCache.js'
 import BiometricPotentialBar from '../components/BiometricPotentialBar'
 import StandardDuelSilhouettes, { referenceWeightFromStandardRow } from '../components/StandardDuelSilhouettes'
 import { migrateStudentTests } from '../utils/normsCategory.js'
@@ -398,6 +399,11 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   }, [student])
 
   useEffect(() => {
+    if (!student?.id || !student?.tests) return
+    setPhysicalResults(migrateStudentTests(student.tests).physical)
+  }, [student?.id, student?.tests])
+
+  useEffect(() => {
     if (!student?.id) return undefined
 
     if (shortIdDeniedRef.current.has(student.id)) {
@@ -472,6 +478,69 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     () => getNormsForAthlete(allNorms, athleteForNorms, 'physical'),
     [allNorms, athleteForNorms],
   )
+
+  useEffect(() => {
+    if (!student?.id) return undefined
+
+    const birthYear =
+      normalizeBirthYearNumber(anthropometry.birthYear) ||
+      normalizeBirthYearNumber(student.birthYear)
+    const identity = buildStudentIdentityPayload(studentIdentity.firstName, studentIdentity.lastName)
+
+    setStudentCardLiveSnapshot(student.id, {
+      technicalData,
+      technicalCombinations,
+      portalKnowledgeData: student.portalKnowledgeData,
+      portalEnabled: student.portalEnabled,
+      portalPersonaId: student.portalPersonaId,
+      portalPersonaMemory: student.portalPersonaMemory,
+      portalTrainingGoals: student.portalTrainingGoals,
+      portalNormSelfReports: student.portalNormSelfReports,
+      motorQualityWorkLog: student.motorQualityWorkLog,
+      height: Number(anthropometry.height) || 0,
+      reach: Number(anthropometry.reach) || 0,
+      weight: Number(anthropometry.weight) || 0,
+      gender: anthropometry.gender === 'F' ? 'F' : 'M',
+      birthYear,
+      birthYearLabel: formatBirthYearRu(birthYear),
+      birthDate: normalizeBirthDateISO(anthropometry.birthDate),
+      anthropometryDate: anthropometry.date,
+      tests: { physical: physicalResults, functional: {} },
+      effectiveKSR: student.effectiveKSR,
+      baseKSR: student.baseKSR,
+      kd: student.kd,
+      scores: student.scores,
+      archetype: student.archetype,
+      archetypeSmart: student.archetypeSmart,
+      physicalNorms,
+      ...(identity ?? {}),
+    })
+
+    return () => clearStudentCardLiveSnapshot(student.id)
+  }, [
+    student?.id,
+    physicalNorms,
+    student?.portalKnowledgeData,
+    student?.portalEnabled,
+    student?.portalPersonaId,
+    student?.portalPersonaMemory,
+    student?.portalTrainingGoals,
+    student?.portalNormSelfReports,
+    student?.motorQualityWorkLog,
+    student?.birthYear,
+    student?.effectiveKSR,
+    student?.baseKSR,
+    student?.kd,
+    student?.scores,
+    student?.archetype,
+    student?.archetypeSmart,
+    technicalData,
+    technicalCombinations,
+    anthropometry,
+    physicalResults,
+    studentIdentity,
+  ])
+
   const technicalCombinationsResolved = useMemo(
     () => mergeWithRequiredLevel3Combinations(technicalCombinations),
     [technicalCombinations],

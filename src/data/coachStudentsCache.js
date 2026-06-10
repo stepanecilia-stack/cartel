@@ -26,6 +26,16 @@ export function getCoachStudentsCache() {
   return students
 }
 
+/** Локально обновить ученика в кэше (после сохранения карточки). */
+export function patchCoachStudentInCache(studentId, patch) {
+  const id = String(studentId ?? '')
+  if (!id || !patch || typeof patch !== 'object') return
+  const idx = students.findIndex((s) => String(s.id) === id)
+  if (idx < 0) return
+  students = students.map((s, i) => (i === idx ? { ...s, ...patch } : s))
+  notify()
+}
+
 export function getActiveCoachStudentsCoachId() {
   return activeCoachId
 }

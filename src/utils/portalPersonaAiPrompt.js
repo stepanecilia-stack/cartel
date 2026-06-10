@@ -11,7 +11,7 @@ import {
 } from './portalAtomKnowledge.js'
 import { formatNormExecutionRulesForPrompt } from '../data/portalNormExecutionRules.js'
 
-/** @typedef {'onboarding_greeting' | 'onboarding_stages' | 'program' | 'program_atom' | 'norms' | 'general'} PortalPersonaChatContext */
+/** @typedef {'onboarding_greeting' | 'onboarding_stages' | 'program' | 'program_atom' | 'norms' | 'general' | 'coach_assistant'} PortalPersonaChatContext */
 
 /**
  * @param {import('../constants/studentPortalPersonas.js').typeof PORTAL_PERSONAS[number]} persona

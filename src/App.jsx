@@ -25,6 +25,7 @@ import {
   setCoachProfileCache,
 } from './data/coachProfileCache.js'
 import {
+  patchCoachStudentInCache,
   startCoachStudentsSync,
   stopCoachStudentsSync,
 } from './data/coachStudentsCache.js'
@@ -48,6 +49,7 @@ import {
   studentPortalHomePath,
 } from './utils/studentPortalAuth.js'
 import { vk } from './utils/vkUi.js'
+import CoachAssistantDock from './components/coach/CoachAssistantDock.jsx'
 
 function isCoachFirebaseUser(user) {
   return Boolean(user && !isStudentPortalFirebaseUser(user))
@@ -220,6 +222,7 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
     location.pathname.startsWith('/leaderboard/share/') ||
     isStudentPortalRoute
   const isStudentAuth = isStudentPortalFirebaseUser(authUser)
+  const showCoachAssistant = isCoachFirebaseUser(authUser) && !isShareRoute
 
   useEffect(() => {
     if (!isStudentAuth) return
@@ -273,9 +276,12 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
                     <StudentPage
                       student={selectedStudent}
                       onBack={() => setSelectedStudent(null)}
-                      onStudentUpdated={(patch) =>
-                        setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : null))
-                      }
+                      onStudentUpdated={(patch) => {
+                        setSelectedStudent((prev) => {
+                          if (prev?.id) patchCoachStudentInCache(prev.id, patch)
+                          return prev ? { ...prev, ...patch } : null
+                        })
+                      }}
                     />
                   </LazyRoute>
                 ) : (
@@ -443,6 +449,20 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
           }
         />
       </Routes>
+
+      {showCoachAssistant ? (
+        <CoachAssistantDock
+          coachId={authUser.uid}
+          coachProfile={coachProfile}
+          focusStudent={selectedStudent}
+          onStudentPatched={(studentId, patch) => {
+            patchCoachStudentInCache(studentId, patch)
+            if (selectedStudent?.id === studentId) {
+              setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : prev))
+            }
+          }}
+        />
+      ) : null}
     </div>
   )
 }
