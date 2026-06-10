@@ -129,31 +129,6 @@ export function buildTechniqueInstructionLine(personaId, atom, step, isFirstAtom
 }
 
 /**
- * @param {TechniqueInstructionStep} step
- * @param {boolean} [isFirstAtom]
- */
-export function techniqueInstructionStepHint(step, isFirstAtom = false) {
-  const total = isFirstAtom ? 6 : 5
-  if (step === 'video1') {
-    return isFirstAtom
-      ? `Шаг 1 из ${total}: видео — зрительный образ.`
-      : `Шаг 1 из ${total}: первое видео — место в кадре.`
-  }
-  if (step === 'video2') {
-    return isFirstAtom
-      ? `Шаг 2 из ${total}: видео — зрительный + логический образ.`
-      : `Шаг 2 из ${total}: второе видео — где руки и корпус.`
-  }
-  if (step === 'mirror') {
-    return isFirstAtom
-      ? `Шаг 3 из ${total}: попробуй сам перед зеркалом — кинестетический образ.`
-      : `Шаг 3 из ${total}: попробуй сам перед зеркалом.`
-  }
-  if (step === 'motorStages') return `Шаг 4 из ${total}: четыре этапа навыка — вы на «Знании».`
-  return isFirstAtom ? `Шаг 5–6: вопросы тренеру → «Понял».` : 'Шаг 4–5: вопросы тренеру → «Понял».'
-}
-
-/**
  * Открывающая реплика чата на шаге вопросов — без повторного «здравствуй».
  * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
  * @param {object} atom

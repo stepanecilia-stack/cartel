@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import StudentPersonaChat from './StudentPersonaChat.jsx'
+import StudentTechniqueMirrorScene from './StudentTechniqueMirrorScene.jsx'
 import StudentTechniqueVideoBlock from './StudentTechniqueVideoBlock.jsx'
 import { buildAtomProgramHint } from '../../utils/portalAtomKnowledge.js'
 import { resolveKnowledgeLearningSlides } from '../../utils/knowledgeLearningSlides.js'
@@ -7,7 +8,6 @@ import {
   buildTechniqueQuestionsOpener,
   getTechniqueInstructionSteps,
   techniqueInstructionAdvanceLabel,
-  techniqueInstructionStepHint,
 } from '../../utils/techniqueAtomInstruction.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -62,12 +62,6 @@ export default function StudentTechniqueAtomFlow({
 
   return (
     <div className="space-y-3">
-      {step !== 'questions' ? (
-        <p className={`${vk.mutedXs} rounded-lg bg-[#fafbfc] px-2.5 py-1.5`}>
-          {techniqueInstructionStepHint(step, isFirstAtom)}
-        </p>
-      ) : null}
-
       {showVideo && activeSlide ? (
         <StudentTechniqueVideoBlock
           slide={activeSlide}
@@ -77,6 +71,8 @@ export default function StudentTechniqueAtomFlow({
           showLabel={false}
         />
       ) : null}
+
+      {step === 'mirror' ? <StudentTechniqueMirrorScene /> : null}
 
       {advanceLabel ? (
         <button type="button" disabled={disabled} onClick={handleAdvance} className={`w-full ${vk.btnPrimary}`}>
