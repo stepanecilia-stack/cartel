@@ -17,6 +17,37 @@ export function displayNameFromStudent(s) {
   return 'Без имени'
 }
 
+export function buildStudentFullName(firstName, lastName) {
+  return [String(firstName ?? '').trim(), String(lastName ?? '').trim()].filter(Boolean).join(' ')
+}
+
+/** Поля имени для формы редактирования (имя + фамилия). */
+export function studentIdentityFieldsFromStudent(s) {
+  const first = typeof s?.firstName === 'string' ? s.firstName.trim() : ''
+  const last = typeof s?.lastName === 'string' ? s.lastName.trim() : ''
+  if (first || last) return { firstName: first, lastName: last }
+  const display = displayNameFromStudent(s)
+  const parts = display.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return { firstName: '', lastName: '' }
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+}
+
+/** Владелец карточки (тренер, который создал ученика). */
+export function isCoachPrimaryStudentOwner(student, coachId) {
+  if (!student || !coachId) return false
+  return String(student.coachId ?? '') === String(coachId)
+}
+
+/** @returns {{ name: string, fullName: string, firstName: string, lastName: string } | null} */
+export function buildStudentIdentityPayload(firstName, lastName) {
+  const fn = String(firstName ?? '').trim()
+  const ln = String(lastName ?? '').trim()
+  if (!fn || !ln) return null
+  const name = buildStudentFullName(fn, ln)
+  return { name, fullName: name, firstName: fn, lastName: ln }
+}
+
 export function coerceScores(raw) {
   if (!raw || typeof raw !== 'object') {
     return { техника: 0, физика: 0, функционал: 0 }

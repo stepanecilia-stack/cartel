@@ -29,12 +29,15 @@ import {
   birthDateToInputString,
   birthYearToInputString,
   computeAthleteAgeYears,
+  buildStudentIdentityPayload,
   displayNameFromStudent,
   formatBirthYearRu,
   formatShortIdDisplay,
+  isCoachPrimaryStudentOwner,
   normalizeBirthDateISO,
   normalizeBirthYearNumber,
   studentAthleteShape,
+  studentIdentityFieldsFromStudent,
   studentPhotoUrl,
 } from '../utils/studentModel'
 import BackToHomeLink from '../components/layout/BackToHomeLink.jsx'
@@ -301,6 +304,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     date: new Date().toISOString().slice(0, 10),
     gender: 'M',
   })
+  const [studentIdentity, setStudentIdentity] = useState({ firstName: '', lastName: '' })
   const [saveError, setSaveError] = useState('')
   const [saveOk, setSaveOk] = useState(false)
   const [anthropometrySaveError, setAnthropometrySaveError] = useState('')
@@ -322,6 +326,10 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [seasonPlanSaveError, setSeasonPlanSaveError] = useState('')
   const [cartelStageSaveBusy, setCartelStageSaveBusy] = useState(false)
   const coachId = getCurrentCoachId()
+  const canEditStudentName = useMemo(
+    () => isCoachPrimaryStudentOwner(student, coachId),
+    [student, coachId],
+  )
   const { events: coachEvents } = useCoachEvents(coachId)
   const { participations: orientirParticipations } = useOrientirParticipation(coachId)
   const shortIdDeniedRef = useRef(new Set())
@@ -371,6 +379,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           : new Date().toISOString().slice(0, 10),
       gender: sh.gender === 'F' ? 'F' : 'M',
     })
+    setStudentIdentity(studentIdentityFieldsFromStudent(student))
     setPhysicalResults(migrateStudentTests(tests).physical)
     setTechnicalData(emptyTechnicalRecord(student.technicalData))
     setTechnicalCombinations(mergeWithRequiredLevel3Combinations(student.technicalCombinations))
@@ -1000,6 +1009,14 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       setAnthropometrySaveError('Год в дате рождения должен совпадать с указанным годом рождения.')
       return
     }
+    let identityPatch = null
+    if (canEditStudentName) {
+      identityPatch = buildStudentIdentityPayload(studentIdentity.firstName, studentIdentity.lastName)
+      if (!identityPatch) {
+        setAnthropometrySaveError('Укажите имя и фамилию ученика.')
+        return
+      }
+    }
 
     setIsAnthropometrySaving(true)
     try {
@@ -1019,8 +1036,15 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           weightHistory = [...prevHistory, { date: measureDate, weight }].slice(-36)
         }
       }
-      const payload = buildStudentUpdatePayload(physicalMerged, weightHistory)
-      await updateStudentData(student.id, payload, { section: STUDENT_UPDATE_SECTION.profile })
+      const payload = {
+        ...buildStudentUpdatePayload(physicalMerged, weightHistory),
+        ...(identityPatch ?? {}),
+      }
+      await updateStudentData(student.id, payload, {
+        section: identityPatch ? STUDENT_UPDATE_SECTION.card : STUDENT_UPDATE_SECTION.profile,
+        shortId: student.short_id,
+        photoURL: studentPhotoUrl(student),
+      })
       setPhysicalResults(physicalMerged)
       setAnthropometrySaveOk(true)
       onStudentUpdated?.(payload)
@@ -1714,6 +1738,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 isSaving={isAnthropometrySaving}
                 canSave={Boolean(student?.id)}
                 onSave={handleSaveProfile}
+                canEditName={canEditStudentName}
+                identity={studentIdentity}
+                onIdentityChange={(patch) => setStudentIdentity((prev) => ({ ...prev, ...patch }))}
               />
             )}
 

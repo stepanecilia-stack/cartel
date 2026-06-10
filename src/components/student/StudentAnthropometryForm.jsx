@@ -19,6 +19,9 @@ import { vk } from '../../utils/vkUi.js'
  *   isSaving: boolean,
  *   canSave: boolean,
  *   onSave: () => void,
+ *   canEditName?: boolean,
+ *   identity?: { firstName: string, lastName: string },
+ *   onIdentityChange?: (patch: Partial<{ firstName: string, lastName: string }>) => void,
  * }} props
  */
 function StudentAnthropometryForm({
@@ -29,11 +32,42 @@ function StudentAnthropometryForm({
   isSaving,
   canSave,
   onSave,
+  canEditName = false,
+  identity = { firstName: '', lastName: '' },
+  onIdentityChange = null,
 }) {
   const set = (patch) => onChange(patch)
 
   return (
     <div className={vk.formGrid2}>
+      {canEditName ? (
+        <>
+          <label className="block">
+            <span className={vk.label}>Имя</span>
+            <input
+              type="text"
+              autoComplete="given-name"
+              className={vk.input}
+              value={identity.firstName}
+              onChange={(e) => onIdentityChange?.({ firstName: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className={vk.label}>Фамилия</span>
+            <input
+              type="text"
+              autoComplete="family-name"
+              className={vk.input}
+              value={identity.lastName}
+              onChange={(e) => onIdentityChange?.({ lastName: e.target.value })}
+            />
+          </label>
+          <p className={`${vk.mutedXs} col-span-2`}>
+            ФИО редактирует тренер, который создал карточку. Если вы подключились по коду — имя меняет владелец.
+          </p>
+        </>
+      ) : null}
+
       <label className="block">
         <span className={vk.label}>Год рожд.</span>
         <input

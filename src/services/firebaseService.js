@@ -361,6 +361,19 @@ export async function resolveCurrentCoachAuditFields() {
   }
 }
 
+/** Обновить имя в индексе student_codes (поиск по коду). */
+export async function syncStudentCodeIndexName(shortId, { name, fullName, photoURL } = {}) {
+  if (!isValidSixDigitShortId(shortId)) return
+  const patch = deepOmitUndefined({
+    name: name ?? fullName ?? '',
+    fullName: fullName ?? name ?? '',
+    photoURL,
+    updatedAt: serverTimestamp(),
+  })
+  if (Object.keys(patch).length <= 1) return
+  await updateDoc(doc(ensureDb(), 'student_codes', String(Math.floor(Number(shortId)))), patch)
+}
+
 /** Обновление полей ученика (без вложенных undefined — совместимо с Firestore). */
 export const updateStudentData = async (studentId, updatedData, meta = {}) => {
   const payload = deepOmitUndefined(updatedData)
@@ -376,6 +389,19 @@ export const updateStudentData = async (studentId, updatedData, meta = {}) => {
     lastUpdatedSection: section,
     updatedAt: serverTimestamp(),
   })
+
+  const nameTouched = ['name', 'fullName', 'firstName', 'lastName'].some((k) => k in payload)
+  if (nameTouched && isValidSixDigitShortId(meta.shortId)) {
+    try {
+      await syncStudentCodeIndexName(meta.shortId, {
+        name: payload.name ?? payload.fullName,
+        fullName: payload.fullName ?? payload.name,
+        photoURL: meta.photoURL,
+      })
+    } catch (e) {
+      console.warn('[syncStudentCodeIndexName]', e)
+    }
+  }
 
   const coachId = audit.lastUpdatedByCoachId
   if (coachId) {
