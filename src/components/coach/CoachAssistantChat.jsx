@@ -71,7 +71,6 @@ export default function CoachAssistantChat({
   const savedNormKeysRef = useRef(new Set())
   const bottomRef = useRef(null)
   const holdPointerIdRef = useRef(/** @type {number | null} */ (null))
-  const holdStartedAtRef = useRef(0)
 
   const voice = useCoachVoiceRecorder()
 
@@ -219,55 +218,62 @@ export default function CoachAssistantChat({
     [busy, disabled, messages, persona.id, coachContextBase, persistMessages, coachId, voice],
   )
 
+  const processVoiceRecording = useCallback(
+    async (recorded) => {
+      if (!recorded?.blob || recorded.blob.size < 400) return
+      setBusy(true)
+      try {
+        const transcript = await transcribeCoachVoice(recorded.blob, {
+          browserTranscript: recorded.browserTranscript,
+        })
+        const audioUrl = URL.createObjectURL(recorded.blob)
+        await submitUserText(transcript, {
+          durationSec: recorded.durationSec,
+          audioUrl,
+        })
+      } catch (err) {
+        console.error(err)
+        setError(err instanceof Error ? err.message : 'Не удалось распознать голосовое')
+      } finally {
+        setBusy(false)
+      }
+    },
+    [submitUserText],
+  )
+
   const finishVoiceRecording = useCallback(async () => {
-    if (voice.phase !== 'recording') return
+    if (voice.phase !== 'recording' && voice.phase !== 'locked') return
     setError('')
     voice.clearError()
     const recorded = await voice.stopRecording()
-    if (!recorded || recorded.blob.size < 400) {
-      setError('Запись слишком короткая.')
-      return
-    }
-
-    setBusy(true)
-    try {
-      const transcript = await transcribeCoachVoice(recorded.blob, {
-        browserTranscript: recorded.browserTranscript,
-      })
-      const audioUrl = URL.createObjectURL(recorded.blob)
-      await submitUserText(transcript, {
-        durationSec: recorded.durationSec,
-        audioUrl,
-      })
-    } catch (err) {
-      console.error(err)
-      setError(err instanceof Error ? err.message : 'Не удалось распознать голосовое')
-    } finally {
-      setBusy(false)
-    }
-  }, [voice, submitUserText])
+    await processVoiceRecording(recorded)
+  }, [voice, processVoiceRecording])
 
   const send = () => void submitUserText(input)
 
   const handleMicPointerDown = (event) => {
     if (disabled || busy || input.trim() || voice.phase !== 'idle') return
+    event.preventDefault()
     holdPointerIdRef.current = event.pointerId
-    holdStartedAtRef.current = Date.now()
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
       /* ignore */
     }
-    void voice.startRecording()
+    void voice.holdStart(event.clientX)
+  }
+
+  const handleMicPointerMove = (event) => {
+    if (holdPointerIdRef.current !== event.pointerId) return
+    voice.holdMove(event.clientX)
   }
 
   const handleMicPointerUp = (event) => {
     if (holdPointerIdRef.current !== event.pointerId) return
     holdPointerIdRef.current = null
-    const heldMs = Date.now() - holdStartedAtRef.current
-    if (voice.phase === 'recording' && heldMs >= 450) {
-      void finishVoiceRecording()
-    }
+    void voice.holdEnd().then((recorded) => {
+      if (recorded) void processVoiceRecording(recorded)
+    })
   }
 
   const resetChat = useCallback(() => {
@@ -289,8 +295,11 @@ export default function CoachAssistantChat({
   }, [busy, disabled, coachId, persona.id, name, opener, voice])
 
   const showConfirmCard = pendingNorm?.evaluation && !busy
-  const isRecording = voice.phase === 'recording'
-  const isVoiceProcessing = voice.phase === 'processing' || (busy && voice.phase === 'idle' && !input.trim())
+  const voicePanelOpen =
+    voice.phase === 'arming' ||
+    voice.phase === 'recording' ||
+    voice.phase === 'locked' ||
+    voice.phase === 'processing'
   const showMicButton = !input.trim() && voice.isSupported && voice.phase === 'idle' && !busy
 
   return (
@@ -298,7 +307,7 @@ export default function CoachAssistantChat({
       <div className="flex justify-end">
         <button
           type="button"
-          disabled={disabled || busy || isRecording}
+          disabled={disabled || busy || voicePanelOpen}
           onClick={resetChat}
           className={`${vk.btnSecondary} px-2.5 py-1 text-[12px]`}
         >
@@ -342,7 +351,7 @@ export default function CoachAssistantChat({
           ),
         )}
 
-        {busy && !isRecording ? (
+        {busy && !voicePanelOpen ? (
           <div className="flex gap-2.5">
             <StudentPersonaAvatar personaId={persona.id} size="md" />
             <div className="rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] text-[#818c99]">
@@ -364,13 +373,18 @@ export default function CoachAssistantChat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-2">
-        {isRecording || voice.phase === 'processing' ? (
+      <div className="flex gap-2 touch-manipulation select-none">
+        {voicePanelOpen ? (
           <CoachAssistantVoiceRecorder
-            elapsedLabel={voice.elapsedLabel}
-            processing={voice.phase === 'processing' || isVoiceProcessing}
+            elapsedLabel={voice.phase === 'arming' ? '0:00' : voice.elapsedLabel}
+            levels={voice.levels}
+            slidePx={voice.slidePx}
+            cancelPending={voice.cancelPending}
+            locked={voice.isLocked}
+            processing={voice.phase === 'processing' || busy}
             onCancel={() => voice.cancelRecording()}
             onSend={() => void finishVoiceRecording()}
+            onLock={() => voice.lockRecording()}
           />
         ) : (
           <>
@@ -394,14 +408,15 @@ export default function CoachAssistantChat({
                 type="button"
                 disabled={disabled || busy}
                 onPointerDown={handleMicPointerDown}
+                onPointerMove={handleMicPointerMove}
                 onPointerUp={handleMicPointerUp}
                 onPointerCancel={() => {
                   holdPointerIdRef.current = null
-                  if (voice.phase === 'recording') voice.cancelRecording()
+                  voice.cancelRecording()
                 }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5181b8] text-white touch-manipulation disabled:opacity-45"
-                aria-label="Голосовое сообщение"
-                title="Удерживайте или нажмите для записи"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5181b8] text-white transition-transform active:scale-95 disabled:opacity-45"
+                aria-label="Удержите для голосового"
+                title="Удерживайте — запись, отпустите — отправить"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
                   <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
@@ -423,8 +438,8 @@ export default function CoachAssistantChat({
 
       {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
       {error ? <p className={vk.error}>{error}</p> : null}
-      {voice.isSupported ? (
-        <p className={vk.mutedXs}>Голосовое: удерживайте микрофон или нажмите → после записи.</p>
+      {voice.isSupported && !voicePanelOpen ? (
+        <p className={vk.mutedXs}>Голосовое: удерживайте микрофон · отпустите — отправить · влево — отмена</p>
       ) : null}
     </div>
   )

@@ -311,7 +311,34 @@ export const portalPersonaChat = onRequest(
 
       await getAuth().verifyIdToken(token)
 
-      const { personaId, messages, systemPrompt, context } = req.body ?? {}
+      const { personaId, messages, systemPrompt, context, audioBase64, mimeType } = req.body ?? {}
+
+      if (context === 'coach_voice_transcribe') {
+        const audio = typeof audioBase64 === 'string' ? audioBase64 : ''
+        const audioMime =
+          typeof mimeType === 'string' && mimeType.trim() ? mimeType.trim() : 'audio/webm'
+        if (!audio || audio.length < 40) {
+          res.status(400).json({ error: 'invalid-argument', detail: 'empty audio' })
+          return
+        }
+        if (audio.length > 4_500_000) {
+          res.status(400).json({ error: 'invalid-argument', detail: 'audio too large' })
+          return
+        }
+        const result = await generateVoiceTranscript(audio, audioMime)
+        if (!result.text) {
+          res.status(500).json({ error: 'empty-transcript' })
+          return
+        }
+        await recordPortalAiUsage({
+          kind: 'transcribe',
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          modelId: result.modelId,
+        })
+        res.status(200).json({ text: result.text.slice(0, 2000) })
+        return
+      }
 
       if (!personaId || !Array.isArray(messages) || !systemPrompt) {
         res.status(400).json({ error: 'invalid-argument' })

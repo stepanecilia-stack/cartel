@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const MAX_RECORD_MS = 90_000
-
+const MIN_SEND_MS = 350
+const CANCEL_SLIDE_PX = 72
 /**
  * @returns {typeof SpeechRecognition | null}
  */
@@ -16,9 +17,6 @@ export function isCoachVoiceInputSupported() {
   return Boolean(navigator.mediaDevices?.getUserMedia)
 }
 
-/**
- * @param {Blob} blob
- */
 function pickRecorderMimeType() {
   if (typeof MediaRecorder === 'undefined') return ''
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
@@ -33,24 +31,57 @@ function formatRecordTimer(ms) {
 }
 
 /**
- * Запись голосового: MediaRecorder + параллельно Web Speech API (ru-RU).
+ * Telegram-style: удержание → запись, отпускание → отправка; свайп влево → отмена; короткий тап → фиксация.
  */
 export function useCoachVoiceRecorder() {
-  const [phase, setPhase] = useState(/** @type {'idle' | 'recording' | 'processing'} */ ('idle'))
+  const [phase, setPhase] = useState(
+    /** @type {'idle' | 'arming' | 'recording' | 'locked' | 'processing'} */ ('idle'),
+  )
   const [elapsedMs, setElapsedMs] = useState(0)
+  const [slidePx, setSlidePx] = useState(0)
+  const [levels, setLevels] = useState(() => [0.2, 0.35, 0.5, 0.35, 0.2])
   const [error, setError] = useState('')
 
+  const warmStreamRef = useRef(/** @type {MediaStream | null} */ (null))
   const mediaRecorderRef = useRef(/** @type {MediaRecorder | null} */ (null))
-  const mediaStreamRef = useRef(/** @type {MediaStream | null} */ (null))
+  const activeStreamRef = useRef(/** @type {MediaStream | null} */ (null))
   const chunksRef = useRef(/** @type {BlobPart[]} */ ([]))
-  const speechRef = useRef(/** @type {SpeechRecognition | null} */ (null))
-  const speechPartsRef = useRef(/** @type {string[]} */ ([]))
   const timerRef = useRef(/** @type {ReturnType<typeof setInterval> | null} */ (null))
-  const startedAtRef = useRef(0)
   const maxTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
-  const stopResolveRef = useRef(/** @type {((value: { blob: Blob, durationSec: number, browserTranscript: string }) => void) | null} */ (null))
+  const rafRef = useRef(/** @type {number | null} */ (null))
+  const analyserRef = useRef(/** @type {AnalyserNode | null} */ (null))
+  const audioCtxRef = useRef(/** @type {AudioContext | null} */ (null))
+  const startedAtRef = useRef(0)
+  const holdActiveRef = useRef(false)
+  const lockedRef = useRef(false)
+  const cancelOnReleaseRef = useRef(false)
+  const holdDownAtRef = useRef(0)
+  const originXRef = useRef(0)
+  /** @type {import('react').MutableRefObject<((value: { blob: Blob, durationSec: number, browserTranscript: string } | null) => void) | null>} */
+  const stopResolveRef = useRef(null)
+  const armingTokenRef = useRef(0)
+  const recordingActiveRef = useRef(false)
 
-  const cleanupStreams = useCallback(() => {
+  const stopMeter = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    analyserRef.current = null
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => {})
+      audioCtxRef.current = null
+    }
+  }, [])
+
+  const releaseActiveStream = useCallback(() => {
+    if (activeStreamRef.current && activeStreamRef.current !== warmStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((track) => track.stop())
+    }
+    activeStreamRef.current = null
+  }, [])
+
+  const cleanupRecorder = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
@@ -59,12 +90,7 @@ export function useCoachVoiceRecorder() {
       clearTimeout(maxTimerRef.current)
       maxTimerRef.current = null
     }
-    try {
-      speechRef.current?.stop()
-    } catch {
-      /* ignore */
-    }
-    speechRef.current = null
+    stopMeter()
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
         mediaRecorderRef.current.stop()
@@ -73,55 +99,112 @@ export function useCoachVoiceRecorder() {
       }
     }
     mediaRecorderRef.current = null
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop())
-    mediaStreamRef.current = null
-  }, [])
+    releaseActiveStream()
+  }, [releaseActiveStream, stopMeter])
 
-  useEffect(() => () => cleanupStreams(), [cleanupStreams])
-
-  const cancelRecording = useCallback(() => {
-    cleanupStreams()
-    stopResolveRef.current = null
-    chunksRef.current = []
-    speechPartsRef.current = []
+  const resetUi = useCallback(() => {
     setPhase('idle')
     setElapsedMs(0)
+    setSlidePx(0)
+    setLevels([0.2, 0.35, 0.5, 0.35, 0.2])
+    holdActiveRef.current = false
+    lockedRef.current = false
+    cancelOnReleaseRef.current = false
+    recordingActiveRef.current = false
+  }, [])
+
+  const cancelRecording = useCallback(() => {
+    cleanupRecorder()
+    stopResolveRef.current = null
+    chunksRef.current = []
+    resetUi()
     setError('')
-  }, [cleanupStreams])
+  }, [cleanupRecorder, resetUi])
+
+  const acquireStream = useCallback(async () => {
+    if (warmStreamRef.current?.active) return warmStreamRef.current
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    })
+    warmStreamRef.current = stream
+    return stream
+  }, [])
+
+  const startMeter = useCallback((stream) => {
+    try {
+      const ctx = new AudioContext()
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 32
+      source.connect(analyser)
+      audioCtxRef.current = ctx
+      analyserRef.current = analyser
+      const bins = new Uint8Array(analyser.frequencyBinCount)
+
+      const tick = () => {
+        if (!analyserRef.current) return
+        analyserRef.current.getByteFrequencyData(bins)
+        const slice = 5
+        const next = []
+        for (let i = 0; i < slice; i += 1) {
+          const idx = Math.floor((i / slice) * bins.length)
+          const v = bins[idx] / 255
+          next.push(0.15 + v * 0.85)
+        }
+        setLevels(next)
+        rafRef.current = requestAnimationFrame(tick)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    } catch {
+      /* meter optional */
+    }
+  }, [])
+
+  const finishStop = useCallback(
+    (resolve) => {
+      const blob = new Blob(chunksRef.current, {
+        type: mediaRecorderRef.current?.mimeType || pickRecorderMimeType() || 'audio/webm',
+      })
+      const durationMs = Date.now() - startedAtRef.current
+      const durationSec = Math.max(1, Math.round(durationMs / 1000))
+      cleanupRecorder()
+      resetUi()
+      if (durationMs < MIN_SEND_MS || blob.size < 400) {
+        resolve?.(null)
+        return
+      }
+      resolve?.({ blob, durationSec, browserTranscript: '' })
+    },
+    [cleanupRecorder, resetUi],
+  )
 
   const stopRecording = useCallback(() => {
-    if (phase !== 'recording') return Promise.resolve(null)
+    const recorder = mediaRecorderRef.current
+    if (!recordingActiveRef.current || !recorder || recorder.state === 'inactive') {
+      return Promise.resolve(null)
+    }
     setPhase('processing')
     return new Promise((resolve) => {
       stopResolveRef.current = resolve
       try {
         mediaRecorderRef.current?.stop()
       } catch {
-        resolve(null)
-      }
-      try {
-        speechRef.current?.stop()
-      } catch {
-        /* ignore */
+        finishStop(resolve)
       }
     })
-  }, [phase])
+  }, [finishStop])
 
-  const startRecording = useCallback(async () => {
-    if (phase !== 'idle') return
-    if (!isCoachVoiceInputSupported()) {
-      setError('Микрофон недоступен в этом браузере.')
-      return
-    }
+  const beginRecordingWithStream = useCallback(
+    (stream, token) => {
+      if (token !== armingTokenRef.current) return false
+      if (!holdActiveRef.current && !lockedRef.current) return false
 
-    setError('')
-    chunksRef.current = []
-    speechPartsRef.current = []
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaStreamRef.current = stream
-
+      activeStreamRef.current = stream
+      chunksRef.current = []
       const mimeType = pickRecorderMimeType()
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
       mediaRecorderRef.current = recorder
@@ -129,72 +212,119 @@ export function useCoachVoiceRecorder() {
       recorder.ondataavailable = (event) => {
         if (event.data?.size > 0) chunksRef.current.push(event.data)
       }
-
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || mimeType || 'audio/webm',
-        })
-        const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
-        const browserTranscript = speechPartsRef.current.join(' ').trim()
-        cleanupStreams()
         const resolve = stopResolveRef.current
         stopResolveRef.current = null
-        setPhase('idle')
-        setElapsedMs(0)
-        resolve?.({ blob, durationSec, browserTranscript })
-      }
-
-      const SpeechRecognition = getSpeechRecognitionCtor()
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition()
-        speechRef.current = recognition
-        recognition.lang = 'ru-RU'
-        recognition.continuous = true
-        recognition.interimResults = true
-        recognition.onresult = (event) => {
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            const result = event.results[i]
-            if (!result?.isFinal) continue
-            const piece = String(result[0]?.transcript ?? '').trim()
-            if (piece) speechPartsRef.current.push(piece)
-          }
-        }
-        recognition.onerror = () => {
-          /* cloud fallback */
-        }
-        try {
-          recognition.start()
-        } catch {
-          /* optional */
-        }
+        finishStop(resolve)
       }
 
       startedAtRef.current = Date.now()
+      recordingActiveRef.current = true
       setElapsedMs(0)
-      setPhase('recording')
-      recorder.start(250)
+      setPhase(lockedRef.current ? 'locked' : 'recording')
+      recorder.start(120)
+      startMeter(stream)
 
       timerRef.current = setInterval(() => {
         setElapsedMs(Date.now() - startedAtRef.current)
-      }, 200)
+      }, 100)
 
       maxTimerRef.current = setTimeout(() => {
         void stopRecording()
       }, MAX_RECORD_MS)
-    } catch (err) {
-      cleanupStreams()
-      setPhase('idle')
-      console.error(err)
-      setError('Нет доступа к микрофону. Разрешите запись в настройках браузера.')
+
+      return true
+    },
+    [finishStop, startMeter, stopRecording],
+  )
+
+  const holdStart = useCallback(
+    async (clientX) => {
+      if (phase !== 'idle' || !isCoachVoiceInputSupported()) return
+      setError('')
+      holdActiveRef.current = true
+      lockedRef.current = false
+      cancelOnReleaseRef.current = false
+      holdDownAtRef.current = Date.now()
+      originXRef.current = clientX
+      setSlidePx(0)
+      setPhase('arming')
+
+      const token = ++armingTokenRef.current
+      try {
+        const stream = await acquireStream()
+        if (!holdActiveRef.current && !lockedRef.current) return
+        beginRecordingWithStream(stream, token)
+      } catch (err) {
+        console.error(err)
+        cancelRecording()
+        setError('Нет доступа к микрофону. Разрешите запись в настройках браузера.')
+      }
+    },
+    [phase, acquireStream, beginRecordingWithStream, cancelRecording],
+  )
+
+  const holdMove = useCallback((clientX) => {
+    if (!holdActiveRef.current || lockedRef.current) return
+    if (phase !== 'arming' && phase !== 'recording') return
+    const delta = Math.min(0, clientX - originXRef.current)
+    setSlidePx(delta)
+    cancelOnReleaseRef.current = delta < -CANCEL_SLIDE_PX
+  }, [phase])
+
+  const holdEnd = useCallback(async () => {
+    if (lockedRef.current) {
+      holdActiveRef.current = false
+      return null
     }
-  }, [phase, cleanupStreams, stopRecording])
+
+    holdActiveRef.current = false
+
+    if (cancelOnReleaseRef.current) {
+      cancelRecording()
+      return null
+    }
+
+    if (!recordingActiveRef.current) {
+      cancelRecording()
+      return null
+    }
+
+    return stopRecording()
+  }, [cancelRecording, stopRecording])
+
+  const lockRecording = useCallback(() => {
+    if (phase !== 'recording') return
+    holdActiveRef.current = false
+    lockedRef.current = true
+    setPhase('locked')
+    setSlidePx(0)
+    cancelOnReleaseRef.current = false
+  }, [phase])
+
+  useEffect(() => {
+    if (!isCoachVoiceInputSupported()) return undefined
+    acquireStream().catch(() => {})
+    return () => {
+      cleanupRecorder()
+      warmStreamRef.current?.getTracks().forEach((track) => track.stop())
+      warmStreamRef.current = null
+    }
+  }, [acquireStream, cleanupRecorder])
 
   return {
     phase,
     elapsedLabel: formatRecordTimer(elapsedMs),
+    slidePx,
+    levels,
+    cancelPending: slidePx < -CANCEL_SLIDE_PX * 0.55,
+    isLocked: phase === 'locked',
     error,
     isSupported: isCoachVoiceInputSupported(),
-    startRecording,
+    holdStart,
+    holdMove,
+    holdEnd,
+    lockRecording,
     stopRecording,
     cancelRecording,
     clearError: () => setError(''),
