@@ -2,7 +2,9 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { prewarmTranscribeAuth } from '../services/coachVoiceTranscribe.js'
 
 const MAX_RECORD_MS = 90_000
-const MIN_SEND_MS = 300
+const MIN_SEND_MS = 200
+const MIN_BLOB_BYTES = 64
+const ARMING_WAIT_MS = 2_500
 export const CANCEL_SLIDE_PX = 80
 export const LOCK_SLIDE_PX = 80
 
@@ -24,6 +26,12 @@ function pickRecorderMimeType() {
   if (typeof MediaRecorder === 'undefined') return ''
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
+}
+
+function waitMs(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
 }
 
 function formatRecordTimer(ms) {
@@ -241,6 +249,7 @@ export function useCoachVoiceRecorder() {
   }, [discardDraft, resetRecordingUi])
 
   const cancelRecording = useCallback(() => {
+    armingTokenRef.current += 1
     cleanupRecorder()
     stopResolveRef.current = null
     chunksRef.current = []
@@ -308,14 +317,19 @@ export function useCoachVoiceRecorder() {
         type: mediaRecorderRef.current?.mimeType || pickRecorderMimeType() || 'audio/webm',
       })
       const durationMs = Date.now() - startedAtRef.current
+      const browserTranscript = browserTranscriptRef.current.trim()
       cleanupRecorder()
       resetRecordingUi()
       chunksRef.current = []
 
-      if (durationMs < MIN_SEND_MS || blob.size < 400) {
+      const hasTranscript = browserTranscript.length >= 2
+      const tooBrief = durationMs < MIN_SEND_MS && !hasTranscript
+      const emptyAudio = blob.size < MIN_BLOB_BYTES && !hasTranscript
+      if (tooBrief || emptyAudio) {
         setPhase('idle')
         setElapsedMs(0)
-        setError('Запись слишком короткая.')
+        setError('Запись слишком короткая. Удерживайте микрофон чуть дольше.')
+        browserTranscriptRef.current = ''
         resolve?.(null)
         return
       }
@@ -326,7 +340,7 @@ export function useCoachVoiceRecorder() {
         blob,
         durationSec,
         audioUrl,
-        browserTranscript: browserTranscriptRef.current.trim(),
+        browserTranscript,
       }
       browserTranscriptRef.current = ''
       setDraft((prev) => {
@@ -366,7 +380,6 @@ export function useCoachVoiceRecorder() {
   const beginRecordingWithStream = useCallback(
     (stream, token) => {
       if (token !== armingTokenRef.current) return false
-      if (!holdActiveRef.current && !lockedRef.current && !lockPendingRef.current) return false
 
       discardDraft()
       activeStreamRef.current = stream
@@ -389,7 +402,7 @@ export function useCoachVoiceRecorder() {
       setElapsedMs(0)
       setPhase('recording')
       if (lockPendingRef.current) activateLock()
-      recorder.start()
+      recorder.start(200)
       startSpeechRecognition()
       prewarmTranscribeAuth()
       startMeter(stream)
@@ -426,7 +439,7 @@ export function useCoachVoiceRecorder() {
       const token = ++armingTokenRef.current
       try {
         const stream = await acquireStream()
-        if (!holdActiveRef.current && !lockPendingRef.current) return
+        if (token !== armingTokenRef.current) return
         beginRecordingWithStream(stream, token)
       } catch (err) {
         console.error(err)
@@ -465,26 +478,48 @@ export function useCoachVoiceRecorder() {
     [activateLock, phase, scheduleGestureRender],
   )
 
+  const waitForRecordingStart = useCallback(async () => {
+    const step = 40
+    for (let waited = 0; waited < ARMING_WAIT_MS; waited += step) {
+      if (recordingActiveRef.current) return true
+      await waitMs(step)
+    }
+    return recordingActiveRef.current
+  }, [])
+
+  const ensureMinRecordDuration = useCallback(async () => {
+    if (!recordingActiveRef.current) return
+    const elapsed = Date.now() - startedAtRef.current
+    if (elapsed < MIN_SEND_MS) {
+      await waitMs(MIN_SEND_MS - elapsed)
+    }
+  }, [])
+
   const holdEnd = useCallback(async () => {
     if (lockedRef.current) {
       holdActiveRef.current = false
       return null
     }
 
+    const wasCancel = cancelOnReleaseRef.current
     holdActiveRef.current = false
 
-    if (cancelOnReleaseRef.current) {
+    if (wasCancel) {
       cancelRecording()
       return null
     }
 
     if (!recordingActiveRef.current) {
-      cancelRecording()
-      return null
+      const started = await waitForRecordingStart()
+      if (!started) {
+        cancelRecording()
+        return null
+      }
     }
 
+    await ensureMinRecordDuration()
     return stopToPreview()
-  }, [cancelRecording, stopToPreview])
+  }, [cancelRecording, ensureMinRecordDuration, stopToPreview, waitForRecordingStart])
 
   const finishRecording = useCallback(() => stopToPreview(), [stopToPreview])
 

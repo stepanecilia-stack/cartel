@@ -163,7 +163,7 @@ function clearPendingTranscribe() {
  * @param {{ browserTranscript?: string }} [options]
  */
 export function startTranscribeEarly(blob, options = {}) {
-  if (!blob || blob.size < 400) return
+  if (!blob || blob.size < 64) return
   const local = String(options.browserTranscript ?? '').trim()
   if (local.length >= 2) {
     clearPendingTranscribe()
@@ -193,7 +193,7 @@ export async function transcribeCoachVoice(blob, options = {}) {
     return local
   }
 
-  if (!blob || blob.size < 400) {
+  if (!blob || blob.size < 64) {
     throw new Error('Запись слишком короткая. Удерживайте кнопку и говорите чуть дольше.')
   }
 

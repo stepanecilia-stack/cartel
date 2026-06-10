@@ -229,7 +229,9 @@ export default function CoachAssistantChat({
 
   const processVoiceRecording = useCallback(
     async (recorded) => {
-      if (!recorded?.blob || recorded.blob.size < 400) return
+      if (!recorded?.blob) return
+      const hasTranscript = String(recorded.browserTranscript ?? '').trim().length >= 2
+      if (recorded.blob.size < 64 && !hasTranscript) return
       try {
         const transcript = await transcribeCoachVoice(recorded.blob, {
           browserTranscript: recorded.browserTranscript,
