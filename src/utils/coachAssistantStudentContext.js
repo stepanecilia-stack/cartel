@@ -320,8 +320,15 @@ export function formatStudentLookupReply(student, personaId, allNorms, programAt
  * @param {object[]} suggestions
  * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
  * @param {boolean} [includeCode]
+ * @param {{ corrections?: { from: string, to: string }[] }} [options]
  */
-export function formatStudentSuggestionsReply(suggestions, personaId, includeCode = false) {
+export function formatStudentSuggestionsReply(suggestions, personaId, includeCode = false, options = {}) {
+  const corrections = Array.isArray(options.corrections) ? options.corrections : []
+  const correctionHint =
+    corrections.length > 0
+      ? `Возможно, имелось в виду: ${corrections.map((c) => `«${c.from}» → ${c.to}`).join(', ')}.\n`
+      : ''
+
   const list = (Array.isArray(suggestions) ? suggestions : [])
     .slice(0, 5)
     .map((s) => `• ${formatStudentSuggestionLine(s, { includeCode })}`)
@@ -332,12 +339,12 @@ export function formatStudentSuggestionsReply(suggestions, personaId, includeCod
       : 'Коллега, такого ученика не вижу. Назови имя, фамилию или код.'
   }
   if (personaId === 'vasily') {
-    return `Похожие в базе (уточни, кого именно):\n${list}\nНазови имя или год рождения — не гадаю за тебя.`
+    return `${correctionHint}Похожие в базе (уточни, кого именно):\n${list}\nНазови имя или год рождения — не гадаю за тебя.`
   }
   if (personaId === 'gleb') {
-    return `Похожие ученики:\n${list}\nУточните, кого имеете в виду.`
+    return `${correctionHint}Похожие ученики:\n${list}\nУточните, кого имеете в виду.`
   }
-  return `Коллега, похоже, имелись в виду:\n${list}\nНазови точнее — имя или фамилию.`
+  return `${correctionHint}Коллега, похоже, имелись в виду:\n${list}\nНазови точнее — имя или фамилию.`
 }
 
 /**

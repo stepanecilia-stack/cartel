@@ -220,6 +220,7 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
           nameQuery.suggestions,
           id,
           enrichedContext.includeCodeInSuggestions === true,
+          { corrections: nameQuery.corrections },
         ),
         source: 'student-suggest',
       }
