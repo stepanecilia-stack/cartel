@@ -4,7 +4,12 @@ import {
   formatStudentSuggestionLine,
   resolveStudentNameQuery,
 } from './studentNameSearch.js'
-import { formatStudentCoachBrief } from './coachAssistantStudentContext.js'
+import {
+  formatStudentCoachBrief,
+  formatStudentLookupReply,
+  isStudentLookupQuery,
+  isStudentTopicSpecificQuery,
+} from './coachAssistantStudentContext.js'
 import {
   formatNormEvaluationReply,
   shouldUseDeterministicNormReply,
@@ -79,10 +84,13 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
 
   const found = resolved.match ?? findStudentByNameQuery(students, text) ?? answerStudent
   if (found) {
+    if (isStudentLookupQuery(text)) {
+      return formatStudentLookupReply(found, persona.id, norms, programAtoms)
+    }
     if (/техник|кабинет|этап|атом|уровен|умение|знание|навык/.test(lower)) {
       return `По технике:\n${brief(found, true)}`
     }
-    if (/рост|вес|размах|антроп|физическ/.test(lower)) {
+    if (/рост|вес|размах|антроп|физическ|кср|кд\b|архетип/.test(lower)) {
       return `Антропометрия и физика:\n${brief(found, true)}`
     }
     if (/норматив|сдал|зачёт|золот|серебр|бронз/.test(lower)) {
@@ -91,7 +99,10 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
     if (/сенситив|чувствител|окн[ао].*развит|моторн|качеств.*возраст/.test(lower)) {
       return `По сенситивным периодам:\n${brief(found, true)}`
     }
-    return `По карточке:\n${brief(found, true)}\nСпроси конкретнее: нормативы, техника, КСР, что записать.`
+    if (!isStudentTopicSpecificQuery(text)) {
+      return formatStudentLookupReply(found, persona.id, norms, programAtoms)
+    }
+    return `По карточке:\n${brief(found, true)}\nСпроси конкретнее: нормативы, техника, сенситив.`
   }
 
   if (/норматив|запиш|внес|приня|сдал/.test(lower)) {

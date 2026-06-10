@@ -15,6 +15,10 @@ import { COACH_ASSISTANT_CHAT_MAX_MESSAGES } from '../utils/coachAssistantChatHi
 import { isStudentCodeExplicitQuery } from '../utils/studentNameSearch.js'
 import { isNormSaveConfirmation } from '../utils/coachAssistantConfirmText.js'
 import {
+  formatStudentLookupReply,
+  isStudentLookupQuery,
+} from '../utils/coachAssistantStudentContext.js'
+import {
   buildNormEvaluationHint,
   formatNormConfirmAckReply,
   formatNormEvaluationReply,
@@ -180,6 +184,19 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     return {
       reply: formatNormConfirmAckReply(normEvaluation, id),
       source: 'norm-confirm',
+    }
+  }
+
+  const lookupStudent = enrichedContext.queryResolvedStudent ?? enrichedContext.focusStudent
+  if (isStudentLookupQuery(userMessage) && lookupStudent?.id) {
+    return {
+      reply: formatStudentLookupReply(
+        lookupStudent,
+        id,
+        enrichedContext.allNorms ?? [],
+        enrichedContext.programAtoms ?? null,
+      ),
+      source: 'student-lookup',
     }
   }
 

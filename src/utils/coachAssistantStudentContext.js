@@ -1,7 +1,11 @@
 import { getTechnicalProgramAtomsCache } from '../data/technicalProgramAtomsCache.js'
 import { portalPersonaDisplayName } from '../constants/studentPortalPersonas.js'
 import { trainingGoalsLabels } from '../constants/studentPortalOnboarding.js'
-import { buildAthleteForNorms, formatStudentNormsCardBlock } from './studentNormsProfile.js'
+import {
+  buildAthleteForNorms,
+  formatStudentNormsCardBlock,
+  formatStudentNormsCountBrief,
+} from './studentNormsProfile.js'
 import { technicalDominancePublicLabel } from './publicSharePayload.js'
 import { countLeadingMasteredAtoms } from './studentTechnicalUpdate.js'
 import {
@@ -181,6 +185,14 @@ function formatNormsBrief(student, allNorms, detailed) {
   return formatStudentNormsCardBlock(student, allNorms, detailed)
 }
 
+function formatAnthropometryHumanLine(shape) {
+  const parts = []
+  if (shape.height > 0) parts.push(`рост ${shape.height} см`)
+  if (shape.weight > 0) parts.push(`вес ${shape.weight} кг`)
+  if (shape.reach > 0) parts.push(`размах ${shape.reach} см`)
+  return parts.length ? parts.join(', ') : 'не заполнена'
+}
+
 function formatAnthropometryBrief(shape, student) {
   const parts = []
   if (shape.height > 0) parts.push(`рост=${shape.height} см`)
@@ -228,6 +240,82 @@ function formatPortalExtrasBrief(student) {
 }
 
 /**
+ * Где остановились в технике — одна строка для тренера.
+ * @param {object} student
+ * @param {{ level1?: object[], level2?: object[], level3?: object[] } | null} [programAtoms]
+ */
+export function formatCoachTechniqueStopShort(student, programAtoms = null) {
+  const atoms = resolveStudentProgramAtoms(student, programAtoms)
+  const data = normalizeStudentTechnicalData(student?.technicalData)
+  const stop = resolveCoachTechniqueStopPoint(atoms, data)
+  if (!stop || stop.step <= 0) return 'техника не начата'
+  return `${stop.tierShortLabel}, шаг ${stop.step} «${stop.atomTitle}» — ${stop.levelLabel}`
+}
+
+/**
+ * Сводка по ученику для ответа «найди / покажи»: антропометрия, техника, нормативы.
+ * @param {object} student
+ * @param {object[]} allNorms
+ * @param {{ level1?: object[], level2?: object[], level3?: object[] } | null} [programAtoms]
+ */
+export function formatStudentCoachSummaryText(student, allNorms, programAtoms = null) {
+  const name = displayNameFromStudent(student)
+  const athlete = buildAthleteForNorms(student)
+  const shape = studentAthleteShape(athlete)
+  const gender = athlete.gender === 'F' ? 'Ж' : 'М'
+  const birth = athlete.birthYear ? `${athlete.birthYear} г.р.` : null
+  const header = [name, gender, birth].filter(Boolean).join(', ')
+
+  return [
+    header,
+    `Антропометрия: ${formatAnthropometryHumanLine(shape)}.`,
+    `Техника: ${formatCoachTechniqueStopShort(student, programAtoms)}.`,
+    `${formatStudentNormsCountBrief(student, allNorms).replace(/^нормативы:\s*/i, 'Нормативы: ')}.`,
+  ].join('\n')
+}
+
+/**
+ * @param {string} text
+ */
+export function isStudentTopicSpecificQuery(text) {
+  const lower = String(text ?? '').toLowerCase()
+  return /техник|кабинет|этап|атом|уровен|умение|знание|навык|рост|вес|размах|антроп|физическ|норматив|сдал|зач[её]т|золот|серебр|бронз|сенситив|чувствител|окн[ао].*развит|моторн|качеств.*возраст|кср|кд\b|архетип|вирт|тренер ученика|кабинет/.test(
+    lower,
+  )
+}
+
+/**
+ * @param {string} text
+ */
+export function isStudentLookupQuery(text) {
+  const lower = String(text ?? '').trim().toLowerCase()
+  if (!lower) return false
+  if (isStudentTopicSpecificQuery(lower)) return false
+  return /найди|найти|покажи|покажите|кто такой|кто такая|открой|откройте|выведи|дай\s+(мне\s+)?(данн|инф|сводк)|информаци|сведения|карточк|про\s+ученик|что\s+с\s+/i.test(
+    lower,
+  )
+}
+
+/**
+ * @param {object} student
+ * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
+ * @param {object[]} allNorms
+ * @param {{ level1?: object[], level2?: object[], level3?: object[] } | null} [programAtoms]
+ */
+export function formatStudentLookupReply(student, personaId, allNorms, programAtoms = null) {
+  const summary = formatStudentCoachSummaryText(student, allNorms, programAtoms)
+  const name = displayNameFromStudent(student)
+
+  if (personaId === 'vasily') {
+    return `Коллега, нашёл:\n${summary}\nЧто уточнить?`
+  }
+  if (personaId === 'gleb') {
+    return `Краткая сводка по ${name}:\n${summary}\nУточните, что разобрать подробнее.`
+  }
+  return `Коллега, вот сводка:\n${summary}\nСпроси детали: нормативы, техника, сенситив.`
+}
+
+/**
  * Полная или краткая строка ученика для промпта коллеги-тренера.
  * @param {object} student
  * @param {object[]} allNorms
@@ -267,10 +355,8 @@ export function formatStudentCoachBrief(student, allNorms, detailed = false, pro
 
   if (!detailed) {
     const coachTech = formatCoachTechnicalBrief(student, atoms)
-    const portalTech = formatPortalTechnicalBrief(student, atoms, false)
-    const norms = formatNormsBrief(student, allNorms, false)
-    const sensitive = formatStudentSensitivePeriodsBrief(student, false)
-    return [header, coachTech, portalTech, norms, sensitive].join('; ')
+    const norms = formatStudentNormsCountBrief(student, allNorms)
+    return [header, coachTech, norms].join('; ')
   }
 
   const sections = [

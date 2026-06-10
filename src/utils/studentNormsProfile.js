@@ -123,6 +123,21 @@ export function formatStudentNormsProfileLine(student, allNorms) {
  * @param {object[]} allNorms
  * @param {boolean} [detailed]
  */
+/**
+ * Кратко: сколько нормативов сдано, без перечня.
+ * @param {object | null | undefined} student
+ * @param {object[]} allNorms
+ */
+export function formatStudentNormsCountBrief(student, allNorms) {
+  const profile = describeStudentNormsProfile(student, allNorms)
+  if (profile.norms.length === 0) {
+    return 'нормативы: нет списка для возраста/пола'
+  }
+  const values = migrateStudentTests(student?.tests).physical
+  const snapshot = buildPortalNormsSnapshot(profile.norms, values, student?.portalNormSelfReports)
+  return `нормативы: сдано ${snapshot.passed} из ${snapshot.total}`
+}
+
 export function formatStudentNormsCardBlock(student, allNorms, detailed = true) {
   const profile = describeStudentNormsProfile(student, allNorms)
   const lines = [formatStudentNormsProfileLine(student, allNorms)]

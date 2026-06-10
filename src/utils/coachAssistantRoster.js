@@ -1,4 +1,4 @@
-import { formatStudentCoachBrief } from './coachAssistantStudentContext.js'
+import { formatStudentCoachBrief, formatStudentCoachSummaryText } from './coachAssistantStudentContext.js'
 import { formatStudentSuggestionsBlock } from './studentNameSearch.js'
 
 export { findStudentByNameQuery, findStudentByNameQuery as findStudentInRoster } from './studentNameSearch.js'
@@ -28,7 +28,7 @@ export function buildCoachAssistantRosterBlock(
   const lines = []
 
   lines.push(
-    'У каждого ученика: антропометрия, КСР/КД, техника, кабинет, нормативы (профиль: пол, г.р., возраст, группа + пороги как в карточке), сенситивные периоды.',
+    'У каждого ученика в списке — краткая строка. Полные нормативы, кабинет, сенситив — только по отдельному запросу тренера.',
   )
   lines.push('')
 
@@ -36,7 +36,10 @@ export function buildCoachAssistantRosterBlock(
     const sameAsFocus = focusStudent?.id === queryResolvedStudent.id
     if (!sameAsFocus) {
       lines.push('## Ученик из запроса тренера (сопоставлено по имени/фамилии)')
-      lines.push(formatStudentCoachBrief(queryResolvedStudent, norms, true, programAtoms))
+      lines.push(formatStudentCoachSummaryText(queryResolvedStudent, norms, programAtoms))
+      lines.push(
+        'Подробности (все нормативы с порогами, кабинет, сенситив, КСР) — только если тренер спросит отдельно.',
+      )
       lines.push('')
     }
   } else if (Array.isArray(queryStudentSuggestions) && queryStudentSuggestions.length > 0) {
