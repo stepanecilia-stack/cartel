@@ -345,6 +345,157 @@ export const portalPersonaChat = onRequest(
   },
 )
 
+/**
+ * @param {string} accessToken
+ * @param {string} modelId
+ * @param {string} audioBase64
+ * @param {string} mimeType
+ */
+async function transcribeVoiceWithGemini(accessToken, modelId, audioBase64, mimeType) {
+  const url =
+    `https://${GCP_LOCATION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT}` +
+    `/locations/${GCP_LOCATION}/publishers/google/models/${modelId}:generateContent`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [
+          {
+            text: 'Ты модуль распознавания речи. Верни только текст сказанного по-русски, без кавычек и комментариев.',
+          },
+        ],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: mimeType.slice(0, 80), data: audioBase64 } },
+            { text: 'Расшифруй голосовое сообщение тренера.' },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        topP: 0.8,
+        maxOutputTokens: 512,
+        ...(modelId.includes('2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+      },
+    }),
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    const msg =
+      payload?.error?.message ||
+      payload?.error?.status ||
+      `Vertex Gemini HTTP ${response.status}`
+    throw new Error(String(msg))
+  }
+
+  const candidate = payload?.candidates?.[0]
+  const parts = candidate?.content?.parts
+  const text = Array.isArray(parts)
+    ? parts
+        .filter((p) => p && !p.thought)
+        .map((p) => (p && typeof p.text === 'string' ? p.text : ''))
+        .join('')
+        .trim()
+    : ''
+
+  return { text, modelId, usage: extractVertexUsage(payload) }
+}
+
+/**
+ * @param {string} audioBase64
+ * @param {string} mimeType
+ */
+async function generateVoiceTranscript(audioBase64, mimeType) {
+  const accessToken = await getVertexAccessToken()
+  let lastError = 'Voice transcribe failed'
+  for (const modelId of GEMINI_MODELS) {
+    try {
+      const result = await transcribeVoiceWithGemini(accessToken, modelId, audioBase64, mimeType)
+      if (result.text) return result
+      lastError = `empty transcript from ${modelId}`
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err)
+    }
+  }
+  throw new Error(String(lastError))
+}
+
+export const coachAssistantTranscribe = onRequest(
+  {
+    region: 'europe-west1',
+    maxInstances: 10,
+    invoker: 'public',
+  },
+  async (req, res) => {
+    applyCors(req, res)
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('')
+      return
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'method-not-allowed' })
+      return
+    }
+
+    try {
+      const authHeader = req.headers.authorization ?? ''
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+      if (!token) {
+        res.status(401).json({ error: 'unauthenticated' })
+        return
+      }
+
+      await getAuth().verifyIdToken(token)
+
+      const audioBase64 = typeof req.body?.audioBase64 === 'string' ? req.body.audioBase64 : ''
+      const mimeType =
+        typeof req.body?.mimeType === 'string' && req.body.mimeType.trim()
+          ? req.body.mimeType.trim()
+          : 'audio/webm'
+
+      if (!audioBase64 || audioBase64.length < 40) {
+        res.status(400).json({ error: 'invalid-argument', detail: 'empty audio' })
+        return
+      }
+
+      if (audioBase64.length > 4_500_000) {
+        res.status(400).json({ error: 'invalid-argument', detail: 'audio too large' })
+        return
+      }
+
+      const result = await generateVoiceTranscript(audioBase64, mimeType)
+      if (!result.text) {
+        res.status(500).json({ error: 'empty-transcript' })
+        return
+      }
+
+      await recordPortalAiUsage({
+        kind: 'transcribe',
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        modelId: result.modelId,
+      })
+
+      res.status(200).json({ text: result.text.slice(0, 2000) })
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err)
+      console.error('coachAssistantTranscribe error', detail, err)
+      res.status(500).json({ error: 'internal', detail })
+    }
+  },
+)
+
 export const portalPersonaMemoryRefresh = onRequest(
   {
     region: 'europe-west1',

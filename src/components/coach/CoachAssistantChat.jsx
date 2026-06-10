@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import StudentPersonaAvatar from '../student/StudentPersonaAvatar.jsx'
 import CoachAssistantNormConfirmCard from './CoachAssistantNormConfirmCard.jsx'
+import CoachAssistantVoiceBubble from './CoachAssistantVoiceBubble.jsx'
+import CoachAssistantVoiceRecorder from './CoachAssistantVoiceRecorder.jsx'
 
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 
@@ -11,6 +13,7 @@ import {
 } from '../../services/coachAssistantService.js'
 
 import { saveCoachAssistantNorm } from '../../services/coachAssistantNormSave.js'
+import { transcribeCoachVoice } from '../../services/coachVoiceTranscribe.js'
 
 import { parseCoachAssistantMarkers } from '../../utils/coachAssistantActions.js'
 import { resolvePendingNormFromMessages } from '../../utils/coachAssistantNormPending.js'
@@ -27,6 +30,8 @@ import { buildCoachAssistantOpener } from '../../utils/coachAssistantPrompt.js'
 import { isPortalPersonaAiRemoteEnabled } from '../../utils/portalPersonaAiConfig.js'
 
 import { portalPersonaReplySourceLabel } from '../../utils/portalPersonaAiConfig.js'
+
+import { useCoachVoiceRecorder } from '../../hooks/useCoachVoiceRecorder.js'
 
 import { vk } from '../../utils/vkUi.js'
 
@@ -65,6 +70,10 @@ export default function CoachAssistantChat({
   const [confirmError, setConfirmError] = useState('')
   const savedNormKeysRef = useRef(new Set())
   const bottomRef = useRef(null)
+  const holdPointerIdRef = useRef(/** @type {number | null} */ (null))
+  const holdStartedAtRef = useRef(0)
+
+  const voice = useCoachVoiceRecorder()
 
   const coachContextBase = useMemo(
     () => ({ coachName, students, focusStudent }),
@@ -117,7 +126,7 @@ export default function CoachAssistantChat({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, busy, pendingNorm, confirmSaved])
+  }, [messages, busy, pendingNorm, confirmSaved, voice.phase])
 
   const runNormSave = useCallback(
     async (saveAction) => {
@@ -159,15 +168,24 @@ export default function CoachAssistantChat({
   }, [pendingNorm, confirmBusy, confirmSaved, runNormSave, messages, persistMessages])
 
   const submitUserText = useCallback(
-    async (text) => {
+    async (text, voiceMeta = null) => {
       const trimmed = text.trim()
       if (!trimmed || busy || disabled) return
 
       setError('')
       setInput('')
       setConfirmError('')
+      voice.clearError()
 
-      const nextHistory = persistMessages([...messages, { role: 'user', content: trimmed }])
+      /** @type {import('../../utils/coachAssistantChatHistory.js').CoachAssistantChatMessage} */
+      const userMessage = {
+        role: 'user',
+        content: trimmed,
+        ...(voiceMeta?.durationSec ? { voiceDurationSec: voiceMeta.durationSec } : {}),
+        ...(voiceMeta?.audioUrl ? { voiceAudioUrl: voiceMeta.audioUrl } : {}),
+      }
+
+      const nextHistory = persistMessages([...messages, userMessage])
       setBusy(true)
 
       try {
@@ -193,15 +211,64 @@ export default function CoachAssistantChat({
         const rolledBack = messages
         setMessages(rolledBack)
         writeCoachAssistantChatHistory(coachId, persona.id, rolledBack)
-        setInput(trimmed)
+        if (!voiceMeta) setInput(trimmed)
       } finally {
         setBusy(false)
       }
     },
-    [busy, disabled, messages, persona.id, coachContextBase, persistMessages, coachId],
+    [busy, disabled, messages, persona.id, coachContextBase, persistMessages, coachId, voice],
   )
 
+  const finishVoiceRecording = useCallback(async () => {
+    if (voice.phase !== 'recording') return
+    setError('')
+    voice.clearError()
+    const recorded = await voice.stopRecording()
+    if (!recorded || recorded.blob.size < 400) {
+      setError('Запись слишком короткая.')
+      return
+    }
+
+    setBusy(true)
+    try {
+      const transcript = await transcribeCoachVoice(recorded.blob, {
+        browserTranscript: recorded.browserTranscript,
+      })
+      const audioUrl = URL.createObjectURL(recorded.blob)
+      await submitUserText(transcript, {
+        durationSec: recorded.durationSec,
+        audioUrl,
+      })
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : 'Не удалось распознать голосовое')
+    } finally {
+      setBusy(false)
+    }
+  }, [voice, submitUserText])
+
   const send = () => void submitUserText(input)
+
+  const handleMicPointerDown = (event) => {
+    if (disabled || busy || input.trim() || voice.phase !== 'idle') return
+    holdPointerIdRef.current = event.pointerId
+    holdStartedAtRef.current = Date.now()
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      /* ignore */
+    }
+    void voice.startRecording()
+  }
+
+  const handleMicPointerUp = (event) => {
+    if (holdPointerIdRef.current !== event.pointerId) return
+    holdPointerIdRef.current = null
+    const heldMs = Date.now() - holdStartedAtRef.current
+    if (voice.phase === 'recording' && heldMs >= 450) {
+      void finishVoiceRecording()
+    }
+  }
 
   const resetChat = useCallback(() => {
     if (busy || disabled) return
@@ -209,6 +276,7 @@ export default function CoachAssistantChat({
       `Сбросить переписку с ${name}? История этого помощника будет удалена, контекст начнётся заново.`,
     )
     if (!confirmed) return
+    voice.cancelRecording()
     const fresh = resetCoachAssistantChatMessages(coachId, persona.id, opener)
     setMessages(fresh)
     setError('')
@@ -218,16 +286,19 @@ export default function CoachAssistantChat({
     setConfirmSaved(false)
     setConfirmError('')
     savedNormKeysRef.current = new Set()
-  }, [busy, disabled, coachId, persona.id, name, opener])
+  }, [busy, disabled, coachId, persona.id, name, opener, voice])
 
   const showConfirmCard = pendingNorm?.evaluation && !busy
+  const isRecording = voice.phase === 'recording'
+  const isVoiceProcessing = voice.phase === 'processing' || (busy && voice.phase === 'idle' && !input.trim())
+  const showMicButton = !input.trim() && voice.isSupported && voice.phase === 'idle' && !busy
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex justify-end">
         <button
           type="button"
-          disabled={disabled || busy}
+          disabled={disabled || busy || isRecording}
           onClick={resetChat}
           className={`${vk.btnSecondary} px-2.5 py-1 text-[12px]`}
         >
@@ -250,7 +321,15 @@ export default function CoachAssistantChat({
           msg.role === 'user' ? (
             <div key={`${index}-u`} className="flex justify-end">
               <div className="max-w-[88%] rounded-2xl rounded-tr-md bg-[#ecf3fc] px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
-                {msg.content}
+                {msg.voiceDurationSec ? (
+                  <CoachAssistantVoiceBubble
+                    durationSec={msg.voiceDurationSec}
+                    audioUrl={msg.voiceAudioUrl}
+                    transcript={msg.content}
+                  />
+                ) : (
+                  msg.content
+                )}
               </div>
             </div>
           ) : (
@@ -263,7 +342,7 @@ export default function CoachAssistantChat({
           ),
         )}
 
-        {busy ? (
+        {busy && !isRecording ? (
           <div className="flex gap-2.5">
             <StudentPersonaAvatar personaId={persona.id} size="md" />
             <div className="rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] text-[#818c99]">
@@ -286,32 +365,67 @@ export default function CoachAssistantChat({
       </div>
 
       <div className="flex gap-2">
-        <input
-          type="text"
-          className={`${vk.input} min-h-10 flex-1`}
-          placeholder={`Спросите ${name}…`}
-          value={input}
-          disabled={disabled || busy}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              send()
-            }
-          }}
-          maxLength={500}
-        />
-        <button
-          type="button"
-          disabled={disabled || busy || !input.trim()}
-          onClick={send}
-          className={`shrink-0 ${vk.btnPrimary} px-3`}
-        >
-          →
-        </button>
+        {isRecording || voice.phase === 'processing' ? (
+          <CoachAssistantVoiceRecorder
+            elapsedLabel={voice.elapsedLabel}
+            processing={voice.phase === 'processing' || isVoiceProcessing}
+            onCancel={() => voice.cancelRecording()}
+            onSend={() => void finishVoiceRecording()}
+          />
+        ) : (
+          <>
+            <input
+              type="text"
+              className={`${vk.input} min-h-10 flex-1`}
+              placeholder={`Спросите ${name}…`}
+              value={input}
+              disabled={disabled || busy}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  send()
+                }
+              }}
+              maxLength={500}
+            />
+            {showMicButton ? (
+              <button
+                type="button"
+                disabled={disabled || busy}
+                onPointerDown={handleMicPointerDown}
+                onPointerUp={handleMicPointerUp}
+                onPointerCancel={() => {
+                  holdPointerIdRef.current = null
+                  if (voice.phase === 'recording') voice.cancelRecording()
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5181b8] text-white touch-manipulation disabled:opacity-45"
+                aria-label="Голосовое сообщение"
+                title="Удерживайте или нажмите для записи"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+                  <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={disabled || busy || !input.trim()}
+                onClick={send}
+                className={`shrink-0 ${vk.btnPrimary} px-3`}
+              >
+                →
+              </button>
+            )}
+          </>
+        )}
       </div>
 
+      {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
       {error ? <p className={vk.error}>{error}</p> : null}
+      {voice.isSupported ? (
+        <p className={vk.mutedXs}>Голосовое: удерживайте микрофон или нажмите → после записи.</p>
+      ) : null}
     </div>
   )
 }

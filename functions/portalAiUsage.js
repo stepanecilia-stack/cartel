@@ -33,7 +33,7 @@ function currentMonthKey(date = new Date()) {
 
 /**
  * @param {{
- *   kind: 'chat' | 'memory',
+ *   kind: 'chat' | 'memory' | 'transcribe',
  *   inputTokens: number,
  *   outputTokens: number,
  *   modelId?: string,

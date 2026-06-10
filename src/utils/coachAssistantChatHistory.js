@@ -5,7 +5,12 @@ export const COACH_ASSISTANT_CHAT_MAX_MESSAGES = 30
 const STORAGE_PREFIX = 'cartel_coach_assistant_chat_v1'
 
 /**
- * @typedef {{ role: 'user' | 'assistant', content: string }} CoachAssistantChatMessage
+ * @typedef {{
+ *   role: 'user' | 'assistant',
+ *   content: string,
+ *   voiceDurationSec?: number,
+ *   voiceAudioUrl?: string,
+ * }} CoachAssistantChatMessage
  */
 
 function storageKey(coachId, personaId) {
@@ -20,7 +25,15 @@ function normalizeMessage(raw) {
   const role = raw.role === 'user' || raw.role === 'assistant' ? raw.role : null
   const content = typeof raw.content === 'string' ? raw.content.trim() : ''
   if (!role || !content) return null
-  return { role, content: content.slice(0, 4000) }
+  const voiceDurationSec =
+    typeof raw.voiceDurationSec === 'number' && Number.isFinite(raw.voiceDurationSec)
+      ? Math.round(raw.voiceDurationSec)
+      : undefined
+  return {
+    role,
+    content: content.slice(0, 4000),
+    ...(voiceDurationSec ? { voiceDurationSec } : {}),
+  }
 }
 
 /**
