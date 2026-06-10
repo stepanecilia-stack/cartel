@@ -90,8 +90,21 @@ const QUERY_STOP_WORDS = new Set([
   'хорошо',
   'существует',
   'системе',
-  'базе',
   'нашей',
+  'в',
+  'расшифруй',
+  'расшифруйте',
+  'расшифров',
+  'голосовое',
+  'голосов',
+  'сообщение',
+  'сообщения',
+  'тренера',
+  'тренер',
+  'тренеру',
+  'это',
+  'она',
+  'он',
   'точно',
   'уверен',
   'уверена',
@@ -108,6 +121,36 @@ const QUERY_STOP_WORDS = new Set([
   'tell',
   'about',
 ])
+
+/** Уменьшительные и разговорные формы → полное имя. */
+const NAME_ALIASES = {
+  миша: ['михаил'],
+  мишу: ['михаил'],
+  миши: ['михаил'],
+  михаил: ['миша'],
+  саша: ['александр', 'александра'],
+  сашу: ['александр', 'александра'],
+  дима: ['дмитрий'],
+  диму: ['дмитрий'],
+  вова: ['владимир'],
+  вову: ['владимир'],
+  коля: ['николай'],
+  колю: ['николай'],
+  паша: ['павел'],
+  леша: ['алексей'],
+  лёша: ['алексей'],
+  лешу: ['алексей'],
+  катя: ['екатерина'],
+  лена: ['елена'],
+  настя: ['анастасия'],
+  даня: ['даниил'],
+  даню: ['даниил'],
+  женя: ['евгений', 'евгения'],
+  ваня: ['иван'],
+  петя: ['петр'],
+  сережа: ['сергей'],
+  серёжа: ['сергей'],
+}
 
 const STEM_ENDINGS = [
   'ого',
@@ -175,16 +218,82 @@ export function stemRuName(word) {
   return s
 }
 
+/** @param {string} s */
+function ruTyposKey(s) {
+  return stemRuName(s).replace(/о/g, 'а')
+}
+
+/** @param {string} a @param {string} b */
+function levenshteinAtMost(a, b, maxDist) {
+  if (a === b) return true
+  if (Math.abs(a.length - b.length) > maxDist) return false
+  const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0))
+  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i
+  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j
+  for (let i = 1; i <= a.length; i += 1) {
+    let rowMin = maxDist + 1
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+      rowMin = Math.min(rowMin, dp[i][j])
+    }
+    if (rowMin > maxDist) return false
+  }
+  return dp[a.length][b.length] <= maxDist
+}
+
+/** @param {string} token */
+function queryTokenVariants(token) {
+  const base = normalizeRuWord(token)
+  const variants = new Set([base, stemRuName(base)])
+  const aliases = NAME_ALIASES[base] ?? NAME_ALIASES[stemRuName(base)] ?? []
+  for (const alias of aliases) {
+    variants.add(alias)
+    variants.add(stemRuName(alias))
+  }
+  return [...variants].filter(Boolean)
+}
+
 /** @param {string} a @param {string} b */
 function nameTokensMatch(a, b) {
-  const sa = stemRuName(a)
-  const sb = stemRuName(b)
-  if (!sa || !sb) return false
-  if (sa === sb) return true
-  const min = Math.min(sa.length, sb.length)
-  if (min < 3) return sa === sb
-  const prefixLen = Math.min(4, min)
-  return sa.slice(0, prefixLen) === sb.slice(0, prefixLen)
+  const pairs = []
+  for (const va of queryTokenVariants(a)) {
+    for (const vb of queryTokenVariants(b)) {
+      pairs.push([va, vb])
+    }
+  }
+  pairs.push([a, b])
+
+  for (const [left, right] of pairs) {
+    const sa = stemRuName(left)
+    const sb = stemRuName(right)
+    if (!sa || !sb) continue
+    if (sa === sb) return true
+
+    const ta = ruTyposKey(left)
+    const tb = ruTyposKey(right)
+    if (ta.length >= 5 && tb.length >= 5 && ta === tb) return true
+    if (ta.length >= 6 && tb.length >= 6 && levenshteinAtMost(ta, tb, 1)) return true
+
+    const min = Math.min(sa.length, sb.length)
+    if (min < 3) continue
+    const prefixLen = Math.min(5, min)
+    if (sa.slice(0, prefixLen) === sb.slice(0, prefixLen)) return true
+  }
+
+  return false
+}
+
+/**
+ * @param {object[]} students
+ * @param {string} token
+ */
+function studentsMatchingSurnameFamily(students, token) {
+  const list = Array.isArray(students) ? students : []
+  return list.filter((student) => {
+    const parts = namePartsFromStudent(student)
+    return parts.some((part) => nameTokensMatch(token, part))
+  })
 }
 
 /** @param {object} student */
@@ -335,6 +444,30 @@ export function resolveStudentNameQuery(students, query) {
 
   if (!ranked.length) {
     return { match: null, suggestions: [], ambiguous: false, queryTokens, significantTokens: significant }
+  }
+
+  if (significant.length === 1) {
+    const family = studentsMatchingSurnameFamily(students, significant[0])
+    if (family.length > 1) {
+      return {
+        match: null,
+        suggestions: family.slice(0, 6),
+        ambiguous: true,
+        queryTokens,
+        significantTokens: significant,
+      }
+    }
+    if (family.length === 1) {
+      return {
+        match: family[0],
+        suggestions: uniqueStudents(ranked)
+          .filter((s) => s.id !== family[0].id)
+          .slice(0, 6),
+        ambiguous: false,
+        queryTokens,
+        significantTokens: significant,
+      }
+    }
   }
 
   if (significant.length >= 2) {

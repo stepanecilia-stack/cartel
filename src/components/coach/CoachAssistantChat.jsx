@@ -241,14 +241,6 @@ export default function CoachAssistantChat({
     [submitUserText],
   )
 
-  const finishVoiceRecording = useCallback(async () => {
-    if (voice.phase !== 'recording' && voice.phase !== 'locked') return
-    setError('')
-    voice.clearError()
-    const recorded = await voice.stopRecording()
-    await processVoiceRecording(recorded)
-  }, [voice, processVoiceRecording])
-
   const send = () => void submitUserText(input)
 
   const handleMicPointerDown = (event) => {
@@ -296,10 +288,7 @@ export default function CoachAssistantChat({
 
   const showConfirmCard = pendingNorm?.evaluation && !busy
   const voicePanelOpen =
-    voice.phase === 'arming' ||
-    voice.phase === 'recording' ||
-    voice.phase === 'locked' ||
-    voice.phase === 'processing'
+    voice.phase === 'arming' || voice.phase === 'recording' || voice.phase === 'processing'
   const showMicButton = !input.trim() && voice.isSupported && voice.phase === 'idle' && !busy
 
   return (
@@ -380,11 +369,8 @@ export default function CoachAssistantChat({
             levels={voice.levels}
             slidePx={voice.slidePx}
             cancelPending={voice.cancelPending}
-            locked={voice.isLocked}
             processing={voice.phase === 'processing' || busy}
             onCancel={() => voice.cancelRecording()}
-            onSend={() => void finishVoiceRecording()}
-            onLock={() => voice.lockRecording()}
           />
         ) : (
           <>

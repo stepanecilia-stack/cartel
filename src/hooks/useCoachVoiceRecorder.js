@@ -31,11 +31,11 @@ function formatRecordTimer(ms) {
 }
 
 /**
- * Telegram-style: удержание → запись, отпускание → отправка; свайп влево → отмена; короткий тап → фиксация.
+ * Удержание → запись, отпускание → отправка; свайп влево → отмена.
  */
 export function useCoachVoiceRecorder() {
   const [phase, setPhase] = useState(
-    /** @type {'idle' | 'arming' | 'recording' | 'locked' | 'processing'} */ ('idle'),
+    /** @type {'idle' | 'arming' | 'recording' | 'processing'} */ ('idle'),
   )
   const [elapsedMs, setElapsedMs] = useState(0)
   const [slidePx, setSlidePx] = useState(0)
@@ -53,7 +53,6 @@ export function useCoachVoiceRecorder() {
   const audioCtxRef = useRef(/** @type {AudioContext | null} */ (null))
   const startedAtRef = useRef(0)
   const holdActiveRef = useRef(false)
-  const lockedRef = useRef(false)
   const cancelOnReleaseRef = useRef(false)
   const holdDownAtRef = useRef(0)
   const originXRef = useRef(0)
@@ -108,7 +107,6 @@ export function useCoachVoiceRecorder() {
     setSlidePx(0)
     setLevels([0.2, 0.35, 0.5, 0.35, 0.2])
     holdActiveRef.current = false
-    lockedRef.current = false
     cancelOnReleaseRef.current = false
     recordingActiveRef.current = false
   }, [])
@@ -201,7 +199,7 @@ export function useCoachVoiceRecorder() {
   const beginRecordingWithStream = useCallback(
     (stream, token) => {
       if (token !== armingTokenRef.current) return false
-      if (!holdActiveRef.current && !lockedRef.current) return false
+      if (!holdActiveRef.current) return false
 
       activeStreamRef.current = stream
       chunksRef.current = []
@@ -221,7 +219,7 @@ export function useCoachVoiceRecorder() {
       startedAtRef.current = Date.now()
       recordingActiveRef.current = true
       setElapsedMs(0)
-      setPhase(lockedRef.current ? 'locked' : 'recording')
+      setPhase('recording')
       recorder.start(120)
       startMeter(stream)
 
@@ -243,7 +241,6 @@ export function useCoachVoiceRecorder() {
       if (phase !== 'idle' || !isCoachVoiceInputSupported()) return
       setError('')
       holdActiveRef.current = true
-      lockedRef.current = false
       cancelOnReleaseRef.current = false
       holdDownAtRef.current = Date.now()
       originXRef.current = clientX
@@ -253,7 +250,7 @@ export function useCoachVoiceRecorder() {
       const token = ++armingTokenRef.current
       try {
         const stream = await acquireStream()
-        if (!holdActiveRef.current && !lockedRef.current) return
+        if (!holdActiveRef.current) return
         beginRecordingWithStream(stream, token)
       } catch (err) {
         console.error(err)
@@ -265,7 +262,7 @@ export function useCoachVoiceRecorder() {
   )
 
   const holdMove = useCallback((clientX) => {
-    if (!holdActiveRef.current || lockedRef.current) return
+    if (!holdActiveRef.current) return
     if (phase !== 'arming' && phase !== 'recording') return
     const delta = Math.min(0, clientX - originXRef.current)
     setSlidePx(delta)
@@ -273,11 +270,6 @@ export function useCoachVoiceRecorder() {
   }, [phase])
 
   const holdEnd = useCallback(async () => {
-    if (lockedRef.current) {
-      holdActiveRef.current = false
-      return null
-    }
-
     holdActiveRef.current = false
 
     if (cancelOnReleaseRef.current) {
@@ -292,15 +284,6 @@ export function useCoachVoiceRecorder() {
 
     return stopRecording()
   }, [cancelRecording, stopRecording])
-
-  const lockRecording = useCallback(() => {
-    if (phase !== 'recording') return
-    holdActiveRef.current = false
-    lockedRef.current = true
-    setPhase('locked')
-    setSlidePx(0)
-    cancelOnReleaseRef.current = false
-  }, [phase])
 
   useEffect(() => {
     if (!isCoachVoiceInputSupported()) return undefined
@@ -318,13 +301,11 @@ export function useCoachVoiceRecorder() {
     slidePx,
     levels,
     cancelPending: slidePx < -CANCEL_SLIDE_PX * 0.55,
-    isLocked: phase === 'locked',
     error,
     isSupported: isCoachVoiceInputSupported(),
     holdStart,
     holdMove,
     holdEnd,
-    lockRecording,
     stopRecording,
     cancelRecording,
     clearError: () => setError(''),

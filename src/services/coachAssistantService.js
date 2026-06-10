@@ -16,8 +16,10 @@ import { isStudentCodeExplicitQuery } from '../utils/studentNameSearch.js'
 import { isNormSaveConfirmation } from '../utils/coachAssistantConfirmText.js'
 import {
   formatStudentLookupReply,
+  formatStudentNotFoundReply,
   formatStudentSuggestionsReply,
   isStudentTopicSpecificQuery,
+  messageHasStudentNameIntent,
 } from '../utils/coachAssistantStudentContext.js'
 import { isNormConversationThread } from '../utils/coachAssistantNormEvaluate.js'
 import { resolveStudentNameQuery } from '../utils/studentNameSearch.js'
@@ -199,31 +201,37 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     !normThread &&
     !normEvaluation?.student?.id
 
-  if (canAutoStudentReply && nameQuery.match?.id && !nameQuery.ambiguous) {
-    return {
-      reply: formatStudentLookupReply(
-        nameQuery.match,
-        id,
-        enrichedContext.allNorms ?? [],
-        enrichedContext.programAtoms ?? null,
-      ),
-      source: 'student-lookup',
+  if (canAutoStudentReply && messageHasStudentNameIntent(nameQuery)) {
+    if (nameQuery.match?.id && !nameQuery.ambiguous) {
+      return {
+        reply: formatStudentLookupReply(
+          nameQuery.match,
+          id,
+          enrichedContext.allNorms ?? [],
+          enrichedContext.programAtoms ?? null,
+        ),
+        source: 'student-lookup',
+      }
     }
-  }
 
-  if (
-    canAutoStudentReply &&
-    !nameQuery.match &&
-    nameQuery.suggestions.length > 0 &&
-    (nameQuery.significantTokens?.length ?? 0) >= 1
-  ) {
+    if (nameQuery.suggestions.length > 0) {
+      return {
+        reply: formatStudentSuggestionsReply(
+          nameQuery.suggestions,
+          id,
+          enrichedContext.includeCodeInSuggestions === true,
+        ),
+        source: 'student-suggest',
+      }
+    }
+
     return {
-      reply: formatStudentSuggestionsReply(
-        nameQuery.suggestions,
+      reply: formatStudentNotFoundReply(
         id,
-        enrichedContext.includeCodeInSuggestions === true,
+        students.length,
+        nameQuery.significantTokens ?? [],
       ),
-      source: 'student-suggest',
+      source: 'student-not-found',
     }
   }
 

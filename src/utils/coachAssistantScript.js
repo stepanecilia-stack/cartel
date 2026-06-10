@@ -3,8 +3,10 @@ import { findStudentByNameQuery, resolveStudentNameQuery } from './studentNameSe
 import {
   formatStudentCoachBrief,
   formatStudentLookupReply,
+  formatStudentNotFoundReply,
   formatStudentSuggestionsReply,
   isStudentTopicSpecificQuery,
+  messageHasStudentNameIntent,
 } from './coachAssistantStudentContext.js'
 import { isNormConversationThread } from './coachAssistantNormEvaluate.js'
 import {
@@ -76,11 +78,31 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
         match: coachContext.queryResolvedStudent,
         suggestions: coachContext.queryStudentSuggestions ?? [],
         ambiguous: false,
+        significantTokens: [],
       }
     : resolveStudentNameQuery(students, text)
 
-  const found = resolved.match ?? findStudentByNameQuery(students, text) ?? answerStudent
   const normThread = isNormConversationThread(coachContext.conversationMessages ?? [], text)
+  if (
+    !normThread &&
+    !coachContext.normEvaluation &&
+    messageHasStudentNameIntent(resolved) &&
+    !isStudentTopicSpecificQuery(text)
+  ) {
+    if (resolved.match?.id && !resolved.ambiguous) {
+      return formatStudentLookupReply(resolved.match, persona.id, norms, programAtoms)
+    }
+    if (resolved.suggestions.length > 0) {
+      return formatStudentSuggestionsReply(
+        resolved.suggestions,
+        persona.id,
+        coachContext.includeCodeInSuggestions === true,
+      )
+    }
+    return formatStudentNotFoundReply(persona.id, students.length, resolved.significantTokens ?? [])
+  }
+
+  const found = resolved.match ?? findStudentByNameQuery(students, text) ?? answerStudent
   if (found && !normThread && !coachContext.normEvaluation) {
     if (!isStudentTopicSpecificQuery(text)) {
       return formatStudentLookupReply(found, persona.id, norms, programAtoms)

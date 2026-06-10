@@ -1,15 +1,12 @@
 /**
- * Панель записи в стиле Telegram.
+ * Панель записи: удержание → запись, отпускание → отправка, влево → отмена.
  * @param {{
  *   elapsedLabel: string,
  *   levels: number[],
  *   slidePx?: number,
  *   cancelPending?: boolean,
- *   locked?: boolean,
  *   processing?: boolean,
  *   onCancel: () => void,
- *   onSend: () => void,
- *   onLock?: () => void,
  * }} props
  */
 export default function CoachAssistantVoiceRecorder({
@@ -17,19 +14,14 @@ export default function CoachAssistantVoiceRecorder({
   levels,
   slidePx = 0,
   cancelPending = false,
-  locked = false,
   processing = false,
   onCancel,
-  onSend,
-  onLock,
 }) {
   const hint = processing
     ? 'Расшифровка…'
     : cancelPending
       ? 'Отпустите — отмена'
-      : locked
-        ? 'Нажмите → для отправки'
-        : 'Удерживайте · влево — отмена'
+      : 'Удерживайте микрофон · отпустите — отправить · влево — отмена'
 
   return (
     <div
@@ -69,29 +61,6 @@ export default function CoachAssistantVoiceRecorder({
         </div>
         <p className={`truncate text-[11px] ${cancelPending ? 'text-red-600' : 'text-[#818c99]'}`}>{hint}</p>
       </div>
-
-      {!locked && !processing && onLock ? (
-        <button
-          type="button"
-          onClick={onLock}
-          className="shrink-0 rounded-full px-2 py-1 text-[11px] text-[#5181b8]"
-          title="Зафиксировать запись"
-        >
-          🔒
-        </button>
-      ) : null}
-
-      {locked || processing ? (
-        <button
-          type="button"
-          disabled={processing}
-          onClick={onSend}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5181b8] text-white disabled:opacity-50"
-          aria-label="Отправить"
-        >
-          →
-        </button>
-      ) : null}
     </div>
   )
 }

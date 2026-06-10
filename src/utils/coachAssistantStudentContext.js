@@ -332,12 +332,38 @@ export function formatStudentSuggestionsReply(suggestions, personaId, includeCod
       : 'Коллега, такого ученика не вижу. Назови имя, фамилию или код.'
   }
   if (personaId === 'vasily') {
-    return `Точного совпадения нет. Похожие в базе:\n${list}\nУточни имя, фамилию или год рождения.`
+    return `Похожие в базе (уточни, кого именно):\n${list}\nНазови имя или год рождения — не гадаю за тебя.`
   }
   if (personaId === 'gleb') {
     return `Похожие ученики:\n${list}\nУточните, кого имеете в виду.`
   }
   return `Коллега, похоже, имелись в виду:\n${list}\nНазови точнее — имя или фамилию.`
+}
+
+/**
+ * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
+ * @param {number} rosterSize
+ * @param {string[]} [nameTokens]
+ */
+export function formatStudentNotFoundReply(personaId, rosterSize, nameTokens = []) {
+  const hint = nameTokens.length
+    ? `По запросу «${nameTokens.join(' ')}» в списке (${rosterSize} уч.) никого не нашёл.`
+    : `В списке (${rosterSize} уч.) такого ученика не вижу.`
+
+  if (personaId === 'vasily') {
+    return `${hint} Назови имя и фамилию точнее или код из карточки. Не выдумываю — только кто реально в списке.`
+  }
+  if (personaId === 'gleb') {
+    return `${hint} Уточните ФИО или 6-значный код.`
+  }
+  return `${hint} Уточни имя, фамилию или код.`
+}
+
+/**
+ * @param {{ significantTokens?: string[] }} nameQuery
+ */
+export function messageHasStudentNameIntent(nameQuery) {
+  return (nameQuery?.significantTokens?.length ?? 0) >= 1
 }
 
 /**
