@@ -432,7 +432,13 @@ export default function CoachAssistantChat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="relative w-full min-w-0 touch-none select-none pb-[max(0px,env(safe-area-inset-bottom))]">
+      {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
+      {error ? <p className={vk.error}>{error}</p> : null}
+      {voice.isSupported && !voiceActive ? (
+        <p className={vk.mutedXs}>Удержите микрофон · ↑ без удержания · ← отмена</p>
+      ) : null}
+
+      <div className="relative w-full min-w-0 shrink-0 touch-none select-none">
         <div
           className={`flex min-w-0 gap-2 transition-opacity duration-150 ${
             voiceActive ? 'pointer-events-none opacity-0' : 'opacity-100'
@@ -480,7 +486,7 @@ export default function CoachAssistantChat({
         </div>
 
         {voiceActive ? (
-          <div className="absolute inset-x-0 bottom-0 z-10">
+          <div className="absolute inset-x-0 bottom-0 z-10 pb-0.5">
             <CoachAssistantVoiceRecorder
               mode={voiceRecorderMode}
               elapsedLabel={voice.elapsedLabel}
@@ -509,12 +515,6 @@ export default function CoachAssistantChat({
           </div>
         ) : null}
       </div>
-
-      {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
-      {error ? <p className={vk.error}>{error}</p> : null}
-      {voice.isSupported && !voiceActive ? (
-        <p className={vk.mutedXs}>Удержите микрофон · ↑ без удержания · ← отмена</p>
-      ) : null}
     </div>
   )
 }
