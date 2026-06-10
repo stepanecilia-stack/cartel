@@ -56,12 +56,6 @@ export default function CoachAssistantVoiceRecorder({
 }) {
   const audioRef = useRef(/** @type {HTMLAudioElement | null} */ (null))
   const [playing, setPlaying] = useState(false)
-  const [entered, setEntered] = useState(false)
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setEntered(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   useEffect(() => {
     setPlaying(false)
@@ -137,11 +131,7 @@ export default function CoachAssistantVoiceRecorder({
     return (
       <>
         {floating}
-        <div
-          className={`w-full min-w-0 transition-all duration-200 ease-out ${
-            entered ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
-          }`}
-        >
+        <div className="w-full min-w-0">
           <div className="flex min-h-[52px] items-center gap-2 rounded-full border border-[#dce1e6] bg-white px-2 py-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
             <button
               type="button"
@@ -217,11 +207,8 @@ export default function CoachAssistantVoiceRecorder({
       <div
         className="w-full min-w-0"
         style={{
-          transform: entered ? `translateX(${panelShift}px)` : 'translateY(4px)',
-          opacity: entered ? 1 : 0,
-          transition: locked
-            ? 'opacity 200ms ease-out'
-            : 'transform 50ms linear, opacity 200ms ease-out',
+          transform: `translateX(${panelShift}px)`,
+          transition: locked ? undefined : 'transform 50ms linear',
         }}
       >
         <div

@@ -13,7 +13,7 @@ import {
 } from '../../services/coachAssistantService.js'
 
 import { saveCoachAssistantNorm } from '../../services/coachAssistantNormSave.js'
-import { transcribeCoachVoice } from '../../services/coachVoiceTranscribe.js'
+import { startTranscribeEarly, transcribeCoachVoice } from '../../services/coachVoiceTranscribe.js'
 
 import { parseCoachAssistantMarkers } from '../../utils/coachAssistantActions.js'
 import { resolvePendingNormFromMessages } from '../../utils/coachAssistantNormPending.js'
@@ -129,6 +129,13 @@ export default function CoachAssistantChat({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, busy, pendingNorm, confirmSaved, voice.phase])
 
+  useEffect(() => {
+    if (voice.phase !== 'preview' || !voice.draft?.blob) return
+    startTranscribeEarly(voice.draft.blob, {
+      browserTranscript: voice.draft.browserTranscript,
+    })
+  }, [voice.phase, voice.draft])
+
   const runNormSave = useCallback(
     async (saveAction) => {
       const saved = await saveCoachAssistantNorm({
@@ -223,7 +230,6 @@ export default function CoachAssistantChat({
   const processVoiceRecording = useCallback(
     async (recorded) => {
       if (!recorded?.blob || recorded.blob.size < 400) return
-      setBusy(true)
       try {
         const transcript = await transcribeCoachVoice(recorded.blob, {
           browserTranscript: recorded.browserTranscript,
@@ -236,8 +242,7 @@ export default function CoachAssistantChat({
       } catch (err) {
         console.error(err)
         setError(err instanceof Error ? err.message : 'Не удалось распознать голосовое')
-      } finally {
-        setBusy(false)
+        throw err
       }
     },
     [submitUserText],
@@ -270,8 +275,11 @@ export default function CoachAssistantChat({
     setError('')
     try {
       await processVoiceRecording(recorded)
-    } finally {
       v.completeSend()
+    } catch {
+      if (v.phase === 'processing') {
+        v.discardPreview()
+      }
     }
   }, [processVoiceRecording])
 

@@ -1,18 +1,58 @@
 import { ensureAuth, firebaseConfig, isFirebaseConfigured } from './firebaseService.js'
 import { isPortalPersonaAiRemoteEnabled } from '../utils/portalPersonaAiConfig.js'
 
+/** @type {Promise<string> | null} */
+let pendingTranscribe = null
+/** @type {string | null} */
+let pendingTranscribeKey = null
+/** @type {Promise<string> | null} */
+let cachedIdTokenPromise = null
+
 /**
  * @param {Blob} blob
  */
-async function blobToBase64(blob) {
-  const buffer = await blob.arrayBuffer()
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
-  const chunk = 0x8000
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+function blobCacheKey(blob) {
+  return `${blob.size}:${blob.type}`
+}
+
+/**
+ * @param {Blob} blob
+ */
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') {
+        reject(new Error('Не удалось прочитать аудио'))
+        return
+      }
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Не удалось прочитать аудио'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function getIdTokenFast() {
+  if (!isFirebaseConfigured) throw new Error('Firebase not configured')
+  const user = ensureAuth().currentUser
+  if (!user) throw new Error('Войдите как тренер.')
+  if (!cachedIdTokenPromise) {
+    cachedIdTokenPromise = user.getIdToken().finally(() => {
+      window.setTimeout(() => {
+        cachedIdTokenPromise = null
+      }, 50_000)
+    })
   }
-  return btoa(binary)
+  return cachedIdTokenPromise
+}
+
+/** Прогрев токена — вызывать при открытии чата / старте записи. */
+export function prewarmTranscribeAuth() {
+  if (!isFirebaseConfigured || !isPortalPersonaAiRemoteEnabled()) return
+  void getIdTokenFast().catch(() => {})
 }
 
 /**
@@ -83,24 +123,20 @@ async function postTranscribeRequest(url, idToken, audioBase64, mimeType, mode) 
 
 /**
  * @param {Blob} blob
+ * @param {string} [browserTranscript]
  */
-async function transcribeViaCloud(blob) {
-  if (!isFirebaseConfigured) throw new Error('Firebase not configured')
-  const auth = ensureAuth()
-  const user = auth.currentUser
-  if (!user) throw new Error('Войдите как тренер.')
-
+async function transcribeViaCloud(blob, browserTranscript = '') {
   const region = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
   const projectId = firebaseConfig.projectId
   const dedicatedUrl = `https://${region}-${projectId}.cloudfunctions.net/coachAssistantTranscribe`
   const portalUrl = `https://${region}-${projectId}.cloudfunctions.net/portalPersonaChat`
-  const idToken = await user.getIdToken()
-  const audioBase64 = await blobToBase64(blob)
+
+  const [idToken, audioBase64] = await Promise.all([getIdTokenFast(), blobToBase64(blob)])
   const mimeType = blob.type || 'audio/webm'
 
   const attempts = [
-    { url: portalUrl, mode: /** @type {const} */ ('portal') },
     { url: dedicatedUrl, mode: /** @type {const} */ ('dedicated') },
+    { url: portalUrl, mode: /** @type {const} */ ('portal') },
   ]
 
   let lastError = new Error('Не удалось распознать голос')
@@ -110,9 +146,40 @@ async function transcribeViaCloud(blob) {
     } catch (err) {
       console.warn(`[coachVoiceTranscribe] ${mode} failed`, err)
       lastError = err instanceof Error ? err : new Error(String(err))
+      if (browserTranscript.length >= 2) return browserTranscript
     }
   }
   throw lastError
+}
+
+function clearPendingTranscribe() {
+  pendingTranscribe = null
+  pendingTranscribeKey = null
+}
+
+/**
+ * Запускает облачную расшифровку заранее (на этапе превью).
+ * @param {Blob} blob
+ * @param {{ browserTranscript?: string }} [options]
+ */
+export function startTranscribeEarly(blob, options = {}) {
+  if (!blob || blob.size < 400) return
+  const local = String(options.browserTranscript ?? '').trim()
+  if (local.length >= 2) {
+    clearPendingTranscribe()
+    return
+  }
+  if (!isPortalPersonaAiRemoteEnabled()) return
+
+  const key = blobCacheKey(blob)
+  if (pendingTranscribeKey === key && pendingTranscribe) return
+
+  pendingTranscribeKey = key
+  pendingTranscribe = transcribeViaCloud(blob, local).catch((err) => {
+    clearPendingTranscribe()
+    throw err
+  })
+  prewarmTranscribeAuth()
 }
 
 /**
@@ -121,15 +188,27 @@ async function transcribeViaCloud(blob) {
  */
 export async function transcribeCoachVoice(blob, options = {}) {
   const local = String(options.browserTranscript ?? '').trim()
-  if (local.length >= 2) return local
+  if (local.length >= 2) {
+    clearPendingTranscribe()
+    return local
+  }
 
-  if (!blob || blob.size < 800) {
+  if (!blob || blob.size < 400) {
     throw new Error('Запись слишком короткая. Удерживайте кнопку и говорите чуть дольше.')
+  }
+
+  const key = blobCacheKey(blob)
+  if (pendingTranscribeKey === key && pendingTranscribe) {
+    try {
+      return await pendingTranscribe
+    } finally {
+      clearPendingTranscribe()
+    }
   }
 
   if (isPortalPersonaAiRemoteEnabled()) {
     try {
-      return await transcribeViaCloud(blob)
+      return await transcribeViaCloud(blob, local)
     } catch (err) {
       console.warn('[coachVoiceTranscribe] cloud failed', err)
       if (local) return local
