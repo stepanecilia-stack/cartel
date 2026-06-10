@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const MAX_RECORD_MS = 90_000
 const MIN_SEND_MS = 350
 const CANCEL_SLIDE_PX = 72
+
 /**
  * @returns {typeof SpeechRecognition | null}
  */
@@ -30,17 +31,31 @@ function formatRecordTimer(ms) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** @param {{ audioUrl?: string } | null | undefined} draft */
+function revokeDraftUrl(draft) {
+  if (draft?.audioUrl?.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(draft.audioUrl)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /**
- * Удержание → запись, отпускание → отправка; свайп влево → отмена.
+ * Telegram-style: удержание → запись, отпускание → превью, прослушать → отправить.
  */
 export function useCoachVoiceRecorder() {
   const [phase, setPhase] = useState(
-    /** @type {'idle' | 'arming' | 'recording' | 'processing'} */ ('idle'),
+    /** @type {'idle' | 'arming' | 'recording' | 'preview' | 'processing'} */ ('idle'),
   )
   const [elapsedMs, setElapsedMs] = useState(0)
   const [slidePx, setSlidePx] = useState(0)
   const [levels, setLevels] = useState(() => [0.2, 0.35, 0.5, 0.35, 0.2])
   const [error, setError] = useState('')
+  const [draft, setDraft] = useState(
+    /** @type {{ blob: Blob, durationSec: number, audioUrl: string, browserTranscript: string } | null} */ (null),
+  )
 
   const warmStreamRef = useRef(/** @type {MediaStream | null} */ (null))
   const mediaRecorderRef = useRef(/** @type {MediaRecorder | null} */ (null))
@@ -54,9 +69,8 @@ export function useCoachVoiceRecorder() {
   const startedAtRef = useRef(0)
   const holdActiveRef = useRef(false)
   const cancelOnReleaseRef = useRef(false)
-  const holdDownAtRef = useRef(0)
   const originXRef = useRef(0)
-  /** @type {import('react').MutableRefObject<((value: { blob: Blob, durationSec: number, browserTranscript: string } | null) => void) | null>} */
+  /** @type {import('react').MutableRefObject<((value: unknown) => void) | null>} */
   const stopResolveRef = useRef(null)
   const armingTokenRef = useRef(0)
   const recordingActiveRef = useRef(false)
@@ -101,9 +115,7 @@ export function useCoachVoiceRecorder() {
     releaseActiveStream()
   }, [releaseActiveStream, stopMeter])
 
-  const resetUi = useCallback(() => {
-    setPhase('idle')
-    setElapsedMs(0)
+  const resetRecordingUi = useCallback(() => {
     setSlidePx(0)
     setLevels([0.2, 0.35, 0.5, 0.35, 0.2])
     holdActiveRef.current = false
@@ -111,13 +123,28 @@ export function useCoachVoiceRecorder() {
     recordingActiveRef.current = false
   }, [])
 
+  const discardDraft = useCallback(() => {
+    setDraft((prev) => {
+      revokeDraftUrl(prev)
+      return null
+    })
+  }, [])
+
+  const resetAll = useCallback(() => {
+    setPhase('idle')
+    setElapsedMs(0)
+    resetRecordingUi()
+    discardDraft()
+    chunksRef.current = []
+  }, [discardDraft, resetRecordingUi])
+
   const cancelRecording = useCallback(() => {
     cleanupRecorder()
     stopResolveRef.current = null
     chunksRef.current = []
-    resetUi()
+    resetAll()
     setError('')
-  }, [cleanupRecorder, resetUi])
+  }, [cleanupRecorder, resetAll])
 
   const acquireStream = useCallback(async () => {
     if (warmStreamRef.current?.active) return warmStreamRef.current
@@ -162,45 +189,59 @@ export function useCoachVoiceRecorder() {
     }
   }, [])
 
-  const finishStop = useCallback(
+  const finishStopToPreview = useCallback(
     (resolve) => {
       const blob = new Blob(chunksRef.current, {
         type: mediaRecorderRef.current?.mimeType || pickRecorderMimeType() || 'audio/webm',
       })
       const durationMs = Date.now() - startedAtRef.current
-      const durationSec = Math.max(1, Math.round(durationMs / 1000))
       cleanupRecorder()
-      resetUi()
+      resetRecordingUi()
+      chunksRef.current = []
+
       if (durationMs < MIN_SEND_MS || blob.size < 400) {
+        setPhase('idle')
+        setElapsedMs(0)
+        setError('Запись слишком короткая.')
         resolve?.(null)
         return
       }
-      resolve?.({ blob, durationSec, browserTranscript: '' })
+
+      const durationSec = Math.max(1, Math.round(durationMs / 1000))
+      const audioUrl = URL.createObjectURL(blob)
+      const nextDraft = { blob, durationSec, audioUrl, browserTranscript: '' }
+      setDraft((prev) => {
+        revokeDraftUrl(prev)
+        return nextDraft
+      })
+      setElapsedMs(durationMs)
+      setPhase('preview')
+      resolve?.(nextDraft)
     },
-    [cleanupRecorder, resetUi],
+    [cleanupRecorder, resetRecordingUi],
   )
 
-  const stopRecording = useCallback(() => {
+  const stopToPreview = useCallback(() => {
     const recorder = mediaRecorderRef.current
     if (!recordingActiveRef.current || !recorder || recorder.state === 'inactive') {
       return Promise.resolve(null)
     }
-    setPhase('processing')
     return new Promise((resolve) => {
       stopResolveRef.current = resolve
       try {
         mediaRecorderRef.current?.stop()
       } catch {
-        finishStop(resolve)
+        finishStopToPreview(resolve)
       }
     })
-  }, [finishStop])
+  }, [finishStopToPreview])
 
   const beginRecordingWithStream = useCallback(
     (stream, token) => {
       if (token !== armingTokenRef.current) return false
       if (!holdActiveRef.current) return false
 
+      discardDraft()
       activeStreamRef.current = stream
       chunksRef.current = []
       const mimeType = pickRecorderMimeType()
@@ -213,7 +254,7 @@ export function useCoachVoiceRecorder() {
       recorder.onstop = () => {
         const resolve = stopResolveRef.current
         stopResolveRef.current = null
-        finishStop(resolve)
+        finishStopToPreview(resolve)
       }
 
       startedAtRef.current = Date.now()
@@ -228,12 +269,12 @@ export function useCoachVoiceRecorder() {
       }, 100)
 
       maxTimerRef.current = setTimeout(() => {
-        void stopRecording()
+        void stopToPreview()
       }, MAX_RECORD_MS)
 
       return true
     },
-    [finishStop, startMeter, stopRecording],
+    [discardDraft, finishStopToPreview, startMeter, stopToPreview],
   )
 
   const holdStart = useCallback(
@@ -242,7 +283,6 @@ export function useCoachVoiceRecorder() {
       setError('')
       holdActiveRef.current = true
       cancelOnReleaseRef.current = false
-      holdDownAtRef.current = Date.now()
       originXRef.current = clientX
       setSlidePx(0)
       setPhase('arming')
@@ -282,8 +322,26 @@ export function useCoachVoiceRecorder() {
       return null
     }
 
-    return stopRecording()
-  }, [cancelRecording, stopRecording])
+    return stopToPreview()
+  }, [cancelRecording, stopToPreview])
+
+  const beginSend = useCallback(() => {
+    if (phase !== 'preview' || !draft) return null
+    setPhase('processing')
+    return draft
+  }, [phase, draft])
+
+  const completeSend = useCallback(() => {
+    resetAll()
+  }, [resetAll])
+
+  const discardPreview = useCallback(() => {
+    cleanupRecorder()
+    stopResolveRef.current = null
+    chunksRef.current = []
+    resetAll()
+    setError('')
+  }, [cleanupRecorder, resetAll])
 
   useEffect(() => {
     if (!isCoachVoiceInputSupported()) return undefined
@@ -292,12 +350,22 @@ export function useCoachVoiceRecorder() {
       cleanupRecorder()
       warmStreamRef.current?.getTracks().forEach((track) => track.stop())
       warmStreamRef.current = null
+      setDraft((prev) => {
+        revokeDraftUrl(prev)
+        return null
+      })
     }
   }, [acquireStream, cleanupRecorder])
 
+  const previewDurationLabel = draft
+    ? `${draft.durationSec} сек`
+    : formatRecordTimer(elapsedMs)
+
   return {
     phase,
+    draft,
     elapsedLabel: formatRecordTimer(elapsedMs),
+    previewDurationLabel,
     slidePx,
     levels,
     cancelPending: slidePx < -CANCEL_SLIDE_PX * 0.55,
@@ -306,8 +374,10 @@ export function useCoachVoiceRecorder() {
     holdStart,
     holdMove,
     holdEnd,
-    stopRecording,
+    beginSend,
+    completeSend,
     cancelRecording,
+    discardPreview,
     clearError: () => setError(''),
   }
 }
