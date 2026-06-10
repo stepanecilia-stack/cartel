@@ -1,4 +1,5 @@
 import { mergeStudentCardLiveSnapshot } from '../data/studentCardLiveCache.js'
+import { isNormSaveConfirmation } from './coachAssistantConfirmText.js'
 import { evaluateLegacyTest } from './ksrUtils.js'
 import { findStudentByNameQuery } from './studentNameSearch.js'
 import { displayNameFromStudent } from './studentModel.js'
@@ -101,8 +102,11 @@ export function resolveStudentFromCoachMessages(messages, coachContext = {}) {
   const focus = coachContext.focusStudent
 
   const lastUser = [...list].reverse().find((m) => m?.role === 'user')
-  if (lastUser?.content) {
-    const current = findStudentByNameQuery(students, lastUser.content)
+  const lastUserText = String(lastUser?.content ?? '').trim()
+  const lastUserIsConfirmation = isNormSaveConfirmation(lastUserText)
+
+  if (lastUserText && !lastUserIsConfirmation) {
+    const current = findStudentByNameQuery(students, lastUserText)
     if (current?.id) {
       if (!focus?.id || String(current.id) !== String(focus.id)) {
         return mergeStudentWithRoster(current, coachContext)
@@ -110,13 +114,17 @@ export function resolveStudentFromCoachMessages(messages, coachContext = {}) {
     }
   }
 
+  if (coachContext.queryResolvedStudent?.id) {
+    return mergeStudentWithRoster(coachContext.queryResolvedStudent, coachContext)
+  }
+
   if (focus?.id) {
     return mergeStudentWithRoster(focus, coachContext)
   }
 
-  if (coachContext.queryResolvedStudent?.id) {
-    return mergeStudentWithRoster(coachContext.queryResolvedStudent, coachContext)
-  }
+  const threadText = list.map((m) => m.content ?? '').join('\n')
+  const fromThread = findStudentByNameQuery(students, threadText)
+  if (fromThread) return mergeStudentWithRoster(fromThread, coachContext)
 
   const allUserText = list
     .filter((m) => m?.role === 'user')
@@ -127,22 +135,18 @@ export function resolveStudentFromCoachMessages(messages, coachContext = {}) {
 
   for (let i = list.length - 1; i >= 0; i -= 1) {
     const msg = list[i]
-    if (msg?.role !== 'user') continue
-    const found = findStudentByNameQuery(students, msg.content ?? '')
-    if (found) return mergeStudentWithRoster(found, coachContext)
+    if (msg?.role === 'assistant') {
+      const found = findStudentByNameQuery(students, msg.content ?? '')
+      if (found) return mergeStudentWithRoster(found, coachContext)
+    }
   }
 
-  const assistantText = list
-    .filter((m) => m?.role === 'assistant')
-    .map((m) => m.content ?? '')
-    .join('\n')
-  for (const student of students) {
-    const name = displayNameFromStudent(student).toLowerCase()
-    if (!name || name === 'без имени') continue
-    const tokens = name.split(/\s+/).filter((token) => token.length >= 3)
-    if (tokens.some((token) => assistantText.toLowerCase().includes(token))) {
-      return mergeStudentWithRoster(student, coachContext)
-    }
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const msg = list[i]
+    if (msg?.role !== 'user') continue
+    if (isNormSaveConfirmation(msg.content ?? '')) continue
+    const found = findStudentByNameQuery(students, msg.content ?? '')
+    if (found) return mergeStudentWithRoster(found, coachContext)
   }
 
   return null
@@ -302,6 +306,27 @@ export function formatNormEvaluationReply(evaluation, personaId, userMessage = '
     return `По карточке ${name} (${profileText}): ${result}${unit}, «${test}» — ${medal}. Пороги: ${thresholds}.`
   }
   return `Коллега, в карточке у ${name} (${profileText}): ${result}${unit} по «${test}» — ${medal}. Пороги: ${thresholds}.`
+}
+
+/**
+ * @param {ReturnType<typeof tryEvaluateNormFromConversation>} evaluation
+ * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
+ */
+export function formatNormConfirmAckReply(evaluation, personaId) {
+  if (!evaluation) return ''
+  const name = displayNameFromStudent(evaluation.student)
+  const test = evaluation.norm.testName
+  const unit = evaluation.norm.unit ? ` ${evaluation.norm.unit}` : ''
+  const result = evaluation.resultDisplay
+  const medal = evaluation.statusLabel
+
+  if (personaId === 'vasily') {
+    return `Принял, коллега. ${name}: ${result}${unit} по «${test}» — ${medal}. Жми «Записать в карточку» внизу — тогда попадёт в базу.`
+  }
+  if (personaId === 'gleb') {
+    return `Подтверждено: ${name}, ${result}${unit}, «${test}» — ${medal}. Нажмите «Записать в карточку» ниже.`
+  }
+  return `Понял, коллега. ${name}: ${result}${unit} по «${test}» — ${medal}. Нажми кнопку «Записать в карточку» внизу чата.`
 }
 
 /**

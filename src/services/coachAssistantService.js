@@ -13,8 +13,10 @@ import {
 } from '../utils/coachAssistantStudentSources.js'
 import { COACH_ASSISTANT_CHAT_MAX_MESSAGES } from '../utils/coachAssistantChatHistory.js'
 import { isStudentCodeExplicitQuery } from '../utils/studentNameSearch.js'
+import { isNormSaveConfirmation } from '../utils/coachAssistantConfirmText.js'
 import {
   buildNormEvaluationHint,
+  formatNormConfirmAckReply,
   formatNormEvaluationReply,
   shouldUseDeterministicNormReply,
   tryEvaluateNormFromConversation,
@@ -35,8 +37,14 @@ import { ensureAuth, firebaseConfig, isFirebaseConfigured } from './firebaseServ
  * }} coachContext
  * @param {string} [userMessage]
  * @param {string} [conversationText]
+ * @param {string} [threadText]
  */
-export async function prepareCoachAssistantContext(coachContext = {}, userMessage = '', conversationText = '') {
+export async function prepareCoachAssistantContext(
+  coachContext = {},
+  userMessage = '',
+  conversationText = '',
+  threadText = '',
+) {
   const allNorms =
     Array.isArray(coachContext.allNorms) && coachContext.allNorms.length > 0
       ? coachContext.allNorms
@@ -57,6 +65,7 @@ export async function prepareCoachAssistantContext(coachContext = {}, userMessag
     focusStudent: coachContext.focusStudent,
     userMessage,
     conversationText,
+    threadText,
     presetResolvedStudent: coachContext.queryResolvedStudent,
     presetSuggestions: coachContext.queryStudentSuggestions,
   })
@@ -152,13 +161,26 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     .filter((m) => m.role === 'user')
     .map((m) => m.content ?? '')
     .join('\n')
-  let enrichedContext = await prepareCoachAssistantContext(coachContext, userMessage, conversationText)
+  const threadText = messages.map((m) => m.content ?? '').join('\n')
+  let enrichedContext = await prepareCoachAssistantContext(
+    coachContext,
+    userMessage,
+    conversationText,
+    threadText,
+  )
   const normEvaluation = tryEvaluateNormFromConversation(messages, enrichedContext)
   enrichedContext = {
     ...enrichedContext,
     normEvaluation,
     normEvaluationHint: buildNormEvaluationHint(normEvaluation),
     conversationMessages: messages,
+  }
+
+  if (isNormSaveConfirmation(userMessage) && normEvaluation?.student?.id) {
+    return {
+      reply: formatNormConfirmAckReply(normEvaluation, id),
+      source: 'norm-confirm',
+    }
   }
 
   if (shouldUseDeterministicNormReply(userMessage, normEvaluation, enrichedContext, messages)) {

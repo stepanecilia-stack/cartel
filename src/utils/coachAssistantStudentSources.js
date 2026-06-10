@@ -1,4 +1,5 @@
 import { mergeStudentCardLiveSnapshot } from '../data/studentCardLiveCache.js'
+import { pickCoachAssistantStudentLookupText } from './coachAssistantConfirmText.js'
 import { resolveStudentNameQuery } from './studentNameSearch.js'
 
 /**
@@ -23,6 +24,7 @@ export function hydrateCoachAssistantFocusStudent(focusStudent) {
  *   focusStudent?: object | null,
  *   userMessage?: string,
  *   conversationText?: string,
+ *   threadText?: string,
  *   presetResolvedStudent?: object | null,
  *   presetSuggestions?: object[],
  * }} params
@@ -32,11 +34,13 @@ export function resolveCoachAssistantStudentTargets({
   focusStudent = null,
   userMessage = '',
   conversationText = '',
+  threadText = '',
   presetResolvedStudent = null,
   presetSuggestions = null,
 }) {
   const list = Array.isArray(students) ? students : []
   const hydratedFocus = hydrateCoachAssistantFocusStudent(focusStudent)
+  const lookupText = pickCoachAssistantStudentLookupText({ userMessage, conversationText, threadText })
 
   if (presetResolvedStudent?.id) {
     return {
@@ -46,7 +50,7 @@ export function resolveCoachAssistantStudentTargets({
     }
   }
 
-  const currentQuery = resolveStudentNameQuery(list, userMessage)
+  const currentQuery = resolveStudentNameQuery(list, lookupText)
 
   if (hydratedFocus?.id) {
     const explicitOther =
@@ -67,7 +71,7 @@ export function resolveCoachAssistantStudentTargets({
     }
   }
 
-  const conversationQuery = resolveStudentNameQuery(list, conversationText || userMessage)
+  const conversationQuery = resolveStudentNameQuery(list, lookupText)
   return {
     focusStudent: null,
     queryResolvedStudent: preferFreshStudent(conversationQuery.match, null),

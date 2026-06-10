@@ -23,11 +23,13 @@ export async function resolvePendingNormFromMessages(messages, coachContextBase 
     .filter((m) => m?.role === 'user')
     .map((m) => m.content ?? '')
     .join('\n')
+  const threadText = list.map((m) => m.content ?? '').join('\n')
   const lastUser = [...list].reverse().find((m) => m?.role === 'user')
   const coachContext = await prepareCoachAssistantContext(
     coachContextBase,
     lastUser?.content ?? '',
     conversationText,
+    threadText,
   )
   const evaluation = tryEvaluateNormFromConversation(list, coachContext)
   if (!evaluation?.student?.id || !evaluation?.testId || !evaluation?.resultRaw) {

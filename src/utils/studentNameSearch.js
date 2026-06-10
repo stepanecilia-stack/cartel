@@ -50,7 +50,33 @@ const QUERY_STOP_WORDS = new Set([
   'ни',
   'из',
   'за',
+  'да',
   'для',
+  'год',
+  'года',
+  'году',
+  'раз',
+  'раза',
+  'разов',
+  'базе',
+  'базу',
+  'база',
+  'отметь',
+  'отметьте',
+  'правильно',
+  'подтверждаю',
+  'подтверждаешь',
+  'подтверждаете',
+  'подтвердил',
+  'подтвердила',
+  'записываю',
+  'записываешь',
+  'записываете',
+  'отжался',
+  'отжалась',
+  'отжались',
+  'отжим',
+  'отжиманий',
   'какой',
   'какая',
   'какие',
@@ -169,6 +195,23 @@ export function extractQueryNameTokens(query) {
     .filter((t) => t.length >= 2 && !QUERY_STOP_WORDS.has(t))
 }
 
+/** @param {string} token */
+function isSignificantNameToken(token) {
+  return token.length >= 3 && !QUERY_STOP_WORDS.has(token) && !/^\d+$/.test(token)
+}
+
+/**
+ * Имя и фамилия в любом порядке: «Назар Ермаков» = «Ермаков Назар».
+ * @param {object} student
+ * @param {string[]} queryTokens
+ */
+export function allSignificantNameTokensMatch(student, queryTokens) {
+  const parts = namePartsFromStudent(student)
+  const significant = queryTokens.filter(isSignificantNameToken)
+  if (significant.length < 2 || !parts.length) return false
+  return significant.every((qt) => parts.some((part) => nameTokensMatch(qt, part)))
+}
+
 /**
  * @param {object} student
  * @param {string[]} queryTokens
@@ -202,6 +245,12 @@ export function scoreStudentNameMatch(student, queryTokens) {
     }
     if (best > 0) score += best
   }
+
+  const significant = queryTokens.filter(isSignificantNameToken)
+  if (significant.length >= 2 && allSignificantNameTokensMatch(student, queryTokens)) {
+    score = Math.max(score, significant.length * 5 + 2)
+  }
+
   return score
 }
 
