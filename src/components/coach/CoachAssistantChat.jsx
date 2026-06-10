@@ -71,8 +71,10 @@ export default function CoachAssistantChat({
   const savedNormKeysRef = useRef(new Set())
   const bottomRef = useRef(null)
   const holdPointerIdRef = useRef(/** @type {number | null} */ (null))
+  const voiceRef = useRef(/** @type {ReturnType<typeof useCoachVoiceRecorder> | null} */ (null))
 
   const voice = useCoachVoiceRecorder()
+  voiceRef.current = voice
 
   const coachContextBase = useMemo(
     () => ({ coachName, students, focusStudent }),
@@ -243,6 +245,50 @@ export default function CoachAssistantChat({
 
   const send = () => void submitUserText(input)
 
+  const endHoldRecording = useCallback(async () => {
+    const v = voiceRef.current
+    if (!v) return
+    if (v.phase !== 'arming' && v.phase !== 'recording') return
+    holdPointerIdRef.current = null
+    const recorded = await v.holdEnd()
+    if (recorded) await processVoiceRecording(recorded)
+  }, [processVoiceRecording])
+
+  const finishVoiceRecording = useCallback(async () => {
+    const v = voiceRef.current
+    if (!v || (v.phase !== 'arming' && v.phase !== 'recording')) return
+    holdPointerIdRef.current = null
+    v.clearError()
+    setError('')
+    const recorded = await v.holdEnd()
+    await processVoiceRecording(recorded)
+  }, [processVoiceRecording])
+
+  useEffect(() => {
+    if (voice.phase !== 'arming' && voice.phase !== 'recording') return undefined
+
+    const onMove = (event) => {
+      if (holdPointerIdRef.current === null || event.pointerId !== holdPointerIdRef.current) return
+      event.preventDefault()
+      voiceRef.current?.holdMove(event.clientX)
+    }
+
+    const onEnd = (event) => {
+      if (holdPointerIdRef.current === null || event.pointerId !== holdPointerIdRef.current) return
+      event.preventDefault()
+      void endHoldRecording()
+    }
+
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onEnd)
+    window.addEventListener('pointercancel', onEnd)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onEnd)
+      window.removeEventListener('pointercancel', onEnd)
+    }
+  }, [voice.phase, endHoldRecording])
+
   const handleMicPointerDown = (event) => {
     if (disabled || busy || input.trim() || voice.phase !== 'idle') return
     event.preventDefault()
@@ -257,15 +303,14 @@ export default function CoachAssistantChat({
 
   const handleMicPointerMove = (event) => {
     if (holdPointerIdRef.current !== event.pointerId) return
+    event.preventDefault()
     voice.holdMove(event.clientX)
   }
 
   const handleMicPointerUp = (event) => {
     if (holdPointerIdRef.current !== event.pointerId) return
-    holdPointerIdRef.current = null
-    void voice.holdEnd().then((recorded) => {
-      if (recorded) void processVoiceRecording(recorded)
-    })
+    event.preventDefault()
+    void endHoldRecording()
   }
 
   const resetChat = useCallback(() => {
@@ -362,18 +407,22 @@ export default function CoachAssistantChat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-2 touch-manipulation select-none">
+      <div className="w-full min-w-0 touch-none select-none pb-[max(0px,env(safe-area-inset-bottom))]">
         {voicePanelOpen ? (
           <CoachAssistantVoiceRecorder
             elapsedLabel={voice.phase === 'arming' ? '0:00' : voice.elapsedLabel}
             levels={voice.levels}
-            slidePx={voice.slidePx}
             cancelPending={voice.cancelPending}
+            recording={voice.phase === 'arming' || voice.phase === 'recording'}
             processing={voice.phase === 'processing' || busy}
-            onCancel={() => voice.cancelRecording()}
+            onCancel={() => {
+              holdPointerIdRef.current = null
+              voice.cancelRecording()
+            }}
+            onSend={() => void finishVoiceRecording()}
           />
         ) : (
-          <>
+          <div className="flex min-w-0 gap-2">
             <input
               type="text"
               className={`${vk.input} min-h-10 flex-1`}
@@ -397,10 +446,10 @@ export default function CoachAssistantChat({
                 onPointerMove={handleMicPointerMove}
                 onPointerUp={handleMicPointerUp}
                 onPointerCancel={() => {
-                  holdPointerIdRef.current = null
-                  voice.cancelRecording()
+                  void endHoldRecording()
                 }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5181b8] text-white transition-transform active:scale-95 disabled:opacity-45"
+                className="flex h-10 w-10 shrink-0 touch-none items-center justify-center rounded-full bg-[#5181b8] text-white transition-transform active:scale-95 disabled:opacity-45"
+                style={{ touchAction: 'none' }}
                 aria-label="Удержите для голосового"
                 title="Удерживайте — запись, отпустите — отправить"
               >
@@ -418,14 +467,14 @@ export default function CoachAssistantChat({
                 →
               </button>
             )}
-          </>
+          </div>
         )}
       </div>
 
       {voice.error ? <p className={vk.error}>{voice.error}</p> : null}
       {error ? <p className={vk.error}>{error}</p> : null}
       {voice.isSupported && !voicePanelOpen ? (
-        <p className={vk.mutedXs}>Голосовое: удерживайте микрофон · отпустите — отправить · влево — отмена</p>
+        <p className={vk.mutedXs}>Голосовое: удерживайте микрофон · отпустите или «Готово» · ✕ — отмена</p>
       ) : null}
     </div>
   )

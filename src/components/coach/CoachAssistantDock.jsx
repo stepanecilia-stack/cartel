@@ -90,7 +90,7 @@ export default function CoachAssistantDock({
           role="dialog"
           aria-modal="true"
           aria-labelledby={`${panelId}-title`}
-          className="relative mx-auto flex max-h-[min(640px,94dvh)] w-full max-w-2xl flex-col rounded-t-[14px] border border-[#e7e8ec] bg-white shadow-[0_-8px_32px_rgba(0,0,0,0.12)] sm:rounded-[14px]"
+          className="relative mx-auto flex max-h-[min(640px,94dvh)] w-full max-w-2xl flex-col overflow-hidden rounded-t-[14px] border border-[#e7e8ec] bg-white shadow-[0_-8px_32px_rgba(0,0,0,0.12)] sm:rounded-[14px]"
         >
           <header className="shrink-0 space-y-2 border-b border-[#e7e8ec] px-3 py-2.5 sm:px-4">
             <div className="flex items-center gap-2.5">
@@ -112,7 +112,7 @@ export default function CoachAssistantDock({
             />
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col px-3 py-2.5 sm:px-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-2.5 sm:px-4">
             <CoachAssistantChat
               personaId={persona.id}
               coachId={coachId}
