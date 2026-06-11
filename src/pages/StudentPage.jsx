@@ -333,6 +333,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   )
   const { events: coachEvents } = useCoachEvents(coachId)
   const { participations: orientirParticipations } = useOrientirParticipation(coachId)
+  const liveSnapshotTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
   const shortIdDeniedRef = useRef(new Set())
 
   useEffect(() => {
@@ -487,36 +488,42 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
       normalizeBirthYearNumber(student.birthYear)
     const identity = buildStudentIdentityPayload(studentIdentity.firstName, studentIdentity.lastName)
 
-    setStudentCardLiveSnapshot(student.id, {
-      technicalData,
-      technicalCombinations,
-      portalKnowledgeData: student.portalKnowledgeData,
-      portalEnabled: student.portalEnabled,
-      portalPersonaId: student.portalPersonaId,
-      portalPersonaMemory: student.portalPersonaMemory,
-      portalTrainingGoals: student.portalTrainingGoals,
-      portalNormSelfReports: student.portalNormSelfReports,
-      motorQualityWorkLog: student.motorQualityWorkLog,
-      height: Number(anthropometry.height) || 0,
-      reach: Number(anthropometry.reach) || 0,
-      weight: Number(anthropometry.weight) || 0,
-      gender: anthropometry.gender === 'F' ? 'F' : 'M',
-      birthYear,
-      birthYearLabel: formatBirthYearRu(birthYear),
-      birthDate: normalizeBirthDateISO(anthropometry.birthDate),
-      anthropometryDate: anthropometry.date,
-      tests: { physical: physicalResults, functional: {} },
-      effectiveKSR: student.effectiveKSR,
-      baseKSR: student.baseKSR,
-      kd: student.kd,
-      scores: student.scores,
-      archetype: student.archetype,
-      archetypeSmart: student.archetypeSmart,
-      physicalNorms,
-      ...(identity ?? {}),
-    })
+    if (liveSnapshotTimerRef.current) clearTimeout(liveSnapshotTimerRef.current)
+    liveSnapshotTimerRef.current = setTimeout(() => {
+      setStudentCardLiveSnapshot(student.id, {
+        technicalData,
+        technicalCombinations,
+        portalKnowledgeData: student.portalKnowledgeData,
+        portalEnabled: student.portalEnabled,
+        portalPersonaId: student.portalPersonaId,
+        portalPersonaMemory: student.portalPersonaMemory,
+        portalTrainingGoals: student.portalTrainingGoals,
+        portalNormSelfReports: student.portalNormSelfReports,
+        motorQualityWorkLog: student.motorQualityWorkLog,
+        height: Number(anthropometry.height) || 0,
+        reach: Number(anthropometry.reach) || 0,
+        weight: Number(anthropometry.weight) || 0,
+        gender: anthropometry.gender === 'F' ? 'F' : 'M',
+        birthYear,
+        birthYearLabel: formatBirthYearRu(birthYear),
+        birthDate: normalizeBirthDateISO(anthropometry.birthDate),
+        anthropometryDate: anthropometry.date,
+        tests: { physical: physicalResults, functional: {} },
+        effectiveKSR: student.effectiveKSR,
+        baseKSR: student.baseKSR,
+        kd: student.kd,
+        scores: student.scores,
+        archetype: student.archetype,
+        archetypeSmart: student.archetypeSmart,
+        physicalNorms,
+        ...(identity ?? {}),
+      })
+    }, 300)
 
-    return () => clearStudentCardLiveSnapshot(student.id)
+    return () => {
+      if (liveSnapshotTimerRef.current) clearTimeout(liveSnapshotTimerRef.current)
+      clearStudentCardLiveSnapshot(student.id)
+    }
   }, [
     student?.id,
     physicalNorms,
@@ -1768,6 +1775,8 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
             {activeTab === 'competition' && (
               <StudentSeasonPanel
                 coachId={coachId}
+                events={coachEvents}
+                participations={orientirParticipations}
                 studentId={student?.id}
                 student={studentForCartel}
                 studentName={safeStudent.name}

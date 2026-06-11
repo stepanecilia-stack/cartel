@@ -1,7 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import RouteFallback from './components/RouteFallback.jsx'
-import AddStudent from './pages/AddStudent'
 import HomePage from './pages/HomePage'
 import LoginCoach from './pages/LoginCoach'
 import RegisterCoach from './pages/RegisterCoach'
@@ -19,7 +18,9 @@ const MotorQualitiesIndexPage = lazy(() => import('./pages/MotorQualitiesIndexPa
 const MotorQualityDetailPage = lazy(() => import('./pages/MotorQualityDetailPage'))
 const TechnicalElementsPage = lazy(() => import('./pages/TechnicalElementsPage'))
 const CoachCalendarPage = lazy(() => import('./pages/CoachCalendarPage.jsx'))
-import AdminToolsPage from './pages/AdminToolsPage.jsx'
+const AddStudent = lazy(() => import('./pages/AddStudent'))
+const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage.jsx'))
+const CoachAssistantDock = lazy(() => import('./components/coach/CoachAssistantDock.jsx'))
 import {
   clearCoachProfileCache,
   setCoachProfileCache,
@@ -29,15 +30,11 @@ import {
   startCoachStudentsSync,
   stopCoachStudentsSync,
 } from './data/coachStudentsCache.js'
-import { loadNormsOnce } from './data/normsCache.js'
-import { subscribeLegacyNorms } from './services/legacyNormsService.js'
 import {
   logoutCoach,
   subscribeCoachProfile,
   subscribeToAuth,
 } from './services/firebaseService'
-import { subscribeMotorQualityExercises } from './services/motorQualityExercisesService'
-import { subscribeTechnicalProgramAtoms } from './services/technicalProgramAtomsService.js'
 import { useGroupTrainingSession } from './hooks/useGroupTrainingSession.js'
 import { isProgramAdmin } from './utils/coachRoles.js'
 import { clearGroupTrainingSession } from './utils/groupTrainingSession.js'
@@ -49,8 +46,6 @@ import {
   studentPortalHomePath,
 } from './utils/studentPortalAuth.js'
 import { vk } from './utils/vkUi.js'
-import CoachAssistantDock from './components/coach/CoachAssistantDock.jsx'
-
 function isCoachFirebaseUser(user) {
   return Boolean(user && !isStudentPortalFirebaseUser(user))
 }
@@ -297,7 +292,16 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         />
         <Route
           path="/students/new"
-          element={<ProtectedRoute user={authUser} element={<AddStudent />} />}
+          element={
+            <ProtectedRoute
+              user={authUser}
+              element={
+                <LazyRoute label="Новый ученик…">
+                  <AddStudent />
+                </LazyRoute>
+              }
+            />
+          }
         />
         <Route
           path="/group-training"
@@ -358,7 +362,9 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
               user={authUser}
               coachProfile={coachProfile}
               element={
-                <AdminToolsPage coachId={authUser?.uid} onOpenStudent={openStudentFromAdmin} />
+                <LazyRoute label="Админ…">
+                  <AdminToolsPage coachId={authUser?.uid} onOpenStudent={openStudentFromAdmin} />
+                </LazyRoute>
               }
             />
           }
@@ -451,17 +457,19 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
       </Routes>
 
       {showCoachAssistant ? (
-        <CoachAssistantDock
-          coachId={authUser.uid}
-          coachProfile={coachProfile}
-          focusStudent={selectedStudent}
-          onStudentPatched={(studentId, patch) => {
-            patchCoachStudentInCache(studentId, patch)
-            if (selectedStudent?.id === studentId) {
-              setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : prev))
-            }
-          }}
-        />
+        <Suspense fallback={null}>
+          <CoachAssistantDock
+            coachId={authUser.uid}
+            coachProfile={coachProfile}
+            focusStudent={selectedStudent}
+            onStudentPatched={(studentId, patch) => {
+              patchCoachStudentInCache(studentId, patch)
+              if (selectedStudent?.id === studentId) {
+                setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : prev))
+              }
+            }}
+          />
+        </Suspense>
       ) : null}
     </div>
   )
@@ -502,26 +510,13 @@ function App() {
     )
   }, [authUser?.uid])
 
-  useEffect(() => {
-    if (!isCoachFirebaseUser(authUser)) return undefined
-    startCoachStudentsSync(authUser.uid, {
-      viewAllStudents: isProgramAdmin(coachProfile),
-    })
-    return () => stopCoachStudentsSync()
-  }, [authUser, coachProfile])
+  const viewAllStudents = useMemo(() => isProgramAdmin(coachProfile), [coachProfile])
 
   useEffect(() => {
     if (!isCoachFirebaseUser(authUser)) return undefined
-    const unsubNorms = subscribeLegacyNorms()
-    loadNormsOnce().catch(() => {})
-    const unsubExercises = subscribeMotorQualityExercises()
-    const unsubAtoms = subscribeTechnicalProgramAtoms()
-    return () => {
-      unsubNorms()
-      unsubExercises()
-      unsubAtoms()
-    }
-  }, [authUser])
+    startCoachStudentsSync(authUser.uid, { viewAllStudents })
+    return () => stopCoachStudentsSync()
+  }, [authUser?.uid, viewAllStudents])
 
   if (authUser === undefined) {
     return (

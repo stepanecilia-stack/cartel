@@ -649,41 +649,35 @@ export const getCoachStudents = async (coachId) => {
   const safeDb = ensureDb()
   const col = collection(safeDb, 'students')
 
-  let arrayDocs = []
-  let legacyDocs = []
-  let legacyIdsDocs = []
-
-  try {
-    const snapArray = await getDocs(query(col, where('coach_ids', 'array-contains', coachId)))
-    arrayDocs = snapArray.docs
-  } catch (e) {
-    if (e?.code === 'permission-denied') {
-      if (!coachIdsQueryDeniedLogged) {
-        coachIdsQueryDeniedLogged = true
-        console.info(
-          '[Cartel] Запрос coach_ids недоступен по правилам — используем coachId / coachIds.',
-        )
+  const [arrayResult, legacyResult, legacyIdsResult] = await Promise.all([
+    getDocs(query(col, where('coach_ids', 'array-contains', coachId))).catch((e) => {
+      if (e?.code === 'permission-denied') {
+        if (!coachIdsQueryDeniedLogged) {
+          coachIdsQueryDeniedLogged = true
+          console.info(
+            '[Cartel] Запрос coach_ids недоступен по правилам — используем coachId / coachIds.',
+          )
+        }
+      } else {
+        console.warn('[getCoachStudents] Запрос coach_ids:', e)
       }
-    } else {
-      console.warn('[getCoachStudents] Запрос coach_ids:', e)
-    }
-  }
+      return { docs: [] }
+    }),
+    getDocs(query(col, where('coachId', '==', coachId))).catch((e) => {
+      console.warn('[getCoachStudents] Запрос coachId:', e)
+      return { docs: [] }
+    }),
+    getDocs(query(col, where('coachIds', 'array-contains', coachId))).catch((e) => {
+      console.warn('[getCoachStudents] Запрос coachIds:', e)
+      return { docs: [] }
+    }),
+  ])
 
-  try {
-    const snapLegacy = await getDocs(query(col, where('coachId', '==', coachId)))
-    legacyDocs = snapLegacy.docs
-  } catch (e) {
-    console.warn('[getCoachStudents] Запрос coachId:', e)
-  }
-
-  try {
-    const snapLegacyIds = await getDocs(query(col, where('coachIds', 'array-contains', coachId)))
-    legacyIdsDocs = snapLegacyIds.docs
-  } catch (e) {
-    console.warn('[getCoachStudents] Запрос coachIds:', e)
-  }
-
-  return mergeCoachStudentsDocs([...arrayDocs, ...legacyDocs, ...legacyIdsDocs])
+  return mergeCoachStudentsDocs([
+    ...arrayResult.docs,
+    ...legacyResult.docs,
+    ...legacyIdsResult.docs,
+  ])
 }
 
 /**

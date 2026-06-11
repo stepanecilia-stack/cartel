@@ -383,7 +383,11 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
                 key={student.id}
                 type="button"
                 onClick={() => onSelectStudent?.(student)}
-                className="w-full touch-manipulation border-t border-[#e7e8ec] bg-white px-3 py-2.5 text-left first:border-t-0 active:bg-[#f5f6f8] dark:border-[#363738] dark:bg-[#232324] dark:active:bg-[#2c2d2e] sm:border-t-0 sm:p-3"
+                className={`w-full touch-manipulation border-t border-[#e7e8ec] bg-white px-3 py-2.5 text-left first:border-t-0 active:bg-[#f5f6f8] dark:border-[#363738] dark:bg-[#232324] dark:active:bg-[#2c2d2e] sm:border-t-0 sm:p-3${
+                  filteredStudents.length > 24
+                    ? ' [content-visibility:auto] [contain-intrinsic-size:auto_5.5rem]'
+                    : ''
+                }`}
               >
                 <div className="flex min-w-0 items-start gap-1.5 sm:gap-2">
                   <div className="min-w-0 flex-1">

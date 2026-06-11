@@ -4,7 +4,6 @@ import { prewarmTranscribeAuth } from '../services/coachVoiceTranscribe.js'
 const MAX_RECORD_MS = 90_000
 const MIN_SEND_MS = 200
 const MIN_BLOB_BYTES = 64
-const ARMING_WAIT_MS = 2_500
 export const CANCEL_SLIDE_PX = 80
 export const LOCK_SLIDE_PX = 80
 
@@ -78,6 +77,7 @@ export function useCoachVoiceRecorder() {
   const gestureRafRef = useRef(/** @type {number | null} */ (null))
 
   const warmStreamRef = useRef(/** @type {MediaStream | null} */ (null))
+  const acquirePromiseRef = useRef(/** @type {Promise<MediaStream> | null} */ (null))
   const mediaRecorderRef = useRef(/** @type {MediaRecorder | null} */ (null))
   const activeStreamRef = useRef(/** @type {MediaStream | null} */ (null))
   const chunksRef = useRef(/** @type {BlobPart[]} */ ([]))
@@ -257,19 +257,43 @@ export function useCoachVoiceRecorder() {
     setError('')
   }, [cleanupRecorder, resetAll])
 
-  const acquireStream = useCallback(async () => {
-    if (warmStreamRef.current?.active) return warmStreamRef.current
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: false,
-        autoGainControl: true,
-      },
-    })
+  const bindWarmStream = useCallback((stream) => {
     warmStreamRef.current = stream
+    stream.getAudioTracks().forEach((track) => {
+      track.addEventListener('ended', () => {
+        if (warmStreamRef.current === stream) warmStreamRef.current = null
+      })
+    })
     return stream
   }, [])
+
+  const acquireStream = useCallback(async () => {
+    const warm = warmStreamRef.current
+    if (warm?.active && warm.getAudioTracks().some((track) => track.readyState === 'live')) {
+      return warm
+    }
+    if (warm) {
+      warm.getTracks().forEach((track) => track.stop())
+      warmStreamRef.current = null
+    }
+    if (acquirePromiseRef.current) return acquirePromiseRef.current
+
+    acquirePromiseRef.current = navigator.mediaDevices
+      .getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: false,
+          autoGainControl: true,
+        },
+      })
+      .then(bindWarmStream)
+      .finally(() => {
+        acquirePromiseRef.current = null
+      })
+
+    return acquirePromiseRef.current
+  }, [bindWarmStream])
 
   const startMeter = useCallback((stream) => {
     try {
@@ -433,13 +457,12 @@ export function useCoachVoiceRecorder() {
       originYRef.current = clientY
       gestureRef.current = { slideX: 0, slideY: 0, pointerX: clientX, pointerY: clientY }
       scheduleGestureRender()
-      setPhase('recording')
-      setElapsedMs(0)
 
       const token = ++armingTokenRef.current
       try {
         const stream = await acquireStream()
         if (token !== armingTokenRef.current) return
+        if (!holdActiveRef.current && !lockPendingRef.current) return
         beginRecordingWithStream(stream, token)
       } catch (err) {
         console.error(err)
@@ -454,7 +477,6 @@ export function useCoachVoiceRecorder() {
     (clientX, clientY) => {
       if (lockedRef.current) return
       if (!holdActiveRef.current) return
-      if (phase !== 'recording') return
 
       const deltaX = Math.min(0, clientX - originXRef.current)
       const deltaY = Math.max(0, originYRef.current - clientY)
@@ -475,17 +497,8 @@ export function useCoachVoiceRecorder() {
         }
       }
     },
-    [activateLock, phase, scheduleGestureRender],
+    [activateLock, scheduleGestureRender],
   )
-
-  const waitForRecordingStart = useCallback(async () => {
-    const step = 40
-    for (let waited = 0; waited < ARMING_WAIT_MS; waited += step) {
-      if (recordingActiveRef.current) return true
-      await waitMs(step)
-    }
-    return recordingActiveRef.current
-  }, [])
 
   const ensureMinRecordDuration = useCallback(async () => {
     if (!recordingActiveRef.current) return
@@ -510,16 +523,16 @@ export function useCoachVoiceRecorder() {
     }
 
     if (!recordingActiveRef.current) {
-      const started = await waitForRecordingStart()
-      if (!started) {
-        cancelRecording()
-        return null
-      }
+      armingTokenRef.current += 1
+      setPhase('idle')
+      setElapsedMs(0)
+      resetRecordingUi()
+      return null
     }
 
     await ensureMinRecordDuration()
     return stopToPreview()
-  }, [cancelRecording, ensureMinRecordDuration, stopToPreview, waitForRecordingStart])
+  }, [cancelRecording, ensureMinRecordDuration, resetRecordingUi, stopToPreview])
 
   const finishRecording = useCallback(() => stopToPreview(), [stopToPreview])
 
@@ -544,7 +557,6 @@ export function useCoachVoiceRecorder() {
   useEffect(() => {
     if (!isCoachVoiceInputSupported()) return undefined
     prewarmTranscribeAuth()
-    acquireStream().catch(() => {})
     return () => {
       cleanupRecorder()
       if (audioCtxRef.current) {
@@ -558,7 +570,7 @@ export function useCoachVoiceRecorder() {
         return null
       })
     }
-  }, [acquireStream, cleanupRecorder])
+  }, [cleanupRecorder])
 
   const gesture = gestureRef.current
   const previewDurationLabel = draft ? `${draft.durationSec} сек` : formatRecordTimer(elapsedMs)

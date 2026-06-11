@@ -358,7 +358,6 @@ export async function sendPortalPersonaChatMessage({
       personaId: persona.id,
       userMessage,
     })
-    await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
     return {
       reply:
         flowResult.reply ??
@@ -375,7 +374,6 @@ export async function sendPortalPersonaChatMessage({
     isSelfReportedNormData(userMessage) &&
     !isNormExecutionQuestion(userMessage)
   ) {
-    await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
     return {
       reply: scriptedPortalNormsReply(persona.id, userMessage, messages, normsSnapshot),
       source: 'script',
@@ -401,12 +399,10 @@ export async function sendPortalPersonaChatMessage({
         }
       } catch (err) {
         console.warn('[portalPersonaAi] stages quiz remote failed, using graded reply', err)
-        await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
         return { reply: graded, source: 'script-fallback' }
       }
     }
 
-    await new Promise((r) => setTimeout(r, 350 + Math.random() * 400))
     return { reply: graded, source: 'script' }
   }
 
@@ -477,7 +473,6 @@ export async function sendPortalPersonaChatMessage({
       }
     } catch (err) {
       console.warn('[portalPersonaAi] remote failed, using scripted fallback', err)
-      await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
       return {
         reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom, normsSnapshot),
         source: 'script-fallback',
@@ -485,7 +480,6 @@ export async function sendPortalPersonaChatMessage({
     }
   }
 
-  await new Promise((r) => setTimeout(r, 450 + Math.random() * 550))
   return {
     reply: scriptedPersonaReply(persona, userMessage, context, messages, studyAtom, normsSnapshot),
     source: 'script',

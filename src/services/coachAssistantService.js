@@ -253,7 +253,6 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
       return { reply, source: 'ai' }
     } catch (err) {
       console.warn('[coachAssistant] remote failed', err)
-      await new Promise((r) => setTimeout(r, 400))
       return {
         reply: await scriptedCoachAssistantReply(id, userMessage, enrichedContext),
         source: 'script-fallback',
@@ -261,7 +260,6 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     }
   }
 
-  await new Promise((r) => setTimeout(r, 350 + Math.random() * 300))
   return {
     reply: await scriptedCoachAssistantReply(id, userMessage, enrichedContext),
     source: 'script',

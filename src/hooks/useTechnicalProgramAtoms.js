@@ -3,10 +3,7 @@ import {
   getTechnicalProgramAtomsCache,
   subscribeTechnicalProgramAtomsCache,
 } from '../data/technicalProgramAtomsCache.js'
-import {
-  getTechnicalProgramAtomsSyncError,
-  loadTechnicalProgramAtomsOnce,
-} from '../services/technicalProgramAtomsService.js'
+import { getTechnicalProgramAtomsSyncError } from '../services/technicalProgramAtomsService.js'
 import { resolveProgramAtomsBundle } from '../utils/technicalProgramAtomsResolved.js'
 
 export function useTechnicalProgramAtoms() {
@@ -20,9 +17,10 @@ export function useTechnicalProgramAtoms() {
 
   useEffect(() => {
     let cancelled = false
-    loadTechnicalProgramAtomsOnce().then(() => {
-      if (!cancelled) refresh()
+    import('../data/coachCatalogSync.js').then(({ ensureCoachCatalogSync }) => {
+      if (!cancelled) ensureCoachCatalogSync()
     })
+    refresh()
     const unsub = subscribeTechnicalProgramAtomsCache(() => {
       if (!cancelled) refresh()
     })

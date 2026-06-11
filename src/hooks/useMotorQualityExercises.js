@@ -17,9 +17,17 @@ export function useMotorQualityExercisesForSlug(slug) {
       setExercises([])
       return
     }
+    let cancelled = false
+    import('../data/coachCatalogSync.js').then(({ ensureCoachCatalogSync }) => {
+      if (!cancelled) ensureCoachCatalogSync()
+    })
     const sync = () => setExercises(getMotorQualityExercisesBySlug(slug))
     sync()
-    return subscribeMotorQualityExercisesCache(sync)
+    const unsub = subscribeMotorQualityExercisesCache(sync)
+    return () => {
+      cancelled = true
+      unsub()
+    }
   }, [slug])
 
   return exercises

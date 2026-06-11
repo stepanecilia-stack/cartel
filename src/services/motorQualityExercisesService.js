@@ -175,6 +175,8 @@ export function subscribeMotorQualityExercises() {
 }
 
 export async function loadMotorQualityExercisesOnce() {
+  const { ensureCoachCatalogSync } = await import('../data/coachCatalogSync.js')
+  ensureCoachCatalogSync()
   if (!isFirebaseConfigured) {
     applyExercisesCache([], { blocked: true })
     return

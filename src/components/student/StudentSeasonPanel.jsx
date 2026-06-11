@@ -31,6 +31,9 @@ import {
 /**
  * @param {{
  *   coachId: string | undefined,
+ *   events?: import('../../utils/coachEvents.js').CoachEvent[] | null,
+ *   participations?: import('../../utils/orientirParticipation.js').OrientirParticipation[] | null,
+ *   coachStudents?: object[] | null,
  *   studentId: string | undefined,
  *   student?: Record<string, unknown> | null,
  *   studentName?: string,
@@ -59,6 +62,9 @@ import {
  */
 function StudentSeasonPanel({
   coachId,
+  events: eventsProp = null,
+  participations: participationsProp = null,
+  coachStudents: coachStudentsProp = null,
   studentId,
   student = null,
   studentName = '',
@@ -81,9 +87,14 @@ function StudentSeasonPanel({
   planSaveError = '',
   stageSaveBusy = false,
 }) {
-  const { students } = useCoachStudents(coachId)
-  const { events } = useCoachEvents(coachId)
-  const { participations } = useOrientirParticipation(coachId)
+  const { students: hookedStudents } = useCoachStudents(coachStudentsProp ? undefined : coachId)
+  const { events: hookedEvents } = useCoachEvents(eventsProp ? undefined : coachId)
+  const { participations: hookedParticipations } = useOrientirParticipation(
+    participationsProp ? undefined : coachId,
+  )
+  const students = coachStudentsProp ?? hookedStudents
+  const events = eventsProp ?? hookedEvents
+  const participations = participationsProp ?? hookedParticipations
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState('')
 

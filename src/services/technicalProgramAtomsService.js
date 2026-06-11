@@ -160,6 +160,8 @@ export function getTechnicalProgramAtomsLevel3() {
 }
 
 export async function loadTechnicalProgramAtomsOnce() {
+  const { ensureCoachCatalogSync } = await import('../data/coachCatalogSync.js')
+  ensureCoachCatalogSync()
   applyDefaultsOnly()
   if (!isFirebaseConfigured) {
     setSyncError(new Error('Firebase не настроен'))

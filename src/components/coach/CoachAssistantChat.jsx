@@ -486,7 +486,7 @@ export default function CoachAssistantChat({
         </div>
 
         {voiceActive ? (
-          <div className="absolute inset-x-0 bottom-0 z-10 pb-0.5">
+          <div className="absolute inset-x-0 bottom-0 z-10">
             <CoachAssistantVoiceRecorder
               mode={voiceRecorderMode}
               elapsedLabel={voice.elapsedLabel}

@@ -92,6 +92,8 @@ export async function loadLegacyNormsOnce() {
   if (loadPromise) return loadPromise
 
   loadPromise = (async () => {
+    const { ensureCoachCatalogSync } = await import('../data/coachCatalogSync.js')
+    ensureCoachCatalogSync()
     if (!isFirebaseConfigured) {
       return loadNormsFromCsv()
     }
