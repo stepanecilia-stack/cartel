@@ -1,15 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import StudentPersonaAvatar from '../student/StudentPersonaAvatar.jsx'
 import CoachAssistantNormConfirmCard from './CoachAssistantNormConfirmCard.jsx'
 
 import { formatPortalPersonaName, getPortalPersona } from '../../constants/studentPortalPersonas.js'
 
-import {
-  prepareCoachAssistantContext,
-  sendCoachAssistantMessage,
-} from '../../services/coachAssistantService.js'
-
+import { sendCoachAssistantMessage } from '../../services/coachAssistantService.js'
 import { saveCoachAssistantNorm } from '../../services/coachAssistantNormSave.js'
 
 import { parseCoachAssistantMarkers } from '../../utils/coachAssistantActions.js'
@@ -23,11 +19,6 @@ import {
 } from '../../utils/coachAssistantChatHistory.js'
 
 import { buildCoachAssistantOpener } from '../../utils/coachAssistantPrompt.js'
-
-import { isPortalPersonaAiRemoteEnabled } from '../../utils/portalPersonaAiConfig.js'
-
-import { portalPersonaReplySourceLabel } from '../../utils/portalPersonaAiConfig.js'
-
 import { vk } from '../../utils/vkUi.js'
 
 /**
@@ -58,94 +49,124 @@ export default function CoachAssistantChat({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [replySource, setReplySource] = useState(null)
-  const [pendingNorm, setPendingNorm] = useState(/** @type {Awaited<ReturnType<typeof resolvePendingNormFromMessages>>} */ (null))
+  const [pendingNorm, setPendingNorm] = useState(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [confirmSaved, setConfirmSaved] = useState(false)
   const [confirmError, setConfirmError] = useState('')
-  const savedNormKeysRef = useRef(new Set())
-  const bottomRef = useRef(null)
 
-  const coachContextBase = useMemo(
+  const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null))
+  const bottomRef = useRef(null)
+  const sendingRef = useRef(false)
+  const savedNormKeysRef = useRef(new Set())
+
+  const coachContext = useMemo(
     () => ({ coachName, students, focusStudent }),
     [coachName, students, focusStudent],
   )
 
-  const persistMessages = useCallback(
-    (next) => {
-      const trimmed = trimCoachAssistantChatMessages(next)
-      setMessages(trimmed)
-      writeCoachAssistantChatHistory(coachId, persona.id, trimmed)
-      return trimmed
-    },
-    [coachId, persona.id],
-  )
+  const persist = (next) => {
+    const trimmed = trimCoachAssistantChatMessages(next)
+    setMessages(trimmed)
+    writeCoachAssistantChatHistory(coachId, persona.id, trimmed)
+    return trimmed
+  }
 
   useEffect(() => {
     setMessages(loadCoachAssistantChatMessages(coachId, persona.id, opener))
-    setError('')
-    setReplySource(null)
     setInput('')
+    setError('')
     setPendingNorm(null)
     setConfirmSaved(false)
     setConfirmError('')
     savedNormKeysRef.current = new Set()
+    sendingRef.current = false
+    setBusy(false)
   }, [coachId, persona.id, opener])
 
   useEffect(() => {
-    if (busy || disabled) return undefined
+    bottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages, busy, pendingNorm, confirmSaved])
 
-    let cancelled = false
-    ;(async () => {
-      const pending = await resolvePendingNormFromMessages(messages, coachContextBase)
-      if (cancelled) return
+  const refreshPendingNorm = async (history) => {
+    try {
+      const pending = await resolvePendingNormFromMessages(history, coachContext)
       if (!pending || savedNormKeysRef.current.has(pending.key)) {
         setPendingNorm(null)
-        setConfirmSaved(false)
-        setConfirmError('')
         return
       }
       setPendingNorm(pending)
       setConfirmSaved(false)
       setConfirmError('')
-    })()
-
-    return () => {
-      cancelled = true
+    } catch {
+      setPendingNorm(null)
     }
-  }, [messages, busy, disabled, coachContextBase])
+  }
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, busy, pendingNorm, confirmSaved])
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    if (disabled || sendingRef.current) return
 
-  const runNormSave = useCallback(
-    async (saveAction) => {
-      const saved = await saveCoachAssistantNorm({
-        studentId: saveAction.studentId,
-        testId: saveAction.testId,
-        resultRaw: saveAction.resultRaw,
-        coachId,
+    const text = String(inputRef.current?.value ?? input).trim()
+    if (!text) return
+
+    sendingRef.current = true
+    setBusy(true)
+    setError('')
+    setInput('')
+    if (inputRef.current) inputRef.current.value = ''
+
+    const snapshot = messages
+    const userMessage = { role: 'user', content: text }
+    const withUser = persist([...snapshot, userMessage])
+
+    try {
+      const { reply: rawReply } = await sendCoachAssistantMessage({
+        personaId: persona.id,
+        messages: withUser,
+        coachContext,
       })
-      onStudentPatched?.(saveAction.studentId, saved.payload)
-      return `Записано в карточку: ${saved.studentName} — «${saved.normName}» ${saved.resultDisplay} (${saved.status}).`
-    },
-    [coachId, onStudentPatched],
-  )
 
-  const handleConfirmNorm = useCallback(async () => {
+      const { displayReply } = parseCoachAssistantMarkers(rawReply)
+      const withReply = persist([
+        ...withUser,
+        { role: 'assistant', content: displayReply || '…' },
+      ])
+      await refreshPendingNorm(withReply)
+    } catch (err) {
+      console.error(err)
+      setError('Не удалось получить ответ. Попробуйте ещё раз.')
+      setMessages(snapshot)
+      writeCoachAssistantChatHistory(coachId, persona.id, snapshot)
+      setInput(text)
+      if (inputRef.current) inputRef.current.value = text
+    } finally {
+      sendingRef.current = false
+      setBusy(false)
+      inputRef.current?.focus()
+    }
+  }
+
+  const handleConfirmNorm = async () => {
     if (!pendingNorm?.evaluation || confirmBusy || confirmSaved) return
     setConfirmBusy(true)
     setConfirmError('')
     try {
-      const note = await runNormSave({
+      const saved = await saveCoachAssistantNorm({
         studentId: String(pendingNorm.evaluation.student.id),
         testId: String(pendingNorm.evaluation.testId),
         resultRaw: pendingNorm.evaluation.resultRaw,
+        coachId,
       })
+      onStudentPatched?.(pendingNorm.evaluation.student.id, saved.payload)
       savedNormKeysRef.current.add(pendingNorm.key)
       setConfirmSaved(true)
-      persistMessages([...messages, { role: 'assistant', content: note }])
+      persist([
+        ...messages,
+        {
+          role: 'assistant',
+          content: `Записано в карточку: ${saved.studentName} — «${saved.normName}» ${saved.resultDisplay} (${saved.status}).`,
+        },
+      ])
       window.setTimeout(() => {
         setPendingNorm(null)
         setConfirmSaved(false)
@@ -156,56 +177,9 @@ export default function CoachAssistantChat({
     } finally {
       setConfirmBusy(false)
     }
-  }, [pendingNorm, confirmBusy, confirmSaved, runNormSave, messages, persistMessages])
+  }
 
-  const submitUserText = useCallback(
-    async (text) => {
-      const trimmed = text.trim()
-      if (!trimmed || busy || disabled) return
-
-      setError('')
-      setInput('')
-      setConfirmError('')
-
-      /** @type {import('../../utils/coachAssistantChatHistory.js').CoachAssistantChatMessage} */
-      const userMessage = { role: 'user', content: trimmed }
-      const nextHistory = persistMessages([...messages, userMessage])
-      setBusy(true)
-
-      try {
-        const conversationText = nextHistory
-          .filter((m) => m.role === 'user')
-          .map((m) => m.content ?? '')
-          .join('\n')
-        const coachContext = await prepareCoachAssistantContext(coachContextBase, trimmed, conversationText)
-
-        const { reply: rawReply, source } = await sendCoachAssistantMessage({
-          personaId: persona.id,
-          messages: nextHistory,
-          coachContext,
-        })
-
-        setReplySource(source)
-
-        const { displayReply } = parseCoachAssistantMarkers(rawReply)
-        persistMessages([...nextHistory, { role: 'assistant', content: displayReply || '…' }])
-      } catch (e) {
-        console.error(e)
-        setError('Не удалось получить ответ. Попробуйте ещё раз.')
-        const rolledBack = messages
-        setMessages(rolledBack)
-        writeCoachAssistantChatHistory(coachId, persona.id, rolledBack)
-        setInput(trimmed)
-      } finally {
-        setBusy(false)
-      }
-    },
-    [busy, disabled, messages, persona.id, coachContextBase, persistMessages, coachId],
-  )
-
-  const send = () => void submitUserText(input)
-
-  const resetChat = useCallback(() => {
+  const resetChat = () => {
     if (busy || disabled) return
     const confirmed = window.confirm(
       `Сбросить переписку с ${name}? История этого помощника будет удалена, контекст начнётся заново.`,
@@ -213,16 +187,14 @@ export default function CoachAssistantChat({
     if (!confirmed) return
     const fresh = resetCoachAssistantChatMessages(coachId, persona.id, opener)
     setMessages(fresh)
-    setError('')
-    setReplySource(null)
     setInput('')
+    setError('')
     setPendingNorm(null)
     setConfirmSaved(false)
     setConfirmError('')
     savedNormKeysRef.current = new Set()
-  }, [busy, disabled, coachId, persona.id, name, opener])
-
-  const showConfirmCard = pendingNorm?.evaluation && !busy
+    if (inputRef.current) inputRef.current.value = ''
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -237,16 +209,6 @@ export default function CoachAssistantChat({
         </button>
       </div>
 
-      {!isPortalPersonaAiRemoteEnabled() ? (
-        <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
-          Скриптовый режим. Для полного агента задайте VITE_FIREBASE_* и VITE_PORTAL_PERSONA_AI.
-        </p>
-      ) : replySource === 'script-fallback' ? (
-        <p className={`${vk.mutedXs} rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900`}>
-          {portalPersonaReplySourceLabel(replySource)}
-        </p>
-      ) : null}
-
       <div className="min-h-[min(320px,42dvh)] flex-1 space-y-2.5 overflow-y-auto rounded-lg border border-[#e7e8ec] bg-[#fafbfc] p-2.5">
         {messages.map((msg, index) =>
           msg.role === 'user' ? (
@@ -258,7 +220,7 @@ export default function CoachAssistantChat({
           ) : (
             <div key={`${index}-a`} className="flex gap-2.5">
               <StudentPersonaAvatar personaId={persona.id} size="md" />
-              <div className="min-w-0 max-w-[calc(100%-3rem)] rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] leading-snug text-[#2c2d2e] whitespace-pre-wrap">
+              <div className="min-w-0 max-w-[calc(100%-3rem)] whitespace-pre-wrap rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
                 {msg.content}
               </div>
             </div>
@@ -274,7 +236,7 @@ export default function CoachAssistantChat({
           </div>
         ) : null}
 
-        {showConfirmCard ? (
+        {pendingNorm?.evaluation && !busy ? (
           <CoachAssistantNormConfirmCard
             evaluation={pendingNorm.evaluation}
             busy={confirmBusy}
@@ -289,31 +251,29 @@ export default function CoachAssistantChat({
 
       {error ? <p className={vk.error}>{error}</p> : null}
 
-      <div className="flex min-w-0 gap-2">
+      <form className="flex min-w-0 gap-2" onSubmit={handleSubmit}>
         <input
+          ref={inputRef}
           type="text"
+          name="message"
+          autoComplete="off"
+          enterKeyHint="send"
           className={`${vk.input} min-h-[52px] flex-1 rounded-full`}
           placeholder={`Спросите ${name}…`}
           value={input}
           disabled={disabled || busy}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              send()
-            }
-          }}
           maxLength={500}
         />
         <button
-          type="button"
-          disabled={disabled || busy || !input.trim()}
-          onClick={send}
+          type="submit"
+          disabled={disabled || busy}
           className={`h-[52px] shrink-0 rounded-full px-4 ${vk.btnPrimary}`}
+          aria-label="Отправить"
         >
           →
         </button>
-      </div>
+      </form>
     </div>
   )
 }
