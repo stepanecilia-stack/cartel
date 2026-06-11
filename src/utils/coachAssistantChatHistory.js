@@ -8,8 +8,6 @@ const STORAGE_PREFIX = 'cartel_coach_assistant_chat_v1'
  * @typedef {{
  *   role: 'user' | 'assistant',
  *   content: string,
- *   voiceDurationSec?: number,
- *   voiceAudioUrl?: string,
  * }} CoachAssistantChatMessage
  */
 
@@ -25,14 +23,9 @@ function normalizeMessage(raw) {
   const role = raw.role === 'user' || raw.role === 'assistant' ? raw.role : null
   const content = typeof raw.content === 'string' ? raw.content.trim() : ''
   if (!role || !content) return null
-  const voiceDurationSec =
-    typeof raw.voiceDurationSec === 'number' && Number.isFinite(raw.voiceDurationSec)
-      ? Math.round(raw.voiceDurationSec)
-      : undefined
   return {
     role,
     content: content.slice(0, 4000),
-    ...(voiceDurationSec ? { voiceDurationSec } : {}),
   }
 }
 
