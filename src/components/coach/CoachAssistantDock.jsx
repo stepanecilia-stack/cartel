@@ -10,6 +10,7 @@ import { formatPortalPersonaName, getPortalPersona } from '../../constants/stude
 import StudentPersonaAvatar from '../student/StudentPersonaAvatar.jsx'
 import CoachAssistantChat from './CoachAssistantChat.jsx'
 import CoachAssistantPersonaPicker from './CoachAssistantPersonaPicker.jsx'
+import CoachAssistantTelegramLink from './CoachAssistantTelegramLink.jsx'
 import { vk } from '../../utils/vkUi.js'
 
 /**
@@ -110,6 +111,7 @@ export default function CoachAssistantDock({
               onChange={handlePersonaChange}
               disabled={personaBusy}
             />
+            <CoachAssistantTelegramLink coachId={coachId} />
           </header>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-2.5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:px-4 sm:pb-3">

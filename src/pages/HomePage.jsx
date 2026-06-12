@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AddStudentModal from '../components/AddStudentModal'
+import CoachTelegramMenuTile from '../components/coach/CoachTelegramMenuTile.jsx'
 import { useCoachStudents } from '../hooks/useCoachStudents.js'
 import { useGroupTrainingSession } from '../hooks/useGroupTrainingSession.js'
 import { resolveStudentLastChange } from '../utils/studentLastChange.js'
@@ -254,6 +255,7 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
             aria-label="Быстрые действия"
           >
             {dashboardActions.map((action) => renderVkAction(action))}
+            <CoachTelegramMenuTile coachId={coachId} />
           </nav>
         </header>
 

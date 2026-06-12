@@ -20,7 +20,7 @@ const TechnicalElementsPage = lazy(() => import('./pages/TechnicalElementsPage')
 const CoachCalendarPage = lazy(() => import('./pages/CoachCalendarPage.jsx'))
 const AddStudent = lazy(() => import('./pages/AddStudent'))
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage.jsx'))
-const CoachAssistantDock = lazy(() => import('./components/coach/CoachAssistantDock.jsx'))
+import CoachTelegramNavButton from './components/coach/CoachTelegramNavButton.jsx'
 import {
   clearCoachProfileCache,
   setCoachProfileCache,
@@ -50,7 +50,7 @@ function isCoachFirebaseUser(user) {
   return Boolean(user && !isStudentPortalFirebaseUser(user))
 }
 
-function Navbar({ user, coachProfile, programAdmin }) {
+function Navbar({ user, coachProfile, programAdmin, coachId }) {
   const location = useLocation()
   const trainingSession = useGroupTrainingSession(user?.uid)
   const isGroupTraining = location.pathname === '/group-training'
@@ -96,6 +96,7 @@ function Navbar({ user, coachProfile, programAdmin }) {
                   </span>
                 </Link>
               ) : null}
+              <CoachTelegramNavButton coachId={coachId} className="md:hidden" />
             </>
           ) : null}
           {user ? (
@@ -138,6 +139,10 @@ function Navbar({ user, coachProfile, programAdmin }) {
               <Link to="/leaderboard" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Рейтинг
               </Link>
+              <CoachTelegramNavButton
+                coachId={coachId}
+                className="hidden shrink-0 md:inline-flex"
+              />
             </>
           ) : null}
         </div>
@@ -217,8 +222,6 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
     location.pathname.startsWith('/leaderboard/share/') ||
     isStudentPortalRoute
   const isStudentAuth = isStudentPortalFirebaseUser(authUser)
-  const showCoachAssistant = isCoachFirebaseUser(authUser) && !isShareRoute
-
   useEffect(() => {
     if (!isStudentAuth) return
     if (isStudentPortalRoute || isCoachAuthEntryPath(location.pathname)) return
@@ -245,7 +248,12 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
   return (
     <div className="vk-app">
       {!isShareRoute && (
-        <Navbar user={authUser} coachProfile={coachProfile} programAdmin={programAdmin} />
+        <Navbar
+          user={authUser}
+          coachProfile={coachProfile}
+          programAdmin={programAdmin}
+          coachId={isCoachFirebaseUser(authUser) ? authUser.uid : undefined}
+        />
       )}
       <Routes>
         <Route path="/share/:student_hash" element={<ShareProgressPage />} />
@@ -456,21 +464,6 @@ function AppRoutes({ authUser, selectedStudent, setSelectedStudent, coachProfile
         />
       </Routes>
 
-      {showCoachAssistant ? (
-        <Suspense fallback={null}>
-          <CoachAssistantDock
-            coachId={authUser.uid}
-            coachProfile={coachProfile}
-            focusStudent={selectedStudent}
-            onStudentPatched={(studentId, patch) => {
-              patchCoachStudentInCache(studentId, patch)
-              if (selectedStudent?.id === studentId) {
-                setSelectedStudent((prev) => (prev ? { ...prev, ...patch } : prev))
-              }
-            }}
-          />
-        </Suspense>
-      ) : null}
     </div>
   )
 }

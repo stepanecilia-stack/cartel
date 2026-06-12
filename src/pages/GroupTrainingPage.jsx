@@ -885,8 +885,20 @@ export default function GroupTrainingPage({ coachId }) {
 
     sessionRestoredRef.current = true
     setSelectedIds(new Set(session.selectedIds))
-    setPhase('progress')
+    if (session.phase === 'progress') setPhase('progress')
   }, [coachId, isLoading])
+
+  useEffect(() => {
+    if (!activeSession?.selectedIds?.length) return
+    if (activeSession.phase === 'progress') {
+      setSelectedIds(new Set(activeSession.selectedIds))
+      setPhase('progress')
+      return
+    }
+    if (activeSession.updatedBy === 'telegram') {
+      setSelectedIds(new Set(activeSession.selectedIds))
+    }
+  }, [activeSession])
 
   const filteredStudents = useMemo(() => {
     const q = normalizeSearchText(searchQuery)

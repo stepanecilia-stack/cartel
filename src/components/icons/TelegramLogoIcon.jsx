@@ -1,0 +1,34 @@
+import { useId } from 'react'
+
+/**
+ * Официальный логотип Telegram (круг + самолётик), адаптирован под UI Cartel.
+ *
+ * @param {{ className?: string, linked?: boolean }} props
+ */
+export default function TelegramLogoIcon({ className = 'h-9 w-9', linked = false }) {
+  const gradientId = `telegram-logo-grad-${useId().replace(/:/g, '')}`
+  const wrapClass = linked ? 'rounded-full ring-2 ring-[#4bb34b] ring-offset-1' : 'rounded-full'
+
+  return (
+    <span className={`relative inline-flex shrink-0 ${wrapClass}`} aria-hidden>
+      <svg className={className} viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id={gradientId} x1="120" y1="240" x2="120" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#1d93d2" />
+            <stop offset="1" stopColor="#38b0e3" />
+          </linearGradient>
+        </defs>
+        <circle cx="120" cy="120" r="120" fill={`url(#${gradientId})`} />
+        <path
+          fill="#c8daea"
+          d="M98 175c-3.888 0-3.227-1.468-4.568-5.17L82 132.207 170 80"
+        />
+        <path fill="#a9c9dd" d="M98 175c3 0 4.325-1.372 6-3l16-15.6-20.046-12" />
+        <path
+          fill="#f6fbfe"
+          d="M100.04 144.41l48.36 35.729c5.519 3.046 9.501 1.468 10.877-5.123l19.685-92.763c2.015-8.08-3.08-11.746-8.36-9.921l-116 44.794c-7.435 2.943-7.346 7.064-1.27 8.901l29.782 9.291"
+        />
+      </svg>
+    </span>
+  )
+}

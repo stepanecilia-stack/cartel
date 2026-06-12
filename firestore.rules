@@ -234,5 +234,31 @@ service cloud.firestore {
       allow read: if isProgramAdmin();
       allow write: if false;
     }
+
+    // Telegram-бот (пишет только Cloud Functions).
+    match /coach_telegram_links/{telegramUserId} {
+      allow read: if request.auth != null && resource.data.coachId == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /coach_telegram_link_tokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /coaches/{coachId}/integrations/{docId} {
+      allow read: if request.auth != null && request.auth.uid == coachId;
+      allow write: if false;
+    }
+
+    match /coaches/{coachId}/telegram_chat/{messageId} {
+      allow read: if request.auth != null && request.auth.uid == coachId;
+      allow write: if false;
+    }
+
+    // Групповая тренировка: состав и ползунки сессии (синхрон приложение ↔ Telegram).
+    match /coaches/{coachId}/group_training/{sessionId} {
+      allow read: if request.auth != null && request.auth.uid == coachId;
+      allow create, update, delete: if request.auth != null && request.auth.uid == coachId;
+    }
   }
 }

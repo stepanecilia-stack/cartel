@@ -1,6 +1,12 @@
 import { saveLastTrainingRoster } from './groupTrainingPreferences.js'
+import {
+  deleteGroupTrainingFirestore,
+  parseGroupTrainingSessionDoc,
+  subscribeGroupTrainingFirestore,
+  writeGroupTrainingFirestore,
+} from '../services/groupTrainingSessionFirestore.js'
 
-const STORAGE_KEY = 'cartel_group_training_session_v1'
+const LEGACY_STORAGE_KEY = 'cartel_group_training_session_v1'
 
 /** @typedef {{ l1: number, l2: number, l3: number }} GroupTrainingSliderTiers */
 
@@ -8,12 +14,24 @@ const STORAGE_KEY = 'cartel_group_training_session_v1'
  * @typedef {{
  *   coachId: string,
  *   active: boolean,
+ *   phase: 'compose' | 'progress',
  *   selectedIds: string[],
  *   slidersByStudentId: Record<string, GroupTrainingSliderTiers>,
  *   practicedAtomIdsByStudentId: Record<string, string[]>,
  *   startedAt: string,
+ *   updatedBy?: 'app' | 'telegram',
+ *   schemaVersion: number,
  * }} GroupTrainingSession
  */
+
+/** @type {GroupTrainingSession | null} */
+let sessionCache = null
+
+/** @type {string | null} */
+let subscribedCoachId = null
+
+/** @type {(() => void) | null} */
+let unsubscribeFirestore = null
 
 /** @type {Set<() => void>} */
 const listeners = new Set()
@@ -25,52 +43,87 @@ function notify() {
 /**
  * @returns {GroupTrainingSession | null}
  */
-function readRaw() {
+function readLegacyLocal() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return null
     const data = JSON.parse(raw)
     if (!data || typeof data !== 'object') return null
     if (!data.active || typeof data.coachId !== 'string') return null
-    const selectedIds = Array.isArray(data.selectedIds)
-      ? data.selectedIds.filter((id) => typeof id === 'string' && id)
-      : []
-    const slidersByStudentId =
-      data.slidersByStudentId && typeof data.slidersByStudentId === 'object'
-        ? data.slidersByStudentId
-        : {}
-    const practicedAtomIdsByStudentId = {}
-    if (data.practicedAtomIdsByStudentId && typeof data.practicedAtomIdsByStudentId === 'object') {
-      for (const [studentId, ids] of Object.entries(data.practicedAtomIdsByStudentId)) {
-        if (typeof studentId !== 'string' || !studentId || !Array.isArray(ids)) continue
-        const clean = [...new Set(ids.filter((id) => typeof id === 'string' && id))]
-        if (clean.length) practicedAtomIdsByStudentId[studentId] = clean
-      }
-    }
-    return {
-      coachId: data.coachId,
-      active: true,
-      selectedIds,
-      slidersByStudentId,
-      practicedAtomIdsByStudentId,
-      startedAt: typeof data.startedAt === 'string' ? data.startedAt : new Date().toISOString(),
-    }
+    return parseGroupTrainingSessionDoc(
+      {
+        ...data,
+        phase: data.phase === 'progress' ? 'progress' : 'compose',
+        schemaVersion: 1,
+      },
+      data.coachId,
+    )
   } catch {
     return null
+  }
+}
+
+function clearLegacyLocal() {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    /* ignore */
   }
 }
 
 /**
  * @param {GroupTrainingSession | null} session
  */
-function writeRaw(session) {
-  try {
-    if (!session) localStorage.removeItem(STORAGE_KEY)
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
-  } catch (err) {
-    console.warn('groupTrainingSession: не удалось записать', err)
-  }
+function setCache(session) {
+  sessionCache = session
   notify()
+}
+
+async function persistSession(session) {
+  if (!session?.coachId) return
+  try {
+    await writeGroupTrainingFirestore(session.coachId, session)
+  } catch (err) {
+    console.warn('groupTrainingSession: Firestore write failed', err)
+  }
+}
+
+async function migrateLegacyIfNeeded(coachId) {
+  const legacy = readLegacyLocal()
+  if (!legacy || legacy.coachId !== coachId) return
+  if (sessionCache) {
+    clearLegacyLocal()
+    return
+  }
+  try {
+    await writeGroupTrainingFirestore(coachId, legacy)
+    setCache(legacy)
+    clearLegacyLocal()
+  } catch (err) {
+    console.warn('groupTrainingSession: legacy migration failed', err)
+    setCache(legacy)
+  }
+}
+
+function ensureFirestoreSubscription(coachId) {
+  if (!coachId) return
+  if (subscribedCoachId === coachId && unsubscribeFirestore) return
+
+  if (unsubscribeFirestore) {
+    unsubscribeFirestore()
+    unsubscribeFirestore = null
+  }
+  subscribedCoachId = coachId
+
+  void migrateLegacyIfNeeded(coachId)
+
+  unsubscribeFirestore = subscribeGroupTrainingFirestore(
+    coachId,
+    (remote) => {
+      setCache(remote)
+    },
+    () => {},
+  )
 }
 
 /**
@@ -79,17 +132,23 @@ function writeRaw(session) {
  */
 export function getGroupTrainingSession(coachId) {
   if (!coachId) return null
-  const data = readRaw()
-  if (!data || data.coachId !== coachId) return null
-  return data
+  ensureFirestoreSubscription(coachId)
+  if (sessionCache?.coachId === coachId) return sessionCache
+  return null
 }
 
 /**
  * @param {string} coachId
  * @param {Iterable<string>} selectedIds
  * @param {Record<string, string[]>} [initialPracticedByStudentId]
+ * @param {'compose' | 'progress'} [phase]
  */
-export function startGroupTrainingSession(coachId, selectedIds, initialPracticedByStudentId) {
+export function startGroupTrainingSession(
+  coachId,
+  selectedIds,
+  initialPracticedByStudentId,
+  phase = 'progress',
+) {
   const ids = [...new Set(selectedIds)]
   const practicedAtomIdsByStudentId = {}
   if (initialPracticedByStudentId && typeof initialPracticedByStudentId === 'object') {
@@ -99,83 +158,129 @@ export function startGroupTrainingSession(coachId, selectedIds, initialPracticed
       if (clean.length) practicedAtomIdsByStudentId[studentId] = clean
     }
   }
-  writeRaw({
+  const session = {
     coachId,
     active: true,
+    phase: phase === 'compose' ? 'compose' : 'progress',
     selectedIds: ids,
-    slidersByStudentId: {},
+    slidersByStudentId: sessionCache?.coachId === coachId ? { ...sessionCache.slidersByStudentId } : {},
     practicedAtomIdsByStudentId,
     startedAt: new Date().toISOString(),
-  })
+    updatedBy: 'app',
+    schemaVersion: 1,
+  }
+  setCache(session)
+  void persistSession(session)
   saveLastTrainingRoster(coachId, ids)
 }
 
 /**
  * @param {string} coachId
- * @param {string} studentId
- * @param {GroupTrainingSliderTiers} tiers
+ * @param {Iterable<string>} selectedIds
+ * @param {'compose' | 'progress'} [phase]
  */
+export function updateGroupTrainingRoster(coachId, selectedIds, phase = 'compose') {
+  const ids = [...new Set(selectedIds)]
+  const base =
+    sessionCache?.coachId === coachId
+      ? sessionCache
+      : {
+          coachId,
+          active: true,
+          phase: 'compose',
+          selectedIds: [],
+          slidersByStudentId: {},
+          practicedAtomIdsByStudentId: {},
+          startedAt: new Date().toISOString(),
+          updatedBy: 'app',
+          schemaVersion: 1,
+        }
+  const session = {
+    ...base,
+    selectedIds: ids,
+    phase: phase === 'progress' ? 'progress' : 'compose',
+    updatedBy: 'app',
+  }
+  setCache(session)
+  void persistSession(session)
+  if (ids.length) saveLastTrainingRoster(coachId, ids)
+}
+
+/**
+ * @param {string} coachId
+ * @param {'compose' | 'progress'} phase
+ */
+export function setGroupTrainingPhase(coachId, phase) {
+  if (!sessionCache || sessionCache.coachId !== coachId) return
+  const session = {
+    ...sessionCache,
+    phase: phase === 'progress' ? 'progress' : 'compose',
+    updatedBy: 'app',
+  }
+  setCache(session)
+  void persistSession(session)
+}
+
 /**
  * @param {string} coachId
  * @param {string} studentId
  * @param {string[]} atomIds
  */
 export function updateGroupTrainingSessionPracticed(coachId, studentId, atomIds) {
-  const data = readRaw()
-  if (!data || data.coachId !== coachId) return
+  if (!sessionCache || sessionCache.coachId !== coachId) return
   const clean = [...new Set(atomIds.filter((id) => typeof id === 'string' && id))]
-  const practicedAtomIdsByStudentId = { ...data.practicedAtomIdsByStudentId }
+  const practicedAtomIdsByStudentId = { ...sessionCache.practicedAtomIdsByStudentId }
   if (clean.length) practicedAtomIdsByStudentId[studentId] = clean
   else delete practicedAtomIdsByStudentId[studentId]
-  writeRaw({ ...data, practicedAtomIdsByStudentId })
+  const session = { ...sessionCache, practicedAtomIdsByStudentId, updatedBy: 'app' }
+  setCache(session)
+  void persistSession(session)
 }
 
+/**
+ * Задел для варианта C: ползунки сессии (пока только в Firestore, запись в карточку — из приложения).
+ * @param {string} coachId
+ * @param {string} studentId
+ * @param {GroupTrainingSliderTiers} tiers
+ */
 export function updateGroupTrainingSessionSliders(coachId, studentId, tiers) {
-  const data = readRaw()
-  if (!data || data.coachId !== coachId) return
-  writeRaw({
-    ...data,
+  if (!sessionCache || sessionCache.coachId !== coachId) return
+  const session = {
+    ...sessionCache,
     slidersByStudentId: {
-      ...data.slidersByStudentId,
-      [studentId]: {
-        l1: tiers.l1,
-        l2: tiers.l2,
-        l3: tiers.l3,
-      },
+      ...sessionCache.slidersByStudentId,
+      [studentId]: { l1: tiers.l1, l2: tiers.l2, l3: tiers.l3 },
     },
-  })
+    updatedBy: 'app',
+  }
+  setCache(session)
+  void persistSession(session)
 }
 
 /**
  * @param {string | undefined | null} [coachId]
  */
 export function endGroupTrainingSession(coachId) {
-  const data = readRaw()
-  if (!data) return
-  if (coachId && data.coachId !== coachId) return
-  writeRaw(null)
+  if (coachId && sessionCache && sessionCache.coachId !== coachId) return
+  setCache(null)
+  if (coachId) void deleteGroupTrainingFirestore(coachId)
 }
 
 export function clearGroupTrainingSession() {
-  writeRaw(null)
+  const coachId = sessionCache?.coachId
+  setCache(null)
+  if (coachId) void deleteGroupTrainingFirestore(coachId)
 }
 
 /**
+ * @param {string | undefined | null} coachId
  * @param {() => void} listener
  * @returns {() => void}
  */
-export function subscribeGroupTrainingSession(listener) {
-  const onStorage = (e) => {
-    if (e.key === STORAGE_KEY) listener()
-  }
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', onStorage)
-  }
+export function subscribeGroupTrainingSession(coachId, listener) {
+  if (coachId) ensureFirestoreSubscription(coachId)
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('storage', onStorage)
-    }
   }
 }

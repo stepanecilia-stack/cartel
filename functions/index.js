@@ -345,6 +345,12 @@ export const portalPersonaChat = onRequest(
   },
 )
 
+export {
+  telegramCoachWebhook,
+  telegramCreateLinkToken,
+  telegramSetupWebhook,
+} from './telegramBot.js'
+
 export const portalPersonaMemoryRefresh = onRequest(
   {
     region: 'europe-west1',

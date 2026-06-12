@@ -13,7 +13,7 @@ export function useGroupTrainingSession(coachId) {
   useEffect(() => {
     const sync = () => setSession(getGroupTrainingSession(coachId))
     sync()
-    return subscribeGroupTrainingSession(sync)
+    return subscribeGroupTrainingSession(coachId, sync)
   }, [coachId])
 
   return session
