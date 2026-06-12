@@ -17,6 +17,16 @@ import { layoutButtonsInTwoColumns, telegramApi } from './telegramApi.js'
 const ROSTER_PAGE_SIZE = STUDENTS_PAGE_SIZE
 const ROSTER_BTN_LABEL_MAX = 24
 
+/** Клавиатура после старта тренировки (фаза progress). */
+export function buildTrainingProgressKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: '📋 Упражнения', callback_data: 'gt:ex' }],
+      [{ text: '✕ Завершить', callback_data: 'gt:end' }],
+    ],
+  }
+}
+
 /**
  * @param {object[]} students
  * @param {Set<string>} selectedIds
@@ -111,6 +121,18 @@ export async function sendTrainingRoster(token, chatId, coachId, page = 0) {
 
   if (!students.length) {
     return { empty: true }
+  }
+
+  if (session?.phase === 'progress' && selectedIds.length > 0) {
+    const text = await formatGroupTechniqueSummary(coachId, students, selectedIds)
+    await telegramApi(token, 'sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: buildTrainingProgressKeyboard(),
+      disable_web_page_preview: true,
+    })
+    return { empty: false }
   }
 
   if (!session && selectedIds.length === 0) {

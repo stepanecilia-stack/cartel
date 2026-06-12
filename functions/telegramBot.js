@@ -20,7 +20,17 @@ import {
 } from './telegramCoachAssistant.js'
 import { layoutButtonsInTwoColumns, sendTelegramMessage, telegramApi } from './telegramApi.js'
 import { menuExtra, parseMenuAction, setupBotMenu } from './telegramMenu.js'
+import { getGroupTrainingSession } from './groupTrainingSessionData.js'
 import {
+  buildGroupTrainingStats,
+  buildMuscleGroupPickerKeyboard,
+  buildMuscleGroupPickerMessage,
+  buildMuscleGroupResultKeyboard,
+  getMuscleGroup,
+  recommendGroupExercise,
+} from './telegramGroupExercises.js'
+import {
+  buildTrainingProgressKeyboard,
   endTrainingFromTelegram,
   refreshTrainingRosterMessage,
   sendGroupTechniqueSummary,
@@ -40,6 +50,7 @@ const HELP_TEXT = [
   '📋 Сводка / 📊 Нормативы — по выбранному ученику',
   '',
   'Ползунки прогресса на тренировке — в приложении Cartel.',
+  'После старта тренировки — 📋 Упражнения: выбор группы мышц (ноги, кор, спина…), подбор через поиск Google.',
 ].join('\n')
 
 /**
@@ -307,7 +318,84 @@ async function handleTrainingCallback(token, query, coachId, data) {
       return
     }
     await telegramApi(token, 'answerCallbackQuery', { callback_query_id: query.id })
-    await sendCoachMessage(token, chatId, text)
+    await telegramApi(token, 'sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: buildTrainingProgressKeyboard(),
+      disable_web_page_preview: true,
+    })
+    return
+  }
+
+  if (data === 'gt:ex:back') {
+    await telegramApi(token, 'answerCallbackQuery', { callback_query_id: query.id })
+    await telegramApi(token, 'editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text: 'Выбор упражнения закрыт.',
+      parse_mode: 'HTML',
+    })
+    return
+  }
+
+  if (data === 'gt:ex') {
+    const session = await getGroupTrainingSession(coachId)
+    if (session?.phase !== 'progress' || !session.selectedIds?.length) {
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: query.id,
+        text: 'Сначала начните тренировку',
+        show_alert: true,
+      })
+      return
+    }
+    const stats = buildGroupTrainingStats(students, session.selectedIds)
+    await telegramApi(token, 'answerCallbackQuery', { callback_query_id: query.id })
+    await telegramApi(token, 'sendMessage', {
+      chat_id: chatId,
+      text: buildMuscleGroupPickerMessage(stats),
+      parse_mode: 'HTML',
+      reply_markup: buildMuscleGroupPickerKeyboard(),
+      disable_web_page_preview: true,
+    })
+    return
+  }
+
+  if (data.startsWith('gt:mg:')) {
+    const session = await getGroupTrainingSession(coachId)
+    if (session?.phase !== 'progress' || !session.selectedIds?.length) {
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: query.id,
+        text: 'Сначала начните тренировку',
+        show_alert: true,
+      })
+      return
+    }
+    const muscleGroupId = data.slice(6)
+    const muscleGroup = getMuscleGroup(muscleGroupId)
+    if (!muscleGroup) {
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: query.id,
+        text: 'Неизвестная группа мышц',
+        show_alert: true,
+      })
+      return
+    }
+    await telegramApi(token, 'answerCallbackQuery', {
+      callback_query_id: query.id,
+      text: `Подбираю для «${muscleGroup.label}»…`,
+    })
+    await telegramApi(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => {})
+    const messages = await recommendGroupExercise(students, session.selectedIds, muscleGroupId)
+    for (let i = 0; i < messages.length; i += 1) {
+      await telegramApi(token, 'sendMessage', {
+        chat_id: chatId,
+        text: messages[i],
+        parse_mode: 'HTML',
+        reply_markup: i === messages.length - 1 ? buildMuscleGroupResultKeyboard() : undefined,
+        disable_web_page_preview: true,
+      })
+    }
     return
   }
 
