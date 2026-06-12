@@ -20,7 +20,6 @@ const TechnicalElementsPage = lazy(() => import('./pages/TechnicalElementsPage')
 const CoachCalendarPage = lazy(() => import('./pages/CoachCalendarPage.jsx'))
 const AddStudent = lazy(() => import('./pages/AddStudent'))
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage.jsx'))
-import CoachTelegramNavButton from './components/coach/CoachTelegramNavButton.jsx'
 import {
   clearCoachProfileCache,
   setCoachProfileCache,
@@ -96,7 +95,6 @@ function Navbar({ user, coachProfile, programAdmin, coachId }) {
                   </span>
                 </Link>
               ) : null}
-              <CoachTelegramNavButton coachId={coachId} className="md:hidden" />
             </>
           ) : null}
           {user ? (
@@ -139,10 +137,6 @@ function Navbar({ user, coachProfile, programAdmin, coachId }) {
               <Link to="/leaderboard" className={`hidden shrink-0 md:inline ${vk.linkNav}`}>
                 Рейтинг
               </Link>
-              <CoachTelegramNavButton
-                coachId={coachId}
-                className="hidden shrink-0 md:inline-flex"
-              />
             </>
           ) : null}
         </div>
