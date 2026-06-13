@@ -131,7 +131,9 @@ function PrepSeasonCalendar({
                   isFocusPeriodDay
                       ? 'border-[#2d81e0] bg-sky-50 text-[#2c2d2e] shadow-sm z-[1]'
                       : isTrainingDay
-                        ? 'border-[#2d81e0] bg-[#ecf3fc] text-[#2d81e0] shadow-sm'
+                        ? trainingScheduleOnly
+                          ? 'border-[#2d81e0] bg-[#2d81e0] text-white shadow-md'
+                          : 'border-[#2d81e0] bg-[#ecf3fc] text-[#2d81e0] shadow-sm'
                         : coachDayStyle
                           ? `${coachDayStyle.chip} border-solid shadow-sm`
                           : hasEvents
@@ -150,7 +152,11 @@ function PrepSeasonCalendar({
                 {minimal && (hasEvents || isTrainingDay) ? (
                   <span className="mt-0.5 flex gap-0.5" aria-hidden>
                     {isTrainingDay ? (
-                      <span className="block h-1.5 w-1.5 rounded-full bg-[#2d81e0]" />
+                      <span
+                        className={`block h-1.5 w-1.5 rounded-full ${
+                          trainingScheduleOnly ? 'bg-white' : 'bg-[#2d81e0]'
+                        }`}
+                      />
                     ) : null}
                     {coachEvent ? (
                       <span

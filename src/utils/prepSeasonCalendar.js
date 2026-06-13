@@ -129,6 +129,7 @@ export function seasonMonthToCalendarCells(monthDays) {
     isToday: d.isToday,
     isFightDay: d.competitions.length > 0,
     isFocusFightDay: d.isFocusDay,
+    isStudentTrainingDay: Boolean(d.isStudentTrainingDay),
     competitions: d.competitions,
     primaryCompetition: d.primaryCompetition,
   }))
