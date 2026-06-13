@@ -1,6 +1,7 @@
 import { trainingGoalsLabels } from '../constants/studentPortalOnboarding.js'
 
 const MAX_LEVEL_NOTES = 800
+const MAX_COACH_COLLEAGUE_BRIEF = 1200
 const MAX_CONVERSATION_SUMMARY = 1200
 const MAX_KINESTHESIA_SNIPPET = 200
 
@@ -16,6 +17,9 @@ const MAX_KINESTHESIA_SNIPPET = 200
  *   kinesthesiaAnswerSnippet?: string,
  *   onboardingSkipped?: boolean,
  *   onboardingSkippedAt?: string | null,
+ *   coachColleagueBrief?: string,
+ *   coachColleagueBriefAt?: string | null,
+ *   coachColleagueBriefByCoachId?: string | null,
  * }} PortalPersonaMemory
  */
 
@@ -33,6 +37,9 @@ export function normalizePortalPersonaMemory(raw) {
       kinesthesiaAnswerSnippet: '',
       onboardingSkipped: false,
       onboardingSkippedAt: null,
+      coachColleagueBrief: '',
+      coachColleagueBriefAt: null,
+      coachColleagueBriefByCoachId: null,
     }
   }
   const levelNotes =
@@ -62,6 +69,18 @@ export function normalizePortalPersonaMemory(raw) {
     typeof raw.onboardingSkippedAt === 'string' && raw.onboardingSkippedAt.trim()
       ? raw.onboardingSkippedAt.trim()
       : null
+  const coachColleagueBrief =
+    typeof raw.coachColleagueBrief === 'string'
+      ? raw.coachColleagueBrief.trim().slice(0, MAX_COACH_COLLEAGUE_BRIEF)
+      : ''
+  const coachColleagueBriefAt =
+    typeof raw.coachColleagueBriefAt === 'string' && raw.coachColleagueBriefAt.trim()
+      ? raw.coachColleagueBriefAt.trim()
+      : null
+  const coachColleagueBriefByCoachId =
+    typeof raw.coachColleagueBriefByCoachId === 'string' && raw.coachColleagueBriefByCoachId.trim()
+      ? raw.coachColleagueBriefByCoachId.trim()
+      : null
   return {
     levelNotes,
     conversationSummary,
@@ -73,6 +92,9 @@ export function normalizePortalPersonaMemory(raw) {
     kinesthesiaAnswerSnippet,
     onboardingSkipped,
     onboardingSkippedAt,
+    coachColleagueBrief,
+    coachColleagueBriefAt,
+    coachColleagueBriefByCoachId,
   }
 }
 
@@ -160,6 +182,11 @@ export function formatPortalPersonaMemoryForPrompt({ personaMemory, trainingGoal
       : ''
     blocks.push(
       `Ученик подтвердил критерий «Знание»: три образа, включая кинестетику.${snippet} Не давай «Понял» без честности про тело.`,
+    )
+  }
+  if (withGoals.coachColleagueBrief) {
+    blocks.push(
+      `Задание и договорённости очного тренера (говори ученику в этом ключе; не цитируй дословно переписку тренера с коллегой):\n${withGoals.coachColleagueBrief}`,
     )
   }
 

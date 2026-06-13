@@ -95,6 +95,23 @@ service cloud.firestore {
         ]);
     }
 
+    function coachCanAccessStudentDoc(studentId) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/students/$(studentId))
+        && (
+          isProgramAdmin()
+          || get(/databases/$(database)/documents/students/$(studentId)).data.coachId == request.auth.uid
+          || (
+            get(/databases/$(database)/documents/students/$(studentId)).data.coach_ids is list
+            && request.auth.uid in get(/databases/$(database)/documents/students/$(studentId)).data.coach_ids
+          )
+          || (
+            get(/databases/$(database)/documents/students/$(studentId)).data.coachIds is list
+            && request.auth.uid in get(/databases/$(database)/documents/students/$(studentId)).data.coachIds
+          )
+        );
+    }
+
     match /students/{studentId} {
       // Отдельные allow read — Firestore сопоставляет их с where(coachId) и array-contains(coach_ids/coachIds).
       allow read: if request.auth != null && isProgramAdmin();
@@ -126,6 +143,11 @@ service cloud.firestore {
         (resource.data.coach_ids is list && request.auth.uid in resource.data.coach_ids) ||
         (resource.data.coachIds is list && request.auth.uid in resource.data.coachIds)
       );
+    }
+
+    match /students/{studentId}/coach_assistant_threads/{threadCoachId} {
+      allow read, write: if coachCanAccessStudentDoc(studentId)
+        && request.auth.uid == threadCoachId;
     }
 
     match /student_codes/{code} {

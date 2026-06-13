@@ -12,9 +12,18 @@ import {
   shortTypageLabel,
   TECHNIQUE_LEVEL2_ATOMS,
 } from '../utils/ksrUtils'
-import { buildTechnicalLocksById, orderTechnicalAtomsForProgram } from '../utils/technicalProgramProgress.js'
+import { orderTechnicalAtomsForProgram } from '../utils/technicalProgramProgress.js'
 import { resolveProgramLevel2Atoms } from '../utils/technicalProgramAtomsResolved.js'
-import { applyProgressSliderToTechnicalData } from '../utils/studentTechnicalUpdate.js'
+import {
+  applyProgressSliderToTechnicalData,
+  buildTechnicalOnlyUpdatePayload,
+} from '../utils/studentTechnicalUpdate.js'
+import {
+  buildCoachTechnicalLocksById,
+  isPortalOnlyKnowledgeAtom,
+  mergeCoachTechnicalWithPortalKnowledge,
+} from '../utils/coachTechnicalDisplay.js'
+import { normalizePortalKnowledgeData } from '../utils/portalKnowledgeData.js'
 import {
   buildFullTechnicalProgramAtoms,
   normalizeTechnicalCombinations,
@@ -86,6 +95,7 @@ import {
 } from '../utils/plannedCompetitions.js'
 import StudentNormsSection from '../components/student/StudentNormsSection.jsx'
 import StudentPortalAccessPanel from '../components/student/StudentPortalAccessPanel.jsx'
+import StudentCoachAssistantPanel from '../components/coach/StudentCoachAssistantPanel.jsx'
 import StudentTechnicalTab from '../components/student/StudentTechnicalTab.jsx'
 import { normalizeAtomReinforcement } from '../utils/atomReinforcement.js'
 import { daysUntilCompetition } from '../utils/competitionDate.js'
@@ -318,6 +328,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   )
   const techniqueSliderDebounceRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
   const pendingTechniqueTiersRef = useRef(/** @type {{ l1: number, l2: number, l3: number } | null} */ (null))
+  const techniqueSliderSaveSeqRef = useRef(0)
   const [copyIdFlash, setCopyIdFlash] = useState(false)
   const [shortIdAssignError, setShortIdAssignError] = useState('')
   const [shareFlash, setShareFlash] = useState(false)
@@ -327,6 +338,7 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const [seasonPlanSaveError, setSeasonPlanSaveError] = useState('')
   const [cartelStageSaveBusy, setCartelStageSaveBusy] = useState(false)
   const coachId = getCurrentCoachId()
+  const [coachDisplayName, setCoachDisplayName] = useState('коллега')
   const canEditStudentName = useMemo(
     () => isCoachPrimaryStudentOwner(student, coachId),
     [student, coachId],
@@ -335,6 +347,16 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
   const { participations: orientirParticipations } = useOrientirParticipation(coachId)
   const liveSnapshotTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
   const shortIdDeniedRef = useRef(new Set())
+
+  useEffect(() => {
+    if (!coachId) return
+    void getCoachProfile(coachId)
+      .then((p) => {
+        const name = [p?.firstName, p?.lastName].filter(Boolean).join(' ').trim()
+        setCoachDisplayName(name || 'коллега')
+      })
+      .catch(() => setCoachDisplayName('коллега'))
+  }, [coachId])
 
   useEffect(() => {
     const syncAtomsFromCache = () => setProgramAtomsCache(getTechnicalProgramAtomsCache())
@@ -1485,10 +1507,48 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
     [programAtomsCache.level2],
   )
 
-  const technicalLocksById = useMemo(
-    () => buildTechnicalLocksById(orderedTechnicalAtoms, technicalData),
-    [orderedTechnicalAtoms, technicalData],
+  const portalKnowledgeData = useMemo(
+    () => normalizePortalKnowledgeData(student?.portalKnowledgeData),
+    [student?.portalKnowledgeData],
   )
+
+  /** Карточка тренера + «Знание» из кабинета (только отображение; в Firestore поля раздельные). */
+  const technicalDataForCoachUi = useMemo(
+    () => mergeCoachTechnicalWithPortalKnowledge(technicalData, portalKnowledgeData),
+    [technicalData, portalKnowledgeData],
+  )
+
+  const portalOnlyKnowledgeAtomIds = useMemo(() => {
+    const ids = new Set()
+    const atoms = [...orderedTechnicalAtoms, ...level2Atoms, ...technicalCombinationsResolved]
+    for (const atom of atoms) {
+      if (atom?.id && isPortalOnlyKnowledgeAtom(technicalData, portalKnowledgeData, atom.id)) {
+        ids.add(atom.id)
+      }
+    }
+    return ids
+  }, [
+    orderedTechnicalAtoms,
+    level2Atoms,
+    technicalCombinationsResolved,
+    technicalData,
+    portalKnowledgeData,
+  ])
+
+  const technicalLocksById = useMemo(() => {
+    const l3Atoms = technicalCombinationsResolved.map((c) => ({ id: c.id }))
+    return {
+      ...buildCoachTechnicalLocksById(orderedTechnicalAtoms, technicalData, portalKnowledgeData),
+      ...buildCoachTechnicalLocksById(level2Atoms, technicalData, portalKnowledgeData),
+      ...buildCoachTechnicalLocksById(l3Atoms, technicalData, portalKnowledgeData),
+    }
+  }, [
+    orderedTechnicalAtoms,
+    level2Atoms,
+    technicalCombinationsResolved,
+    technicalData,
+    portalKnowledgeData,
+  ])
 
   const atomReinforcement = useMemo(
     () => normalizeAtomReinforcement(student?.atomReinforcement),
@@ -1497,22 +1557,67 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
 
   const commitTechniqueProgressSlider = useCallback(
     async (tiers) => {
-      if (!student?.id) return
-      const l3Atoms = technicalCombinationsResolved.map((c) => ({ id: c.id }))
-      let nextTechnical = applyProgressSliderToTechnicalData(orderedTechnicalAtoms, technicalData, tiers.l1)
-      nextTechnical = applyProgressSliderToTechnicalData(level2Atoms, nextTechnical, tiers.l2)
-      nextTechnical = applyProgressSliderToTechnicalData(l3Atoms, nextTechnical, tiers.l3)
+      const studentId = student?.id
+      if (!studentId) return
+
+      const saveSeq = ++techniqueSliderSaveSeqRef.current
       setTechniqueSliderSaveStatus('saving')
-      const ok = await persistTechnicalBundle('technical:slider', nextTechnical, technicalCombinations)
-      setTechniqueSliderSaveStatus(ok ? 'saved' : 'error')
+
+      try {
+        const fresh = await getStudentById(studentId)
+        if (!fresh) {
+          if (saveSeq === techniqueSliderSaveSeqRef.current) {
+            setTechniqueSliderSaveStatus('error')
+          }
+          return
+        }
+
+        const combos = mergeWithRequiredLevel3Combinations(technicalCombinationsResolved)
+        const l3Atoms = combos.map((c) => ({ id: c.id }))
+        const serverTechnical = emptyTechnicalRecord(fresh.technicalData)
+
+        let nextTechnical = applyProgressSliderToTechnicalData(
+          orderedTechnicalAtoms,
+          serverTechnical,
+          tiers.l1,
+        )
+
+        const l1Total = orderedTechnicalAtoms.length
+        const l2Total = level2Atoms.length
+        if (l1Total > 0 && tiers.l1 >= l1Total) {
+          nextTechnical = applyProgressSliderToTechnicalData(level2Atoms, nextTechnical, tiers.l2)
+          if (l2Total > 0 && tiers.l2 >= l2Total) {
+            nextTechnical = applyProgressSliderToTechnicalData(l3Atoms, nextTechnical, tiers.l3)
+          }
+        }
+
+        const patch = buildTechnicalOnlyUpdatePayload(
+          { ...fresh, technicalCombinations: combos },
+          technicalAtoms,
+          nextTechnical,
+        )
+
+        await updateStudentData(studentId, patch, { section: STUDENT_UPDATE_SECTION.technique })
+
+        setTechnicalData(nextTechnical)
+        onStudentUpdatedRef.current?.(patch)
+
+        if (saveSeq === techniqueSliderSaveSeqRef.current) {
+          setTechniqueSliderSaveStatus('saved')
+        }
+      } catch (err) {
+        console.error('[technique-slider-save]', err)
+        if (saveSeq === techniqueSliderSaveSeqRef.current) {
+          setTechniqueSliderSaveStatus('error')
+        }
+      }
     },
     [
       student?.id,
       technicalCombinationsResolved,
       orderedTechnicalAtoms,
-      technicalData,
       level2Atoms,
-      technicalCombinations,
+      technicalAtoms,
     ],
   )
 
@@ -1729,6 +1834,19 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
           )}
         </section>
 
+        {student?.id && coachId ? (
+          <StudentCoachAssistantPanel
+            coachId={coachId}
+            coachName={coachDisplayName}
+            student={student}
+            allNorms={allNorms}
+            programAtoms={programAtomsCache}
+            onStudentPatched={(studentId, patch) => {
+              onStudentUpdatedRef.current?.({ ...student, id: studentId, ...patch })
+            }}
+          />
+        ) : null}
+
         <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
           <h2 className={vk.h2}>Тесты и техника</h2>
 
@@ -1851,7 +1969,9 @@ function StudentPage({ student, onBack, onStudentUpdated }) {
                 combinationsCount={technicalCombinationsResolved.length}
                 level1Atoms={orderedTechnicalAtoms}
                 level2Atoms={level2Atoms}
-                technicalData={technicalData}
+                technicalData={technicalDataForCoachUi}
+                coachTechnicalData={technicalData}
+                portalOnlyKnowledgeAtomIds={portalOnlyKnowledgeAtomIds}
                 technicalLocksById={technicalLocksById}
                 technicalSavingKey={technicalSavingKey}
                 canSave={Boolean(student?.id)}

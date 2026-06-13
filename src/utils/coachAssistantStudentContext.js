@@ -13,6 +13,7 @@ import {
 } from './technicalProgramProgress.js'
 import { mapCombinationsToDisplayAtoms } from './techniqueCatalog.js'
 import {
+  countPortalKnowledgeAtoms,
   summarizeStudentPortalProgress,
   studentPortalTierLabel,
 } from './studentPortalProgress.js'
@@ -413,8 +414,14 @@ export function formatStudentCoachBrief(student, allNorms, detailed = false, pro
 
   if (!detailed) {
     const coachTech = formatCoachTechnicalBrief(student, atoms)
+    const pk = normalizePortalKnowledgeData(student?.portalKnowledgeData)
+    const portalL1 = countPortalKnowledgeAtoms(atoms.orderedL1, pk)
+    const portalHint =
+      portalL1 > 0 && atoms.orderedL1.length > 0
+        ? `; кабинет Ур.1: ${portalL1}/${atoms.orderedL1.length} «Знание» (самостоятельно)`
+        : ''
     const norms = formatStudentNormsCountBrief(student, allNorms)
-    return [header, coachTech, norms].join('; ')
+    return [header, coachTech + portalHint, norms].join('; ')
   }
 
   const sections = [

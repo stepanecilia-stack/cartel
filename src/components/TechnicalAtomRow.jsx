@@ -20,6 +20,7 @@ function TechnicalAtomRow({
   onLevelChange,
   onSave,
   showMethodDetails = false,
+  fromPortalKnowledge = false,
   reinforcementTotal = 0,
 }) {
   const reinforceable = isAtomReinforceableInIsolation(atom)
@@ -57,6 +58,14 @@ function TechnicalAtomRow({
                 ×{reinforcementTotal}
               </span>
             ) : null}
+            {fromPortalKnowledge ? (
+              <span
+                className="shrink-0 rounded bg-[#e8f5e9] px-1.5 py-0.5 text-[10px] font-semibold text-[#4bb34b]"
+                title="Отмечено учеником в личном кабинете"
+              >
+                каб.
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-1.5 flex items-center gap-1.5">
@@ -64,7 +73,7 @@ function TechnicalAtomRow({
               className={`${vk.select} min-w-0 flex-1 disabled:opacity-50`}
               value={levelKey}
               disabled={locked}
-              aria-label="Уровень освоения"
+              aria-label={fromPortalKnowledge ? 'Уровень освоения (знание из кабинета)' : 'Уровень освоения'}
               onChange={(e) => onLevelChange(e.target.value)}
             >
               {TECH_DOMINANCE_OPTIONS.map((opt) => (

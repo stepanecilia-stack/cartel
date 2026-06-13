@@ -17,12 +17,14 @@ const VIRTUALIZE_MIN = 24
  *   showMethodDetails?: boolean,
  *   onLevelChange: (atomId: string, level: string) => void,
  *   onSaveAtom: (atom: object) => void,
+ *   portalOnlyKnowledgeAtomIds?: Set<string>,
  *   atomReinforcement?: Record<string, { total?: number }>,
  * }} props
  */
 function StudentTechnicalAtomsList({
   atoms,
   technicalData,
+  portalOnlyKnowledgeAtomIds,
   atomReinforcement = {},
   technicalLocksById,
   technicalSavingKey,
@@ -36,11 +38,13 @@ function StudentTechnicalAtomsList({
   const renderRow = (atom) => {
     const atomLevelKey = normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)
     const isLockedBySequence = Boolean(technicalLocksById[atom.id])
+    const fromPortal = portalOnlyKnowledgeAtomIds?.has(atom.id) ?? false
     return (
       <TechnicalAtomRow
         atom={atom}
         levelKey={atomLevelKey}
         locked={isLockedBySequence}
+        fromPortalKnowledge={fromPortal}
         saving={technicalSavingKey === `technical:${atom.id}`}
         canSave={canSave}
         onLevelChange={(level) => onLevelChange(atom.id, level)}
@@ -60,6 +64,7 @@ function StudentTechnicalAtomsList({
             atom={atom}
             levelKey={normalizeTechnicalDominanceKey(technicalData[atom.id]?.level)}
             locked={Boolean(technicalLocksById[atom.id])}
+            fromPortalKnowledge={portalOnlyKnowledgeAtomIds?.has(atom.id) ?? false}
             saving={technicalSavingKey === `technical:${atom.id}`}
             canSave={canSave}
             onLevelChange={(level) => onLevelChange(atom.id, level)}

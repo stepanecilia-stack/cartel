@@ -14,6 +14,8 @@ import { vk } from '../../utils/vkUi.js'
  *   level1Atoms: object[],
  *   level2Atoms: object[],
  *   technicalData: Record<string, { level?: string }>,
+ *   portalOnlyKnowledgeAtomIds?: Set<string>,
+ *   coachTechnicalData?: Record<string, { level?: string }>,
  *   technicalLocksById: Record<string, boolean>,
  *   technicalSavingKey: string | null,
  *   canSave: boolean,
@@ -35,6 +37,8 @@ function StudentTechnicalTab({
   level1Atoms,
   level2Atoms,
   technicalData,
+  portalOnlyKnowledgeAtomIds,
+  coachTechnicalData,
   technicalLocksById,
   technicalSavingKey,
   canSave,
@@ -59,7 +63,7 @@ function StudentTechnicalTab({
           level1Atoms={level1Atoms}
           level2Atoms={level2Atoms}
           combinations={combinations}
-          technicalData={technicalData}
+          technicalData={coachTechnicalData ?? technicalData}
           canSave={canSave}
           saveStatus={sliderSaveStatus}
           onSliderChange={onProgressSliderChange}
@@ -114,6 +118,7 @@ function StudentTechnicalTab({
           showMethodDetails
           onLevelChange={onLevelChange}
           onSaveAtom={onSaveAtom}
+          portalOnlyKnowledgeAtomIds={portalOnlyKnowledgeAtomIds}
           atomReinforcement={atomReinforcement}
         />
       ) : null}
@@ -127,6 +132,7 @@ function StudentTechnicalTab({
           canSave={canSave}
           onLevelChange={onLevelChange}
           onSaveAtom={onSaveAtom}
+          portalOnlyKnowledgeAtomIds={portalOnlyKnowledgeAtomIds}
           atomReinforcement={atomReinforcement}
         />
       ) : null}

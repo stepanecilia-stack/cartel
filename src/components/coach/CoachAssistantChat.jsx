@@ -18,6 +18,12 @@ import {
   writeCoachAssistantChatHistory,
 } from '../../utils/coachAssistantChatHistory.js'
 
+import {
+  clearCoachAssistantStudentThread,
+  saveCoachAssistantStudentThread,
+  subscribeCoachAssistantStudentThread,
+} from '../../services/coachAssistantStudentThreadService.js'
+
 import { buildCoachAssistantOpener } from '../../utils/coachAssistantPrompt.js'
 import { vk } from '../../utils/vkUi.js'
 
@@ -28,6 +34,11 @@ import { vk } from '../../utils/vkUi.js'
  *   coachName?: string,
  *   students?: object[],
  *   focusStudent?: object | null,
+ *   studentId?: string,
+ *   persistToFirestore?: boolean,
+ *   studentDisplayName?: string,
+ *   allNorms?: object[],
+ *   programAtoms?: { level1?: object[], level2?: object[], level3?: object[] },
  *   disabled?: boolean,
  *   onStudentPatched?: (studentId: string, patch: object) => void,
  * }} props
@@ -38,14 +49,28 @@ export default function CoachAssistantChat({
   coachName = 'коллега',
   students = [],
   focusStudent = null,
+  studentId = '',
+  persistToFirestore = false,
+  studentDisplayName = '',
+  allNorms = [],
+  programAtoms = null,
   disabled = false,
   onStudentPatched = null,
 }) {
   const persona = getPortalPersona(personaId)
   const name = formatPortalPersonaName(persona)
-  const opener = useMemo(() => buildCoachAssistantOpener(persona.id, coachName), [persona.id, coachName])
+  const focusName =
+    studentDisplayName ||
+    String(focusStudent?.name ?? focusStudent?.fullName ?? '').trim()
+  const opener = useMemo(
+    () => buildCoachAssistantOpener(persona.id, coachName, focusName),
+    [persona.id, coachName, focusName],
+  )
 
-  const [messages, setMessages] = useState(() => loadCoachAssistantChatMessages(coachId, persona.id, opener))
+  const [messages, setMessages] = useState(() =>
+    persistToFirestore ? [{ role: 'assistant', content: opener }] : loadCoachAssistantChatMessages(coachId, persona.id, opener),
+  )
+  const [threadReady, setThreadReady] = useState(!persistToFirestore)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -60,18 +85,69 @@ export default function CoachAssistantChat({
   const savedNormKeysRef = useRef(new Set())
 
   const coachContext = useMemo(
-    () => ({ coachName, students, focusStudent }),
-    [coachName, students, focusStudent],
+    () => ({ coachName, students, focusStudent, allNorms, programAtoms }),
+    [coachName, students, focusStudent, allNorms, programAtoms],
   )
 
-  const persist = (next) => {
+  const persistLocal = (next) => {
     const trimmed = trimCoachAssistantChatMessages(next)
     setMessages(trimmed)
     writeCoachAssistantChatHistory(coachId, persona.id, trimmed)
     return trimmed
   }
 
+  const persistFirestore = async (next) => {
+    const trimmed = trimCoachAssistantChatMessages(next)
+    setMessages(trimmed)
+    if (!studentId || !coachId) return trimmed
+    try {
+      const memory = await saveCoachAssistantStudentThread({
+        studentId,
+        coachId,
+        personaId: persona.id,
+        messages: trimmed,
+      })
+      if (memory) {
+        onStudentPatched?.(studentId, { portalPersonaMemory: memory })
+      }
+    } catch (err) {
+      console.error('persistFirestore coach assistant', err)
+    }
+    return trimmed
+  }
+
+  const persist = (next) => {
+    if (persistToFirestore) {
+      void persistFirestore(next)
+      return trimCoachAssistantChatMessages(next)
+    }
+    return persistLocal(next)
+  }
+
   useEffect(() => {
+    if (!persistToFirestore || !studentId || !coachId) {
+      setThreadReady(true)
+      if (!persistToFirestore) {
+        setMessages(loadCoachAssistantChatMessages(coachId, persona.id, opener))
+      }
+      return undefined
+    }
+
+    setThreadReady(false)
+    const unsub = subscribeCoachAssistantStudentThread(studentId, coachId, (thread) => {
+      if (thread?.messages?.length) {
+        setMessages(thread.messages)
+      } else {
+        setMessages([{ role: 'assistant', content: opener }])
+      }
+      setThreadReady(true)
+    })
+
+    return () => unsub()
+  }, [coachId, studentId, persona.id, opener, persistToFirestore])
+
+  useEffect(() => {
+    if (persistToFirestore) return
     setMessages(loadCoachAssistantChatMessages(coachId, persona.id, opener))
     setInput('')
     setError('')
@@ -81,7 +157,7 @@ export default function CoachAssistantChat({
     savedNormKeysRef.current = new Set()
     sendingRef.current = false
     setBusy(false)
-  }, [coachId, persona.id, opener])
+  }, [coachId, persona.id, opener, persistToFirestore])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
@@ -104,7 +180,7 @@ export default function CoachAssistantChat({
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    if (disabled || sendingRef.current) return
+    if (disabled || sendingRef.current || (persistToFirestore && !threadReady)) return
 
     const text = String(inputRef.current?.value ?? input).trim()
     if (!text) return
@@ -136,7 +212,9 @@ export default function CoachAssistantChat({
       console.error(err)
       setError('Не удалось получить ответ. Попробуйте ещё раз.')
       setMessages(snapshot)
-      writeCoachAssistantChatHistory(coachId, persona.id, snapshot)
+      if (!persistToFirestore) {
+        writeCoachAssistantChatHistory(coachId, persona.id, snapshot)
+      }
       setInput(text)
       if (inputRef.current) inputRef.current.value = text
     } finally {
@@ -182,10 +260,17 @@ export default function CoachAssistantChat({
   const resetChat = () => {
     if (busy || disabled) return
     const confirmed = window.confirm(
-      `Сбросить переписку с ${name}? История этого помощника будет удалена, контекст начнётся заново.`,
+      `Сбросить переписку с ${name}? История будет удалена, контекст для кабинета ученика тоже очистится.`,
     )
     if (!confirmed) return
-    const fresh = resetCoachAssistantChatMessages(coachId, persona.id, opener)
+    if (persistToFirestore && studentId && coachId) {
+      void clearCoachAssistantStudentThread(studentId, coachId).then((memory) => {
+        if (memory) onStudentPatched?.(studentId, { portalPersonaMemory: memory })
+      })
+    } else {
+      resetCoachAssistantChatMessages(coachId, persona.id, opener)
+    }
+    const fresh = [{ role: 'assistant', content: opener }]
     setMessages(fresh)
     setInput('')
     setError('')
@@ -201,7 +286,7 @@ export default function CoachAssistantChat({
       <div className="flex justify-end">
         <button
           type="button"
-          disabled={disabled || busy}
+          disabled={disabled || busy || (persistToFirestore && !threadReady)}
           onClick={resetChat}
           className={`${vk.btnSecondary} px-2.5 py-1 text-[12px]`}
         >
@@ -261,13 +346,13 @@ export default function CoachAssistantChat({
           className={`${vk.input} min-h-[52px] flex-1 rounded-full`}
           placeholder={`Спросите ${name}…`}
           value={input}
-          disabled={disabled || busy}
+          disabled={disabled || busy || (persistToFirestore && !threadReady)}
           onChange={(e) => setInput(e.target.value)}
           maxLength={500}
         />
         <button
           type="submit"
-          disabled={disabled || busy}
+          disabled={disabled || busy || (persistToFirestore && !threadReady)}
           className={`h-[52px] shrink-0 rounded-full px-4 ${vk.btnPrimary}`}
           aria-label="Отправить"
         >
