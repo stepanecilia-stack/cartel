@@ -20,6 +20,11 @@ import {
   formatShortDateRu,
   normalizeIsoRange,
 } from '../../utils/prepSeasonCalendar.js'
+import {
+  applyTrainingWeekToMonthDays,
+  formatStudentTrainingPlanSummary,
+  normalizeStudentTrainingWeekPlan,
+} from '../../utils/studentTrainingWeekPlan.js'
 import { pickNearestFutureCompetition } from '../../utils/plannedCompetitions.js'
 import { daysUntilCompetition } from '../../utils/competitionDate.js'
 import {
@@ -48,6 +53,7 @@ import PrepSeasonEventList from '../student/PrepSeasonEventList.jsx'
 import PrepSeasonPlanList from '../student/PrepSeasonPlanList.jsx'
 import PrepSelectedDayStarts from '../student/PrepSelectedDayStarts.jsx'
 import SeasonCoachGuide from './SeasonCoachGuide.jsx'
+import FederationTournamentHints from './FederationTournamentHints.jsx'
 import { buildCartelCoachDirective } from '../../utils/cartelCoachDirective.js'
 import { buildSeasonCoachView } from '../../utils/seasonCoachView.js'
 
@@ -119,6 +125,7 @@ import { buildSeasonCoachView } from '../../utils/seasonCoachView.js'
  *   onSaveCartelDocuments?: (docs: import('../../data/cartelDocuments.js').CartelDocumentsMap) => void | Promise<void>,
  *   stageSaveBusy?: boolean,
  *   shareReadOnly?: boolean,
+ *   cleanCalendar?: boolean,
  * }} props
  */
 function SeasonCalendarPanel({
@@ -162,9 +169,11 @@ function SeasonCalendarPanel({
   onSaveCartelDocuments,
   stageSaveBusy = false,
   shareReadOnly = false,
+  cleanCalendar = false,
 }) {
   const listLayout = eventListLayout
   const isStudentSeason = Boolean(contextStudentId)
+  const isPristineCalendar = isStudentSeason || cleanCalendar
   const [focusId, setFocusId] = useState(null)
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
@@ -193,9 +202,14 @@ function SeasonCalendarPanel({
     [calendarItems, blocks, checkpoints],
   )
 
+  const viewCalendarItems = useMemo(
+    () => (isPristineCalendar ? calendarItems : mergedCalendarItems),
+    [isPristineCalendar, calendarItems, mergedCalendarItems],
+  )
+
   const nearest = useMemo(
-    () => pickNearestFutureCompetition(calendarItems),
-    [calendarItems],
+    () => (isPristineCalendar ? null : pickNearestFutureCompetition(calendarItems)),
+    [isPristineCalendar, calendarItems],
   )
 
   const formatDaysUntilLabel = useCallback((dateISO) => {
@@ -210,10 +224,11 @@ function SeasonCalendarPanel({
 
   const studentTimeline = useMemo(() => {
     if (!isStudentSeason || !contextStudentId) return []
-    return buildStudentSeasonTimeline(mergedCalendarItems, contextStudentId)
-  }, [isStudentSeason, contextStudentId, mergedCalendarItems])
+    return buildStudentSeasonTimeline(viewCalendarItems, contextStudentId)
+  }, [isStudentSeason, contextStudentId, viewCalendarItems])
 
   useEffect(() => {
+    if (isPristineCalendar) return
     if (!focusId && nearest) setFocusId(nearest.id)
     if (focusId && !mergedCalendarItems.some((c) => c.id === focusId)) {
       setFocusId(nearest?.id ?? null)
@@ -221,7 +236,14 @@ function SeasonCalendarPanel({
       setEditingBlockId(null)
       setEditingCheckpointId(null)
     }
-  }, [focusId, nearest, mergedCalendarItems])
+  }, [isPristineCalendar, focusId, nearest, mergedCalendarItems])
+
+  useEffect(() => {
+    if (!isPristineCalendar) return
+    if (focusId && !viewCalendarItems.some((c) => c.id === focusId)) {
+      setFocusId(null)
+    }
+  }, [isPristineCalendar, focusId, viewCalendarItems])
 
   const todayIso = useMemo(() => {
     const t = new Date()
@@ -230,19 +252,37 @@ function SeasonCalendarPanel({
 
   const [selectedISO, setSelectedISO] = useState(todayIso)
 
+  const trainingWeekPlan = useMemo(
+    () => normalizeStudentTrainingWeekPlan(student?.studentTrainingWeekPlan),
+    [student?.studentTrainingWeekPlan],
+  )
+
   useEffect(() => {
     const today = new Date()
     setViewMonth(today.getFullYear() === year ? today.getMonth() : 0)
   }, [year])
 
-  const seasonMonthDays = useMemo(
-    () => buildSeasonMonthDays(year, viewMonth, mergedCalendarItems, focusId, todayIso),
-    [year, viewMonth, mergedCalendarItems, focusId, todayIso],
-  )
+  useEffect(() => {
+    if (!isStudentSeason || !trainingWeekPlan?.weekStartISO) return
+    const iso = trainingWeekPlan.weekStartISO
+    const planYear = Number(iso.slice(0, 4))
+    const planMonth = new Date(`${iso}T12:00:00`).getMonth()
+    setYear(planYear)
+    setViewMonth(planMonth)
+  }, [isStudentSeason, trainingWeekPlan?.weekStartISO, trainingWeekPlan?.submittedAt])
+
+  const seasonMonthDays = useMemo(() => {
+    const base = buildSeasonMonthDays(year, viewMonth, viewCalendarItems, focusId, todayIso)
+    if (!isStudentSeason || !trainingWeekPlan) return base
+    return applyTrainingWeekToMonthDays(base, trainingWeekPlan)
+  }, [year, viewMonth, viewCalendarItems, focusId, todayIso, isStudentSeason, trainingWeekPlan])
 
   const monthEventCounts = useMemo(
-    () => Array.from({ length: 12 }, (_, m) => countCompetitionsInMonth(year, m, calendarItems)),
-    [year, calendarItems],
+    () =>
+      isStudentSeason
+        ? Array(12).fill(0)
+        : Array.from({ length: 12 }, (_, m) => countCompetitionsInMonth(year, m, calendarItems)),
+    [year, calendarItems, isStudentSeason],
   )
 
   const monthLabel = useMemo(() => {
@@ -628,6 +668,10 @@ function SeasonCalendarPanel({
         </button>
       </div>
 
+      {cleanCalendar && hint ? (
+        <p className="text-[13px] leading-snug text-[#818c99]">{hint}</p>
+      ) : null}
+
       {contextStudentId ? (
         <div className="space-y-2">
           {studentTimeline.length > 0 ? (
@@ -725,9 +769,11 @@ function SeasonCalendarPanel({
           ) : null}
         </div>
       ) : (
-        <p className="text-[12px] text-[#818c99]">
-          Точки — старты · зелёная — подготовка клуба · фиолетовая полоска — сборы (край / федерация).
-        </p>
+        !isPristineCalendar ? (
+          <p className="text-[12px] text-[#818c99]">
+            Точки — старты · зелёная — подготовка клуба · фиолетовая полоска — сборы (край / федерация).
+          </p>
+        ) : null
       )}
 
       {isStudentSeason && planCreateMode === 'checkpoint' && planCreateRange && onSaveSeasonPlan ? (
@@ -792,7 +838,16 @@ function SeasonCalendarPanel({
           })()
         : null}
 
-      <PrepMonthEventStrip eventCounts={monthEventCounts} activeMonth={viewMonth} onMonth={setViewMonth} />
+      {!isStudentSeason ? (
+        <PrepMonthEventStrip eventCounts={monthEventCounts} activeMonth={viewMonth} onMonth={setViewMonth} />
+      ) : null}
+
+      {isStudentSeason && trainingWeekPlan ? (
+        <div className="rounded-lg border border-[#2d81e0]/25 bg-[#ecf3fc] px-3 py-2 text-[13px] text-[#2c2d2e]">
+          <span className="font-semibold text-[#2d81e0]">График ученика: </span>
+          {formatStudentTrainingPlanSummary(trainingWeekPlan)}
+        </div>
+      ) : null}
 
       <div className="rounded-[12px] border border-[#e7e8ec] bg-white p-3 shadow-sm">
         <PrepSeasonCalendar
@@ -803,6 +858,9 @@ function SeasonCalendarPanel({
           visualMode="minimal"
           emphasizeCoachDays={listLayout === 'cohortLadder'}
           focusId={focusId}
+          showMacroPeriod={!isPristineCalendar}
+          trainingScheduleOnly={isStudentSeason}
+          emptyCalendarMode={cleanCalendar}
         />
       </div>
 
@@ -843,7 +901,7 @@ function SeasonCalendarPanel({
         </ul>
       ) : null}
 
-      {separateOrientirsBlock ? (
+      {separateOrientirsBlock && !isPristineCalendar ? (
         <PrepSeasonEventList
           items={calendarItems}
           year={year}
@@ -1123,8 +1181,9 @@ function SeasonCalendarPanel({
         </div>
       ) : null}
 
-      {focusedOrientir &&
+      {      focusedOrientir &&
       onSaveOrientirParticipants &&
+      !isPristineCalendar &&
       !editingEvent &&
       !createRange &&
       !focusedBlock &&
@@ -1181,6 +1240,7 @@ function SeasonCalendarPanel({
         />
       ) : null}
 
+      {!isPristineCalendar ? (
       <details className="rounded-lg border border-[#e7e8ec] bg-white px-2.5 py-2">
         <summary className="cursor-pointer text-[12px] font-medium text-[#2c2d2e]">
           Все старты и периоды списком
@@ -1231,7 +1291,19 @@ function SeasonCalendarPanel({
       ) : null}
         </div>
       </details>
+      ) : null}
 
+      {!isStudentSeason ? (
+      <>
+        {canSave && cleanCalendar ? (
+          <button
+            type="button"
+            className={`${vk.btnPrimary} w-full sm:w-auto`}
+            onClick={() => openCreateForm(selectedISO)}
+          >
+            + Событие на {formatShortDateRu(selectedISO)}
+          </button>
+        ) : null}
       <PrepSelectedDayStarts
         dateISO={selectedISO}
         competitions={selectedDayCompetitions}
@@ -1249,6 +1321,10 @@ function SeasonCalendarPanel({
         removeLabel={contextStudentId ? 'Убрать из события' : 'Удалить'}
         students={students}
       />
+      </>
+      ) : null}
+
+      {cleanCalendar ? <FederationTournamentHints /> : null}
 
     </div>
   )

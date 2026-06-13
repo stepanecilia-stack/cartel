@@ -15,6 +15,7 @@ import {
   isStudentAttachedToCoach,
   studentAthleteShape,
 } from '../utils/studentModel'
+import { readCoachBridgeInboxEntry } from '../utils/coachBridgeModel.js'
 
 function normalizeSearchText(value) {
   return String(value ?? '')
@@ -56,6 +57,7 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
           weightCategoryShort,
           lastChange: resolveStudentLastChange(raw),
           isMine: isStudentAttachedToCoach(raw, coachId),
+          bridgeUnread: readCoachBridgeInboxEntry(raw, coachId)?.unreadFromStudent ?? 0,
         }
       }),
     [students, coachId],
@@ -456,13 +458,24 @@ function HomePage({ onSelectStudent, coachId, isProgramAdmin = false }) {
                       </span>
                     </div>
                   </div>
-                  <span
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f0f2f5] text-[12px] font-medium text-[#818c99] dark:bg-[#2c2d2e] dark:text-[#939393]"
-                    title={student.genderLabel}
-                    aria-label={`Пол: ${student.genderLabel}`}
-                  >
-                    {student.gender === 'F' ? 'Ж' : 'М'}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {student.bridgeUnread > 0 ? (
+                      <span
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#2d81e0] text-[13px] text-white"
+                        title={`Непрочитанное сообщение от ${student.name}`}
+                        aria-label={`Сообщение от ${student.name}`}
+                      >
+                        ✉
+                      </span>
+                    ) : null}
+                    <span
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f0f2f5] text-[12px] font-medium text-[#818c99] dark:bg-[#2c2d2e] dark:text-[#939393]"
+                      title={student.genderLabel}
+                      aria-label={`Пол: ${student.genderLabel}`}
+                    >
+                      {student.gender === 'F' ? 'Ж' : 'М'}
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}

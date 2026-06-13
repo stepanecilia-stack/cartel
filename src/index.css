@@ -1,6 +1,22 @@
 @import "tailwindcss";
 @import "./styles/vkTheme.css";
 
+@keyframes tier-unlock-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px 3px rgba(75, 179, 75, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 28px 10px rgba(75, 179, 75, 1);
+    transform: scale(1.05);
+  }
+}
+
+.tier-unlock-pulse {
+  animation: tier-unlock-pulse 0.75s ease-in-out infinite;
+}
+
 body {
   margin: 0;
   background-color: #edeef0;

@@ -8,7 +8,7 @@ import { formatPortalPersonaName, getPortalPersona } from '../../constants/stude
 import { sendCoachAssistantMessage } from '../../services/coachAssistantService.js'
 import { saveCoachAssistantNorm } from '../../services/coachAssistantNormSave.js'
 
-import { parseCoachAssistantMarkers } from '../../utils/coachAssistantActions.js'
+import { formatCoachAssistantMessageForDisplay } from '../../utils/coachAssistantActions.js'
 import { resolvePendingNormFromMessages } from '../../utils/coachAssistantNormPending.js'
 
 import {
@@ -18,6 +18,7 @@ import {
   writeCoachAssistantChatHistory,
 } from '../../utils/coachAssistantChatHistory.js'
 
+import { buildCoachColleagueBriefFromMessages } from '../../utils/coachColleagueBrief.js'
 import {
   clearCoachAssistantStudentThread,
   saveCoachAssistantStudentThread,
@@ -40,7 +41,13 @@ import { vk } from '../../utils/vkUi.js'
  *   allNorms?: object[],
  *   programAtoms?: { level1?: object[], level2?: object[], level3?: object[] },
  *   disabled?: boolean,
+ *   disableStudentBridge?: boolean,
  *   onStudentPatched?: (studentId: string, patch: object) => void,
+ *   onThreadChange?: (payload: {
+ *     messages: Array<{ role: string, content: string }>,
+ *     liveBrief: string,
+ *     userMessageCount: number,
+ *   }) => void,
  * }} props
  */
 export default function CoachAssistantChat({
@@ -55,7 +62,9 @@ export default function CoachAssistantChat({
   allNorms = [],
   programAtoms = null,
   disabled = false,
+  disableStudentBridge = false,
   onStudentPatched = null,
+  onThreadChange = null,
 }) {
   const persona = getPortalPersona(personaId)
   const name = formatPortalPersonaName(persona)
@@ -68,7 +77,9 @@ export default function CoachAssistantChat({
   )
 
   const [messages, setMessages] = useState(() =>
-    persistToFirestore ? [{ role: 'assistant', content: opener }] : loadCoachAssistantChatMessages(coachId, persona.id, opener),
+    persistToFirestore
+      ? [{ role: 'assistant', content: opener }]
+      : loadCoachAssistantChatMessages(coachId, persona.id, opener),
   )
   const [threadReady, setThreadReady] = useState(!persistToFirestore)
   const [input, setInput] = useState('')
@@ -85,20 +96,39 @@ export default function CoachAssistantChat({
   const savedNormKeysRef = useRef(new Set())
 
   const coachContext = useMemo(
-    () => ({ coachName, students, focusStudent, allNorms, programAtoms }),
-    [coachName, students, focusStudent, allNorms, programAtoms],
+    () => ({
+      coachName,
+      students,
+      focusStudent,
+      allNorms,
+      programAtoms,
+      disableStudentBridge,
+    }),
+    [coachName, students, focusStudent, allNorms, programAtoms, disableStudentBridge],
   )
+
+  const notifyThreadChange = (next) => {
+    if (!onThreadChange) return
+    const list = Array.isArray(next) ? next : []
+    onThreadChange({
+      messages: list,
+      liveBrief: buildCoachColleagueBriefFromMessages(list),
+      userMessageCount: list.filter((m) => m?.role === 'user').length,
+    })
+  }
 
   const persistLocal = (next) => {
     const trimmed = trimCoachAssistantChatMessages(next)
     setMessages(trimmed)
     writeCoachAssistantChatHistory(coachId, persona.id, trimmed)
+    notifyThreadChange(trimmed)
     return trimmed
   }
 
   const persistFirestore = async (next) => {
     const trimmed = trimCoachAssistantChatMessages(next)
     setMessages(trimmed)
+    notifyThreadChange(trimmed)
     if (!studentId || !coachId) return trimmed
     try {
       const memory = await saveCoachAssistantStudentThread({
@@ -135,11 +165,11 @@ export default function CoachAssistantChat({
 
     setThreadReady(false)
     const unsub = subscribeCoachAssistantStudentThread(studentId, coachId, (thread) => {
-      if (thread?.messages?.length) {
-        setMessages(thread.messages)
-      } else {
-        setMessages([{ role: 'assistant', content: opener }])
-      }
+      const next = thread?.messages?.length
+        ? thread.messages
+        : [{ role: 'assistant', content: opener }]
+      setMessages(next)
+      notifyThreadChange(next)
       setThreadReady(true)
     })
 
@@ -148,7 +178,9 @@ export default function CoachAssistantChat({
 
   useEffect(() => {
     if (persistToFirestore) return
-    setMessages(loadCoachAssistantChatMessages(coachId, persona.id, opener))
+    const loaded = loadCoachAssistantChatMessages(coachId, persona.id, opener)
+    setMessages(loaded)
+    notifyThreadChange(loaded)
     setInput('')
     setError('')
     setPendingNorm(null)
@@ -196,16 +228,15 @@ export default function CoachAssistantChat({
     const withUser = persist([...snapshot, userMessage])
 
     try {
-      const { reply: rawReply } = await sendCoachAssistantMessage({
+      const { reply } = await sendCoachAssistantMessage({
         personaId: persona.id,
         messages: withUser,
         coachContext,
       })
 
-      const { displayReply } = parseCoachAssistantMarkers(rawReply)
       const withReply = persist([
         ...withUser,
-        { role: 'assistant', content: displayReply || '…' },
+        { role: 'assistant', content: reply || '…' },
       ])
       await refreshPendingNorm(withReply)
     } catch (err) {
@@ -272,6 +303,7 @@ export default function CoachAssistantChat({
     }
     const fresh = [{ role: 'assistant', content: opener }]
     setMessages(fresh)
+    notifyThreadChange(fresh)
     setInput('')
     setError('')
     setPendingNorm(null)
@@ -295,22 +327,32 @@ export default function CoachAssistantChat({
       </div>
 
       <div className="min-h-[min(320px,42dvh)] flex-1 space-y-2.5 overflow-y-auto rounded-lg border border-[#e7e8ec] bg-[#fafbfc] p-2.5">
-        {messages.map((msg, index) =>
-          msg.role === 'user' ? (
-            <div key={`${index}-u`} className="flex justify-end">
-              <div className="max-w-[88%] rounded-2xl rounded-tr-md bg-[#ecf3fc] px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
-                {msg.content}
-              </div>
-            </div>
-          ) : (
-            <div key={`${index}-a`} className="flex gap-2.5">
-              <StudentPersonaAvatar personaId={persona.id} size="md" />
-              <div className="min-w-0 max-w-[calc(100%-3rem)] whitespace-pre-wrap rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
-                {msg.content}
-              </div>
-            </div>
-          ),
-        )}
+        {persistToFirestore && !threadReady ? (
+          <p className={`py-6 text-center ${vk.mutedXs}`}>Загрузка истории переписки…</p>
+        ) : null}
+
+        {(persistToFirestore ? threadReady : true)
+          ? messages.map((msg, index) => {
+              if (msg.role === 'user') {
+                return (
+                  <div key={`${index}-u`} className="flex justify-end">
+                    <div className="max-w-[88%] rounded-2xl rounded-tr-md bg-[#ecf3fc] px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
+                      {msg.content}
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div key={`${index}-a`} className="flex gap-2.5">
+                  <StudentPersonaAvatar personaId={persona.id} size="md" />
+                  <div className="min-w-0 max-w-[calc(100%-3rem)] whitespace-pre-wrap rounded-2xl rounded-tl-md border border-[#e7e8ec] bg-white px-3 py-2 text-[14px] leading-snug text-[#2c2d2e]">
+                    {formatCoachAssistantMessageForDisplay(msg.content)}
+                  </div>
+                </div>
+              )
+            })
+          : null}
 
         {busy ? (
           <div className="flex gap-2.5">
@@ -344,7 +386,7 @@ export default function CoachAssistantChat({
           autoComplete="off"
           enterKeyHint="send"
           className={`${vk.input} min-h-[52px] flex-1 rounded-full`}
-          placeholder={`Спросите ${name}…`}
+          placeholder={`Спросите ${name} про КСР, нормативы, технику…`}
           value={input}
           disabled={disabled || busy || (persistToFirestore && !threadReady)}
           onChange={(e) => setInput(e.target.value)}

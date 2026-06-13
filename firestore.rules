@@ -80,6 +80,18 @@ service cloud.firestore {
       ]);
     }
 
+    function studentPortalBridgeOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'portalBridge', 'coachBridgeInbox', 'studentTrainingWeekPlan', 'portalLastActivityAt', 'updatedAt', 'lastUpdatedSection', 'lastUpdatedAt',
+      ]);
+    }
+
+    function isStudentPortalUserFor(studentId) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/students/$(studentId))
+        && get(/databases/$(database)/documents/students/$(studentId)).data.portalAuthUid == request.auth.uid;
+    }
+
     /** Тренер добавляет себя в coach_ids по коду (ещё без read карточки). */
     function coachJoinStudentByCodeOk() {
       return request.auth != null
@@ -133,7 +145,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         coachCanAccessStudent()
         || coachJoinStudentByCodeOk()
-        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalOnboardingOnly() || studentPortalPersonaMemoryOnly() || studentPortalNormSelfReportsOnly() || studentPortalLoginFieldsOnly()))
+        || (isStudentPortalUser() && (studentPortalProgressOnly() || studentPortalOnboardingOnly() || studentPortalPersonaMemoryOnly() || studentPortalNormSelfReportsOnly() || studentPortalBridgeOnly() || studentPortalLoginFieldsOnly()))
         || (studentPortalBindOk() && studentPortalLoginFieldsOnly())
         || studentPortalLoginRebind()
       );
@@ -148,6 +160,14 @@ service cloud.firestore {
     match /students/{studentId}/coach_assistant_threads/{threadCoachId} {
       allow read, write: if coachCanAccessStudentDoc(studentId)
         && request.auth.uid == threadCoachId;
+    }
+
+    match /students/{studentId}/coach_bridge/{bridgeCoachId} {
+      allow read: if (coachCanAccessStudentDoc(studentId) && request.auth.uid == bridgeCoachId)
+        || isStudentPortalUserFor(studentId);
+      allow create, update: if (coachCanAccessStudentDoc(studentId) && request.auth.uid == bridgeCoachId)
+        || isStudentPortalUserFor(studentId);
+      allow delete: if coachCanAccessStudentDoc(studentId) && request.auth.uid == bridgeCoachId;
     }
 
     match /student_codes/{code} {

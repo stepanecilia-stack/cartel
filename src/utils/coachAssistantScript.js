@@ -13,6 +13,11 @@ import {
   formatNormEvaluationReply,
   shouldUseDeterministicNormReply,
 } from './coachAssistantNormEvaluate.js'
+import {
+  tryBuildBridgeWrongStudentReply,
+  tryBuildCoachBridgeDraft,
+  isBridgeDraftRevisionIntent,
+} from './coachAssistantBridge.js'
 
 /**
  * @param {import('../constants/studentPortalPersonas.js').PortalPersonaId} personaId
@@ -64,6 +69,33 @@ export async function scriptedCoachAssistantReply(personaId, userMessage, coachC
   if (focus && /открыт|текущ|сейчас|эта карточка|этот ученик/.test(lower)) {
     return `Сейчас открыт:\n${brief(focus, true)}\nЧто уточнить?`
   }
+
+  const conversationMessages = coachContext.conversationMessages ?? []
+  const pendingBridgeDraft = coachContext.pendingBridgeDraft ?? null
+  const hasPendingBridgeDraft = Boolean(pendingBridgeDraft?.text?.trim())
+
+  const bridgeBuilt =
+    hasPendingBridgeDraft && isBridgeDraftRevisionIntent(text, true)
+      ? null
+      : tryBuildCoachBridgeDraft({
+          personaId: persona.id,
+          focusStudent: focus,
+          queryResolvedStudent: coachContext.queryResolvedStudent,
+          students,
+          userMessage: text,
+          messages: conversationMessages,
+          nameQuery: resolveStudentNameQuery(students, text),
+        })
+  if (bridgeBuilt) return bridgeBuilt.reply
+
+  const bridgeWrong = tryBuildBridgeWrongStudentReply({
+    personaId: persona.id,
+    focusStudent: focus,
+    nameQuery: resolveStudentNameQuery(students, text),
+    userMessage: text,
+    messages: conversationMessages,
+  })
+  if (bridgeWrong) return bridgeWrong
 
   if (/сколько|список|ученик/.test(lower) && students.length > 0) {
     const sample = students

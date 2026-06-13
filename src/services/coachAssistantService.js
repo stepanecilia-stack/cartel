@@ -30,6 +30,14 @@ import {
   shouldUseDeterministicNormReply,
   tryEvaluateNormFromConversation,
 } from '../utils/coachAssistantNormEvaluate.js'
+import {
+  tryBuildBridgeWrongStudentReply,
+  tryBuildCoachBridgeDraft,
+  isBridgeDraftRevisionIntent,
+  isCoachBridgeIntent,
+  extractBridgeDraftFromAiReply,
+  formatBridgeDraftRevisionCoachReply,
+} from '../utils/coachAssistantBridge.js'
 import { ensureAuth, firebaseConfig, isFirebaseConfigured } from './firebaseService.js'
 
 /**
@@ -159,6 +167,7 @@ async function callCoachAssistantChatFunction({ personaId, messages, coachContex
  *     focusStudent?: object | null,
  *     allNorms?: object[],
  *     programAtoms?: { level1?: object[], level2?: object[], level3?: object[] },
+ *     pendingBridgeDraft?: { text?: string, reason?: string } | null,
  *   },
  * }} params
  */
@@ -183,6 +192,7 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     normEvaluation,
     normEvaluationHint: buildNormEvaluationHint(normEvaluation),
     conversationMessages: messages,
+    pendingBridgeDraft: coachContext.pendingBridgeDraft ?? null,
   }
 
   if (isNormSaveConfirmation(userMessage) && normEvaluation?.student?.id) {
@@ -200,6 +210,60 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
     !isNormSaveConfirmation(userMessage) &&
     !normThread &&
     !normEvaluation?.student?.id
+
+  const pendingBridgeDraft = coachContext.pendingBridgeDraft ?? null
+  const hasPendingBridgeDraft = Boolean(pendingBridgeDraft?.text?.trim())
+  const disableStudentBridge = coachContext.disableStudentBridge === true
+
+  if (disableStudentBridge && isCoachBridgeIntent(userMessage, conversationText, enrichedContext.focusStudent)) {
+    return {
+      reply:
+        'Сообщения ученику — через блок «Запросы ученику» вверху карточки: «График», «Самочувствие» или «Своё». Там быстрее, чем через чат.',
+      source: 'bridge-redirect',
+    }
+  }
+
+  const bridgeBuilt =
+    hasPendingBridgeDraft && isBridgeDraftRevisionIntent(userMessage, true)
+      ? null
+      : tryBuildCoachBridgeDraft({
+          personaId: id,
+          focusStudent: enrichedContext.focusStudent,
+          queryResolvedStudent: enrichedContext.queryResolvedStudent,
+          students,
+          userMessage,
+          messages,
+          nameQuery,
+        })
+  if (bridgeBuilt) {
+    return {
+      reply: bridgeBuilt.reply,
+      bridgeDraft: bridgeBuilt.bridgeDraft,
+      source: 'bridge-draft',
+    }
+  }
+
+  if (hasPendingBridgeDraft && isBridgeDraftRevisionIntent(userMessage, true) && enrichedContext.focusStudent?.id) {
+    return {
+      reply: formatBridgeDraftRevisionCoachReply(
+        id,
+        enrichedContext.focusStudent,
+        pendingBridgeDraft,
+      ),
+      source: 'bridge-revision-hint',
+    }
+  }
+
+  const bridgeWrongStudent = tryBuildBridgeWrongStudentReply({
+    personaId: id,
+    focusStudent: enrichedContext.focusStudent,
+    nameQuery,
+    userMessage,
+    messages,
+  })
+  if (bridgeWrongStudent) {
+    return { reply: bridgeWrongStudent, source: 'bridge-wrong-student' }
+  }
 
   if (canAutoStudentReply && messageHasStudentNameIntent(nameQuery)) {
     if (nameQuery.match?.id && !nameQuery.ambiguous) {
@@ -245,23 +309,37 @@ export async function sendCoachAssistantMessage({ personaId, messages, coachCont
 
   if (isPortalPersonaAiRemoteEnabled()) {
     try {
-      const reply = await callCoachAssistantChatFunction({
+      const rawReply = await callCoachAssistantChatFunction({
         personaId: id,
         messages,
         coachContext: enrichedContext,
       })
-      return { reply, source: 'ai' }
+      const { displayReply, bridgeDraft } = extractBridgeDraftFromAiReply(
+        rawReply,
+        enrichedContext.focusStudent,
+        enrichedContext.focusStudent?.id ? String(enrichedContext.focusStudent.id) : '',
+        pendingBridgeDraft,
+      )
+      return { reply: displayReply, bridgeDraft, source: 'ai' }
     } catch (err) {
       console.warn('[coachAssistant] remote failed', err)
-      return {
-        reply: await scriptedCoachAssistantReply(id, userMessage, enrichedContext),
-        source: 'script-fallback',
-      }
+      const rawReply = await scriptedCoachAssistantReply(id, userMessage, enrichedContext)
+      const { displayReply, bridgeDraft } = extractBridgeDraftFromAiReply(
+        rawReply,
+        enrichedContext.focusStudent,
+        enrichedContext.focusStudent?.id ? String(enrichedContext.focusStudent.id) : '',
+        pendingBridgeDraft,
+      )
+      return { reply: displayReply, bridgeDraft, source: 'script-fallback' }
     }
   }
 
-  return {
-    reply: await scriptedCoachAssistantReply(id, userMessage, enrichedContext),
-    source: 'script',
-  }
+  const rawReply = await scriptedCoachAssistantReply(id, userMessage, enrichedContext)
+  const { displayReply, bridgeDraft } = extractBridgeDraftFromAiReply(
+    rawReply,
+    enrichedContext.focusStudent,
+    enrichedContext.focusStudent?.id ? String(enrichedContext.focusStudent.id) : '',
+    pendingBridgeDraft,
+  )
+  return { reply: displayReply, bridgeDraft, source: 'script' }
 }

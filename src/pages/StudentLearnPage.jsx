@@ -47,6 +47,8 @@ import {
 } from '../constants/studentPortalOnboarding.js'
 import { isGymHubPremiumSection, isPortalPremiumActive } from '../constants/studentPortalPremium.js'
 import { getPortalPersona, normalizePortalPersonaId, formatPortalPersonaName } from '../constants/studentPortalPersonas.js'
+import { readPortalBridgeState } from '../utils/coachBridgeModel.js'
+import { resolveStudentBridgeCoachId } from '../services/coachBridgeService.js'
 
 export default function StudentLearnPage() {
   const navigate = useNavigate()
@@ -68,6 +70,7 @@ export default function StudentLearnPage() {
   const [hubSection, setHubSection] = useState(
     /** @type {'hub' | 'technique' | 'norms' | 'program' | 'competition'} */ ('hub'),
   )
+  const [bridgeCoachId, setBridgeCoachId] = useState('')
 
   useEffect(() => {
     if (!session?.studentId) {
@@ -98,6 +101,22 @@ export default function StudentLearnPage() {
       cancelled = true
     }
   }, [session?.studentId, navigate])
+
+  useEffect(() => {
+    if (!student?.id) {
+      setBridgeCoachId('')
+      return undefined
+    }
+    let cancelled = false
+    void resolveStudentBridgeCoachId(student.id).then((id) => {
+      if (!cancelled) setBridgeCoachId(id || '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [student?.id, student?.portalBridge?.coachId])
+
+  const portalBridge = useMemo(() => readPortalBridgeState(student), [student])
 
   const orderedL1 = orderedLevel1
   const orderedL2 = orderedLevel2
@@ -130,6 +149,12 @@ export default function StudentLearnPage() {
     }),
     [orderedL1, orderedL2, portalKnowledgeData],
   )
+
+  const tier2UnlockPulse =
+    tierUnlocked[2] &&
+    tier === 1 &&
+    tierProgress[1].total > 0 &&
+    tierProgress[1].done >= tierProgress[1].total
 
   const atomsForTier = tier === 3 ? orderedL3 : tier === 2 ? orderedL2 : orderedL1
   const focusIndex = resolveStudentPortalFocusIndex(atomsForTier, portalKnowledgeData)
@@ -435,6 +460,9 @@ export default function StudentLearnPage() {
           personaId={portalPersonaId}
           open={chatOpen}
           onOpenChange={setChatOpen}
+          studentId={student.id}
+          bridgeCoachId={bridgeCoachId ?? ''}
+          onBridgeChange={(patch) => setStudent((prev) => (prev ? { ...prev, ...patch } : prev))}
           programHint="Главная зала Cartel. Выбери раздел или спроси наставника."
           personaMemory={personaMemory}
           trainingGoals={portalGoals}
@@ -514,6 +542,7 @@ export default function StudentLearnPage() {
             const disabled = !tierUnlocked[t]
             const active = tier === t
             const prog = tierProgress[t]
+            const unlockPulse = t === 2 && tier2UnlockPulse && !active
             if (prog.total === 0 && t !== 1) return null
             return (
               <button
@@ -525,7 +554,13 @@ export default function StudentLearnPage() {
                   setPlaying(false)
                 }}
                 className={`min-w-0 flex-1 touch-manipulation rounded-md px-1 py-1.5 text-[11px] font-medium sm:text-[12px] ${
-                  active ? vk.segmentBtnActive : disabled ? 'opacity-40' : vk.segmentBtnInactive
+                  active
+                    ? vk.segmentBtnActive
+                    : unlockPulse
+                      ? 'tier-unlock-pulse border-2 border-[#4bb34b] bg-[#d4f5d4] font-bold text-[#1a6b1a] shadow-[0_0_14px_rgba(75,179,75,0.75)]'
+                      : disabled
+                        ? 'opacity-40'
+                        : vk.segmentBtnInactive
                 }`}
               >
                 <span className="block truncate">{studentPortalTierLabel(t)}</span>
@@ -640,6 +675,9 @@ export default function StudentLearnPage() {
           personaId={portalPersonaId}
           open={chatOpen}
           onOpenChange={setChatOpen}
+          studentId={student.id}
+          bridgeCoachId={bridgeCoachId ?? ''}
+          onBridgeChange={(patch) => setStudent((prev) => (prev ? { ...prev, ...patch } : prev))}
           programHint={programChatHint}
           personaMemory={personaMemory}
           trainingGoals={portalGoals}

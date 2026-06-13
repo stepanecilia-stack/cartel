@@ -20,14 +20,12 @@ export function buildCoachColleagueBriefFromMessages(messages) {
     .filter(Boolean)
     .slice(-4)
 
-  if (!coachLines.length && !assistantLines.length) return ''
+  if (!coachLines.length) return ''
 
   const parts = []
-  if (coachLines.length) {
-    parts.push(
-      `Очный тренер обсудил:\n${coachLines.map((line) => `— ${line.slice(0, 220)}`).join('\n')}`,
-    )
-  }
+  parts.push(
+    `Очный тренер обсудил:\n${coachLines.map((line) => `— ${line.slice(0, 220)}`).join('\n')}`,
+  )
   if (assistantLines.length) {
     const last = assistantLines[assistantLines.length - 1]
     parts.push(`Коллега-бот зафиксировал:\n— ${last.slice(0, 400)}`)

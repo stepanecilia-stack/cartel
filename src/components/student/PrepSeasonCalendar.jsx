@@ -16,6 +16,7 @@ import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
  *     competitions: import('../../utils/plannedCompetitions.js').PlannedCompetition[],
  *     primaryCompetition: import('../../utils/plannedCompetitions.js').PlannedCompetition | null,
  *     isFocusDay?: boolean,
+ *     isStudentTrainingDay?: boolean,
  *   }>,
  *   selectedISO: string,
  *   onSelect: (iso: string) => void,
@@ -26,6 +27,8 @@ import { monthYearLabelRu } from '../../utils/prepCalendarGrid.js'
  *   visualMode?: 'default' | 'minimal',
  *   emphasizeCoachDays?: boolean,
  *   showMacroPeriod?: boolean,
+ *   trainingScheduleOnly?: boolean,
+ *   emptyCalendarMode?: boolean,
  * }} props
  */
 function PrepSeasonCalendar({
@@ -39,6 +42,8 @@ function PrepSeasonCalendar({
   visualMode = 'default',
   emphasizeCoachDays = false,
   showMacroPeriod = true,
+  trainingScheduleOnly = false,
+  emptyCalendarMode = false,
 }) {
   const minimal = visualMode === 'minimal'
   const { weekHeaders, weeks } = useMemo(() => buildSeasonMonthWeeks(monthDays), [monthDays])
@@ -90,6 +95,7 @@ function PrepSeasonCalendar({
             const primaryStyle = primaryChip ? resolveChipStyle(primaryChip) : null
             const macro = showMacroPeriod ? resolveAnnualMacroPeriodForDate(day.dateISO) : null
             const macroStyle = macro ? annualMacroStyle(macro.id) : null
+            const isTrainingDay = Boolean(day.isStudentTrainingDay)
             const coachDayStyle =
               emphasizeCoachDays && hasCoachEvent && coachEvent && !isFocusPeriodDay
                 ? getCalendarItemStyle(coachEvent)
@@ -107,26 +113,30 @@ function PrepSeasonCalendar({
                 onMouseEnter={() => onDayHover?.(day.dateISO)}
                 onMouseLeave={() => onDayHoverEnd?.()}
                 title={
-                  hasEvents
-                    ? chips
-                        .map((x) => {
-                          if (isOrientirStart(x)) return `${orientirDisplayTitle(x)} (ориентир Минспорта)`
-                          const s = resolveChipStyle(x)
-                          return `${s.label}: ${x.title || s.label}`
-                        })
-                        .join('\n')
-                    : day.dateISO
+                  isTrainingDay
+                    ? `${day.dateISO} · тренировка по графику ученика`
+                    : hasEvents
+                      ? chips
+                          .map((x) => {
+                            if (isOrientirStart(x)) return `${orientirDisplayTitle(x)} (ориентир Минспорта)`
+                            const s = resolveChipStyle(x)
+                            return `${s.label}: ${x.title || s.label}`
+                          })
+                          .join('\n')
+                      : day.dateISO
                 }
                 className={[
                   'relative flex touch-manipulation flex-col items-center justify-center rounded-lg border-2 p-0.5 transition select-none',
                   cellMinH,
                   isFocusPeriodDay
                       ? 'border-[#2d81e0] bg-sky-50 text-[#2c2d2e] shadow-sm z-[1]'
-                      : coachDayStyle
-                        ? `${coachDayStyle.chip} border-solid shadow-sm`
-                        : hasEvents
-                          ? 'border-[#e7e8ec] bg-white text-[#2c2d2e]'
-                          : macroStyle
+                      : isTrainingDay
+                        ? 'border-[#2d81e0] bg-[#ecf3fc] text-[#2d81e0] shadow-sm'
+                        : coachDayStyle
+                          ? `${coachDayStyle.chip} border-solid shadow-sm`
+                          : hasEvents
+                            ? 'border-[#e7e8ec] bg-white text-[#2c2d2e]'
+                          : macroStyle && !trainingScheduleOnly
                             ? `${macroStyle.chip} border-transparent opacity-90`
                             : 'border-transparent bg-[#f4f5f7] text-[#818c99]',
                   isSelected ? 'ring-2 ring-[#2d81e0] ring-offset-1 z-10' : '',
@@ -137,8 +147,11 @@ function PrepSeasonCalendar({
                 ].join(' ')}
               >
                 <span className="text-[12px] font-bold tabular-nums leading-none">{dayNum}</span>
-                {minimal && hasEvents ? (
+                {minimal && (hasEvents || isTrainingDay) ? (
                   <span className="mt-0.5 flex gap-0.5" aria-hidden>
+                    {isTrainingDay ? (
+                      <span className="block h-1.5 w-1.5 rounded-full bg-[#2d81e0]" />
+                    ) : null}
                     {coachEvent ? (
                       <span
                         className={[
@@ -188,7 +201,11 @@ function PrepSeasonCalendar({
       </div>
       {minimal ? (
         <p className="mt-2 text-[10px] text-[#818c99]">
-          Точка — старт · зелёная — подготовка клуба · фиолетовая — сборы · ромб — контрольная точка
+          {emptyCalendarMode
+            ? 'Нажмите на день, чтобы добавить событие. Точка — ваш старт или тренировка.'
+            : trainingScheduleOnly
+              ? 'Синяя заливка — тренировка по графику ученика'
+              : 'Синяя заливка — тренировка по графику ученика · точка — старт · зелёная — подготовка клуба · фиолетовая — сборы · ромб — контрольная точка'}
         </p>
       ) : null}
     </div>

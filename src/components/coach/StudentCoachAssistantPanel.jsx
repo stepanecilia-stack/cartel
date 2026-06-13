@@ -1,20 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import StudentPersonaAvatar from '../student/StudentPersonaAvatar.jsx'
+import { useEffect, useState } from 'react'
 import CoachAssistantChat from './CoachAssistantChat.jsx'
+import CoachAssistantStudentContextBlock from './CoachAssistantStudentContextBlock.jsx'
+import CoachBridgeInboxBlock from './CoachBridgeInboxBlock.jsx'
+import CoachStudentRequests from './CoachStudentRequests.jsx'
 import {
   formatPortalPersonaName,
   getPortalPersona,
   normalizePortalPersonaId,
 } from '../../constants/studentPortalPersonas.js'
 import { displayNameFromStudent } from '../../utils/studentModel.js'
+import { readCoachBridgeInboxEntry } from '../../utils/coachBridgeModel.js'
 import { hydrateCoachAssistantFocusStudent } from '../../utils/coachAssistantStudentSources.js'
 import { vk } from '../../utils/vkUi.js'
 
 const OPEN_PREF_PREFIX = 'cartel_student_coach_assistant_open_v1'
 
-/**
- * @param {string} studentId
- */
 function readOpenPref(studentId) {
   try {
     return localStorage.getItem(`${OPEN_PREF_PREFIX}:${studentId}`) === '1'
@@ -23,10 +23,6 @@ function readOpenPref(studentId) {
   }
 }
 
-/**
- * @param {string} studentId
- * @param {boolean} open
- */
 function writeOpenPref(studentId, open) {
   try {
     localStorage.setItem(`${OPEN_PREF_PREFIX}:${studentId}`, open ? '1' : '0')
@@ -59,56 +55,93 @@ export default function StudentCoachAssistantPanel({
   const personaName = formatPortalPersonaName(persona)
   const studentName = displayNameFromStudent(student)
 
-  const [open, setOpen] = useState(() => (studentId ? readOpenPref(studentId) : false))
+  const bridgeInbox = readCoachBridgeInboxEntry(student, coachId)
+  const [tab, setTab] = useState(
+    /** @type {'requests' | 'assistant'} */ (bridgeInbox ? 'requests' : 'requests'),
+  )
+  const [liveBrief, setLiveBrief] = useState('')
+  const [userMessageCount, setUserMessageCount] = useState(0)
 
   useEffect(() => {
-    if (studentId) setOpen(readOpenPref(studentId))
-  }, [studentId])
+    setLiveBrief('')
+    setUserMessageCount(0)
+    if (readCoachBridgeInboxEntry(student, coachId)) setTab('requests')
+  }, [studentId, coachId, student])
 
-  const focusStudent = useMemo(
-    () => hydrateCoachAssistantFocusStudent(student),
-    [student],
-  )
-
-  const toggleOpen = () => {
-    const next = !open
-    setOpen(next)
-    if (studentId) writeOpenPref(studentId, next)
-  }
+  const focusStudent = hydrateCoachAssistantFocusStudent(student)
 
   if (!studentId || !coachId) return null
 
   const portalEnabled = student?.portalEnabled === true
-  const hasPersonaChoice = Boolean(student?.portalPersonaId)
 
   return (
     <section className={`${vk.cardPadded} py-2.5 sm:py-3`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <StudentPersonaAvatar personaId={persona.id} size="md" />
-          <div className="min-w-0">
-            <h2 className={vk.h2}>Виртуальный помощник</h2>
-            <p className={`mt-0.5 ${vk.mutedXs}`}>
-              {hasPersonaChoice
-                ? `${personaName} — тот же тренер, что в кабинете ученика`
-                : 'Ученик ещё не выбрал тренера в кабинете — пока используется Медведь'}
-            </p>
-            {!portalEnabled ? (
-              <p className={`mt-1 ${vk.noticeWarn}`}>Кабинет ученика не включён — переписка сохранится, ученик увидит контекст после входа.</p>
-            ) : null}
-          </div>
-        </div>
-        <button type="button" onClick={toggleOpen} className={vk.btnSecondary}>
-          {open ? 'Скрыть' : 'Обсудить с помощником'}
+      <div className="flex gap-1 rounded-lg border border-[#e7e8ec] bg-[#fafbfc] p-1">
+        <button
+          type="button"
+          onClick={() => setTab('requests')}
+          className={`flex-1 rounded-md px-3 py-2 text-[13px] font-semibold ${
+            tab === 'requests' ? 'bg-white text-slate-900 shadow-sm' : 'text-[#818c99]'
+          }`}
+        >
+          Кабинет ученика
+          {bridgeInbox?.unreadFromStudent ? (
+            <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">
+              {bridgeInbox.unreadFromStudent}
+            </span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('assistant')}
+          className={`flex-1 rounded-md px-3 py-2 text-[13px] font-semibold ${
+            tab === 'assistant' ? 'bg-white text-slate-900 shadow-sm' : 'text-[#818c99]'
+          }`}
+        >
+          КСР и техника
         </button>
       </div>
 
-      {open ? (
-        <div className="mt-3 flex min-h-[min(420px,55dvh)] flex-col overflow-hidden rounded-[10px] border border-[#e7e8ec] bg-[#fafbfc] p-2.5 sm:p-3">
-          <p className={`mb-2 ${vk.mutedXs}`}>
-            Контекст: <span className="font-medium text-[#2c2d2e]">{studentName}</span>.
-            Переписка сохраняется в базе и влияет на ответы {persona.animal}а в кабинете ученика.
+      {tab === 'requests' ? (
+        <div className="mt-3 space-y-2.5">
+          {bridgeInbox?.unreadFromStudent ? (
+            <CoachBridgeInboxBlock
+              studentId={studentId}
+              coachId={coachId}
+              studentName={studentName}
+              personaId={persona.id}
+              initialUnread={bridgeInbox.unreadFromStudent}
+              onInboxChange={(patch) => onStudentPatched?.(studentId, patch)}
+            />
+          ) : null}
+          <CoachStudentRequests
+            studentId={studentId}
+            coachId={coachId}
+            student={student}
+            personaId={persona.id}
+            portalEnabled={portalEnabled}
+            onStudentPatched={(patch) => onStudentPatched?.(studentId, patch)}
+          />
+          {!bridgeInbox?.unreadFromStudent ? (
+            <CoachBridgeInboxBlock
+              studentId={studentId}
+              coachId={coachId}
+              studentName={studentName}
+              personaId={persona.id}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-3 flex min-h-[min(360px,50dvh)] flex-col gap-2.5 overflow-hidden rounded-[10px] border border-[#e7e8ec] bg-[#fafbfc] p-2.5 sm:p-3">
+          <p className={`${vk.mutedXs} px-0.5`}>
+            {personaName} — только данные карточки. Сообщения ученику — вкладка «Кабинет ученика».
           </p>
+          <CoachAssistantStudentContextBlock
+            portalPersonaMemory={student?.portalPersonaMemory}
+            liveBrief={liveBrief}
+            messageCount={userMessageCount}
+            personaAnimal={persona.animal.toLowerCase()}
+          />
           <CoachAssistantChat
             personaId={persona.id}
             coachId={coachId}
@@ -117,13 +150,19 @@ export default function StudentCoachAssistantPanel({
             focusStudent={focusStudent}
             studentId={studentId}
             persistToFirestore
-            studentDisplayName={studentName}
             allNorms={allNorms}
             programAtoms={programAtoms}
-            onStudentPatched={onStudentPatched}
+            disableStudentBridge
+            onStudentPatched={(patchedStudentId, patch) => {
+              onStudentPatched?.(patchedStudentId, patch)
+            }}
+            onThreadChange={({ liveBrief: brief, userMessageCount: count }) => {
+              setLiveBrief(brief)
+              setUserMessageCount(count)
+            }}
           />
         </div>
-      ) : null}
+      )}
     </section>
   )
 }

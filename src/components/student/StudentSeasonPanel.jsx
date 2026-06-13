@@ -1,7 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import SeasonCalendarPanel from '../calendar/SeasonCalendarPanel.jsx'
 import { useCoachEvents } from '../../hooks/useCoachEvents.js'
-import { useOrientirParticipation } from '../../hooks/useOrientirParticipation.js'
 import { useCoachStudents } from '../../hooks/useCoachStudents.js'
 import {
   createCoachEvent,
@@ -11,16 +10,9 @@ import {
 } from '../../services/coachEventsService.js'
 import {
   calendarItemsForStudent,
-  mergeCalendarWithOrientirs,
 } from '../../utils/coachEvents.js'
-import { resolveTypicalSeasonCalendar } from '../../utils/plannedCompetitions.js'
 import { formatFirestoreErrorMessage } from '../../utils/firestoreErrorMessage.js'
 import { toCoachEventStudentOption } from '../../utils/coachEventStudents.js'
-import {
-  applyOrientirParticipations,
-  mergeOrientirExternalCamps,
-  participationByOrientirId,
-} from '../../utils/orientirParticipation.js'
 import { localDateISO } from '../../utils/prepCalendarGrid.js'
 import {
   newSeasonCheckpointId,
@@ -89,12 +81,8 @@ function StudentSeasonPanel({
 }) {
   const { students: hookedStudents } = useCoachStudents(coachStudentsProp ? undefined : coachId)
   const { events: hookedEvents } = useCoachEvents(eventsProp ? undefined : coachId)
-  const { participations: hookedParticipations } = useOrientirParticipation(
-    participationsProp ? undefined : coachId,
-  )
   const students = coachStudentsProp ?? hookedStudents
   const events = eventsProp ?? hookedEvents
-  const participations = participationsProp ?? hookedParticipations
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -103,22 +91,10 @@ function StudentSeasonPanel({
     [students],
   )
 
-  const orientirs = useMemo(
-    () => resolveTypicalSeasonCalendar(ageInt, gender === 'F' ? 'F' : 'M'),
-    [ageInt, gender],
+  const calendarItems = useMemo(
+    () => calendarItemsForStudent(events, studentId),
+    [events, studentId],
   )
-
-  const participationsByOrientir = useMemo(
-    () => participationByOrientirId(participations),
-    [participations],
-  )
-
-  const calendarItems = useMemo(() => {
-    const coachItems = calendarItemsForStudent(events, studentId)
-    const merged = mergeCalendarWithOrientirs(coachItems, orientirs)
-    const withParticipants = applyOrientirParticipations(merged, participationsByOrientir)
-    return mergeOrientirExternalCamps(withParticipants, participations, { studentId })
-  }, [events, studentId, orientirs, participationsByOrientir, participations])
 
   const blocks = useMemo(() => normalizeSeasonBlocks(seasonBlocks), [seasonBlocks])
   const checkpoints = useMemo(

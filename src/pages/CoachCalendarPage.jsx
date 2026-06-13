@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react'
 import BackToHomeLink from '../components/layout/BackToHomeLink.jsx'
 import SeasonCalendarPanel from '../components/calendar/SeasonCalendarPanel.jsx'
 import { useCoachEvents } from '../hooks/useCoachEvents.js'
-import { useOrientirParticipation } from '../hooks/useOrientirParticipation.js'
 import { useCoachStudents } from '../hooks/useCoachStudents.js'
 import {
   createCoachEvent,
@@ -10,19 +9,9 @@ import {
   removeParticipantFromCoachEvent,
   updateCoachEvent,
 } from '../services/coachEventsService.js'
-import { setOrientirParticipation } from '../services/orientirParticipationService.js'
-import { buildAllFederationOrientirCompetitions } from '../data/federationCalendar2026.js'
-import {
-  calendarItemsForCoach,
-  mergeCalendarWithOrientirs,
-} from '../utils/coachEvents.js'
+import { calendarItemsForCoach } from '../utils/coachEvents.js'
 import { formatFirestoreErrorMessage } from '../utils/firestoreErrorMessage.js'
 import { toCoachEventStudentOption } from '../utils/coachEventStudents.js'
-import {
-  applyOrientirParticipations,
-  mergeOrientirExternalCamps,
-  participationByOrientirId,
-} from '../utils/orientirParticipation.js'
 import { vk } from '../utils/vkUi.js'
 
 /**
@@ -31,11 +20,6 @@ import { vk } from '../utils/vkUi.js'
 function CoachCalendarPage({ coachId }) {
   const { students } = useCoachStudents(coachId)
   const { events, ready, error: loadError } = useCoachEvents(coachId)
-  const {
-    participations,
-    ready: participationsReady,
-    error: participationsError,
-  } = useOrientirParticipation(coachId)
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -44,19 +28,7 @@ function CoachCalendarPage({ coachId }) {
     [students],
   )
 
-  const orientirs = useMemo(() => buildAllFederationOrientirCompetitions(), [])
-
-  const participationsByOrientir = useMemo(
-    () => participationByOrientirId(participations),
-    [participations],
-  )
-
-  const calendarItems = useMemo(() => {
-    const coachItems = calendarItemsForCoach(events)
-    const merged = mergeCalendarWithOrientirs(coachItems, orientirs)
-    const withParticipants = applyOrientirParticipations(merged, participationsByOrientir)
-    return mergeOrientirExternalCamps(withParticipants, participations)
-  }, [events, orientirs, participationsByOrientir, participations])
+  const calendarItems = useMemo(() => calendarItemsForCoach(events), [events])
 
   const runSave = useCallback(async (fn) => {
     if (!coachId) {
@@ -84,58 +56,52 @@ function CoachCalendarPage({ coachId }) {
           <p className={vk.h2}>Общий календарь</p>
         </div>
 
-        {!ready || !participationsReady ? (
+        {!ready ? (
           <p className={vk.muted}>Загрузка…</p>
         ) : (
           <>
             {loadError ? <p className={vk.noticeWarn}>{loadError}</p> : null}
-            {participationsError ? <p className={vk.noticeWarn}>{participationsError}</p> : null}
             <SeasonCalendarPanel
-            title="Сезон · все события"
-            hint="Ориентиры Минспорта: участники и сборы края/федерации перед стартом (не события клуба)."
-            eventListLayout="cohortLadder"
-            separateOrientirsBlock
-            calendarItems={calendarItems}
-            coachEvents={events}
-            students={studentOptions}
-            canSave={Boolean(coachId)}
-            saveBusy={saveBusy}
-            saveError={saveError}
-            onCreateEvent={(payload) =>
-              runSave(() =>
-                createCoachEvent(coachId, {
-                  title: payload.title,
-                  kind: payload.kind,
-                  dateISO: payload.dateISO,
-                  dateEndISO: payload.dateEndISO,
-                  participantIds: payload.participantIds,
-                }),
-              )
-            }
-            onUpdateEvent={(eventId, payload) =>
-              runSave(() =>
-                updateCoachEvent(eventId, {
-                  title: payload.title,
-                  kind: payload.kind,
-                  dateISO: payload.dateISO,
-                  dateEndISO: payload.dateEndISO,
-                  participantIds: payload.participantIds,
-                }),
-              )
-            }
-            onRemoveFromEvent={(eventId, studentId) => {
-              const ev = events.find((e) => e.id === eventId)
-              if (!ev) return Promise.resolve()
-              return runSave(() =>
-                removeParticipantFromCoachEvent(eventId, studentId, ev.participantIds),
-              )
-            }}
-            onDeleteEvent={(eventId) => runSave(() => deleteCoachEvent(eventId))}
-            orientirParticipations={participations}
-            onSaveOrientirParticipants={(orientirId, payload) =>
-              runSave(() => setOrientirParticipation(coachId, orientirId, payload))
-            }
-          />
+              title="Сезон · все события"
+              hint="Добавляйте свои старты и тренировки — календарь пустой, пока вы его не заполните."
+              cleanCalendar
+              calendarItems={calendarItems}
+              coachEvents={events}
+              students={studentOptions}
+              canSave={Boolean(coachId)}
+              saveBusy={saveBusy}
+              saveError={saveError}
+              onCreateEvent={(payload) =>
+                runSave(() =>
+                  createCoachEvent(coachId, {
+                    title: payload.title,
+                    kind: payload.kind,
+                    dateISO: payload.dateISO,
+                    dateEndISO: payload.dateEndISO,
+                    participantIds: payload.participantIds,
+                  }),
+                )
+              }
+              onUpdateEvent={(eventId, payload) =>
+                runSave(() =>
+                  updateCoachEvent(eventId, {
+                    title: payload.title,
+                    kind: payload.kind,
+                    dateISO: payload.dateISO,
+                    dateEndISO: payload.dateEndISO,
+                    participantIds: payload.participantIds,
+                  }),
+                )
+              }
+              onRemoveFromEvent={(eventId, studentId) => {
+                const ev = events.find((e) => e.id === eventId)
+                if (!ev) return Promise.resolve()
+                return runSave(() =>
+                  removeParticipantFromCoachEvent(eventId, studentId, ev.participantIds),
+                )
+              }}
+              onDeleteEvent={(eventId) => runSave(() => deleteCoachEvent(eventId))}
+            />
           </>
         )}
       </div>
