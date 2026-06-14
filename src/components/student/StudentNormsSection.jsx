@@ -1,5 +1,6 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import PhysicalNormProgressSummary from './PhysicalNormProgressSummary.jsx'
+import NormHistoryModal from './NormHistoryModal.jsx'
 import StudentNormCard from './StudentNormCard.jsx'
 import {
   formatMinutesToMinuteSecond,
@@ -32,6 +33,12 @@ function StudentNormsSection({
   onResultChange,
   onSaveAcceptance,
 }) {
+  const [historyNorm, setHistoryNorm] = useState(/** @type {object | null} */ (null))
+  const historyRow = useMemo(() => {
+    if (!historyNorm) return null
+    return getNormValueByTestId(values, historyNorm.testId)
+  }, [historyNorm, values])
+
   const rows = useMemo(
     () =>
       norms.map((norm) => {
@@ -108,9 +115,17 @@ function StudentNormsSection({
           canSave={canSave}
           onResultChange={(raw) => onResultChange(norm, raw)}
           onSave={() => onSaveAcceptance(norm)}
+          onOpenHistory={() => setHistoryNorm(norm)}
         />
       ))}
       </ul>
+
+      <NormHistoryModal
+        open={historyNorm != null}
+        onClose={() => setHistoryNorm(null)}
+        norm={historyNorm}
+        row={historyRow}
+      />
     </div>
   )
 }

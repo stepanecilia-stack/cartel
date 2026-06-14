@@ -152,7 +152,7 @@ export async function getTelegramSession(coachId) {
 
 /**
  * @param {string} coachId
- * @param {{ activeStudentId?: string | null }} patch
+ * @param {{ activeStudentId?: string | null, pendingVoice?: object | null }} patch
  */
 export async function updateTelegramSession(coachId, patch) {
   await db()

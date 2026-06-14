@@ -29,6 +29,7 @@ export function normCardDomId(category, testId) {
  *   canSave: boolean,
  *   onResultChange: (value: string) => void,
  *   onSave: () => void,
+ *   onOpenHistory?: () => void,
  * }} props
  */
 function StudentNormCard({
@@ -44,6 +45,7 @@ function StudentNormCard({
   canSave,
   onResultChange,
   onSave,
+  onOpenHistory,
 }) {
   const isSelfReport = isStudentSelfReportNormRow(row)
   const pendingRetake = getPendingStudentSelfReport(row)
@@ -62,7 +64,23 @@ function StudentNormCard({
       <div className="px-2.5 py-2">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium leading-5 text-[#2c2d2e]">{norm.testName}</p>
+            {onOpenHistory ? (
+              <button
+                type="button"
+                onClick={onOpenHistory}
+                className="group w-full text-left touch-manipulation"
+                aria-label={`График: ${norm.testName}`}
+              >
+                <p className="text-[15px] font-medium leading-5 text-[#2c2d2e] group-hover:text-[#2d81e0]">
+                  {norm.testName}
+                  <span className="ml-1 text-[12px] font-normal text-[#818c99] group-hover:text-[#2d81e0]">
+                    · график
+                  </span>
+                </p>
+              </button>
+            ) : (
+              <p className="text-[15px] font-medium leading-5 text-[#2c2d2e]">{norm.testName}</p>
+            )}
             {norm.description ? (
               <p className="line-clamp-1 text-[11px] leading-4 text-[#818c99]">{norm.description}</p>
             ) : null}

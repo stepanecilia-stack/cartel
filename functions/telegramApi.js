@@ -71,6 +71,23 @@ export function layoutButtonsInTwoColumns(buttons) {
   return rows
 }
 
+/**
+ * @param {string} token
+ * @param {string} fileId
+ * @returns {Promise<Buffer>}
+ */
+export async function downloadTelegramFile(token, fileId) {
+  const meta = await telegramApi(token, 'getFile', { file_id: fileId })
+  const filePath = meta?.result?.file_path
+  if (!filePath) throw new Error('Telegram getFile: missing file_path')
+  const url = `https://api.telegram.org/file/bot${token}/${filePath}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Telegram file download: ${res.status}`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  if (!buf.length) throw new Error('Telegram file download: empty')
+  return buf
+}
+
 /** @param {string} raw */
 export function escapeTelegramHtml(raw) {
   return String(raw ?? '')
