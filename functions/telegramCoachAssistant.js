@@ -11,7 +11,7 @@ import {
 } from './telegramCoachData.js'
 
 const READ_ONLY_FOOTER =
-  '\n\n<i>Только чтение карточки. Запись в Cartel из Telegram отключена.</i>'
+  '\n\n<i>Запись: «запиши … норматив/технику» — с подтверждением.</i>'
 
 /**
  * @param {object} student
@@ -132,6 +132,50 @@ export function formatPendingNorms(student, allNorms) {
 }
 
 /**
+ * Упоминание ученика в свободной фразе (голос/текст).
+ * @param {object[]} students
+ * @param {string} text
+ * @returns {object | null}
+ */
+export function findStudentMentionInText(students, text) {
+  const lower = String(text ?? '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .trim()
+  if (!lower) return null
+
+  let best = null
+  let bestLen = 0
+
+  for (const student of students ?? []) {
+    const candidates = []
+    const full = displayName(student)
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+    if (full.length >= 3) candidates.push(full)
+    const first = String(student.firstName ?? '')
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .trim()
+    const last = String(student.lastName ?? '')
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .trim()
+    if (first.length >= 3) candidates.push(first)
+    if (last.length >= 4) candidates.push(last)
+
+    for (const part of candidates) {
+      if (lower.includes(part) && part.length > bestLen) {
+        best = student
+        bestLen = part.length
+      }
+    }
+  }
+
+  return best
+}
+
+/**
  * @param {string} text
  * @param {object | null} student
  * @param {object[]} allNorms
@@ -157,7 +201,7 @@ export function buildReadOnlyReply(text, student, allNorms) {
     ].join('\n')
   }
   if (
-    /сводк|покажи|расскаж|как дела|что с |кратко|инфо|данные/.test(lower) ||
+    /сводк|покажи|расскаж|как дела|что с |кратко|инфо|данные|информац/.test(lower) ||
     lower.length < 40
   ) {
     return formatStudentSummary(student, allNorms)

@@ -111,7 +111,7 @@ export default function CoachAssistantTelegramLink({ coachId }) {
         ) : null}
       </div>
       <p className={`${vk.mutedXs} mt-1`}>
-        Только чтение карточек. Голосовые — распознавание и подтверждение перед ответом.
+        Умный помощник: голос/текст; запись нормативов и техники — с подтверждением.
       </p>
       {error ? <p className={`${vk.error} mt-1 text-[12px]`}>{error}</p> : null}
     </div>

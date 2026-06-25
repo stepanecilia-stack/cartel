@@ -229,4 +229,104 @@ export function buildNormItems(norms, values) {
     }
   })
 }
-
+
+/** @param {string} rawValue */
+function parseMinuteSecondToMinutes(rawValue) {
+  const normalized = String(rawValue ?? '').trim()
+  const match = normalized.match(/^(\d+)\s*:\s*(\d{2})$/)
+  if (!match) return null
+  const minutes = Number(match[1])
+  const seconds = Number(match[2])
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+  return {
+    value: minutes + seconds / 60,
+    display: `${minutes}:${String(seconds).padStart(2, '0')}`,
+  }
+}
+
+/** @param {string} rawValue */
+function parseDotCommaOrSpaceMinuteSecond(rawValue) {
+  const normalized = String(rawValue ?? '').trim()
+  const comma = normalized.match(/^(\d+),(\d{2})$/)
+  if (comma) {
+    const minutes = Number(comma[1])
+    const seconds = Number(comma[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+    return { value: minutes + seconds / 60, display: `${minutes}:${String(seconds).padStart(2, '0')}` }
+  }
+  const dot = normalized.match(/^(\d+)\.(\d{2})$/)
+  if (dot) {
+    const minutes = Number(dot[1])
+    const seconds = Number(dot[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+    return { value: minutes + seconds / 60, display: `${minutes}:${String(seconds).padStart(2, '0')}` }
+  }
+  const sp = normalized.match(/^(\d+)\s+(\d{2})$/)
+  if (sp) {
+    const minutes = Number(sp[1])
+    const seconds = Number(sp[2])
+    if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) return null
+    return { value: minutes + seconds / 60, display: `${minutes}:${String(seconds).padStart(2, '0')}` }
+  }
+  return null
+}
+
+/** @param {string} rawValue */
+function parseAnyCompleteMinuteSecond(rawValue) {
+  return parseMinuteSecondToMinutes(rawValue) ?? parseDotCommaOrSpaceMinuteSecond(rawValue)
+}
+
+/**
+ * @param {object} norm
+ * @param {unknown} rawValue
+ */
+export function applyNormRawInput(norm, rawValue) {
+  if (rawValue === '' || rawValue === null || rawValue === undefined) return null
+  const trimmed = String(rawValue ?? '').trim()
+  const date = new Date().toISOString().slice(0, 10)
+
+  if (trimmed.includes(':')) {
+    const complete = parseAnyCompleteMinuteSecond(trimmed)
+    if (complete) {
+      const result = complete.value
+      if (!Number.isFinite(result)) return null
+      return {
+        ...evaluateLegacyTest(result, norm),
+        result,
+        resultRaw: complete.display,
+        date,
+      }
+    }
+    return null
+  }
+
+  if (isMinuteSecondNorm(norm)) {
+    const complete = parseAnyCompleteMinuteSecond(trimmed)
+    if (complete) {
+      const result = complete.value
+      if (!Number.isFinite(result)) return null
+      return {
+        ...evaluateLegacyTest(result, norm),
+        result,
+        resultRaw: complete.display,
+        date,
+      }
+    }
+    const numericRaw = trimmed.replace(',', '.')
+    const result = Number(numericRaw)
+    if (!Number.isFinite(result)) return null
+    return { ...evaluateLegacyTest(result, norm), result, resultRaw: trimmed, date }
+  }
+
+  const minuteSecond = parseMinuteSecondToMinutes(trimmed)
+  const numericRaw = trimmed.replace(',', '.')
+  const result = minuteSecond ? minuteSecond.value : Number(numericRaw)
+  if (!Number.isFinite(result)) return null
+  return {
+    ...evaluateLegacyTest(result, norm),
+    result,
+    resultRaw: minuteSecond?.display ?? trimmed,
+    date,
+  }
+}
+

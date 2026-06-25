@@ -12,7 +12,8 @@ import {
   escapeTelegramHtml,
   formatStudentTechniqueBlock,
 } from './telegramTechnicalProgress.js'
-import { layoutButtonsInTwoColumns, telegramApi } from './telegramApi.js'
+import { layoutButtonsInTwoColumns, sendTelegramMessage, telegramApi } from './telegramApi.js'
+import { menuExtra } from './telegramMenu.js'
 
 const ROSTER_PAGE_SIZE = STUDENTS_PAGE_SIZE
 const ROSTER_BTN_LABEL_MAX = 24
@@ -72,9 +73,55 @@ export function rosterMessageText(students, selectedIds, page = 0) {
     'Отметьте присутствующих. Состав синхронизируется с приложением Cartel.',
     '',
     `Выбрано: <b>${picked}</b> из ${total} (стр. ${page + 1})`,
-    '',
-    '<i>Ползунки прогресса — в приложении. Здесь сводка техники по группе.</i>',
   ].join('\n')
+}
+
+/**
+ * @param {object[]} students
+ * @param {string[]} confirmedIds
+ * @param {string[]} pendingFragments
+ * @param {number} page
+ * @param {{ removedNames?: string[], addedNames?: string[] }} [meta]
+ */
+export function formatComposeRosterMessage(students, confirmedIds, pendingFragments, page = 0, meta = {}) {
+  let text = rosterMessageText(students, confirmedIds, page)
+  if (pendingFragments.length) {
+    text += `\n\n<b>Не нашёл в базе:</b>\n${pendingFragments
+      .map((frag) => `❓ «${escapeTelegramHtml(frag)}»`)
+      .join('\n')}`
+  }
+  if (meta.removedNames?.length) {
+    text += `\n\n<b>Убрал:</b>\n${meta.removedNames.map((n) => `➖ ${escapeTelegramHtml(n)}`).join('\n')}`
+  }
+  if (meta.addedNames?.length) {
+    text += `\n\n<b>Добавил:</b>\n${meta.addedNames.map((n) => `➕ ${escapeTelegramHtml(n)}`).join('\n')}`
+  }
+  return text
+}
+
+/**
+ * @param {string} token
+ * @param {number} chatId
+ * @param {string} coachId
+ * @param {{ confirmedIds?: string[], pendingFragments?: string[], page?: number, meta?: object }} [options]
+ */
+export async function sendComposeRosterReply(token, chatId, coachId, options = {}) {
+  const confirmedIds = options.confirmedIds ?? []
+  const pendingFragments = options.pendingFragments ?? []
+  const page = options.page ?? 0
+  const meta = options.meta ?? {}
+  const students = await getCoachStudents(coachId)
+
+  if (confirmedIds.length > 0) {
+    await updateGroupTrainingRoster(coachId, confirmedIds, 'compose')
+  }
+
+  const text = formatComposeRosterMessage(students, confirmedIds, pendingFragments, page, meta)
+  await sendTelegramMessage(token, chatId, text, {
+    ...menuExtra(),
+    reply_markup: buildTrainingRosterKeyboard(students, new Set(confirmedIds), page),
+    disable_web_page_preview: true,
+  })
 }
 
 /**

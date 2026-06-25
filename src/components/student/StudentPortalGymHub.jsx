@@ -12,6 +12,24 @@ function HubLockIcon() {
   )
 }
 
+function HubMicIcon() {
+  return (
+    <svg className="h-12 w-12 sm:h-14 sm:w-14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"
+        fill="currentColor"
+      />
+      <path
+        d="M6 11a6 6 0 0 0 12 0M12 17v3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /** @type {Array<{ id: GymHubSectionId, title: string, subtitle: string, premiumSubtitle: string }>} */
 export const GYM_HUB_SECTIONS = [
   {
@@ -104,7 +122,19 @@ export default function StudentPortalGymHub({
           </div>
         </header>
 
-        <nav className="mt-auto flex flex-1 flex-col justify-end gap-2 pb-1 sm:gap-2.5" aria-label="Разделы зала">
+        <div className="flex flex-1 flex-col items-center justify-center py-4">
+          <button
+            type="button"
+            aria-label="Голосовой помощник (скоро)"
+            className="flex h-28 w-28 items-center justify-center rounded-full border border-white/25 bg-[#2d81e0] text-white shadow-xl backdrop-blur-sm transition hover:bg-[#2875cc] active:scale-95 sm:h-32 sm:w-32"
+          >
+            <HubMicIcon />
+          </button>
+          <p className="mt-3 text-center text-[13px] font-medium text-white/90">Скажите запрос</p>
+          <p className="mt-0.5 text-center text-[11px] text-white/70">Скоро · голосовой помощник</p>
+        </div>
+
+        <nav className="flex flex-col justify-end gap-2 pb-1 sm:gap-2.5" aria-label="Разделы зала">
           {GYM_HUB_SECTIONS.map((section) => {
             const locked = isGymHubPremiumSection(section.id) && !premiumActive
             return (

@@ -152,7 +152,7 @@ export async function getTelegramSession(coachId) {
 
 /**
  * @param {string} coachId
- * @param {{ activeStudentId?: string | null, pendingVoice?: object | null }} patch
+ * @param {{ activeStudentId?: string | null, pendingTrainingRoster?: object | null, pendingAgentWrite?: object | null }} patch
  */
 export async function updateTelegramSession(coachId, patch) {
   await db()
@@ -181,6 +181,30 @@ export async function appendTelegramChatMessage(coachId, role, content) {
       source: 'telegram',
       createdAt: FieldValue.serverTimestamp(),
     })
+}
+
+/**
+ * @param {string} coachId
+ * @param {number} [limit]
+ */
+export async function getRecentTelegramChatMessages(coachId, limit = 10) {
+  if (!coachId) return []
+  try {
+    const snap = await db()
+      .collection('coaches')
+      .doc(coachId)
+      .collection('telegram_chat')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get()
+    return snap.docs
+      .map((doc) => doc.data())
+      .reverse()
+      .filter((m) => m?.content)
+  } catch (err) {
+    console.warn('getRecentTelegramChatMessages', err)
+    return []
+  }
 }
 
 /** @param {Record<string, unknown>} data */

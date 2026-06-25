@@ -12,7 +12,12 @@ import {
   updateTelegramSession,
 } from './telegramCoachData.js'
 import {
+  cancelPendingWrite,
+  executePendingWrite,
+} from './telegramWriteConfirm.js'
+import {
   buildReadOnlyReply,
+  findStudentMentionInText,
   formatPendingNorms,
   formatStudentSummary,
   getNormsCached,
@@ -37,29 +42,28 @@ import {
   sendTrainingRoster,
   toggleTrainingStudent,
 } from './telegramGroupTraining.js'
-import {
-  clearPendingVoiceTranscript,
-  consumePendingVoiceTranscript,
-  offerVoiceTranscriptConfirmation,
-} from './telegramVoice.js'
+import { handleCoachAgentMessage } from './telegramCoachAgent.js'
+import { handleTelegramVoiceMessage } from './telegramVoice.js'
+import { handleTrainingRosterMessage } from './telegramTrainingRoster.js'
 
 const telegramBotToken = defineSecret('TELEGRAM_BOT_TOKEN')
 /** Опционально: firebase functions:secrets:set YANDEX_SPEECHKIT_API_KEY + добавить в secrets webhook */
 const yandexSpeechKitApiKey = defineSecret('YANDEX_SPEECHKIT_API_KEY')
 
 const HELP_TEXT = [
-  '<b>Cartel — помощник тренера</b>',
-  'Режим: <b>только чтение</b> карточек. Запись в базу из Telegram отключена.',
+  '<b>Cartel — умный помощник тренера</b>',
+  'Пишите или говорите свободно — бот понимает контекст и диалог.',
   '',
-  'Кнопки меню:',
-  '🏋️ Тренировка — состав группы и техника (синхрон с приложением)',
-  '👤 Ученики — выбрать одного для сводки',
-  '📋 Сводка / 📊 Нормативы — по выбранному ученику',
+  'Примеры:',
+  '• «Ермаков, Стрижов — тренировка»',
+  '• «Убери Ермакова Назара, Захара оставь»',
+  '• «Что не сдано у Стрижова?»',
+  '• «Покажи технику группы»',
+  '• «Запиши Стрижову отжимания 25»',
+  '• «Стрижов, следующий этап» — умение на текущем шаге',
+  '• «Поставь Ермакову прямой в голову — навык»',
   '',
-  'Ползунки прогресса на тренировке — в приложении Cartel.',
-  'После старта тренировки — 📋 Упражнения: выбор группы мышц (ноги, кор, спина…), подбор через поиск Google.',
-  '',
-  '🎤 Голосовое сообщение — распознаём речь, показываем текст и кнопку «Обработать» (как обычный запрос).',
+  'Запись в карточку — только после подтверждения ✅.',
 ].join('\n')
 
 /**
@@ -129,6 +133,8 @@ async function handleCoachTextMessage(token, chatId, coachId, text) {
     return
   }
 
+  const session = await getTelegramSession(coachId)
+
   if (menuAction === 'training') {
     const result = await sendTrainingRoster(token, chatId, coachId, 0)
     if (result.empty) {
@@ -143,28 +149,19 @@ async function handleCoachTextMessage(token, chatId, coachId, text) {
     return
   }
 
-  const session = await getTelegramSession(coachId)
-  const student = await resolveActiveStudent(coachId, session.activeStudentId)
+  const students = await getCoachStudents(coachId)
+  let student = await resolveActiveStudent(coachId, session.activeStudentId)
   const allNorms = await getNormsCached()
 
-  if (menuAction === 'summary') {
+  if (menuAction === 'summary' || menuAction === 'norms') {
     if (!student) {
       await sendCoachMessage(token, chatId, 'Сначала выберите ученика — кнопка «👤 Ученики».')
       return
     }
-    const reply = formatStudentSummary(student, allNorms)
-    await appendTelegramChatMessage(coachId, 'user', trimmed)
-    await appendTelegramChatMessage(coachId, 'assistant', reply.replace(/<[^>]+>/g, ''))
-    await sendCoachMessage(token, chatId, reply)
-    return
-  }
-
-  if (menuAction === 'norms') {
-    if (!student) {
-      await sendCoachMessage(token, chatId, 'Сначала выберите ученика — кнопка «👤 Ученики».')
-      return
-    }
-    const reply = formatPendingNorms(student, allNorms)
+    const reply =
+      menuAction === 'norms'
+        ? formatPendingNorms(student, allNorms)
+        : formatStudentSummary(student, allNorms)
     await appendTelegramChatMessage(coachId, 'user', trimmed)
     await appendTelegramChatMessage(coachId, 'assistant', reply.replace(/<[^>]+>/g, ''))
     await sendCoachMessage(token, chatId, reply)
@@ -172,6 +169,23 @@ async function handleCoachTextMessage(token, chatId, coachId, text) {
   }
 
   await appendTelegramChatMessage(coachId, 'user', trimmed)
+
+  const agentResult = await handleCoachAgentMessage(token, chatId, coachId, trimmed, session, {
+    helpText: HELP_TEXT,
+  })
+  if (agentResult.handled) return
+
+  const rosterResult = await handleTrainingRosterMessage(token, chatId, coachId, trimmed, session)
+  if (rosterResult.handled) return
+
+  const mentioned = findStudentMentionInText(students, trimmed)
+  if (mentioned) {
+    if (mentioned.id !== session.activeStudentId) {
+      await updateTelegramSession(coachId, { activeStudentId: mentioned.id })
+    }
+    student = mentioned
+  }
+
   const reply = buildReadOnlyReply(trimmed, student, allNorms)
   await appendTelegramChatMessage(coachId, 'assistant', reply.replace(/<[^>]+>/g, ''))
   await sendCoachMessage(token, chatId, reply)
@@ -243,7 +257,14 @@ async function processTelegramUpdate(token, update, speechKitApiKey) {
   }
 
   if (message.voice?.file_id) {
-    await offerVoiceTranscriptConfirmation(token, chatId, coachId, message.voice, speechKitApiKey)
+    await handleTelegramVoiceMessage(
+      token,
+      chatId,
+      coachId,
+      message.voice,
+      speechKitApiKey,
+      (transcript) => handleCoachTextMessage(token, chatId, coachId, transcript),
+    )
     return
   }
 
@@ -272,41 +293,38 @@ async function handleCallback(token, query) {
     return
   }
 
-  if (data === 'voice:cancel') {
-    await clearPendingVoiceTranscript(coachId)
-    await telegramApi(token, 'answerCallbackQuery', {
-      callback_query_id: query.id,
-      text: 'Отменено',
-    })
-    if (query.message?.message_id) {
-      await telegramApi(token, 'editMessageReplyMarkup', {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        reply_markup: { inline_keyboard: [] },
-      }).catch(() => {})
+  if (data.startsWith('write:')) {
+    const session = await getTelegramSession(coachId)
+    if (data === 'write:confirm') {
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: query.id,
+        text: 'Записываю…',
+      })
+      await executePendingWrite(token, chatId, coachId, session.pendingAgentWrite)
+      if (query.message?.message_id) {
+        await telegramApi(token, 'editMessageReplyMarkup', {
+          chat_id: chatId,
+          message_id: query.message.message_id,
+          reply_markup: { inline_keyboard: [] },
+        }).catch(() => {})
+      }
+      return
     }
-    return
-  }
-
-  if (data.startsWith('voice:use:')) {
-    const pendingId = data.slice('voice:use:'.length)
-    const transcript = await consumePendingVoiceTranscript(coachId, pendingId)
-    await telegramApi(token, 'answerCallbackQuery', {
-      callback_query_id: query.id,
-      text: transcript ? 'Обрабатываю…' : 'Запрос устарел — отправьте голос снова.',
-      show_alert: !transcript,
-    })
-    if (query.message?.message_id) {
-      await telegramApi(token, 'editMessageReplyMarkup', {
-        chat_id: chatId,
-        message_id: query.message.message_id,
-        reply_markup: { inline_keyboard: [] },
-      }).catch(() => {})
+    if (data === 'write:cancel') {
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: query.id,
+        text: 'Отменено',
+      })
+      await cancelPendingWrite(token, chatId, coachId)
+      if (query.message?.message_id) {
+        await telegramApi(token, 'editMessageReplyMarkup', {
+          chat_id: chatId,
+          message_id: query.message.message_id,
+          reply_markup: { inline_keyboard: [] },
+        }).catch(() => {})
+      }
+      return
     }
-    if (transcript) {
-      await handleCoachTextMessage(token, chatId, coachId, transcript)
-    }
-    return
   }
 
   if (data.startsWith('gt:')) {
